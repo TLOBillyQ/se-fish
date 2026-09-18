@@ -1,0 +1,15 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "eggy-lua",
+            "request": "attach",
+            "name": "Attach to Eggy Lua",
+            "host": "127.0.0.1",
+            "port": 1635,
+            "stopOnEntry": false,
+            "cwd": "${workspaceFolder}",
+            "autoPathMode": true
+        }
+    ]
+}

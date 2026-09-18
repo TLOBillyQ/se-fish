@@ -1,0 +1,15 @@
+{
+    "projectName": "钓鱼怎么这么危险啊喂！", 
+    "projectID": "6aab8e60ee615830184f4963", 
+    "serverPort": 27962, 
+    "syncEnabled": true, 
+    "excludePatterns": [
+        ".vscode", 
+        ".git", 
+        "EggyAPI.lua", 
+        ".codemaker"
+    ], 
+    "version": "1.0.0", 
+    "isSEMap": true, 
+    "playerNid": "623873800"
+}
