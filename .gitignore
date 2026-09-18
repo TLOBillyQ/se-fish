@@ -1,0 +1,27 @@
+# ===== 编辑器运行产物 =====
+log.txt
+*.log
+
+# ===== 外部链接 =====
+# design 是指向 eggitor/1_开发中/渔力全开 的符号链接，内容不在本仓库管理
+design
+
+# ===== AI 助手 / teamai 分发文件（由工具自动下发，可重新生成）=====
+.codemaker/
+.kimi-code/
+.teamai/
+.claude/
+# 如需提交团队共享的 Claude 配置，改为只忽略本地文件：
+# .claude/settings.local.json
+
+# ===== IDE =====
+.vscode/*
+!.vscode/launch.json
+.idea/
+*.swp
+*~
+
+# ===== 系统文件 =====
+.DS_Store
+Thumbs.db
+desktop.ini
