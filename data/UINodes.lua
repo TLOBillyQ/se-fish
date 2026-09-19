@@ -1,95 +1,120 @@
 ---AUTTO EXPORT BY EGGITOR PLUGIN, PLEASE DO NOT EDIT
 
 return {
-	--Duplicated Names!
-	--["1"] = "1081319723" --[[@as EUIImage]],
-	--["1"] = "1392354475" --[[@as EUIImage]],
-	--Duplicated Names!
-	--["2"] = "1140917783" --[[@as EUIImage]],
-	--["2"] = "1114625340" --[[@as EUIImage]],
-	--Duplicated Names!
-	--["3"] = "1270399615" --[[@as EUIImage]],
-	--["3"] = "1588519951" --[[@as EUIImage]],
-	--Duplicated Names!
-	--["4"] = "1551458738" --[[@as EUIImage]],
-	--["4"] = "1954098430" --[[@as EUIImage]],
-	--Duplicated Names!
-	--["5"] = "1429495524" --[[@as EUIImage]],
-	--["5"] = "1693713455" --[[@as EUIImage]],
-	--Duplicated Names!
-	--BG = "1255864949" --[[@as EUIImage]],
-	--BG = "1528444977" --[[@as EUIImage]],
-	Bg = "2138610228" --[[@as EUIImage]],
-	Btn1 = "1333907008" --[[@as EUIButton]],
-	Btn2 = "1194958358" --[[@as EUIButton]],
-	Btn3 = "1853173389" --[[@as EUIButton]],
-	Btn4 = "1241395912" --[[@as EUIButton]],
-	Btn5 = "1930701767" --[[@as EUIButton]],
-	Btn6 = "1232645457" --[[@as EUIButton]],
-	BtnClose = "1644281861" --[[@as EUIButton]],
-	BtnFishEnter = "1222913324" --[[@as EUIImage]],
-	BtnFishLvUp = "1701841497" --[[@as EUIButton]],
-	BtnNo = "1368459219" --[[@as EUIButton]],
-	BtnResetGM = "1916356837" --[[@as EUIButton]],
-	BtnRewardConfirm = "1020855855" --[[@as EUIButton]],
-	BtnRodLvUp = "2003168856" --[[@as EUIButton]],
-	BtnShopClose = "1023560046" --[[@as EUIButton]],
-	BtnYes = "1125708649" --[[@as EUIButton]],
-	Coin_1 = "1561148004" --[[@as EUIImage]],
-	Coin_2 = "2070313967" --[[@as EUIImage]],
-	Coin_3 = "1920124567" --[[@as EUIImage]],
-	DialogNoticeConfirm = "1757359147" --[[@as EUIRootNode]],
-	FrameNumsArea = "1881700436" --[[@as EUIImage]],
-	ImageCoin = "1398756413" --[[@as EUIImage]],
-	ImageFishLv = "1232307841" --[[@as EUIImage]],
-	ImageReward = "1225669526" --[[@as EUIImage]],
-	ImageRodLv = "1956913777" --[[@as EUIImage]],
-	ItemMsg = "1813448764" --[[@as EUIImage]],
-	LabelBtnFish = "1106367059" --[[@as EUITextLabel]],
-	LabelCoin = "1667806349" --[[@as EUITextLabel]],
-	LabelCurCoin = "1376745254" --[[@as EUITextLabel]],
-	LabelFishLv = "1170820451" --[[@as EUITextLabel]],
-	LabelFishLvMax = "1159183575" --[[@as EUITextLabel]],
-	LabelFishLvUpCost = "2013196383" --[[@as EUITextLabel]],
-	LabelFishTitle = "1858750104" --[[@as EUITextLabel]],
-	LabelGMTips = "1525704054" --[[@as EUITextLabel]],
-	LabelMsg = "2132032140" --[[@as EUITextLabel]],
-	LabelRewardMsg = "1819811505" --[[@as EUITextLabel]],
-	LabelRodLv = "2102595784" --[[@as EUITextLabel]],
-	LabelRodLvMax = "1669796009" --[[@as EUITextLabel]],
-	LabelRodLvUpCost = "1333679798" --[[@as EUITextLabel]],
-	--Duplicated Names!
-	--LabelShopTitle = "2065280936" --[[@as EUITextLabel]],
-	--LabelShopTitle = "1790230450" --[[@as EUITextLabel]],
-	LabelText = "1103098622" --[[@as EUITextLabel]],
-	LabelTips = "1240125876" --[[@as EUITextLabel]],
-	ListFishLv = "1179069643" --[[@as EUIListView]],
-	ListRodLv = "1771145066" --[[@as EUIListView]],
-	MarkNum1 = "1821607047" --[[@as EUIImage]],
-	MarkNum2 = "1662710912" --[[@as EUIImage]],
-	MarkNum3 = "2048738629" --[[@as EUIImage]],
-	MarkNum4 = "1245434635" --[[@as EUIImage]],
-	MarkNum5 = "2127657707" --[[@as EUIImage]],
-	MarkNum6 = "2019124453" --[[@as EUIImage]],
-	ProcessBar = "1717775432" --[[@as EUIImage]],
-	ProcessBg = "1704244872" --[[@as EUIImage]],
-	ProgressRoot = "2139616771" --[[@as EUINodeBase]],
-	RewardRoot = "1778908755" --[[@as EUIImage]],
-	RewardRootBG = "1166656472" --[[@as EUIImage]],
-	SceneNodeFish = "1417826166" --[[@as EUISceneNode]],
-	SceneNodeShop = "2138528900" --[[@as EUISceneNode]],
-	ScreenFishing = "1405255247" --[[@as EUIRootNode]],
-	ScreenMain = "1868578510" --[[@as EUIRootNode]],
-	ScreenMsg = "1127628611" --[[@as EUIRootNode]],
-	ScreenShop = "1584131436" --[[@as EUIRootNode]],
-	ShopRoot = "1037759057" --[[@as EUIImage]],
-	ShopRootBG = "1403433159" --[[@as EUIImage]],
-	UFXFish = "1490682070" --[[@as EUINodeBase]],
-	UIFXTestNo = "1942070218" --[[@as EUINodeBase]],
-	UIFXTestYes = "2027247980" --[[@as EUINodeBase]],
-	UIList = "1871178731" --[[@as EUIListView]],
-	clipping_node = "1823819207" --[[@as EUIClippingNode]],
-	progress_bar = "1031172494" --[[@as EUIImage]],
-	progress_bar_bg = "1412857500" --[[@as EUIImage]],
-	["结算画布（退出前展示）"] = "1153793721" --[[@as EUIRootNode]],
+	-- 树状结构声明：
+	-- 节点 = {name, type} 或 {name, type, {子节点...}}
+	--   [1] name = 节点名
+	--   [2] type = SE SDK 运行时类名
+	--   [3] children = 子节点数组（叶子节点省略）
+	{"ScreenMain", "EUILayout", {
+		{"BtnFishEnter", "EUIImage", {
+			{"LabelBtnFish", "EUITextLabel"},
+			{"UFXFish", "EUINodeBase"},
+		}},
+		{"ImageCoin", "EUIImage"},
+		{"LabelCoin", "EUITextLabel"},
+	}},
+	{"ScreenShop", "EUILayout", {
+		{"ShopRootBG", "EUIImage", {
+			{"ShopRoot", "EUIImage", {
+				{"ImageFishLv", "EUIImage"},
+				{"LabelFishLv", "EUITextLabel"},
+				{"ImageRodLv", "EUIImage"},
+				{"LabelRodLv", "EUITextLabel"},
+				{"ListRodLv", "EUIListView", {
+					{"1", "EUIImage"},
+					{"2", "EUIImage"},
+					{"3", "EUIImage"},
+					{"4", "EUIImage"},
+					{"5", "EUIImage"},
+				}},
+				{"ListFishLv", "EUIListView", {
+					{"1", "EUIImage"},
+					{"2", "EUIImage"},
+					{"3", "EUIImage"},
+					{"4", "EUIImage"},
+					{"5", "EUIImage"},
+				}},
+				{"BtnRodLvUp", "EUIButton", {
+					{"Coin_1", "EUIImage"},
+					{"LabelRodLvUpCost", "EUITextLabel"},
+				}},
+				{"BtnFishLvUp", "EUIButton", {
+					{"Coin_2", "EUIImage"},
+					{"LabelFishLvUpCost", "EUITextLabel"},
+				}},
+				{"LabelRodLvMax", "EUITextLabel"},
+				{"LabelFishLvMax", "EUITextLabel"},
+				{"Coin_3", "EUIImage"},
+				{"LabelCurCoin", "EUITextLabel"},
+				{"BtnShopClose", "EUIButton"},
+				{"LabelShopTitle", "EUITextLabel"},
+				{"BtnResetGM", "EUIButton"},
+				{"LabelGMTips", "EUITextLabel"},
+			}},
+		}},
+	}},
+	{"ScreenFishing", "EUILayout", {
+		{"Bg", "EUIImage"},
+		{"BtnClose", "EUIButton"},
+		{"Btn1", "EUIButton", {
+			{"MarkNum1", "EUIImage"},
+		}},
+		{"Btn2", "EUIButton", {
+			{"MarkNum2", "EUIImage"},
+		}},
+		{"Btn3", "EUIButton", {
+			{"MarkNum3", "EUIImage"},
+		}},
+		{"Btn4", "EUIButton", {
+			{"MarkNum4", "EUIImage"},
+		}},
+		{"Btn5", "EUIButton", {
+			{"MarkNum5", "EUIImage"},
+		}},
+		{"Btn6", "EUIButton", {
+			{"MarkNum6", "EUIImage"},
+		}},
+		{"ProcessBg", "EUIImage", {
+			{"ProcessBar", "EUIImage"},
+		}},
+		{"LabelTips", "EUITextLabel"},
+		{"FrameNumsArea", "EUIImage"},
+		{"ProgressRoot", "EUINodeBase", {
+			{"progress_bar_bg", "EUIImage"},
+			{"clipping_node", "EUIClippingNode", {
+				{"progress_bar", "EUIImage"},
+			}},
+		}},
+		{"UIFXTestNo", "EUINodeBase"},
+		{"UIFXTestYes", "EUINodeBase"},
+		{"RewardRootBG", "EUIImage", {
+			{"RewardRoot", "EUIImage", {
+				{"BtnRewardConfirm", "EUIButton"},
+				{"LabelRewardMsg", "EUITextLabel"},
+				{"ImageReward", "EUIImage"},
+			}},
+		}},
+	}},
+	{"DialogNoticeConfirm", "EUILayout", {
+		{"BG", "EUIImage", {
+			{"UIList", "EUIListView", {
+				{"BtnYes", "EUIButton"},
+				{"BtnNo", "EUIButton"},
+			}},
+			{"LabelText", "EUITextLabel"},
+		}},
+	}},
+	{"ScreenMsg", "EUILayout", {
+		{"ItemMsg", "EUIImage", {
+			{"BG", "EUIImage"},
+			{"LabelMsg", "EUITextLabel"},
+		}},
+	}},
+	{"SceneNodeFish", "EUISceneNode", {
+		{"LabelFishTitle", "EUITextLabel"},
+	}},
+	{"SceneNodeShop", "EUISceneNode", {
+		{"LabelShopTitle", "EUITextLabel"},
+	}},
 }
