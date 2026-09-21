@@ -7,7 +7,13 @@
     ".vscode",
     ".git",
     "EggyAPI.lua",
-    ".codemaker"
+    ".codemaker",
+    ".codex",
+    ".kimi-code",
+    ".dsh",
+    ".teamai",
+    ".claude",
+    ".zcode"
   ],
   "version": "1.0.0",
   "isSEMap": true,
