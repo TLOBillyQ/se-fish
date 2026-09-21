@@ -95,6 +95,32 @@ function M.file_count(path, dir)
   return n
 end
 
+-- 目录的绝对路径（pushd + cd）；目录不存在返回 nil。只服务 list_files。
+local function abs_dir(dir)
+  local out = lines("pushd " .. M.q(dir) .. " 2>nul && (cd & popd)")
+  return out[1]
+end
+
+-- 目录下全部文件（递归），返回相对 dir 的 / 分隔路径，按名排序；目录不存在返回 nil。
+-- dir /s /b 无论入参是不是相对路径都打印绝对路径（实测），所以先拿绝对前缀再剥。
+function M.list_files(dir)
+  local root = abs_dir(dir)
+  if not root then return nil end
+  local prefix = (root:gsub("\\", "/"))
+  local out = {}
+  for _, p in ipairs(lines("dir /s /b /a-d " .. M.q(dir) .. " 2>nul")) do
+    p = (p:gsub("\\", "/"))
+    out[#out + 1] = p:sub(#prefix + 2)
+  end
+  table.sort(out)
+  return out
+end
+
+-- 递归建目录；已存在不算失败。
+function M.ensure_dir(path)
+  run("if not exist " .. M.q(path) .. " md " .. M.q(path) .. " >nul 2>&1")
+end
+
 -- robocopy 退出码 0–7 都是成功（0 无变化、1 有拷贝、2/3 目的地多出东西、…），>= 8 才是
 -- 失败。输出平时静音（/NFL 也挡不住 EXTRA 文件清单这类噪音），只在失败时带回原文。
 local function robocopy(cmd)

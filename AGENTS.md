@@ -7,9 +7,9 @@
 - `server/`：`main.lua` 的 `MgrMap`（`server/main.lua:12`）注册 `server/Mgr/` 下的管理器，由它统一分发 `Start` / `OnPlayerAdded` / `OnPlayerRemoving` / `Update`，新管理器加进 `MgrMap`。`server/_trigger/` 是编辑器触发器系统的运行时脚本（`GlobalVars` 是它的变量库）。
 - `client/`：`main.lua` 启动本地逻辑（`LocalMgrUtil` / `LocalMotorUnitCtrl` / `LocalFishEnter`），界面交给 `MgrGameUI`；每个界面一个 handler 放 `client/ScreenHandlers/`，文件名要与 EUI 节点同名（`MgrGameUI:GetScreen` 按节点名 require handler）。
 - `common/`：双端共享，`GameCfg.lua` 是数值配置（鱼等级、鱼竿等级等），`Util` / `REUtil` / `FXUtil` / `TeleportUtil` 是工具模块。
-- `data/`：编辑器插件导出（Prefab / UI 节点 / 字体 ID），只读，改动回编辑器重新导出。
+- `data/`：编辑器插件导出（Prefab / UI 节点 / 字体 ID），只读，改动回编辑器重新导出、用 sync 回灌。
 - `unit_scripts/`：引擎侧生成，内容不在本仓库管理。
-- `tools/`：本仓库的工具链，在仓库根执行；`lua tools/cli.lua deploy` 把 `client/` `common/` `server/` 的一级子树镜像进编辑器宿主目录（默认 `dev/eggy/LuaSource_钓鱼怎么这么危险啊喂！`，`EGGY_WORKSPACE` 可覆盖）。宿主目录本身不是本仓库，只镜像、不往里放别的东西。
+- `tools/`：本仓库的工具链，在仓库根执行；`lua tools/cli.lua deploy` 把 `client/` `common/` `server/` 的一级子树镜像进编辑器宿主目录（默认 `dev/eggy/LuaSource_钓鱼怎么这么危险啊喂！`，`EGGY_WORKSPACE` 可覆盖）；反方向 `lua tools/cli.lua sync` 把宿主目录的 `eggy.json`、两份 API 存根与 `data/` 回灌仓库（落盘前 CRLF→LF 归一，`data/` 整目录镜像）。宿主目录本身不是本仓库，只镜像、不往里放别的东西。
 - `tests/`：luaunit 单测，`lua tests/run.lua` 一条命令跑完；`tests/lib/` 是 vendored 的 luaunit。
 - `EggyAPI.lua` / `EggyEditorAPI.lua`：运行时 / 编辑时 API 声明。
 
