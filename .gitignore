@@ -8,9 +8,11 @@ design
 
 # ===== AI 助手 / teamai 分发文件（由工具自动下发，可重新生成）=====
 .codemaker/
+.codex/
 .kimi-code/
 .teamai/
 .claude/
+.dsh/
 # 如需提交团队共享的 Claude 配置，改为只忽略本地文件：
 # .claude/settings.local.json
 
