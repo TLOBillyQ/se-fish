@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+# acceptance4lua 的 gherkin-parser，绑到本仓库：gherkin-parser <feature> <json-ir>
+# 在任意目录执行；脚本自己 cd 到仓库根，Lua 取 PATH 里的 lua（本机 5.4.6，命令名就是 lua）。
+set -euo pipefail
+cd "$(dirname "$0")/../.."
+LUA="${ACCEPTANCE_LUA_BIN:-lua}"
+export ACCEPTANCE_LUA_BIN="$LUA"
+exec "$LUA" tools/acceptance/cli/parser.lua "$@"

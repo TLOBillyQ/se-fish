@@ -9,9 +9,23 @@
 - `common/`：双端共享，`GameCfg.lua` 是数值配置（鱼等级、鱼竿等级等），`Util` / `REUtil` / `FXUtil` / `TeleportUtil` 是工具模块。
 - `data/`：编辑器插件导出（Prefab / UI 节点 / 字体 ID），只读，改动回编辑器重新导出、用 sync 回灌。
 - `unit_scripts/`：引擎侧生成，内容不在本仓库管理。
-- `tools/`：本仓库的工具链，在仓库根执行；`lua tools/cli.lua deploy` 把 `client/` `common/` `server/` 的一级子树镜像进编辑器宿主目录（默认 `dev/eggy/LuaSource_钓鱼怎么这么危险啊喂！`，`EGGY_WORKSPACE` 可覆盖）；反方向 `lua tools/cli.lua sync` 把宿主目录的 `eggy.json`、两份 API 存根与 `data/` 回灌仓库（落盘前 CRLF→LF 归一，`data/` 整目录镜像）。宿主目录本身不是本仓库，只镜像、不往里放别的东西。
+- `tools/`：本仓库的工具链（deploy / sync 与 acceptance 设施），入口见下面「工具链」。
 - `tests/`：luaunit 单测，`lua tests/run.lua` 一条命令跑完；`tests/lib/` 是 vendored 的 luaunit。
+- `features/`：Gherkin 验收 feature（`features/<车道>/<名字>.feature`，`# language: zh-CN` 开头），由 `bash tools/acceptance/run_acceptance.sh` 跑。
 - `EggyAPI.lua` / `EggyEditorAPI.lua`：运行时 / 编辑时 API 声明。
+
+## 工具链
+
+在仓库根执行，命令名照抄即可：
+
+| 任务 | 命令 | 入口 |
+|---|---|---|
+| 仓库代码 → 编辑器宿主目录 | `lua tools/cli.lua deploy` | 三端一级子树 robocopy 字节镜像；编辑器开着该地图时收尾 validate → diff → 有差异才 push，编辑器不在或没开该地图则跳过并以 0 退出；`--clean` 只清不装 |
+| 宿主目录产物 → 仓库 | `lua tools/cli.lua sync` | 回灌 `eggy.json`、两份 API 存根、`data/` 整目录，落盘前 CRLF→LF 归一 |
+| 单测 | `lua tests/run.lua` | luaunit，跑 `tests/*_test.lua` |
+| 验收 / 回归 | `bash tools/acceptance/run_acceptance.sh` | Gherkin 车道，目前只有 `features/engineering/deploy-mirror.feature`（`tmp/` 下临时工作区验「镜像 + 不碰非自有文件」）；不需要 luarocks、不依赖 WSL，详见 `tools/acceptance/README.md` |
+
+宿主目录默认 `C:\Users\<用户名>\Desktop\dev\eggy\LuaSource_钓鱼怎么这么危险啊喂！`，`EGGY_WORKSPACE` 可覆盖；宿主目录本身不是本仓库，只镜像、不往里放别的东西。
 
 ## 文档
 

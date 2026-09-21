@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+# acceptance4lua 的 IR-DRY 检查器：ir-dry-checker [--include-exact] <json-ir> <report-json>
+# advisory：只出报告，不改写 feature / IR / 生成物。在任意目录执行；脚本自己 cd 到仓库根。
+set -euo pipefail
+cd "$(dirname "$0")/../.."
+LUA="${ACCEPTANCE_LUA_BIN:-lua}"
+export ACCEPTANCE_LUA_BIN="$LUA"
+exec "$LUA" tools/acceptance/cli/ir_dry.lua "$@"

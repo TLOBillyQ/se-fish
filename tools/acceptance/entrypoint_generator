@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+# acceptance4lua 的验收入口生成器，绑到 tools.acceptance.steps：
+#   entrypoint_generator <json-ir> <generated-spec.lua>
+# 在任意目录执行；脚本自己 cd 到仓库根。
+set -euo pipefail
+cd "$(dirname "$0")/../.."
+LUA="${ACCEPTANCE_LUA_BIN:-lua}"
+export ACCEPTANCE_LUA_BIN="$LUA"
+exec "$LUA" tools/acceptance/cli/generator.lua "$@"
