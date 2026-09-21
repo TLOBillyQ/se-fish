@@ -17,6 +17,20 @@
 - `CONTEXT.md`：领域术语表，给出每个玩法概念该说的词与该避开的说法；起名、读设计案、写玩家可见文案前先查。
 - `docs/`：`技术难点识别.md` 是已识别的技术难点，`to-questionnaire-策划案内部矛盾.md` 是待策划确认的矛盾；写技术方案或怀疑策划案自相矛盾时先看。
 
+## Agent skills
+
+### Issue tracker
+
+issue 住在自建 Gitea `lzxsvn:3000` 的 `qinyuanj/se-fish`，用 `tea` CLI 操作。见 `docs/agents/issue-tracker.md`。
+
+### Triage labels
+
+五个标准 triage 标签，标签串与角色同名（五个都已建在仓库里）。见 `docs/agents/triage-labels.md`。
+
+### Domain docs
+
+单 context：根目录 `CONTEXT.md`，ADR 放 `docs/adr/`。见 `docs/agents/domain.md`。
+
 <!-- [teamai:rules:start] -->
 <!-- DO NOT EDIT: This section is auto-managed by teamai -->
 
