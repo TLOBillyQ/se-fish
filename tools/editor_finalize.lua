@@ -1,9 +1,13 @@
 -- 部署收尾：镜像落盘后，经 editor-cli 确认编辑器内的代码也是最新的
 -- （code validate → code diff → 有差异才 code push → 复核），一步到位，不留下一步。
--- 编辑器 syncEnabled=true 时落盘通常即进编辑器内存，但「通常」不是「一定」。
+-- 实测（SE 地图、syncEnabled=true、编辑器开着该地图）：宿主目录新增/改动会即时进编辑器内存
+-- （单向：磁盘→内存），删除则不保证反映过去（实测删后 diff 有时仍把文件算成 only-on-map）。
+-- 因此落盘后 diff 通常已无落后文件、下面的 push 不触发；push 方向恒为磁盘→地图，留给两者
+-- 不一致的场合——何时会不一致未验证（编辑器加载时以磁盘还是地图包为准没有实测），保持兜底。
 --
 -- 本模块依赖外部设备（正在运行的编辑器 + editor-cli.exe），所以环境不成立时必须能自己
--- 收场，跳过即成功——磁盘已经是镜像后的最新状态，编辑器打开该地图时会自己对齐：
+-- 收场，跳过即成功——磁盘已经是镜像后的最新状态，预期编辑器打开该地图时会自己对齐
+-- （未实测，见上）：
 --   * editor-cli.exe 不在；
 --   * 宿主目录没有自己的 eggy.json：editor-cli 会向上下层目录找绑定，可能绑到别的工程
 --     （仓库根就有 eggy.json），对着别人的地图 diff/push。
@@ -69,12 +73,12 @@ function M.run(ws)
   local cl = M.parse_changelist(out)
   if not cl then
     print("编辑器未打开该地图（diff 给不出 changelist），未校验编辑器内代码"
-      .. "（磁盘已是最新，打开地图后自动同步）")
+      .. "（磁盘已是最新）")
     return true
   end
   if out:find("channel=offline", 1, true) then
     print("编辑器没开该地图（diff 走的是离线地图目录），跳过 push"
-      .. "（磁盘已是最新，打开地图后自动同步）")
+      .. "（磁盘已是最新）")
     return true
   end
 
