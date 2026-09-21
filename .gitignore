@@ -27,3 +27,8 @@ design
 .DS_Store
 Thumbs.db
 desktop.ini
+
+# ===== 工具链临时 / 缓存目录 =====
+tmp/
+build/
+.toolcache/
