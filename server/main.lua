@@ -14,6 +14,7 @@ local MgrMap = {
     MgrFish = require("server.Mgr.MgrFish"),
     MgrPlayerData = require("server.Mgr.MgrPlayerData"),
     MgrAbility = require("server.Mgr.MgrAbility"),
+    MgrReelIn = require("server.Mgr.MgrReelIn"),
 }
 
 local function HandlePlayerAdded(player)
