@@ -140,7 +140,7 @@ M2「原生抓举」「顶鱼（骨骼挂点）」两条任务；`Lift()` 占用
    [M15] | V3D | GetPartsInPart | n=4 | 无形方块/WorldUnit,M15V3HitFish/WorldUnit,无形方块/WorldUnit,伯乐好马！/EggyUnit
    ```
    （注意：命中盒同时报 `无形方块`、玩家自己这类场景件，业务侧要用标签/属性过滤。）
-2. **伤害入口的两条路都不存在**。包内 `server/packages/ability_system/anchors/melee_hit.lua:84 _applyDamage` 的实现是 `target:TakeDamage(damage, owner)`，退化到 `target.Controller:TakeDamage(...)`：
+2. **伤害入口的两条路都不存在**。包内 `server/packages/ability_system/anchors/melee_hit.lua:107`（`_applyDamage`）的实现是 `target:TakeDamage(damage, owner)`，退化到 `target.Controller:TakeDamage(...)`：
    - 自建 `WorldUnit`：`hasHealth=false hasMaxHealth=false hasTakeDamage=false hasController=false hasDied=false hasHealthChanged=false`；`wu:TakeDamage(25, ch)` 直接报 `attempt to call a nil value (method 'TakeDamage')`。
    - 自建 `EggyUnit` / `HumanUnit` / `PhysicsUnit`：能创建，但**永远拿不到 Controller**（探针等了 5.5 秒仍是 `controller=false`，子节点只有 `Animator`）；`PetUnit` 创建直接被拒（`CreateUnit('PetUnit') failed`）。
    - 给 WorldUnit 挂自造方法的想法也被挡：`fish.TakeDamage = function(...) end` 报 `cannot access an internal table/userdata! (key='TakeDamage')`。

@@ -48,7 +48,10 @@ local function isCount(v)
 	if type(v) ~= "number" then
 		return false
 	end
-	-- nan / inf 一律不当数（math.floor(nan) 在 Lua 5.4 会直接抛错）
+	-- nan / inf 一律不当数。**不是**因为 math.floor 会抛错——本机 Lua 5.4.6 实测
+	-- `pcall(math.floor, 0/0)` → `true, -nan(ind)`，它不抛。真实危害是 nan 与任何值比较都恒为 false：
+	-- 在带窗口账目的用法里（高频输入骨架）会让限流静默失效。这里显式拦一道，判定就不依赖
+	-- 「nan 的比较恰好全是 false」这种偶然性质，下面的 math.floor 整数化也只会面对有限数。
 	if v ~= v or v == math.huge or v == -math.huge then
 		return false
 	end
