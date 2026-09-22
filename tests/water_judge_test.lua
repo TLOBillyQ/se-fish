@@ -2,6 +2,8 @@
 -- 判定只读 pos 的 x/y/z、不碰引擎，所以这里能用普通 table 当坐标（试玩里传 Vector3 是同一套字段）。
 -- 六个边界用例（#12 的验收：中心 / 水下 / 空中 / 贴边 ±0.1m / 远处陆地）+ 配置口径，
 -- 用的就是 GameCfg.Water.Zones 的真值，改配置把边界改错了这里先红。
+-- 末尾还钉住 GameCfg.FishCarrier 的 mesh id 写法与模型号号段（M0-V3 / #31）——那是 GameCfg 的另一处
+-- 实测配置真值，写错鱼建不出来（F-7 的 [未查证] 已消除，见 common/GameCfg.lua 该段注释）。
 local lu = require("luaunit")
 local GameCfg = require("common.GameCfg")
 local MathWaterJudge = require("common.MathWaterJudge")
@@ -11,11 +13,13 @@ local MathWaterJudge = require("common.MathWaterJudge")
 --   WaterCircle2 Position(-11.75, 1.05, 27.75) Size(6, 1, 6) Scale(2, 1, 2)
 local CENTER_X = -11.75
 local CENTER_Z = 27.75
-local SURFACE_Y = 1.55 -- 1.05 + Size.y / 2
+-- 水面高度（#31 改正）：Position.y 是底面、Size.y 是包围盒半长 ⇒ 水圈顶面 = 1.18 + 1 ≈ 2.183。
+-- 来源 docs/verification/m0-playtest-ledger.md（水圈运行时会漂移，1.18 是 16:24 那次的高点）。
+local SURFACE_Y = 2.183
 local OUTER_HALF = 3.0 -- WaterCircle2 的 Size.x / 2（Size 已含 Scale，不再乘 Scale）
-local UNDER_WATER_Y = 1.45
-local AIR_Y = 2.55
-local FLOOR_Y = 2.0 -- 大地板的表面高度（射线实测命中 2.0）
+local UNDER_WATER_Y = 2.08 -- 水面下 ≈0.1m
+local AIR_Y = 3.18 -- 水面上 ≈1m
+local FLOOR_Y = 2.0 -- 大地板的表面高度（射线实测命中 2.0；现在低于水面，见下面 W-7 那条）
 
 local function zones()
   return GameCfg.Water.Zones
@@ -37,6 +41,19 @@ end
 -- 落到水圈的判定统一用装配出来的判定器（与业务同一条路径），不直接调 InZone。
 local function inWater(pos)
   return MathWaterJudge.Build(zones())(pos) ~= nil
+end
+
+local PRESET_PREFIX = "official://preset/"
+
+-- GameCfg.FishCarrier 的 20 条模型：把模型号排好序返回，让「号段连续」这类断言不受 pairs 顺序影响。
+local function carrierModels()
+  local models = GameCfg.FishCarrier.Models
+  local ids = {}
+  for id in pairs(models) do
+    ids[#ids + 1] = id
+  end
+  table.sort(ids)
+  return models, ids
 end
 
 TestWaterJudgeBoundary = {}
@@ -85,11 +102,13 @@ function TestWaterJudgeSemantics:test_z_axis_edge_matches_x_axis()
   lu.assertFalse(inWater(at(CENTER_X, UNDER_WATER_Y, CENTER_Z + OUTER_HALF + 0.1)))
 end
 
--- 水面 y≈1.55 低于大地板表面 y=2.0（下凹池塘）：站在地板高度上的点不算在水里。
--- 这条是 W-7 那个实测关系的操作化——水面高度配高了，岸上会被误判成水里。
-function TestWaterJudgeSemantics:test_point_at_floor_height_is_not_in_water()
-  lu.assertTrue(FLOOR_Y > zoneById("WaterCircle2").SurfaceY)
-  lu.assertFalse(inWater(at(CENTER_X, FLOOR_Y, CENTER_Z)))
+-- 水面 y≈2.183 高于大地板表面 y=2.0（#31 改正：Position.y 是底面、Size.y 是包围盒半长）：
+-- 水区矩形内、站在地板高度上的点算在水里（那块地板就是池塘底），水面之上的点不算。
+-- 这条是 W-7 那个实测关系的操作化——水面高度配低了，水里的点会被误判成岸上。
+function TestWaterJudgeSemantics:test_point_at_floor_height_inside_pond_is_in_water()
+  lu.assertTrue(zoneById("WaterCircle2").SurfaceY > FLOOR_Y)
+  lu.assertTrue(inWater(at(CENTER_X, FLOOR_Y, CENTER_Z)))
+  lu.assertFalse(inWater(at(CENTER_X, FLOOR_Y + 0.5, CENTER_Z)))
 end
 
 -- 两圈同心但半宽不同：外圈 3.0 / 内圈 1.5，所以 dx=2.5 的点只在外圈里。
@@ -108,7 +127,7 @@ function TestWaterJudgeSemantics:test_build_returns_the_first_matching_zone()
   local hit = judge(at(CENTER_X, UNDER_WATER_Y, CENTER_Z))
 
   lu.assertEquals(hit.Id, "WaterCircle2")
-  lu.assertIs(judge(at(CENTER_X, FLOOR_Y, CENTER_Z)), nil)
+  lu.assertIs(judge(at(CENTER_X, AIR_Y, CENTER_Z)), nil)
 end
 
 TestWaterJudgeConfig = {}
@@ -143,4 +162,37 @@ end
 
 function TestWaterJudgeConfig:test_build_rejects_empty_zones()
   lu.assertErrorMsgContains("水区配置为空", MathWaterJudge.Build, {})
+end
+
+TestFishCarrierConfig = {}
+
+-- mesh id 的写法守卫（M0-V3 / #31）：写进 RenderMeshId 的必须是 official://mesh/<模型号>。
+-- 台账 §2.1 实测：official://preset/... 也能建出来但只是空壳（Size=(1,1,1)、无几何），
+-- 所以谁把预设号写进 Mesh，这条先红。
+function TestFishCarrierConfig:test_mesh_id_follows_the_official_uri_convention()
+  local models, ids = carrierModels()
+
+  for _, id in ipairs(ids) do
+    local row = models[id]
+    lu.assertEquals(row.Mesh, "official://mesh/" .. id)
+    lu.assertNotEquals(row.Mesh, row.Preset)
+    lu.assertEquals(row.Preset:sub(1, #PRESET_PREFIX), PRESET_PREFIX)
+  end
+end
+
+-- 官方鱼模型库是 7000544–7000563 共 20 条、模型号连续，官方预设号一一对应且不重复。
+-- 号段抄错、漏一条、或者把预设号错位挪一行，这条先红。
+function TestFishCarrierConfig:test_official_fish_model_range_is_complete()
+  local models, ids = carrierModels()
+  local presets = {}
+
+  lu.assertEquals(#ids, 20)
+  for i, id in ipairs(ids) do
+    lu.assertEquals(id, tostring(7000543 + i))
+    lu.assertTrue(models[id].Name ~= nil and models[id].Name ~= "", id .. " 缺名称")
+
+    local preset = models[id].Preset
+    lu.assertTrue(presets[preset] == nil, "官方预设号重复：" .. preset)
+    presets[preset] = true
+  end
 end
