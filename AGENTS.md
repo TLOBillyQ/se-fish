@@ -23,7 +23,7 @@
 |---|---|---|
 | 仓库代码 → 编辑器宿主目录 | `lua tools/cli.lua deploy` | 三端一级子树 robocopy 字节镜像；编辑器开着该地图时收尾 validate → diff → 有差异才 push，编辑器不在或没开该地图则跳过并以 0 退出；`--clean` 只清不装 |
 | 宿主目录产物 → 仓库 | `lua tools/cli.lua sync` | 回灌 `eggy.json`、两份 API 存根、`data/` 整目录，落盘前 CRLF→LF 归一 |
-| 重建技能包编辑器预设 | `lua tools/cli.lua ability-presets` | 按 `GameCfg.Ability` 的 key 查：预设还在就原地重刷锚点壳与属性，不在就复制官方模板重建并把新 key 回写 `GameCfg.lua`；要编辑器开着本图且在编辑态，多实例加 `--editor-instance <pid>`，`--dry-run` 只读探测并打印计划 |
+| 重建技能包编辑器预设 | `lua tools/cli.lua ability-presets` | 按 `GameCfg.Ability` 的 key 查：预设还在就原地重刷锚点壳与属性，不在就复制官方模板重建并把新 key 回写 `GameCfg.lua`；要编辑器开着本图且在编辑态，多实例加 `--editor-instance <pid>`，`--dry-run` 只打印计划 |
 | 单测 | `lua tests/run.lua` | luaunit，跑 `tests/*_test.lua` |
 | 验收 / 回归 | `bash tools/acceptance/run_acceptance.sh` | Gherkin 车道，目前只有 `features/engineering/deploy-mirror.feature`（`tmp/` 下临时工作区验「镜像 + 不碰非自有文件」）；不需要 luarocks、不依赖 WSL，详见 `tools/acceptance/README.md` |
 
@@ -73,12 +73,13 @@ issue 住在自建 Gitea `lzxsvn:3000` 的 `qinyuanj/se-fish`，用 `tea` CLI �
 
 ## 路由
 
-接到下表任务，先按名字调用对应 skill；调用不了就直接读工程根下 agent 技能目录里的 `<名字>/SKILL.md`——Claude 是 `.claude/skills/`、Codex 是 `.codex/skills/`、Kimi 是 `.kimi-code/skills/`、ZCode 是 `.zcode/skills/`。
+接到下表任务，先按名字调用对应 skill；调用不了就直接读工程根下 agent 技能目录里的 `<名字>/SKILL.md`——Claude 是 `.claude/skills/`、Codex 是 `.codex/skills/`、Kimi 是 `.kimi-code/skills/`、ZCode 是 `.zcode/skills/`、DSH（DeepSeek Harness）是 `.dsh/skills/`。
 
 | 任务 | skill |
 |---|---|
 | 写玩法设计案、策划案 | `eggy-design` |
 | 写技术方案、开发计划、拆任务 | `eggy-dev-plan` |
+| 把 AIGC 模型从 FS 搬进 SE（导入组件、贴图、尺寸） | `eggy-aigc-model` |
 
 ## 查 API 的顺序
 
@@ -86,7 +87,7 @@ issue 住在自建 Gitea `lzxsvn:3000` 的 `qinyuanj/se-fish`，用 `tea` CLI �
 2. 编辑器在线时用 `editor-cli api get <名字>` 确认签名（SE、FS 都覆盖）。
 3. 语义和用法查 `editor-cli docs search "<问题>"`。
 
-三步都查不到的 API 名标 `[未查证]`。（本文路径与命令验证：2026-09-19，editor-cli 0.18.0；两份存根不同与 FS 存根位置在 2026-09-19 核实；四个 agent 的技能目录按 teamai-cli 0.24.1 的安装目标核实）
+三步都查不到的 API 名标 `[未查证]`。（本文路径与命令验证：2026-09-19，editor-cli 0.18.0；两份存根不同与 FS 存根位置在 2026-09-19 核实；五个 agent 的技能目录核实：前四个按 teamai-cli 0.24.1 的安装目标，DSH 的 `.dsh/skills` 于 2026-09-21 在本机 0.24.2 实测）
 
 # 蛋仔 SE 程序
 
