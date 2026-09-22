@@ -24,6 +24,7 @@
 | 仓库代码 → 编辑器宿主目录 | `lua tools/cli.lua deploy` | 三端一级子树 robocopy 字节镜像；编辑器开着该地图时收尾 validate → diff → 有差异才 push，编辑器不在或没开该地图则跳过并以 0 退出；`--clean` 只清不装。收尾的 code-* 由工具自己指好宿主目录；自己手敲 code-* 必须加 `--workspace`，见下节「编辑器工程 ≠ 仓库检出」 |
 | 宿主目录产物 → 仓库 | `lua tools/cli.lua sync` | 回灌 `eggy.json`、两份 API 存根、`data/` 整目录，落盘前 CRLF→LF 归一 |
 | 重建技能包编辑器预设 | `lua tools/cli.lua ability-presets` | 按 `GameCfg.Ability` 的 key 查：预设还在就原地重刷锚点壳与属性，不在就复制官方模板重建并把新 key 回写 `GameCfg.lua`；要编辑器开着本图且在编辑态，多实例加 `--editor-instance <pid>`，`--dry-run` 只打印计划 |
+| 修技能包预设的 Name 类型 | `lua tools/cli.lua ability-presets --fix-names` | 预设 Name 被 change-asset-value 写成编辑器侧 unicode 后（症状：每场 1 条 `expected String, got userdata`、该预设单位名空，见 issue #22）用 `create-unit-by-asset → editor-unit rename → SyncAssetFromUnit → 删场景单位` 四步把 Name 修回 Lua string，逐个报修前/修后类型；要编辑器开着本图且在编辑态，`--dry-run` 只打印计划；保原预设 id、不改 `GameCfg.lua`、**全程不存盘** |
 | 单测 | `lua tests/run.lua` | luaunit，跑 `tests/*_test.lua` |
 | 验收 / 回归 | `bash tools/acceptance/run_acceptance.sh` | Gherkin 车道，目前只有 `features/engineering/deploy-mirror.feature`（`tmp/` 下临时工作区验「镜像 + 不碰非自有文件」）；不需要 luarocks、不依赖 WSL，详见 `tools/acceptance/README.md` |
 
