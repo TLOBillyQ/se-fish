@@ -11,13 +11,22 @@
 -- 还在就原地重刷壳与属性（可重复执行）；不在就复制模板建新的，并把新 key 回写
 -- GameCfg.lua。跑完后照常 lua tools/cli.lua deploy 落地、试玩验证。
 --
--- 已知坑（issue #7/#8 实测，脚本使用者不必再踩）：
+-- 已知坑（issue #7/#8 实测，Name 那条由 issue #22 运行期探针复核，脚本使用者不必再踩）：
 --   * preset 命令要编辑态，试玩中一律报「需要编辑态」；
 --   * 本机有多个编辑器实例时必须 --editor-instance <pid>，否则 INSTANCE_AMBIGUOUS；
---   * 不给预设写中文 Name：change-asset-value 的 Name 会存成 userdata，实例化刷 error；
+--   * **别用 change-asset-value 写预设的 Name**（#22 运行期探针复核）：值经它写进去会落成
+--     编辑器侧 u'...' 那种对象，Lua 侧 type() 是 unicode、Name setter 只收 string，于是每次
+--     进图刷 `Error setting property 'Name': ... expected String, got userdata`，且该单位运行时
+--     名字为空（日志里显示 <>）。**换成 ASCII 也一样**——变的是类型不是内容，中文/ASCII 都中招；
+--     继承官方模板的 Name 是 string（duplicate-asset 原样继承、已实测），所以要在 CLI 侧给预设
+--     改名只能重建预设，不能用 change-asset-value 原地改（编辑器属性面板是否写 string 未验证）。
+--     同一条告警一个 Lua VM 只打一次，所以告警条数看不出有几个预设中招；要查类型得在试玩里
+--     读 MapData:GetAssetData(预设 id) 的根单位 Name；
 --   * change-asset-value 改「壳里已声明的属性」不下发到实例（issue #7 坑 2）——锚点壳
 --     从模板继承的 StartTime/Duration/Phase/TrackIndex 照录命令记录但不依赖它生效；
---     关键值由 MgrAbility 按 GameCfg.Ability 的 AnchorAttributes 在挂接前运行时覆盖。
+--     关键值由 MgrAbility 按 GameCfg.Ability 的 AnchorAttributes 在挂接前运行时覆盖；
+--   * 预设改动不用存盘就进下一场试玩（#22 实测：编辑器内存里改完立刻 play start，运行期已拿到
+--     新值）；但 `deploy` 只镜像 Lua 源码，与预设无关。
 --
 -- 纯函数部分（parse_gamecfg / plan / json_string / argv_quote / extract_new_id /
 -- replace_key）单独导出，由 tests/ability_presets_test.lua 脱离编辑器测。
