@@ -187,20 +187,24 @@ GameCfg.Ability = {
 -- 数值来源：#12 在本图 SE 试玩里的实测（宿主目录 log.txt 2026-09-22 11:46:49 的 PROTO_WATER INSPECT 行）——
 --   WaterCircle1  Position(-11.75, 1.05, 27.75) Size(3, 1, 3) Scale(1, 1, 1)
 --   WaterCircle2  Position(-11.75, 1.05, 27.75) Size(6, 1, 6) Scale(2, 1, 2)
---   两个水圈同心，水面 y = 1.05 + Size.y / 2 = 1.55
+--   两个水圈同心；HalfXZ 与 SurfaceY 的取值见下面两条注意，SurfaceY 已按 #31 的实测改正。
 -- 注意 1：运行时读到的 Size 已含 Scale（WaterCircle2 的 Scale.x=2 已经算进 Size.x=6），
 --         HalfXZ 直接写半边尺寸（6/2=3），配置时再乘缩放会翻倍（#12 W-4）。
--- 注意 2：水面 y≈1.55 低于大地板表面 y=2.0（射线实测命中 2.0），本图水是下凹池塘：
---         站在地板高度上的点不算在水里，「水面高度配高了会把岸上判成水里」有单测兜住。
+-- 注意 2（#31 改正）：**Position.y 是底面、Size 是包围盒半长**，单位顶面 y = Position.y + Size.y——
+--         大地板 pos.y=0 + size.y=2 = 顶面 2.000，与射线实测命中的 y=2.0 自洽；水圈
+--         pos.y=1.18 + size.y=1 = 顶面 ≈2.183。旧值 1.55（1.05 + Size.y/2，按 Position 是几何中心算）
+--         偏低、已作废；实测来源 docs/verification/m0-playtest-ledger.md。
+-- 注意 3：水圈在运行时会漂移（同一次 M15 试玩里 pos.y 从 1.05 变到 1.09 / 1.18），y 阈值本身不稳——
+--         判定以 (x,z) 矩形为主、y 只当松过滤（台账 §3）。这里取漂移高点的顶面 2.183 而不是低点
+--         2.05：判低会把真在水面的点漏成陆地（V4 实测的入水点 y=2.15 在旧值 1.55 下也判不到），
+--         判高的代价只是水面之上约 0.13m 的空气薄层被算作水里，且这一层由 (x,z) 矩形兜住。
+--         Center.y 保留 1.05（#12 11:46 的 INSPECT 读数，M15 16:10 复读同为 1.05），只作场景溯源
+--         （判定不用 Center.y）；它与 SurfaceY（M15 16:24 的读数）批次不同属已知事实。
 -- 顺序：外圈 WaterCircle2 在前，同心时先命中它；M1 若要按水区选鱼表，改这里。
--- 待验（不阻塞）：水面高度按「单位 Position.y + Size.y/2」取值（#12 验证过的口径），
---   但大地板的 Position.y=0 / Size.y=2 与其射线命中的表面 y=2.0 不一致，说明单位的 Position
---   可能是底面而非中心；若如此，本图水面应是 2.05 而不是 1.55。取 1.55 是保守侧
---   （配低了只会「岸上点不判成水里」→ 抛竿不上钩；配高了会把岸上判成水里）。见台账「待验」一节。
 GameCfg.Water = {
     Zones = {
-        { Id = "WaterCircle2", Center = { x = -11.75, y = 1.05, z = 27.75 }, HalfXZ = 3.0, SurfaceY = 1.55 },
-        { Id = "WaterCircle1", Center = { x = -11.75, y = 1.05, z = 27.75 }, HalfXZ = 1.5, SurfaceY = 1.55 },
+        { Id = "WaterCircle2", Center = { x = -11.75, y = 1.05, z = 27.75 }, HalfXZ = 3.0, SurfaceY = 2.183 },
+        { Id = "WaterCircle1", Center = { x = -11.75, y = 1.05, z = 27.75 }, HalfXZ = 1.5, SurfaceY = 2.183 },
     },
 }
 
@@ -214,10 +218,46 @@ GameCfg.HighFreqInput = {
     AggregateSec = 0.1, -- 客户端聚合窗口 = 100ms（C-1）；上行上限 10 包/秒/人
 }
 
--- V3 鱼载体实例化（M0-V3）：配置待并行 mission（试玩验证线 feat/m0-3-v2-v7）交回
--- RenderMeshId/PhysicsMeshId 的写法结论后补——现状 [未查证]（F-7），照猜写会让鱼建不出来。
--- 待补字段：官方模型号（7000544 号段）与两个 mesh id 的写法，形如
---   GameCfg.FishCarrier = { ModelId = ..., RenderMeshId = ..., PhysicsMeshId = ... }
--- TODO(M0-V3)：拿到写法结论后落这里，并补一条「写法对得上」的单测。
+-- V3 鱼载体实例化（M0-V3）：官方鱼模型号与 mesh id 的写法已查实，F-7 的 [未查证] 由此消除。
+-- 数据源：docs/verification/m0-playtest-ledger.md §2.1（mission M15 在本图 SE 试玩里实测，2026-09-22）。
+-- 建法（F-7）：World:CreateUnit("WorldUnit") + RenderMeshId；克隆场景里的鱼只作对照（台账 §2.2）。
+-- RenderMeshId 的写法：**official://mesh/<模型号>**；PhysicsMeshId 创建时可省略，缺省就取 RenderMeshId
+--   （EggyAPI.lua:6747），也可以像本图现有鱼那样两个字段写同一个值。
+--   反面样例：official://preset/9000092 也能建出来，但那是空壳（Size=(1,1,1)、无几何）——
+--   别拿预设号当 mesh id。
+-- Models = 官方鱼模型库 20 条（模型号 7000544–7000563 ↔ 官方预设 9000092–9000121），
+--   Mesh 是建议直接写进 RenderMeshId 的值，Preset 只作溯源与编辑器侧对照。
+-- 与 GameCfg.FishMap 的鱼种对照（台账 §2.1）：13 个鱼种里 11 个在号段内一一对上——
+--   Fish010 大马哈鱼 7000544 / Fish006 旗鱼 7000545 / Fish011 鲨鱼 7000546 / Fish008 鳐鱼 7000547 /
+--   Fish007 蝴蝶鱼 7000549 / Fish004 黑鱼 7000551 / Fish012 七彩鱼 7000555 / Fish009 三文鱼 7000556 /
+--   Fish001 草鱼 7000558 / Fish003 鲫鱼 7000560 / Fish002 小丑鱼 7000563
+-- 未定案（要策划拍，本表不猜）：Fish005 章鱼不在号段内（台账记为模型号 6000019 /
+--   official://preset/1510600）、Fish013 大章鱼没有对应模型号（台账建议退化为章鱼）。
+-- 谁消费：M2「打鱼变现」按上面的写法建鱼；改本表时 tests/water_judge_test.lua 的
+-- TestFishCarrierConfig 会先红（它钉住写法与 20 条的号段）。
+GameCfg.FishCarrier = {
+    Models = {
+        ["7000544"] = { Name = "大马哈鱼", Mesh = "official://mesh/7000544", Preset = "official://preset/9000092" },
+        ["7000545"] = { Name = "旗鱼",    Mesh = "official://mesh/7000545", Preset = "official://preset/9000093" },
+        ["7000546"] = { Name = "鲨鱼",    Mesh = "official://mesh/7000546", Preset = "official://preset/9000094" },
+        ["7000547"] = { Name = "鳐鱼",    Mesh = "official://mesh/7000547", Preset = "official://preset/9000095" },
+        ["7000548"] = { Name = "彩圆儿",  Mesh = "official://mesh/7000548", Preset = "official://preset/9000096" },
+        ["7000549"] = { Name = "蝴蝶鱼",  Mesh = "official://mesh/7000549", Preset = "official://preset/9000097" },
+        ["7000550"] = { Name = "海龟",    Mesh = "official://mesh/7000550", Preset = "official://preset/9000098" },
+        ["7000551"] = { Name = "黑鱼",    Mesh = "official://mesh/7000551", Preset = "official://preset/9000099" },
+        ["7000552"] = { Name = "锦鲤",    Mesh = "official://mesh/7000552", Preset = "official://preset/9000110" },
+        ["7000553"] = { Name = "鲶鱼",    Mesh = "official://mesh/7000553", Preset = "official://preset/9000111" },
+        ["7000554"] = { Name = "螃蟹",    Mesh = "official://mesh/7000554", Preset = "official://preset/9000112" },
+        ["7000555"] = { Name = "七彩鱼",  Mesh = "official://mesh/7000555", Preset = "official://preset/9000113" },
+        ["7000556"] = { Name = "三文鱼",  Mesh = "official://mesh/7000556", Preset = "official://preset/9000114" },
+        ["7000557"] = { Name = "鳊鱼",    Mesh = "official://mesh/7000557", Preset = "official://preset/9000115" },
+        ["7000558"] = { Name = "草鱼",    Mesh = "official://mesh/7000558", Preset = "official://preset/9000116" },
+        ["7000559"] = { Name = "金鱼",    Mesh = "official://mesh/7000559", Preset = "official://preset/9000117" },
+        ["7000560"] = { Name = "鲫鱼",    Mesh = "official://mesh/7000560", Preset = "official://preset/9000118" },
+        ["7000561"] = { Name = "兰寿",    Mesh = "official://mesh/7000561", Preset = "official://preset/9000119" },
+        ["7000562"] = { Name = "食人鱼",  Mesh = "official://mesh/7000562", Preset = "official://preset/9000120" },
+        ["7000563"] = { Name = "小丑鱼",  Mesh = "official://mesh/7000563", Preset = "official://preset/9000121" },
+    },
+}
 
 return GameCfg

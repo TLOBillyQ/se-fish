@@ -6,6 +6,8 @@
   以及 V3 落在 `common/GameCfg.lua` 的那一半。
 - **不管什么**：试玩验证线（V2/V3/V4/V6/V7 的实测）见 mission M15 的台账 `docs/verification/m0-playtest-ledger.md`（与本文件同批落地）。
 - **格式**：按 #25 出口判据 3——每条写「验证项 → 结论 → 证据 → 归属」。
+- **后续修订**（mission M17，分支 `feat/surfacey-fishcarrier-31`）：按 issue #31 把 §1.1 的 `SurfaceY`
+  从 1.55 改成实测值 2.183（§1.3 由「待验」转为「已验」），并落掉 §3 的 `GameCfg.FishCarrier`。
 
 证据里的宿主目录 = `%USERPROFILE%\Desktop\dev\eggy\LuaSource_钓鱼怎么这么危险啊喂！`；
 日志行号指该目录下 `log.txt`（2026-09-22 那次 #12 原型试玩的记录）。
@@ -24,7 +26,7 @@
 | 射线不可用（W-2） | 本图的水是水材质渲染 WorldUnit：`CanQuery=true` 但没有命中几何。水中心垂直射线先撞 `TGUnitFish`（命中 y≈6.77，是触发器拦射线），排除触发器后撞大地板（y=2.0），全程碰不到水圈 | 宿主 `log.txt:2213-2215`（`PROTO_WATER \| RAYCAST \| water_center/water_edge/land_control`） | 记录性备案（§8.3），防止后人重走射线方案 |
 | Trigger 不可用（当前的鱼资产） | 咸鱼 `CanCollide=false CanTouch=false`，克隆后送进触发器中心也无 `OnTriggerEnter`、`GetPartsInPart` 也查不到；鱼逃脱不依赖 Trigger | #12 结案评论第 2 节；`log.txt:2311-2314` | M0-V4（在移动 tick 里做数学判定 + `Destroy`） |
 | 配置不乘 Scale（W-4） | 运行时读到的 `Size` 已含 `Scale`：`WaterCircle2` 的 `Scale.x=2` 已经算进 `Size.x=6`，所以 `HalfXZ` 直接写半边尺寸 3.0 / 1.5，配置时再乘缩放会翻倍 | `log.txt:2207-2208`（INSPECT 的 Position/Size/Scale 三列）；单测 `TestWaterJudgeConfig:test_half_width_does_not_multiply_scale` | M1 落点判定 |
-| 水面低于地板（W-7） | 水面 y≈1.55 < 大地板表面 y=2.0（下凹池塘）：站在地板高度上的点不算在水里 | `log.txt:2214`（地板命中 y=2.0）+ `log.txt:2308`（`surfaceY=1.5499999523163`）；单测 `TestWaterJudgeSemantics:test_point_at_floor_height_is_not_in_water` | M1 落点判定 |
+| 水面高于地板（W-7，#31 改正） | 实测推翻 #12 的取值口径：**`Position.y` 是底面、`Size.y` 是包围盒半长**，单位顶面 = `Position.y + Size.y`——大地板 `0 + 2 = 2.000`（与 `log.txt:2214` 的射线命中 y=2.0 对得上）、水圈 `1.18 + 1 ≈ 2.183`。所以水面**高于**大地板表面 y=2.0（原先记的「水面低于地板」是 1.55 那笔错账），水区矩形内的池塘底算在水里 | `docs/verification/m0-playtest-ledger.md`（M15 的实测与交接结论，§3 / §8）；单测 `TestWaterJudgeSemantics:test_point_at_floor_height_inside_pond_is_in_water` | M1 落点判定 |
 | 六个边界用例（中心 / 水下 / 空中 / 贴边 ±0.1m / 远处陆地） | 全部通过 | `tests/water_judge_test.lua` → `TestWaterJudgeBoundary`：`test_center_below_surface_is_in_water`、`test_deep_underwater_is_in_water`、`test_air_above_surface_is_not_in_water`、`test_edge_outside_by_point_one_meter_is_not_in_water`、`test_edge_inside_by_point_one_meter_is_in_water`、`test_far_land_is_not_in_water` | M0-V1 |
 | 边界含等号 / 多区顺序 | 正好贴在半宽线上、正好落在水面高度上都算在水里；同心水圈按配置顺序命中（外圈 `WaterCircle2` 在前）；Z 轴与 X 轴对称 | 同文件 `TestWaterJudgeSemantics`（5 条）、`TestWaterJudgeConfig`（5 条） | M0-V1 / M1 |
 
@@ -34,12 +36,16 @@
 
 | Id | Center | HalfXZ（米） | SurfaceY（米） | 出处 |
 |---|---|---|---|---|
-| `WaterCircle2` | (-11.75, 1.05, 27.75) | 3.0 | 1.55 | `log.txt:2208`：`Position(-11.75, 1.05, 27.75) Size(6, 1, 6) Scale(2, 1, 2)` → `HalfXZ = Size.x/2 = 3`、`SurfaceY = 1.05 + Size.y/2 = 1.55` |
-| `WaterCircle1` | (-11.75, 1.05, 27.75) | 1.5 | 1.55 | `log.txt:2207`：`Position(-11.75, 1.05, 27.75) Size(3, 1, 3) Scale(1, 1, 1)` → `HalfXZ = 1.5`、`SurfaceY = 1.55` |
+| `WaterCircle2` | (-11.75, 1.05, 27.75) | 3.0 | 2.183 | `HalfXZ`：`log.txt:2208` 的 `Size(6, 1, 6)` → `Size.x/2 = 3`；`SurfaceY`：#31 改正后取 M15 台账的实测顶面 `1.18 + 1 ≈ 2.183`（`m0-playtest-ledger.md` §3 / §8） |
+| `WaterCircle1` | (-11.75, 1.05, 27.75) | 1.5 | 2.183 | `HalfXZ`：`log.txt:2207` 的 `Size(3, 1, 3)` → `1.5`；`SurfaceY` 同上（两圈同心、同一批次读数） |
 
 - 两个水圈同心、同一 AssetId（`map://preset/u54263b69f25482dae18f9dbcfe6dc5b`），外圈包含内圈，
   所以判定结果只可能命中 `WaterCircle2`；`WaterCircle1` 保留在配置里是留 M1「按水区选鱼表」的口子。
 - `Center.y` 只作场景溯源，判定只用到 x/z（`MathWaterJudge` 的注释与配置校验都按这个口径）。
+- **`Center.y` 与 `SurfaceY` 的取值批次不同**：`Center.y = 1.05` 是 #12 那次 11:46 的 INSPECT 读数
+  （M15 16:10 复读同为 1.05），`SurfaceY = 2.183` 是 M15 16:24 的读数——水单位运行时会漂移
+  （同一次 M15 试玩里 `pos.y` 从 1.05 变到 1.09 / 1.18），两个字段各自溯源、不要互相反推
+  （`SurfaceY - Center.y` 并不等于 `Size.y`）。
 
 ### 1.2 判定开销实测（W-3，300 次调用）
 
@@ -55,18 +61,29 @@
   射线在本图先撞触发器、再撞地板，拿不到「水」，见 §1 的 W-2 行。
 - 记录提醒：同一份日志里 11:47:09 那次 BENCH 打的是 `halfXZ=6.0`（早期版本把 `Size.x` 当半宽），
   11:48:54 那次 `halfXZ=3.0 = Size.x/2` 才是终版口径；按 6.0 理解会得出「水区大一倍」的错误结论。
+- 同一批 BENCH 里的 `surfaceY=1.5499999523163` 是 **#31 改正前的旧值**，本文件里凡出现 1.55 都属历史读数；
+  终值 2.183 见 §1.1 / §1.3。三组开销数据与 `SurfaceY` 取多少无关（纯数学判定只读配置值）。
 
-### 1.3 待验（不阻塞，留给 M1 / M15）
+### 1.3 水面高度（原「待验」，#31 转已验）
 
-水面高度取的是 #12 验证过的口径 `Position.y + Size.y/2 = 1.55`，但**单位的 Position 是底面还是中心**不能从现有证据唯一确定：
+**定案：`SurfaceY = Position.y + Size.y ≈ 2.183`**（配置已按此改正）。原「Position 是底面还是中心」的疑点由 M15 的试玩实测定案，证据来源 `docs/verification/m0-playtest-ledger.md`（§3 入水判定 / §8 交接结论）：
 
-- 反方证据：大地板 `Position.y=0`、`Size.y=2`（`log.txt:2209`），而射线从 y=10 向下命中它的表面在 **y=2.0**（`log.txt:2214`）——
-  这只有在「`Position` 是底面」时才自洽（顶面 = 0 + 2）。
-- 若单位 Position 确实是底面，本图水面应是 `1.05 + 1 = 2.05`，而不是 1.55。
-- **本文件与配置仍取 1.55**：它是 #12 六个边界用例实际验证过的值，且是**保守侧**——
-  配低了只会「岸上的点不判成水里」（抛竿不上钩，可恢复）；配高了会把岸上判成水里（假上钩，更难发现）。
-- 判定读的是显式配置（`SurfaceY`），所以改正是一行配置的事；谁在编辑器里量出水面高度就改哪一行，
-  并把这条从「待验」移到「已验」。M15 在编辑器里时可用一次垂直射线或读水面渲染件的高度顺手定案。
+- **口径**：`Position.y` 是**底面**、`Size` 是包围盒**半长**，所以单位顶面 = `Position.y + Size.y`。
+  两条自洽读数：大地板 `pos.y=0 + size.y=2 = 2.000`（与 `log.txt:2214` 射线命中的 y=2.0 对得上）、
+  水圈 `pos.y=1.18 + size.y=1 ≈ 2.183`。
+- **旧值 1.55 错在哪**：它按「`Position` 是几何中心」算成 `1.05 + Size.y/2`，少算了半个包围盒。
+  这一笔在 M15 台账里有直接反证：实测的入水点 `y=2.15`（`m0-playtest-ledger.md` §3）在 1.55 下判不到，
+  换成 2.183 才判得到。
+- **为什么取 2.183 而不是低点 2.05**：水圈运行时会漂移（同一次试玩里 `pos.y` 从 1.05 变到 1.09 / 1.18），
+  2.183 是 16:24 那次的高点。判低会把真在水面的点漏成陆地（抛竿不上钩，玩家可见），
+  判高的代价只是水面之上约 0.13m 的空气薄层被算作水里——且判定以 (x,z) 矩形为主、y 只当松过滤，
+  这一层兜得住。
+- **配置与单测**：`GameCfg.Water.Zones` 两个区的 `SurfaceY` 都改成 2.183；单测把
+  `TestWaterJudgeSemantics:test_point_at_floor_height_is_not_in_water` 换成了
+  `...:test_point_at_floor_height_inside_pond_is_in_water`（水面现在**高于**地板表面，
+  水区矩形内的池塘底算在水里），`TestWaterJudgeBoundary` / `TestWaterJudgeConfig` 的常量同步。
+- **语义没变**：`pos.y <= surfaceY` 仍含等号（正好落在 2.183 上算在水里），
+  `Center.y = 1.05` 是 #12 11:46 的 INSPECT 读数（M15 16:10 复读同为 1.05）、只作场景溯源（判定不用它）。
 
 ---
 
@@ -116,9 +133,26 @@ R-1（「无官方口径」这件事本身）也是记录性结论，已在上�
 
 - **我负责**：`common/GameCfg.lua` 末尾的 V3 段落——拿到写法结论后填 `GameCfg.FishCarrier`
   （官方模型号 7000544 号段 + `RenderMeshId/PhysicsMeshId` 的写法）。
-- **现状**：`[未查证]`（F-7），照猜写会让鱼建不出来，所以配置段先留 TODO，不猜字段值。
-- **交接方**：mission M15（分支 `feat/m0-3-v2-v7`）在试玩里查实写法后经 `TowerSend` 交回，同时写进它的台账。
-- **补齐方式**：填 `GameCfg.FishCarrier` + 一条「写法对得上」的单测 + 在本文件第 3 节补一行证据。
+- **现状**：**已落盘**（#31，mission M17）。`GameCfg.FishCarrier.Models` 收了官方鱼模型库 20 条
+  （模型号 `7000544–7000563` ↔ 官方预设 `official://preset/9000092–9000121`），每条给
+  `Mesh`（可直接写进 `RenderMeshId` 的值）、`Name`、`Preset`；F-7 的 `[未查证]` 由此消除。
+- **交接方**：mission M15（分支 `feat/m0-3-v2-v7`）在试玩里查实写法后经 `TowerSend` 交回，
+  同时写进它的台账（`m0-playtest-ledger.md` §2.1）。
+- **落进来的三条写法结论**（全部来自 M15 台账 §2.1）：
+  1. `RenderMeshId = "official://mesh/<模型号>"`；
+  2. `PhysicsMeshId` 创建时可省略，缺省就取 `RenderMeshId`（`EggyAPI.lua:6747`），
+     也可以两个字段写同一个值（本图现有 `/World/罗飞鱼` 就这么写）；
+  3. `official://preset/...` 也能建出来但只是**空壳**（`Size=(1,1,1)`、无几何）——配置里只放
+     `official://mesh/<模型号>`。
+- **写法守卫**：`tests/water_judge_test.lua` 的 `TestFishCarrierConfig` 钉住
+  「`Mesh = official://mesh/<模型号>`」与 20 条号段连续；本 mission 的仓库侧改动只允许动三个文件，
+  所以没另开 `tests/fish_carrier_test.lua`。
+- **仍要策划定案**：`GameCfg.FishMap` 的 13 个鱼种里 **11 个**能在号段内一一对上；**章鱼**不在号段
+  （台账记为模型号 `6000019` / `official://preset/1510600`）、**大章鱼**没有对应模型号（台账建议退化为章鱼）。
+  台账 §2.1 同一句里又写「12 个能直接对上」，与「章鱼/大章鱼不在 7000544 段」口径不一，
+  这里按「11 段内 + 1 外段 + 1 无」理解（差异已 `TowerFinding` 备案）。
+- **下一步**：M2「打鱼变现」按 `World:CreateUnit("WorldUnit") + RenderMeshId` 建鱼；
+  克隆场景里的鱼（台账 §2.2）只作对照，不走进生产链路。
 
 ---
 
@@ -146,8 +180,11 @@ lua -e "assert(loadfile('common/GameCfg.lua'))"
 
 | 项 | 说明 | 归属 |
 |---|---|---|
-| 水面高度 1.55 vs 2.05 | 单位 `Position` 是底面还是中心待定案；当前取 1.55（#12 验证过的口径、保守侧），见 §1.3 | M0-V1 / M1（M15 在编辑器里可顺手定案） |
+| 章鱼 / 大章鱼的模型号 | `GameCfg.FishMap` 的鱼种对照缺 2 条：章鱼在外号段（`6000019` / `official://preset/1510600`）、大章鱼无对应模型号（台账建议退化为章鱼），要策划定案；见 §3 | 策划 / M2 |
 | ReelIn 通道建立 | server/client 侧 RE 通道 + 端到端打通（本文件只管载荷与限流契约） | M15 |
 | 边沿型契约 | 按下/松开两条消息（按住连发类武器） | M1 / 武器期 |
 | R-4「问官方」 | `CreateRemoteEvent` 文档与通道数上限 | 人类 / 官方 |
 | 水面高度与鱼表 | M1 按水区选鱼表（现在是同心两区，只可能命中外圈） | M1 |
+
+已结项（不再是遗留）：**水面高度**——#31 定案为 2.183 并落进配置，见 §1.1 / §1.3；
+**`GameCfg.FishCarrier`**——#31 落盘，见 §3。
