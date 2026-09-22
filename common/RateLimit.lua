@@ -31,8 +31,13 @@ RateLimit.Reason = {
 RateLimit.PAYLOAD_FIELDS = { "s", "n", "q" }
 
 -- 客户端可控的数字：nan / ±inf / 非数字一律算非法。
--- 必须显式查 nan——math.floor(nan) 在 Lua 5.4 直接抛错（"number has no integer representation"），
--- 让一个畸形包把服务端打崩是这里唯一真正的崩溃路径。
+-- 为什么必须显式查 nan（本机 Lua 5.4.6 实测，不是「math.floor 会抛错」）：
+--   `pcall(math.floor, 0/0)` → `true, -nan(ind)`，math.floor 本身不抛错；
+--   真实危害有两条——① nan 进了窗口账目（UsedCount）后 Remaining 也是 nan、所有比较恒为 false，
+--   Admit 每次都「采纳」，**限流被静默关掉**（不报错、不丢弃，最难发现的一种坏法）；
+--   ② nan 流到整数化处（当表键、`x | 0`、`string.format("%d")`）才抛 "table index is NaN" /
+--   "number has no integer representation"。
+-- 入口这一道有限性校验同时挡掉「崩」与「静默失真」，是服务端唯一的输入闸门。
 local function isFiniteNumber(value)
     return type(value) == "number"
         and value == value

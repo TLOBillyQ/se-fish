@@ -68,7 +68,9 @@ function TestRateLimitWindow:test_window_frees_budget_over_time()
   lu.assertEquals(win:Remaining(1.5), 10) -- t=0.5 那批也过期
 end
 
--- 非法批量（nan / 负数 / 非数字）当 0，不抛错——nan 过 math.floor 在 Lua 5.4 会抛错。
+-- 非法批量（nan / 负数 / 非数字）一律按 0 采纳，不抛错。
+-- 注意 nan 不是靠 math.floor 挡的（math.floor(nan) 返回 nan，不抛错），而是靠 Admit 入口的有限性校验挡的：
+-- 放 nan 进窗口账目会让限流静默失效，见 common/RateLimit.lua 的 isFiniteNumber 注释。
 function TestRateLimitWindow:test_bad_count_is_zero_not_an_error()
   local win = newWindow()
 
@@ -208,7 +210,8 @@ function TestRateLimitReceiver:test_drops_old_sequence()
   lu.assertEquals(rx:Accept(0.01, { s = "s-1", n = 1, q = 3 }).Status, "ok")
 end
 
--- 类型校验在最前：畸形包一律 bad-payload，且不能抛错（n 为 nan 会让 math.floor 崩）。
+-- 类型校验在最前：畸形包一律 bad-payload，且不能抛错
+-- （n 为 nan 时若放行，会污染窗口账目、把限流静默关掉——比对抛错更难发现）。
 function TestRateLimitReceiver:test_malformed_payload_is_dropped_not_raised()
   local rx = newReceiver("s-1")
 
