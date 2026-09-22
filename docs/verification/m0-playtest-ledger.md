@@ -431,7 +431,7 @@ M2「原生抓举」「顶鱼（骨骼挂点）」两条任务；`Lift()` 占用
 
 | 命令 | 结果 |
 |---|---|
-| `lua tests/run.lua` | `Ran 157 tests in 71.671 seconds, 157 successes, 0 failures` / `OK`（基线 137 + 本线新增 20） |
+| `lua tests/run.lua` | `Ran 159 tests in 68.520 seconds, 159 successes, 0 failures` / `OK`（基线 137 + 本线新增 22） |
 | `bash tools/acceptance/run_acceptance.sh` | `3 passed, 0 failed` / `acceptance run OK` |
 | `lua -e "assert(loadfile('<file>'))"` | 改过的 `.lua` 逐个跑过，无输出、退出码 0 |
 | `editor-cli code validate --strict --json --workspace <宿主目录>` | `deploy ok` + `validate: OK`（17:04 那次 deploy） |
@@ -443,7 +443,7 @@ M2「原生抓举」「顶鱼（骨骼挂点）」两条任务；`Lift()` 占用
 |---|---|
 | `server/Mgr/MgrFishCarrier.lua` | 新增：鱼载体的伤害接口（`Spawn`/`Attach`/`Damage`/`SubscribeDied`/`Despawn` + 受击体跟随） |
 | `server/main.lua` | `MgrMap` 加 `MgrFishCarrier` |
-| `tests/fish_carrier_test.lua` | 新增：纯函数 + 假引擎（`Vector3`/`Quaternion`/`game:GetService("World")` 替身）驱动 Spawn→挨打→跟随→Despawn + 接缝守卫（`EnableController`、包内契约、MgrMap 注册） |
+| `tests/fish_carrier_test.lua` | 新增：纯函数 + 假引擎（`Vector3`/`Quaternion`/`game:GetService("World")` 替身）驱动 Spawn→挨打→跟随→Despawn + 接缝守卫（`EnableController`、包内契约、MgrMap 注册）。**测试类名要全局唯一**：`tests/run.lua` 按文件名 require、luaunit 运行时刻才扫 `_G` 收类，同名类会被后 require 的整表覆盖、静默丢例——本线原用 `TestFishCarrierConfig`，与 M17 落在 `tests/water_judge_test.lua` 的同名类撞车（评审 R1 的 P1），已改名 `TestFishCarrierHealthConfig`；用 main 的 `water_judge_test.lua` 做过合并模拟，收集到 161 例（本线 159 + M17 的 2），不再丢例 |
 | `docs/plan/mvp-roadmap.md` | 仅 §A.6 的 F-1/F-2 两行按引擎事实改写 |
 | `docs/verification/m0-playtest-ledger.md` | 本文件 |
 

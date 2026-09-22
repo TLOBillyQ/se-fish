@@ -191,7 +191,11 @@ function Mgr:Attach(body, opts)
 
 	local controller = receiver.Controller
 	if not controller then
-		-- 到了这里说明 EnableController 这条接缝变了：伤害会静默归零，不能静默吞掉（#32 就是这么来的）
+		-- 到了这里说明 EnableController 这条接缝变了：伤害会静默归零，不能静默吞掉（#32 就是这么来的）。
+		-- 受击体已经建出来了（还是鱼本体的子节点），这里不回收就会留一个孤儿跟着鱼跑。
+		pcall(function()
+			receiver:Destroy()
+		end)
 		print("[MgrFishCarrier] 受击体没有 Controller，伤害接口不成立: " .. tostring(body.UnitId))
 		return nil
 	end

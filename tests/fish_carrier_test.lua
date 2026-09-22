@@ -93,7 +93,7 @@ local function newFakeWorld()
     unit.AddNoCollisionPairWithUnit = function(_, other)
       unit.NoCollidePairs[#unit.NoCollidePairs + 1] = other
     end
-    if values.EnableController then
+    if values.EnableController and not world.SuppressController then
       local healthChanged = newSignal()
       local died = newSignal()
       unit.Controller = {
@@ -153,28 +153,28 @@ local SPAWN_OPTS = {
   GravityEnabled = false,
 }
 
--- ===== 1. 纯函数 =====
+-- ===== 1. 纯函数（配置解析）=====
 
-TestFishCarrierConfig = {}
+TestFishCarrierHealthConfig = {}
 
-function TestFishCarrierConfig:test_max_health_falls_back_to_engine_default()
+function TestFishCarrierHealthConfig:test_max_health_falls_back_to_engine_default()
   lu.assertEquals(MgrFishCarrier.ResolveMaxHealth(nil, {}), 100)
   lu.assertEquals(MgrFishCarrier.ResolveMaxHealth({}, {}), 100)
 end
 
-function TestFishCarrierConfig:test_max_health_priority_is_opts_then_config()
+function TestFishCarrierHealthConfig:test_max_health_priority_is_opts_then_config()
   lu.assertEquals(MgrFishCarrier.ResolveMaxHealth({ MaxHealth = 50 }, { MaxHealth = 30 }), 50)
   lu.assertEquals(MgrFishCarrier.ResolveMaxHealth({}, { MaxHealth = 30 }), 30)
 end
 
-function TestFishCarrierConfig:test_bad_max_health_falls_back()
+function TestFishCarrierHealthConfig:test_bad_max_health_falls_back()
   -- 0 / 负数 / nan / inf / 非数：一律回落默认，不把「血量为 0」这种值放行进引擎
   for _, bad in ipairs({ 0, -1, 0 / 0, math.huge, -math.huge, "50", true }) do
     lu.assertEquals(MgrFishCarrier.ResolveMaxHealth({ MaxHealth = bad }, {}), 100)
   end
 end
 
-function TestFishCarrierConfig:test_mesh_priority_is_opts_then_config()
+function TestFishCarrierHealthConfig:test_mesh_priority_is_opts_then_config()
   lu.assertEquals(
     MgrFishCarrier.ResolveMesh({ RenderMeshId = "official://mesh/1" }, { RenderMeshId = "official://mesh/2" }),
     "official://mesh/1"
@@ -182,18 +182,18 @@ function TestFishCarrierConfig:test_mesh_priority_is_opts_then_config()
   lu.assertEquals(MgrFishCarrier.ResolveMesh({}, { RenderMeshId = "official://mesh/2" }), "official://mesh/2")
 end
 
-function TestFishCarrierConfig:test_model_id_is_written_as_official_mesh_uri()
+function TestFishCarrierHealthConfig:test_model_id_is_written_as_official_mesh_uri()
   -- M0-V3 实测：official://preset/... 会建出 1×1×1 空壳，只有 official://mesh/<号> 是对的写法
   lu.assertEquals(MgrFishCarrier.ResolveMesh({ ModelId = 7000544 }, {}), "official://mesh/7000544")
   lu.assertEquals(MgrFishCarrier.ResolveMesh({}, { ModelId = "7000544" }), "official://mesh/7000544")
 end
 
-function TestFishCarrierConfig:test_no_mesh_anywhere_is_nil_so_spawn_refuses()
+function TestFishCarrierHealthConfig:test_no_mesh_anywhere_is_nil_so_spawn_refuses()
   lu.assertNil(MgrFishCarrier.ResolveMesh({}, {}))
   lu.assertNil(MgrFishCarrier.ResolveMesh({ ModelId = "" }, {}))
 end
 
-function TestFishCarrierConfig:test_configured_max_health_would_win_over_default()
+function TestFishCarrierHealthConfig:test_configured_max_health_would_win_over_default()
   -- 本图配置落盘后（M17 的 GameCfg.FishCarrier）应当被优先采用；没落盘时这条自动跳过
   local cfg = GameCfg.FishCarrier
   if not cfg or cfg.MaxHealth == nil then
@@ -363,6 +363,23 @@ function TestFishCarrierEngine:test_death_fired_without_health_changed_still_syn
   lu.assertEquals(seen, 0)
   lu.assertEquals(carrier.Health, 0)
   lu.assertTrue(carrier.Dead)
+end
+
+function TestFishCarrierEngine:test_attach_destroys_the_orphan_receiver_when_controller_is_missing()
+  -- 防御路径：受击体建出来了、但引擎没给它 Controller（EnableController 这条接缝变了）。
+  -- #32 的教训是这种事不能静默；受击体还是鱼本体的子节点，留着就是个跟着鱼跑的孤儿。
+  local mgr = freshManager()
+  local world = newFakeWorld()
+  world.SuppressController = true
+  local body = world:CreateUnit("WorldUnit", { Name = "T-body", Position = newVector3(0, 0, 0) })
+  local carrier = withFakeEngine(world, function()
+    return mgr:Attach(body, { MaxHealth = 50 })
+  end)
+  lu.assertNil(carrier)
+  lu.assertEquals(#mgr.Carriers, 0)
+  local receiver = world.Created[#world.Created]
+  lu.assertEquals(receiver.UnitType, "EggyUnit")
+  lu.assertTrue(receiver.Destroyed == true, "孤儿受击体必须被销毁")
 end
 
 -- ===== 3. 接缝守卫（源码文本校对）=====
