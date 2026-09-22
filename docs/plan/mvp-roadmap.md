@@ -96,7 +96,7 @@ M0 ──V1,V5,V6,V7──▶ M1 ──C-15「上岸产出待举起的鱼」─�
 
 1. #12–#18 全部关闭、结论落进地图 #11 的 Decisions so far（2026-09-22 已成立）。
 2. 本图可试玩：`editor-cli play start --wait-ready` 成功；技能包预设可用 `lua tools/cli.lua ability-presets` 重建。
-3. **工具链可信**（对应 V8）：#21 已修或已验证绕行；#23 的替代完成判据已写进流程；#22 已判明非致命、不再作为入口阻塞（三票现状见 §9）。
+3. **工具链可信**（对应 V8）：#21 已修或已验证绕行；#23 已合 main——`CODE_BINDING_INVALID` 判为「仓库检出 ≠ 编辑器工程」的架构事实，完成判据回到 `AGENTS.md` 的「完成判据」表；#22 已判明非致命、不再作为入口阻塞（三票现状见 §9）。
 4. 3 人同图的验收手段已确认（真实客户端并发；不支持则落 1 真人 + 2 模拟 + 理由）。
 5. 范围纪律：M0 的验收形态是 `editor-cli` 试玩日志 + 单测，不是手玩体验。
 
@@ -114,7 +114,7 @@ M0 ──V1,V5,V6,V7──▶ M1 ──C-15「上岸产出待举起的鱼」─�
 - [ ] **V8 工具链前置**（来源 S-5、#21、#22、#23）｜验收：
   - [ ] #21（**M0 入口硬阻塞**）修好或绕行已验证：真根因 = `tools/win_shell.lua:127` 把 robocopy 输出重定向到 `tmp/robocopy.log`，而 `tmp/` 只在捕获输出的路径（`tools/win_shell.lua:43`）创建、又不在 git 里（`.gitignore:32`）→ 全新 clone / 新 worktree 里 cmd 直接报路径不存在、robocopy 根本没执行、`os.execute` 返回退出码 1，而 `tools/win_shell.lua:128` 的 `code < 8` 把它当成功（robocopy 只有 0–7 算成功码）→ 零拷贝 + `deploy ok` + `validate: OK` + 退出码 0。修法方向：保证重定向落点存在（谁写日志谁建目录）+ 用「源/目标文件集合比对」判定成功，不再只看退出码。**`chcp 65001` 方案废弃**（本机 ACP/OEMCP=65001，实测 robocopy 对含全角字符的目标路径正常拷贝，编码不是根因）。影响面 = **任何全新 clone 的首次 deploy 静默空转**，不是 tower worktree 特有。若采用绕行（Git Bash `cp` + `editor-cli code push`），必须写进流程并在本票记录。
   - [ ] #22（**已判明，不再是入口阻塞**）：`CreateAsset` 没有返回 nil，管理器 Attach 与锚点挂载均成功；日志实为**每次启动 1 条**（一条记录带 2 个 traceback 块），非致命。消音实验走 #22（`ready-for-human`）。
-  - [ ] #23：tower worktree 下 `editor-cli code validate --strict` 不可用（`CODE_BINDING_INVALID`），替代完成判据 = `luac -p` + `lua tests/run.lua` + 桩运行时，**落进 `AGENTS.md`**（该文件的改动随 M0 实施 issue，不属本路线图文档的改动范围）。
+  - [x] #23（**已合 main，merge `24a9425`**）：`editor-cli code validate --strict` 在**仓库检出**（主检出与 `.tower/worktrees/wt-N` 一样）一律返回 `CODE_BINDING_INVALID`（实测；带不带 `--strict`、编辑器开没开都一样）——这是「仓库检出 ≠ 编辑器工程」的**架构事实**，不是 worktree 特有，别照 worktree 特有去诊断。在仓库检出里跑 code-* 只能显式指 `--workspace <宿主目录>`，或先 `cd` 进宿主目录。**完成判据以 `AGENTS.md` 的「编辑器工程 ≠ 仓库检出」与「完成判据」两节为准**（本文件不复制判据原文，避免双写漂移）：语法检查用 `lua -e "assert(loadfile('<file>'))"`，`code validate` 只在 `deploy` 之后对宿主目录那份才有意义。
 
 ### 2.3 出口判据
 
@@ -303,7 +303,7 @@ M0 ──V1,V5,V6,V7──▶ M1 ──C-15「上岸产出待举起的鱼」─�
 |---|---|---|
 | **#21** deploy 静默空转却报 `deploy ok` | **真根因（triage 修正）**：`tmp/` 缺失导致 robocopy 根本没执行 + 退出码 1 被 `code < 8` 误判成功；**不是**编码问题，`chcp 65001` 方案已废弃。影响面 = 任何全新 clone 的首次 deploy 静默空转（不是 tower worktree 特有） | **M0 入口硬阻塞**：保证重定向落点存在 + 校验「源/目标文件集合」一致才算成功；或采用已验证的绕行（Git Bash `cp` + `editor-cli code push`）并写进流程 + 在 M0 记录 |
 | **#22** 试玩启动的 `MgrAbility/CreateAsset` `Name` 类型错误 | **已判明（triage 修正）**：`CreateAsset` 没返回 nil、管理器 Attach 与锚点挂载成功、技能链正常；「每次 3 条」实为**每次 1 条**（一条记录带 2 个 traceback 块）；**非致命** | 不再阻塞 M0；消音实验与结论落文档走 #22（`ready-for-human`） |
-| **#23** `code validate --strict` 在 tower worktree 不可用 | 每个 tower worker 都踩到，`eggy-lua` 的完成判据失效 | M0-V8：落替代判据（`luac -p` + `lua tests/run.lua` + 桩运行时）并写进 `AGENTS.md` |
+| **#23** `code validate --strict` 在**仓库检出**不可用（`CODE_BINDING_INVALID`） | **已合 main（merge `24a9425`）**：主检出与每个 `.tower/worktrees/wt-N` 表现完全相同（带不带 `--strict`、编辑器开没开都一样），是「仓库检出 ≠ 编辑器工程」的**架构事实**，不是 worktree 特有；要跑 code-* 只能显式 `--workspace <宿主目录>` 或先 `cd` 进宿主目录 | 已关闭。完成判据以 `AGENTS.md` 的「编辑器工程 ≠ 仓库检出」与「完成判据」两节为准（不在本文件复制，避免双写漂移）；语法检查用 `lua -e "assert(loadfile('<file>'))"`，不用 `luac -p`（本机 `luac` 5.5 对 `for` 循环变量报 const 假错） |
 
 ---
 
@@ -447,7 +447,7 @@ M0 ──V1,V5,V6,V7──▶ M1 ──C-15「上岸产出待举起的鱼」─�
 | S-2 | 前置装配：`server/main.lua` 的 `MgrMap` 后加 `require("server.ProtoStoreAds")` | §10 |
 | S-3 | 待执行动作：发布（HITL）→ 进图三类动作（A DataStore 自动 / B 商品购买含同商品买两次 / C 激励广告）→ 取数 → 回收 9 类结论 | §10 |
 | S-4 | 要回收的 9 类结论：已发布图 DataStore 真读写、单值体积上限、错误码可读性、限流表现、有序存储整数硬约束、MemoryStore 对照、购买回调形态、广告真实回调、关服存档时机 | §10 |
-| S-5 | 已知限制：`code validate --strict` 在 tower worktree 不可用（→ #23）；探针用独立集合、跑完删探针键、保留 `ProbeReport_<session>` | M0-V8 |
+| S-5 | 已知限制：`code validate --strict` 在**仓库检出**不可用（`CODE_BINDING_INVALID`；主检出与所有 worktree 相同，非 worktree 特有 → #23，已合 main）；探针用独立集合、跑完删探针键、保留 `ProbeReport_<session>` | §9（#23）、AGENTS.md「完成判据」 |
 | S-6 | `goodsId` 拿不到（商业化后台配置、仓库无） | §8.2 |
 | S-7 | 自称「不阻塞 MVP 本体」 | §10（我方结论：成立，且更进一步） |
 
@@ -461,5 +461,5 @@ M0 ──V1,V5,V6,V7──▶ M1 ──C-15「上岸产出待举起的鱼」─�
 4. **备案计数修正**：草案自检写「60 项」，按 ID 逐项点数为 92 项（W 8 / L 17 / R 7 / C 17 / I 13 / F 11 / D 12 / S 7），本文件以 ID 逐项归位为准。60 这个数字在草案里没有可复核的口径。
 5. **六个开口已拍板**：§0.1 收口；M1 入口判据 2、M3 入口判据 4 由「待人类确认/待拍」改为已成立；3 倍体型举鱼从「挂账或纳入 M3」定为「挂账 MVP 外」（§8.1）。
 6. **M4 补一条验收**：草案 M4 范围含「开场对话」，但出口判据没单列——本文件在 §6.2 补了一条（可跳过、不阻断任务），验收口径待实施期与设计案对齐。
-7. **M0-V8 里「替代判据落 `AGENTS.md`」不由本文档承担**：本文件只负责路线图，`AGENTS.md` 的改动随 M0 实施 issue 落地（§2.2 V8 末条已注明）。
+7. **#23 的完成判据已落 `AGENTS.md`（随 #23 合 main，merge `24a9425`）**：本文件只负责路线图，判据原文以 `AGENTS.md` 的「编辑器工程 ≠ 仓库检出」与「完成判据」两节为准，本文件不复制（避免双写漂移）；§2.1 入口判据 3、§2.2 V8 末条、§9、附录 A 的 S-5 已按新口径改写（`CODE_BINDING_INVALID` = 「仓库检出 ≠ 编辑器工程」的架构事实，非 worktree 特有）。
 8. **术语归一（§0.2）已贯穿正文与附录 A**：`CONTEXT.md` 与 §0.2 列出的那批避免词只允许出现在 §0.2 的声明里；草案与 #12–#18 票面原文用到它们的行，在本文件一律换成口径词。票面原文作为历史记录不改；附录 A 保留备案语义、用词按本文件口径（例：I-13 的归属写作「鱼获生成与拾取常量定稿」）。
