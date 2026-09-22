@@ -7,7 +7,7 @@
 - `server/`：`main.lua` 的 `MgrMap`（`server/main.lua:12`）注册 `server/Mgr/` 下的管理器，由它统一分发 `Start` / `OnPlayerAdded` / `OnPlayerRemoving` / `Update`，新管理器加进 `MgrMap`。`server/_trigger/` 是编辑器触发器系统的运行时脚本（`GlobalVars` 是它的变量库）。
 - `client/`：`main.lua` 启动本地逻辑（`LocalMgrUtil` / `LocalMotorUnitCtrl` / `LocalFishEnter` / `LocalAttackButton`），界面交给 `MgrGameUI`；每个界面一个 handler 放 `client/ScreenHandlers/`，文件名要与 EUI 节点同名（`MgrGameUI:GetScreen` 按节点名 require handler）。
 - `common/`：双端共享，`GameCfg.lua` 是数值配置（鱼等级、鱼竿等级等），`Util` / `REUtil` / `FXUtil` / `TeleportUtil` 是工具模块。
-- `packages/`：官方技能包 `ability_system` 整包 vendor（`server/` / `client/` / `common/` 各一份），内部代码一行不改；来源、升级纪律与首期启用范围见 `docs/ability_system-vendor.md`。业务层不直接 require 包内模块——技能包的接缝是双端根聚合入口 `server/AbilityAPI.lua` 与 `client/AbilityAPI.lua`（转发名单在 `common/AbilityAPIBase.lua`，单测拿包内源码校对；`AbilityAPI.AttachAnchor` 是本图为锚点补挂加的包外接口）。装配由 `server/Mgr/MgrAbility.lua` 负责：进图建技能管理器、装初始技能、挂锚点，配置在 `GameCfg.Ability`。本编辑器不认包内的 `---@export_prefab_type` 自定义预设类型，编辑器侧资产（技能 / 技能背包 / 锚点预设）怎么建见 issue #7（加速链路）与 #8（挥砍链路，含锚点实例属性覆盖与触发盒 57450 结论）。
+- `packages/`：官方技能包 `ability_system` 整包 vendor（`server/` / `client/` / `common/` 各一份），内部代码一行不改；来源、升级纪律与首期启用范围见 `docs/ability_system-vendor.md`。业务层不直接 require 包内模块——技能包的接缝是双端根聚合入口 `server/AbilityAPI.lua` 与 `client/AbilityAPI.lua`（转发名单在 `common/AbilityAPIBase.lua`，单测拿包内源码校对；`AbilityAPI.AttachAnchor` 是本图为锚点补挂加的包外接口）。装配由 `server/Mgr/MgrAbility.lua` 负责：进图建技能管理器、装初始技能、挂锚点，配置在 `GameCfg.Ability`。本编辑器不认包内的 `---@export_prefab_type` 自定义预设类型，编辑器侧资产（技能 / 技能背包 / 锚点预设）怎么建见 issue #7（加速链路）与 #8（挥砍链路，含锚点实例属性覆盖与触发盒 57450 结论）；各端 `packages/` 下有 README 汇总来源与纪律。预设建在图里、不进 git，一键重建用 `lua tools/cli.lua ability-presets`（issue #9）。
 - `data/`：编辑器插件导出（Prefab / UI 节点 / 字体 ID），只读，改动回编辑器重新导出、用 sync 回灌。
 - `unit_scripts/`：引擎侧生成，内容不在本仓库管理。
 - `tools/`：本仓库的工具链（deploy / sync 与 acceptance 设施），入口见下面「工具链」。
@@ -23,6 +23,7 @@
 |---|---|---|
 | 仓库代码 → 编辑器宿主目录 | `lua tools/cli.lua deploy` | 三端一级子树 robocopy 字节镜像；编辑器开着该地图时收尾 validate → diff → 有差异才 push，编辑器不在或没开该地图则跳过并以 0 退出；`--clean` 只清不装 |
 | 宿主目录产物 → 仓库 | `lua tools/cli.lua sync` | 回灌 `eggy.json`、两份 API 存根、`data/` 整目录，落盘前 CRLF→LF 归一 |
+| 重建技能包编辑器预设 | `lua tools/cli.lua ability-presets` | 按 `GameCfg.Ability` 的 key 查：预设还在就原地重刷锚点壳与属性，不在就复制官方模板重建并把新 key 回写 `GameCfg.lua`；要编辑器开着本图且在编辑态，多实例加 `--editor-instance <pid>`，`--dry-run` 只读探测并打印计划 |
 | 单测 | `lua tests/run.lua` | luaunit，跑 `tests/*_test.lua` |
 | 验收 / 回归 | `bash tools/acceptance/run_acceptance.sh` | Gherkin 车道，目前只有 `features/engineering/deploy-mirror.feature`（`tmp/` 下临时工作区验「镜像 + 不碰非自有文件」）；不需要 luarocks、不依赖 WSL，详见 `tools/acceptance/README.md` |
 
