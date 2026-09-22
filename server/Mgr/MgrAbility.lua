@@ -32,9 +32,26 @@ local function createManager(character, presetKey)
 	return manager
 end
 
+-- 锚点实例属性覆盖：预设里「已声明的属性」改不动默认值（issue #7 坑 2），
+-- 关键值在挂接前直接 SetAttribute 到实例；{x,y,z} 表转成 Vector3（GameCfg 要保持纯数据可单测）。
+local function applyAnchorAttributes(anchor, attrs, presetKey)
+	if not attrs then
+		return
+	end
+	for key, value in pairs(attrs) do
+		if type(value) == "table" then
+			value = Vector3.New(value.x or 0, value.y or 0, value.z or 0)
+		end
+		local ok, err = pcall(anchor.SetAttribute, anchor, key, value)
+		if not ok then
+			print("[MgrAbility] 锚点属性覆盖失败: " .. tostring(presetKey) .. " " .. tostring(key) .. " " .. tostring(err))
+		end
+	end
+end
+
 -- 锚点：运行时装配（本图的锚点预设壳不挂接，只声明属性）。
 -- 顺序要紧：预设实例化时壳脚本会在 Parent 还是 World 的那一刻执行，此时 anchor_logic 认错宿主；
--- 所以必须先把锚点 parent 到技能单位，再由根 AbilityAPI 补挂框架与行为。
+-- 所以必须先把锚点 parent 到技能单位、覆盖实例属性，再由根 AbilityAPI 补挂框架与行为。
 local function createAnchor(abilityScript, entry)
 	local assets = World:CreateAsset(entry.Anchor)
 	local anchor = assets and assets[1]
@@ -43,6 +60,7 @@ local function createAnchor(abilityScript, entry)
 		return nil
 	end
 	anchor.Parent = abilityScript
+	applyAnchorAttributes(anchor, entry.AnchorAttributes, entry.Anchor)
 	local ok, err = pcall(AbilityAPI.AttachAnchor, anchor, entry.AnchorBehavior)
 	if not ok then
 		print("[MgrAbility] 锚点挂接失败: " .. tostring(err))

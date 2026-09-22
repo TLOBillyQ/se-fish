@@ -139,25 +139,44 @@ function GameCfg:GetLootRst(loot)
 end
 
 -- 技能包（ability_system）在本图的接入配置。
--- 预设本体存在图里、不进 git，这里只记 key；三个预设的建法与完整命令记录见 issue #7——
--- 本编辑器不认包内的 ---@export_prefab_type 自定义预设类型（见该票结论），所以：
+-- 预设本体存在图里、不进 git，这里只记 key；预设的建法与完整命令记录见 issue #7 / #8——
+-- 本编辑器不认包内的 ---@export_prefab_type 自定义预设类型（见 #7 结论），所以：
 --   技能管理器（官方叫技能背包）= 复制官方「技能背包」模板（u014968…）
---   加速技能 = 复制官方「技能」模板（uc57b9…）后重写壳源码（官方文档的「手工创建方式」）
---   加速锚点 = 复制官方「锚点」模板（uccfb9d…），壳改成只声明属性（壳会在 Parent=World 时抢跑），
---             挂接由根 AbilityAPI.AttachAnchor 补做
+--   技能 = 复制官方「技能」模板（uc57b9…）；加速技能重写过壳源码（官方文档的「手工创建方式」），
+--         挥砍技能沿用模板原壳
+--   锚点 = 复制官方「锚点」模板（uccfb9d…），壳改成只声明属性（壳会在 Parent=World 时抢跑），
+--         挂接由根 AbilityAPI.AttachAnchor 补做
 -- 注意：change-asset-value 改不动「壳里已声明的属性」，实例拿到的是预设单位数据里的旧值，
--- 所以加速技能用的是模板默认 CastTime=0.5 秒（加速窗口只有 0.5 秒），详见 issue #7。
+-- 所以加速技能用的是模板默认 CastTime=0.5 秒（加速窗口只有 0.5 秒），详见 issue #7；
+-- 锚点的关键实例值改由 AnchorAttributes 在挂接前 SetAttribute 覆盖（含 Duration，melee_hit 要求 > 0）。
+-- melee_hit 的命中盒用包内硬编码的官方网格 57450——已实测它是平台级资源，本图直接可用（issue #8）。
 GameCfg.Ability = {
     -- 角色进图时实例化到角色下的技能背包预设
     ManagerPreset = "map://preset/ubdb4a7e737d4eddb87729e9055ba375",
     -- 进图后装的初始技能：AssetId=技能预设，Index=槽位（0 基），
-    -- Anchor=锚点预设，AnchorBehavior=锚点行为模块名（anchors/ 下的文件名）
+    -- Anchor=锚点预设，AnchorBehavior=锚点行为模块名（anchors/ 下的文件名），
+    -- AnchorAttributes=挂接前覆盖到锚点实例的属性（{x,y,z} 表会转成 Vector3）
     InitialAbilities = {
         {
             AssetId = "map://preset/uf7fac66639546e2aa376151835cf3a6",
             Index = 0,
             Anchor = "map://preset/uaf2781161d6460990a4941b12ad30c2",
             AnchorBehavior = "speed_add",
+        },
+        -- 挥砍：玩家的攻击（手持武器发起，见 CONTEXT.md「战斗」），道具按钮触发
+        {
+            AssetId = "map://preset/u0d0b1993faa482b93e806d23715b73e",
+            Index = 1,
+            Anchor = "map://preset/ucc500ac3aac4b749fd9bee03b57e4d5",
+            AnchorBehavior = "melee_hit",
+            AnchorAttributes = {
+                -- 命中盒存活窗口；必须 ≤ 施法窗口（技能模板默认 CastTime=0.5，已声明属性预设侧改不动，见 issue #7 坑 2）
+                Duration = 0.3,
+                ABILITY_ANOSTATE_HITBOX_OFFSET = { x = 0, y = 1, z = 2 }, -- 面前 2 米
+                ABILITY_ANOSTATE_HITBOX_SCALE = { x = 3, y = 2, z = 3 },
+                ABILITY_ANOSTATE_BULLET_DAMAGE = 25.0,
+                ABILITY_ANOSTATE_HITPOWER = 0.0, -- 验证期不击退，便于观察扣血
+            },
         },
     },
 }
