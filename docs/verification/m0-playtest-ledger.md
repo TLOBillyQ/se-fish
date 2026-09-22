@@ -332,3 +332,119 @@ M2「原生抓举」「顶鱼（骨骼挂点）」两条任务；`Lift()` 占用
 | `docs/verification/m0-playtest-ledger.md` | 本文件 |
 
 探针（`tmp/m15/*.lua`）**不进 git**——`tmp/` 在 `.gitignore:32`，按 mission 口径当临时文件处理。
+
+---
+
+## 11. 追记（M18 / issue #32 方向 A）：鱼载体补 `TakeDamage` 伤害接口
+
+> 本节由 M18（分支 `feat/takedamage-32-a`）追加，与上面 V2–V7 不是同一次试玩。
+> **对 §2.3 的一处更正**：M15 记的「自建 `EggyUnit` / `HumanUnit` 能创建，但永远拿不到 Controller」是探针漏了 `EnableController = true` 造成的误判（issue #8 的 `tmp/probe8_target.lua` 早已证过这个开关），实测更正见 §11.1。
+> **对 §2.3 影响面那条的更正**：M15 判「M2 的伤害入口必须自建（自维护鱼 HP 表）」；按人类拍板的方向 A 补上受击体后，包内 `_applyDamage` 可以直接用，不必自建判定。
+
+### 11.1 结论：接缝成立（绿）
+
+**形态 = `WorldUnit` 鱼本体（物理 + `Liftable`，举鱼要）+ 一个带 Controller 的 `EggyUnit` 受击体**（受击体的 `Parent` 是鱼本体，`MgrFishCarrier:Update` 每帧把它跟到鱼本体位置）。挥砍命中的是受击体，扣的是这条鱼的血。
+
+逐条否掉的候选路径（都在试玩里实测过，`--play-session c0c8fde`，标记 `[M18]`）：
+
+| 候选接缝 | 结果 | 证据 |
+|---|---|---|
+| 包内 `_applyDamage` 的两条路（`anchors/melee_hit.lua:107`） | 契约就是 `target:TakeDamage` 或 `target.Controller:TakeDamage` | 源码；`tests/fish_carrier_test.lua` 里加了一条「包升级改了这两条分支就红」的守卫生成了断言 |
+| `WorldUnit` + `EnableController = true` | ✗ Controller 恒 nil（t0 与 t+1.0 两次读都是 nil） | `[M18] \| wu-enablectrl@1.0 \| unitId=73 \| type=WorldUnit \| ctrl=false` |
+| 给 `WorldUnit` 贴方法（`wu.Controller = c` / `wu.TakeDamage = f`） | ✗ `cannot access an internal table/userdata! (key='Controller'/'TakeDamage')` | `[M18] \| wu-set-controller \| ok=false`、`[M18] \| wu-set-takedamage \| ok=false` |
+| 换元表（mission 列的候选之一） | ✗ 沙盒**没有 `debug` 库**（`editor-cli code --help` 明写、探针实测 `debug=nil`），`setmetatable` 只吃 table，对单位 userdata 用不了 | `[M18] \| sandbox \| debug=nil \| setmetatable=function \| getmetatable=function` |
+| 脚本自建 Controller 单位挂到鱼下（`CreateUnit("EggyController", {Parent = wu})`） | ✗ `CreateUnit('EggyController') failed: runtime creation was rejected or returned nil` | `[M18] \| wu-manual-ctrl \| createController \| ok=false` |
+| `EggyUnit` / `HumanUnit` + `EnableController = true` | ✓ Controller 就绪，`Health/MaxHealth/TakeDamage/HealthChanged/Died` 齐全 | `[M18] \| eggy \| type=EggyUnit \| ctrl=true \| hp=100.0 \| maxhp=100.0`；`[M18] \| human \| type=HumanUnit \| ctrl=true \| hp=100.0` |
+| 让 `EggyUnit` / `HumanUnit` 直接当鱼本体 | ✗ 两者的 `Liftable` / `OnLiftedBegin` 都是 nil（抓举要这两个字段） | `[M18] \| eggy \| phys \| BodyType=nil \| Liftable=nil \| PhysicsActive=nil`；`human` 同项 `Liftable=nil` |
+
+**伤害真的落在受击体 Controller 上**（同一次试玩，命中盒几何与挥砍锚点一致）：
+
+```
+[M18] | hp-before               | proxy=200 | solo=200
+[M18] | EV | solo.HealthChanged | 175.0
+[M18] | EV | proxy.HealthChanged| 175.0      ← 200 → 175：包内 _applyDamage 走了 target.Controller:TakeDamage
+[M18] | hp-after                | proxy=175.0 | solo=175.0
+```
+
+**鱼本体的命中是无害的**：命中盒同时报到了 `FishCarrier_M18V`（WorldUnit，`PhysicsActive=true` → `_isHittable` 通过），但它没有 Controller，`_applyDamage` 空转；受击体那一次扣 25，**不会重复计伤**（一次挥砍 = 25，不是 50）。
+
+### 11.2 接口契约（M2 接）
+
+| 接口 | 语义 |
+|---|---|
+| `MgrFishCarrier:Spawn(opts)` → `carrier, err` | 建鱼本体（`WorldUnit` + `Liftable` + `BodyType`，模型走 `opts.RenderMeshId`/`opts.ModelId` 或 `GameCfg.FishCarrier`）+ 伤害接口。缺模型号返回 `nil, "no-mesh"`（不建空壳鱼） |
+| `MgrFishCarrier:Attach(body, opts)` → `carrier \| nil` | 给已有的鱼本体补伤害接口（受击体 + 信号） |
+| `MgrFishCarrier:Damage(carrier, damage)` | 业务侧主动扣血的单点（技能来源不经这里） |
+| `MgrFishCarrier:SubscribeDied(fn)` | 死亡单点：`fn(carrier)`，只触发一次。**M2 在这里生成鱼获**（路线图 I-13） |
+| `MgrFishCarrier:Despawn(carrier)` | 回收（受击体是鱼本体子节点，跟着一起毁） |
+| `carrier` 字段 | `Body / Receiver / Controller / MaxHealth / Health / Dead / FishId / Player` |
+
+- **血量口径**：`opts.MaxHealth` → `GameCfg.FishCarrier.MaxHealth` → `100`。本图 `GameCfg` 与策划案都还没有鱼的血量（挥砍伤害 25 在 `GameCfg.Ability` 里），缺口径就取引擎自己的默认 `EggyUnit` Controller 默认值 100（M0-V6 / D-1 实测），**M2 定策划数值时写进配置覆盖**。
+- **死亡语义**：`Controller.Died` 优先、`HealthChanged ≤ 0` 兜底，**只通知一次**；致命那一下实测**引擎只发 `Died`、不发 `HealthChanged`**，所以两条都必须接；`NotifyDied` 通知前把 `Controller.Health` 同步回 `carrier.Health`，订阅者读到的就是 0。**不销毁鱼本体**——鱼获生成是 M2 的事。
+- **受击体**：`EggyUnit` + `EnableController = true` + `Visible = false`，与鱼本体 `AddNoCollisionPairWithUnit`；`ReceiverOffset` 可调（默认 `(0,0,0)`，即贴在鱼本体原点）。
+
+### 11.3 试玩证据
+
+环境同上（同一张图、同一个编辑器 pid 36768）；全程**没有 `map save`**，探针在 `tmp/m18/`（不进 git）。动手前每次 `editor-cli status` 都确认过 `in_game_runtime=false`（无他人 session）。
+
+**验收 `--play-session c1c0ba4`（50 → 25 → 0，两刀都是真的挥砍）**
+
+```
+[M18V] | spawn   | ok=true
+[M18V] | carrier | bodyId=72 | bodyType=WorldUnit | bodyCtrl=nil | bodyTakeDamage=nil | bodyLiftable=true | bodyBodyType=2
+[M18V] | receiver| id=73 | name=FishHitReceiver_72 | type=EggyUnit | visible=false | parentId=1006
+[M18V] | receiver-ctrl | hp=50.0 | maxhp=50 | takeDamage=function... | died=<Signal> | healthChanged=<Signal>
+[M18V] | in-box  | name=FishHitReceiver_72 | type=EggyUnit | id=73        ← 挥砍几何的盒里能看见受击体
+[M18V] | phase   | READY | bodyPos=(-3.453,5.000,33.436) | receiverPos=(-3.453,5.000,33.436)
+[M18V] | EV | HealthChanged | 25.0                                       ← 第一刀：50 → 25
+[M18V] | state   | hp=25.0 | maxhp=50 | dead=false
+[M18V] | EV | SubscribeDied | fishId=M18V | bodyId=72 | health=25.0       ← 我们的死亡接缝（只一次）
+[M18V] | EV | Died | health=25.0                                          ← 致命那一下只有 Died
+[M18V] | state   | hp=0.0 | maxhp=50 | dead=true                           ← 血量扣到 0
+[M18V] | follow  | after | body=(...,5.000,35.436) | receiver=(...,5.000,35.436) | dead=true
+```
+
+**真实按钮链路**（`--play-session 60df367`）：客户端 `LocalAttackButton:RequestMelee()` → 包内 RemoteEvent → 服务端施法 → 命中受击体，扣 25（`EV | HealthChanged | 25.0`，同一次里对照组的裸 EggyUnit 也各扣 25）。
+
+**动态鱼（生产形态）的物理在试玩场景里不稳**——这条是给 M2 的警告，不是伤害接口的问题：
+
+| 现象 | 实测 |
+|---|---|
+| 动态 `WorldUnit`（`BodyType=4`、关重力、无阻尼）被环境/探针件一推就**一直漂** | 6s 漂 2.8m、速度 ~2 m/s（`--play-session 92fede4`），漂出 3×2×3 的命中盒 → 第二刀打空 |
+| 同位置再来几个 5.31m 长的动态鱼/受击体会**互推** | `--play-session c0c8fde`：鱼 + 命中盒同处 0.8s 内被顶起 2m；4 条鱼叠放后 `Position` 全变 `Vector3(nan,nan,nan)`（`--play-session 7a5e94b`，四配置同时 NaN） |
+| 运动学（`BodyType=2`、关重力）**完全稳** | `--play-session 7a5e94b`：2.5s 位置一分不差 |
+| 阻尼不是解 | `LinearDamping=5` 那一轮（`f34881b`）动态鱼 `Position` 变 NaN；`LinearDamping=10` 那一轮（`60df367`）同样 |
+
+所以验收那一轮用 `BodyType=2`（运动学）把对位钉住；**伤害接口与刚体类型无关**，动态形态的那一轮（`92fede4`）也照样扣到了 25（第一刀）。M2 的「动态 + `Liftable`」形态要自己解决这几种漂法（M15 §2.2 的「克隆鱼下落 23m 穿地板」是同一类现象）。
+
+### 11.4 偏离与挂账
+
+| # | 项 | 说明 | 谁接 |
+|---|---|---|---|
+| M18-1 | **偏离 F-1「不做 EggyUnit 受击壳」** | F-2 的「伤害入口直接在 `WorldUnit` 鱼本体上解决」已证不可行（§11.1 前六行），按人类拍板的方向 A 走双件形态；鱼本体的物理与举鱼链路不变，受击体的唯一职责是**携带 Controller**。roadmap §A.6 的 F-1/F-2 已按此改写 | 已落 §A.6（M18） |
+| M18-2 | **动态鱼的漂/NaN** | 见 §11.3 表；验收用运动学绕开，生产（动态 + `Liftable`）由 M2 落地时解决（阻尼、初始落点、碰撞组都是候选） | M2 |
+| M18-3 | **受击体「看不见」没有做截图人眼确认** | `Visible = false` 的受击体在命中盒里能被检测到（`in-box` 证据），但没逐帧确认它在画面里不露模型；`tmp/m18/after.png` 留证未人眼核 | M2 视觉验收 |
+| M18-4 | **受击体的尺寸/位置未调** | 默认贴鱼本体原点、`ReceiverOffset` 可调；鱼体型与受击体尺寸（M2 定策划数值时）一起定 | M2 |
+| M18-5 | **真人按键档** | 与 M15 的 D-4 同：挥砍由探针/服务端发起，真人点按钮那一档本轮仍未验（客户端按钮路径本轮验过） | 人类（验收期） |
+
+### 11.5 完成判据自查
+
+| 命令 | 结果 |
+|---|---|
+| `lua tests/run.lua` | `Ran 157 tests in 71.671 seconds, 157 successes, 0 failures` / `OK`（基线 137 + 本线新增 20） |
+| `bash tools/acceptance/run_acceptance.sh` | `3 passed, 0 failed` / `acceptance run OK` |
+| `lua -e "assert(loadfile('<file>'))"` | 改过的 `.lua` 逐个跑过，无输出、退出码 0 |
+| `editor-cli code validate --strict --json --workspace <宿主目录>` | `deploy ok` + `validate: OK`（17:04 那次 deploy） |
+| `git diff --stat -- server/packages client/packages common/packages` | 空（包内一行未改） |
+
+### 11.6 本线改动的文件
+
+| 文件 | 说明 |
+|---|---|
+| `server/Mgr/MgrFishCarrier.lua` | 新增：鱼载体的伤害接口（`Spawn`/`Attach`/`Damage`/`SubscribeDied`/`Despawn` + 受击体跟随） |
+| `server/main.lua` | `MgrMap` 加 `MgrFishCarrier` |
+| `tests/fish_carrier_test.lua` | 新增：纯函数 + 假引擎（`Vector3`/`Quaternion`/`game:GetService("World")` 替身）驱动 Spawn→挨打→跟随→Despawn + 接缝守卫（`EnableController`、包内契约、MgrMap 注册） |
+| `docs/plan/mvp-roadmap.md` | 仅 §A.6 的 F-1/F-2 两行按引擎事实改写 |
+| `docs/verification/m0-playtest-ledger.md` | 本文件 |
+
+探针（`tmp/m18/*.lua`）**不进 git**——`tmp/` 在 `.gitignore:32`。

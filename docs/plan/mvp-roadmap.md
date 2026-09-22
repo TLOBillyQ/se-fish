@@ -419,8 +419,8 @@ M0 ──V1,V5,V6,V7──▶ M1 ──C-15「上岸产出待举起的鱼」─�
 
 | ID | 备案 | 归属 |
 |---|---|---|
-| F-1 | 鱼载体 = `WorldUnit` 鱼本体，**不做** EggyUnit 受击壳 | M0-V3、M2 打鱼 |
-| F-2 | 「挥砍打鱼」的伤害入口直接在 `WorldUnit` 鱼本体上解决，复用 #13 已验证路径 | **M0-V3（硬目标，未实测）** |
+| F-1 | 鱼载体 = `WorldUnit` 鱼本体（物理 + `Liftable`）；**伤害接口挂在跟随鱼本体、`EnableController = true` 的 `EggyUnit` 受击体上**——引擎里只有 `EggyUnit`/`HumanUnit` 能带 Controller，而这两者都没有 `Liftable`，所以「鱼本体」与「能挨打」必须分成两个单位（证据见 `docs/verification/m0-playtest-ledger.md` §11） | M0-V3（绿，M18 已实测）、M2 打鱼 |
+| F-2 | 「挥砍打鱼」的伤害入口**不能在 `WorldUnit` 鱼本体上解决**（已证不可行：`WorldUnit` 加 `EnableController = true` 也拿不到 Controller；赋 `.Controller` / `.TakeDamage` 报 `cannot access an internal table/userdata`；沙盒无 `debug` 库、`setmetatable` 不吃 userdata → 换元表也不通）。包内 `anchors/melee_hit.lua` 的 `_applyDamage` 走 `target.Controller:TakeDamage`，受击体即满足该契约 | **M0-V3（绿，证据见台账 §11）** |
 | F-3 | 逃脱 = 自写「朝水直线 + 前向射线撞墙转 90°」，射线频率做成配置（5–10 Hz） | M0-V4、M2 逃脱运动 |
 | F-4 | 触水消失复用 #12 数学判定 + `Destroy`；举在手上的鱼不跑水判定；入水即消失、不播表现 | M0-V4、M2 逃脱运动 |
 | F-5 | 上限：每玩家 ≤1 条在逃 + 全局「玩家数 × 2 + 常数」（3 人 → 6 条）；超限强制最旧一条逃脱消失；MVP 不做 LOD；追踪降频推精英/首领期 | M0-V4、M2 数量上限、§8.1 |
