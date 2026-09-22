@@ -42,9 +42,10 @@
 - 两个水圈同心、同一 AssetId（`map://preset/u54263b69f25482dae18f9dbcfe6dc5b`），外圈包含内圈，
   所以判定结果只可能命中 `WaterCircle2`；`WaterCircle1` 保留在配置里是留 M1「按水区选鱼表」的口子。
 - `Center.y` 只作场景溯源，判定只用到 x/z（`MathWaterJudge` 的注释与配置校验都按这个口径）。
-- **`Center.y` 与 `SurfaceY` 的取值批次不同**：`Center.y = 1.05` 是 #12 那次 11:46 的 INSPECT 读数，
-  `SurfaceY = 2.183` 是 M15 16:24 的读数——水单位运行时在漂移（`pos.y` 1.05 → 1.09 / 1.18），
-  两个字段各自溯源、不要互相反推（`SurfaceY - Center.y` 并不等于 `Size.y`）。
+- **`Center.y` 与 `SurfaceY` 的取值批次不同**：`Center.y = 1.05` 是 #12 那次 11:46 的 INSPECT 读数
+  （M15 16:10 复读同为 1.05），`SurfaceY = 2.183` 是 M15 16:24 的读数——水单位运行时会漂移
+  （同一次 M15 试玩里 `pos.y` 从 1.05 变到 1.09 / 1.18），两个字段各自溯源、不要互相反推
+  （`SurfaceY - Center.y` 并不等于 `Size.y`）。
 
 ### 1.2 判定开销实测（W-3，300 次调用）
 
@@ -82,7 +83,7 @@
   `...:test_point_at_floor_height_inside_pond_is_in_water`（水面现在**高于**地板表面，
   水区矩形内的池塘底算在水里），`TestWaterJudgeBoundary` / `TestWaterJudgeConfig` 的常量同步。
 - **语义没变**：`pos.y <= surfaceY` 仍含等号（正好落在 2.183 上算在水里），
-  `Center.y = 1.05` 仍是 16:10 那次的读数、只作场景溯源（判定不用它）。
+  `Center.y = 1.05` 是 #12 11:46 的 INSPECT 读数（M15 16:10 复读同为 1.05）、只作场景溯源（判定不用它）。
 
 ---
 
