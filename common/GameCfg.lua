@@ -181,4 +181,43 @@ GameCfg.Ability = {
     },
 }
 
+-- 水判定（M0-V1）：每个钓鱼区一条。Center 只用到 x/z（y 留作场景溯源），HalfXZ 是水平半宽（米），
+-- SurfaceY 是水面高度（米）；判定语义与配置校验见 common/MathWaterJudge.lua，
+-- 边界用例见 tests/water_judge_test.lua，取值溯源见 docs/verification/m0-modules-ledger.md。
+-- 数值来源：#12 在本图 SE 试玩里的实测（宿主目录 log.txt 2026-09-22 11:46:49 的 PROTO_WATER INSPECT 行）——
+--   WaterCircle1  Position(-11.75, 1.05, 27.75) Size(3, 1, 3) Scale(1, 1, 1)
+--   WaterCircle2  Position(-11.75, 1.05, 27.75) Size(6, 1, 6) Scale(2, 1, 2)
+--   两个水圈同心，水面 y = 1.05 + Size.y / 2 = 1.55
+-- 注意 1：运行时读到的 Size 已含 Scale（WaterCircle2 的 Scale.x=2 已经算进 Size.x=6），
+--         HalfXZ 直接写半边尺寸（6/2=3），配置时再乘缩放会翻倍（#12 W-4）。
+-- 注意 2：水面 y≈1.55 低于大地板表面 y=2.0（射线实测命中 2.0），本图水是下凹池塘：
+--         站在地板高度上的点不算在水里，「水面高度配高了会把岸上判成水里」有单测兜住。
+-- 顺序：外圈 WaterCircle2 在前，同心时先命中它；M1 若要按水区选鱼表，改这里。
+-- 待验（不阻塞）：水面高度按「单位 Position.y + Size.y/2」取值（#12 验证过的口径），
+--   但大地板的 Position.y=0 / Size.y=2 与其射线命中的表面 y=2.0 不一致，说明单位的 Position
+--   可能是底面而非中心；若如此，本图水面应是 2.05 而不是 1.55。取 1.55 是保守侧
+--   （配低了只会「岸上点不判成水里」→ 抛竿不咬钩；配高了会把岸上判成水里）。见台账「待验」一节。
+GameCfg.Water = {
+    Zones = {
+        { Id = "WaterCircle2", Center = { x = -11.75, y = 1.05, z = 27.75 }, HalfXZ = 3.0, SurfaceY = 1.55 },
+        { Id = "WaterCircle1", Center = { x = -11.75, y = 1.05, z = 27.75 }, HalfXZ = 1.5, SurfaceY = 1.55 },
+    },
+}
+
+-- 高频输入契约（M0-V5）：窗口与次数上限的常量，逻辑见 common/RateLimit.lua，
+-- 载荷字段固定 {s=会话 id, n=窗口内点击数, q=单调序号}（C-3）。
+-- 消费者：收线（计数型，M1）+ 按住连发类武器（边沿型，随武器期，共用同一套窗口，C-16）。
+-- 取值依据：#14 调研（30Hz 逻辑帧 ⇒ 聚合窗口 ≥33ms，建议 100ms）+ #15 定案「100ms 固定可配、1s ≤10」。
+GameCfg.HighFreqInput = {
+    WindowSec = 1.0,    -- 滑动窗长度（秒）；每玩家窗口内最多采纳 MaxCount 次
+    MaxCount = 10,      -- 1s ≤ 10 次（C-2）；超限 clamp 不丢弃、不向玩家报错
+    AggregateSec = 0.1, -- 客户端聚合窗口 = 100ms（C-1）；上行上限 10 包/秒/人
+}
+
+-- V3 鱼载体实例化（M0-V3）：配置待并行 mission（试玩验证线 feat/m0-3-v2-v7）交回
+-- RenderMeshId/PhysicsMeshId 的写法结论后补——现状 [未查证]（F-7），照猜写会让鱼建不出来。
+-- 待补字段：官方模型号（7000544 号段）与两个 mesh id 的写法，形如
+--   GameCfg.FishCarrier = { ModelId = ..., RenderMeshId = ..., PhysicsMeshId = ... }
+-- TODO(M0-V3)：拿到写法结论后落这里，并补一条「写法对得上」的单测。
+
 return GameCfg
