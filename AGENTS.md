@@ -21,13 +21,39 @@
 
 | 任务 | 命令 | 入口 |
 |---|---|---|
-| 仓库代码 → 编辑器宿主目录 | `lua tools/cli.lua deploy` | 三端一级子树 robocopy 字节镜像；编辑器开着该地图时收尾 validate → diff → 有差异才 push，编辑器不在或没开该地图则跳过并以 0 退出；`--clean` 只清不装 |
+| 仓库代码 → 编辑器宿主目录 | `lua tools/cli.lua deploy` | 三端一级子树 robocopy 字节镜像；编辑器开着该地图时收尾 validate → diff → 有差异才 push，编辑器不在或没开该地图则跳过并以 0 退出；`--clean` 只清不装。收尾的 code-* 由工具自己指好宿主目录；自己手敲 code-* 必须加 `--workspace`，见下节「编辑器工程 ≠ 仓库检出」 |
 | 宿主目录产物 → 仓库 | `lua tools/cli.lua sync` | 回灌 `eggy.json`、两份 API 存根、`data/` 整目录，落盘前 CRLF→LF 归一 |
 | 重建技能包编辑器预设 | `lua tools/cli.lua ability-presets` | 按 `GameCfg.Ability` 的 key 查：预设还在就原地重刷锚点壳与属性，不在就复制官方模板重建并把新 key 回写 `GameCfg.lua`；要编辑器开着本图且在编辑态，多实例加 `--editor-instance <pid>`，`--dry-run` 只打印计划 |
 | 单测 | `lua tests/run.lua` | luaunit，跑 `tests/*_test.lua` |
 | 验收 / 回归 | `bash tools/acceptance/run_acceptance.sh` | Gherkin 车道，目前只有 `features/engineering/deploy-mirror.feature`（`tmp/` 下临时工作区验「镜像 + 不碰非自有文件」）；不需要 luarocks、不依赖 WSL，详见 `tools/acceptance/README.md` |
 
 宿主目录默认 `C:\Users\<用户名>\Desktop\dev\eggy\LuaSource_钓鱼怎么这么危险啊喂！`，`EGGY_WORKSPACE` 可覆盖；宿主目录本身不是本仓库，只镜像、不往里放别的东西。
+
+### 编辑器工程 ≠ 仓库检出
+
+编辑器只认 `editor-cli code init` 绑定过的那个目录为工程，也就是 `CONTEXT.md` 的「宿主目录」条；仓库检出（主检出与 `.tower/worktrees/wt-N` 一样）不是工程——仓库根的 `eggy.json` 是 `sync` 回灌进来的 `isSEMap` 真源，不是工程绑定。所以在仓库检出里跑 `editor-cli code validate` / `code diff` / `code push` 一律返回 `CODE_BINDING_INVALID`（实测），带不带 `--strict`、编辑器开没开都一样，且主检出与每个 worktree 表现完全相同。这是「仓库检出 ≠ 编辑器工程」的架构事实，不是 worktree 特有，别照 worktree 特有去诊断。
+
+在仓库检出里要跑 code-* 命令，只能显式指 `--workspace` 宿主目录，或先 `cd` 进宿主目录再跑（`editor-cli` 不在 PATH 上时用全路径，下面这个 `$USERPROFILE` 前缀在 Git Bash 里可直接抄）：
+
+```bash
+"$USERPROFILE/.eggitor/cli/editor-cli.exe" code validate --strict --json --workspace "<宿主目录>"
+```
+
+`lua tools/cli.lua deploy` 内部已经把 `--workspace` 指到宿主目录，不用手加；只有自己敲 code-* 命令时才要写。
+
+### 完成判据
+
+在仓库检出里改完代码，逐条跑，全部满足才算过：
+
+| 命令 | 预期输出 |
+|---|---|
+| `lua tests/run.lua` | 统计行 `0 failures`（当前 `68 successes, 0 failures`），末行 `OK` |
+| `bash tools/acceptance/run_acceptance.sh` | `N passed, 0 failed`（当前 `3 passed, 0 failed`），末行 `acceptance run OK` |
+| `lua -e "assert(loadfile('<file>'))"`（每个改过的 `.lua` 跑一次） | 无输出、退出码 0；有语法错时抛 `loadfile` 的报错 |
+| `"$USERPROFILE/.eggitor/cli/editor-cli.exe" code validate --strict --json --workspace "<宿主目录>"`（`deploy` 之后） | `{"ok":true,"data":{"valid":true,"is_se_map":true,"issues":[]},"meta":{"warnings":[]}}` |
+
+- 语法检查用 `lua -e "assert(loadfile('<file>'))"`，不要用 `luac -p`：本机 `lua` 是 5.4.6、`luac` 是 5.5.0（实测），5.5 把 `for` 循环变量当 `const`，会对 `for line in handle:lines() do line = line:gsub(...)` 这种正常写法报假错 `attempt to assign to const variable`（现成例子：`tools/win_shell.lua:63`、`tests/run.lua:15` 的 `luac -p` 都报错，`lua` 5.4 都通过）。
+- 最后那条 `code validate` 检查的是**宿主目录**里那份（`deploy` 镜像过去、收尾再 push 进地图的代码），不是仓库检出——它验的是「同步进编辑器的代码结构合法」，所以只在 `deploy` 之后才有意义，通不过说明镜像或同步那一步出了问题。
 
 ## 文档
 
