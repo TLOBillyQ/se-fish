@@ -121,6 +121,7 @@ function M.ensure_dir(path)
 end
 
 -- 镜像一个目标的命令行（纯字符串；失败文案要放命令原文，所以单独取出来）。
+-- args 里**不要加 /NJH**：横幅没了就看不出命令到底跑没跑过（见下面 robocopy）。
 function M.mirror_cmd(target)
   local args = "/NFL /NDL /NJS /NP /R:2 /W:1"
   if target.dir then
@@ -133,9 +134,10 @@ end
 
 -- robocopy 退出码 0–7 都是成功（0 无变化、1 有拷贝、2/3 目的地多出东西、…），>= 8 才是失败。
 -- 但退出码 1 有第二种含义：cmd 连命令都没起来（重定向落点打不开、命令行解析不了）也返回 1，
--- 所以「退出码 < 8」不能单独当成功——还要有命令确实跑过的证据。证据取 robocopy 自己打的横幅
--- （/NJH 关掉的是 Started/Source/Dest 那一段，横幅仍在）：日志里没有横幅 = 命令没执行。
--- 横幅与 /NFL 挡不住的那类噪音都只落在日志文件里，不进控制台；只有失败时才读出来当原文。
+-- 所以「退出码 < 8」不能单独当成功——还要有命令确实跑过的证据。证据取 robocopy 自己打的横幅：
+-- 日志里没有横幅 = 命令没执行。为此镜像命令**故意不带 /NJH**（实测它会连横幅一起关掉，输出
+-- 为空；别加回来），横幅与 /NFL 挡不住的那类噪音都只落在日志文件里，不进控制台；只有失败时才
+-- 读出来当原文。
 local function robocopy(cmd)
   os.remove(LOG_FILE)
   local code = run_redirected(cmd, LOG_FILE)

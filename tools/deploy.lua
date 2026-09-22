@@ -113,7 +113,7 @@ local function mirror_and_verify(t)
       if #extra > 0 then notes[#notes + 1] = "目标侧多出 " .. #extra .. " 个文件: " .. brief(extra) end
       return nil, failure_text(t, shell.mirror_cmd(t), res, notes, nil)
     end
-    return #dst
+    return #(dst or {})
   end
 
   if not shell.exists(t.dst) then
