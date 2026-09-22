@@ -1,22 +1,3 @@
 {
-  "projectName": "\u9493\u9C7C\u600E\u4E48\u8FD9\u4E48\u5371\u9669\u554A\u5582\uFF01",
-  "projectID": "6aab8e60ee615830184f4963",
-  "serverPort": 27962,
-  "syncEnabled": true,
-  "excludePatterns": [
-    ".vscode",
-    ".git",
-    "EggyAPI.lua",
-    ".codemaker",
-    ".codex",
-    ".kimi-code",
-    ".dsh",
-    ".teamai",
-    ".claude",
-    ".zcode"
-  ],
-  "version": "1.0.0",
-  "isSEMap": true,
-  "playerNid": "623873800",
-  "mapDir": "C:\\FeverApps\\party_pc\\Documents\\etc\\editor_maps\\YXF1T1lPNWhXREFZVDBsag==__pc"
+  "isSEMap": true
 }
