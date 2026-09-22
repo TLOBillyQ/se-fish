@@ -303,6 +303,25 @@ end
 
 TestAbilityPresetsFixNamesScript = {}
 
+TestAbilityPresetsExistence = {}
+
+function TestAbilityPresetsExistence:test_missing_preset_is_rebuilt_despite_successful_query()
+  local listed = '{"success":true,"asset_ids":["map://preset/ukeep"]}'
+  lu.assertTrue(ap.preset_exists(listed, "map://preset/ukeep"))
+  lu.assertFalse(ap.preset_exists(listed, "map://preset/umissing"))
+  local actions = ap.plan({manager=true, speed_ability=true, speed_anchor=true,
+    melee_ability=ap.preset_exists(listed, "map://preset/umissing"), melee_anchor=true})
+  for _, action in ipairs(actions) do
+    if action.slot == "melee_ability" then lu.assertEquals(action.op, "rebuild") end
+  end
+end
+
+function TestAbilityPresetsExistence:test_invalid_inventory_cannot_silently_rebuild_everything()
+  lu.assertError(ap.preset_exists, '{"success":true,"value":null}', "map://preset/ux")
+  lu.assertFalse(ap.preset_exists('{"success":false}', "map://preset/ux"))
+  lu.assertFalse(ap.preset_exists('{"success":true,"asset_ids":[]}', "map://preset/ux"))
+end
+
 function TestAbilityPresetsFixNamesScript:test_lua_quote()
   lu.assertEquals(ap.lua_quote("技能背包"), '"技能背包"')
   lu.assertEquals(ap.lua_quote('a"b'), '"a\\"b"')

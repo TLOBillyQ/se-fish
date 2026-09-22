@@ -404,9 +404,15 @@ local function step(ctx, desc, args)
   return out
 end
 
-local function preset_exists(ctx, key)
-  local code, out = run_preset(ctx, { "get-asset-value", key, "SourceCode", "--json" })
-  return code == 0 and M.succeeded(out)
+-- GetAssetValue 对不存在的预设也返回 success=true,value=null；存在性以 ID 清单为准。
+function M.preset_exists(out, key)
+  if not key or not M.succeeded(out) then return false end
+  local ids = out:match('"asset_ids"%s*:%s*%[([^%]]*)%]')
+  if not ids then error("预设 ID 清单缺少 asset_ids，无法判定存在性") end
+  for id in ids:gmatch('"([^"]+)"') do
+    if id == key then return true end
+  end
+  return false
 end
 
 -- 给锚点预设重刷壳源码与属性（rebuild / reapply 共用）。
@@ -654,7 +660,7 @@ local function run(args)
   -- 连通性 + 编辑态探针：编辑器没开本地图、或在试玩中，都在这一步报出来。
   -- get-all-asset-ids / get-asset-value 都是只读，dry-run 也照跑——
   -- 这样 dry-run 打印的计划和湿跑一致（不然已有预设也会被列成「重建」）。
-  step(ctx, "连通性检查（编辑器没开本地图或在试玩中？preset 命令要编辑态）",
+  local asset_ids = step(ctx, "连通性检查（编辑器没开本地图或在试玩中？preset 命令要编辑态）",
     { "preset", "get-all-asset-ids", "--json" })
 
   -- --fix-names 只跑 Name 修复，不碰重建/重刷（两者都要写编辑器，别混在一轮里）。
@@ -664,7 +670,7 @@ local function run(args)
 
   local exists = {}
   for _, spec in ipairs(M.SPECS) do
-    exists[spec.slot] = preset_exists(ctx, keys[spec.slot])
+    exists[spec.slot] = M.preset_exists(asset_ids, keys[spec.slot])
   end
 
   local actions = M.plan(exists)

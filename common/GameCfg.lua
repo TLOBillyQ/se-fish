@@ -165,9 +165,9 @@ GameCfg.Ability = {
         },
         -- 挥砍：玩家的攻击（手持武器发起，见 CONTEXT.md「战斗」），道具按钮触发
         {
-            AssetId = "map://preset/u0d0b1993faa482b93e806d23715b73e",
+            AssetId = "map://preset/ucc31d1999a543a7ab329eff1fd3c00d",
             Index = 1,
-            Anchor = "map://preset/ucc500ac3aac4b749fd9bee03b57e4d5",
+            Anchor = "map://preset/u471a1004c1f43f1ae6ebe4ee2bcd080",
             AnchorBehavior = "melee_hit",
             AnchorAttributes = {
                 -- 命中盒存活窗口；必须 ≤ 施法窗口（技能模板默认 CastTime=0.5，已声明属性预设侧改不动，见 issue #7 坑 2）
