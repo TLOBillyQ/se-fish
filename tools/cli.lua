@@ -11,6 +11,7 @@
 local commands = {
   { name = "deploy", mod = "tools.deploy", summary = "仓库三端一级子树镜像进编辑器宿主目录（robocopy /MIR + 编辑器收尾）" },
   { name = "sync",   mod = "tools.sync",   summary = "从编辑器宿主目录回同步 eggy.json / 两份 API 存根 / data/ 到仓库根" },
+  { name = "ability-presets", mod = "tools.ability_presets", summary = "重建技能包的编辑器侧预设（复制官方模板、刷壳与属性、回写 GameCfg key）" },
 }
 
 package.path = "./?.lua;./?/init.lua;" .. package.path
