@@ -50,15 +50,24 @@ local function createAnchor(abilityScript, entry)
 	return anchor
 end
 
+-- 角色可能正处在重生的空档里被销毁：读子节点抛错就当成角色没了。
+-- 不静默：这一路只会走到一次（随后 return），把原因打出来省得事后猜。
+local function characterReadable(character)
+	local ok, err = pcall(function()
+		return character:GetChildren()
+	end)
+	if not ok then
+		print("[MgrAbility] 角色已不可读，放弃装备: " .. tostring(err))
+	end
+	return ok
+end
+
 -- 管理器就绪需要等：管理器脚本 Attach 之后才会打上 AbilityManager 标签，
 -- 而 AddAbility 靠这个标签反查管理器，早于此会拿不到。
 local function equip(character, entry)
 	Task:Spawn(function()
 		for _ = 1, EQUIP_RETRY_COUNT do
-			local readable, children = pcall(function()
-				return character:GetChildren()
-			end)
-			if not readable or not children then
+			if not characterReadable(character) then
 				return
 			end
 			local abilityScript = AbilityAPI.AddAbility(character, entry.AssetId, entry.Index)
