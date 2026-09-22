@@ -138,4 +138,25 @@ function GameCfg:GetLootRst(loot)
     end
 end
 
+-- 技能包（ability_system）在本图的接入配置。
+-- 预设本体存在图里、不进 git，这里只记 key；三个预设的建法与完整命令记录见 issue #7——
+-- 本编辑器不认包内的 ---@export_prefab_type 自定义预设类型（见该票结论），所以：
+--   技能背包 = 复制官方「技能背包」模板（u014968…）
+--   加速技能 = 复制官方「技能」模板（uc57b9…）后重写壳源码（官方文档的「手工创建方式」，CastTime 调成 6 秒）
+--   加速锚点 = 复制官方「锚点」模板（uccfb9d…），其壳在本编辑器里不执行，由根 AbilityAPI 补挂
+GameCfg.Ability = {
+    -- 角色进图时实例化到角色下的技能背包预设
+    ManagerPreset = "map://preset/ubdb4a7e737d4eddb87729e9055ba375",
+    -- 进图后装的初始技能：AssetId=技能预设，Index=槽位（0 基），
+    -- Anchor=锚点预设，AnchorBehavior=锚点行为模块名（anchors/ 下的文件名）
+    InitialAbilities = {
+        {
+            AssetId = "map://preset/uf7fac66639546e2aa376151835cf3a6",
+            Index = 0,
+            Anchor = "map://preset/uaf2781161d6460990a4941b12ad30c2",
+            AnchorBehavior = "speed_add",
+        },
+    },
+}
+
 return GameCfg

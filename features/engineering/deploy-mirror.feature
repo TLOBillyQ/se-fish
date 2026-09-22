@@ -28,9 +28,9 @@
   当 执行部署到临时工作区
   那么 临时工作区存在文件<路径列表>
 
-例子:
+  例子:
   | 路径列表                                                                                                                     |
-  | server/main.lua server/Mgr/MgrFish.lua server/_trigger/GlobalVars.lua client/main.lua client/ScreenHandlers/ScreenFishing.lua common/GameCfg.lua common/Util.lua |
+  | server/main.lua server/Mgr/MgrFish.lua server/Mgr/MgrAbility.lua server/_trigger/GlobalVars.lua server/packages/ability_system/api.lua client/main.lua client/ScreenHandlers/ScreenFishing.lua common/GameCfg.lua common/Util.lua |
 
 场景大纲: 部署镜像 2: 部署不触碰工作区中不归本仓库的文件
   假如 临时工作区预置文件<预置列表>
@@ -38,8 +38,8 @@
   那么 临时工作区存在文件<保留列表>
 
 例子:
-  | 预置列表                                                                                                                | 保留列表                                                                                                                |
-  | eggy.json EggyAPI.lua EggyEditorAPI.lua data/FontData.lua unit_scripts/generated.lua client/packages/keep.lua .gm/probe.lua | eggy.json EggyAPI.lua EggyEditorAPI.lua data/FontData.lua unit_scripts/generated.lua client/packages/keep.lua .gm/probe.lua |
+  | 预置列表                                                                                                                       | 保留列表                                                                                                                       |
+  | eggy.json EggyAPI.lua EggyEditorAPI.lua data/FontData.lua unit_scripts/generated.lua client/host_only/keep.lua .gm/probe.lua | eggy.json EggyAPI.lua EggyEditorAPI.lua data/FontData.lua unit_scripts/generated.lua client/host_only/keep.lua .gm/probe.lua |
 
 场景: 部署镜像 3: 仓库根白名单之外的内容不进工作区
   当 执行部署到临时工作区

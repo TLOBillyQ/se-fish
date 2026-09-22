@@ -64,7 +64,7 @@ local function seed_and_deploy()
   code_of("md " .. shell.q(WS) .. " >nul 2>&1")
   write("EggyAPI.lua", "-- 宿主目录里的 API 存根\n")
   write("data/FontData.lua", "-- 编辑器侧产物\n")
-  write("client/packages/keep.lua", "-- 只活在宿主目录里的一级子树\n")
+  write("client/host_only/keep.lua", "-- 只活在宿主目录里的一级子树\n")
   write("server/Mgr/Ghost.lua", "-- 自有子树里的幽灵文件\n")
   return run_cli("deploy", { "EGGY_WORKSPACE=tmp/deploy-transport-test" })
 end
@@ -97,7 +97,9 @@ end
 
 function TestDeployTransport:test_mirror_lands_the_repo_tree()
   for _, rel in ipairs({ "client/main.lua", "common/Util.lua", "server/main.lua",
-                         "server/Mgr/MgrFish.lua", "client/ScreenHandlers/ScreenFishing.lua" }) do
+                         "server/Mgr/MgrFish.lua", "server/Mgr/MgrAbility.lua",
+                         "server/packages/ability_system/api.lua",
+                         "client/ScreenHandlers/ScreenFishing.lua" }) do
     lu.assertTrue(shell.exists(WS .. "/" .. rel), rel .. " 未落到宿主目录")
   end
 end
@@ -111,7 +113,7 @@ end
 -- 宿主目录里的非自有内容（eggy.json、API 存根、data/、编辑器生成物）与仓库根白名单之外
 -- 的内容同规则：不进部署计划就不许碰。
 function TestDeployTransport:test_non_owned_content_is_untouched()
-  for _, rel in ipairs({ "EggyAPI.lua", "data/FontData.lua", "client/packages/keep.lua" }) do
+  for _, rel in ipairs({ "EggyAPI.lua", "data/FontData.lua", "client/host_only/keep.lua" }) do
     lu.assertTrue(shell.exists(WS .. "/" .. rel), rel .. " 被 deploy 碰掉了")
   end
 end
@@ -153,7 +155,7 @@ function TestDeployClean:test_clean_drops_owned_subtrees()
 end
 
 function TestDeployClean:test_clean_leaves_non_owned_content()
-  for _, rel in ipairs({ "EggyAPI.lua", "data/FontData.lua", "client/packages/keep.lua" }) do
+  for _, rel in ipairs({ "EggyAPI.lua", "data/FontData.lua", "client/host_only/keep.lua" }) do
     lu.assertTrue(shell.exists(WS .. "/" .. rel), rel .. " 被 --clean 误伤")
   end
 end

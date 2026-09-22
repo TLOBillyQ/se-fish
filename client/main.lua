@@ -6,6 +6,12 @@ local Task = game:GetService("Task")
 local LocalMotorUnitCtrl = require("client.LocalMotorUnitCtrl")
 local LocalFishEnter = require("client.LocalFishEnter")
 
+-- 运行时 require 失败只进日志并返回 nil，所以这里判一次再调
+local AbilityAPI = require("client.AbilityAPI")
+if AbilityAPI then
+    AbilityAPI.StartClientLifecycle()
+end
+
 Task:Spawn(function() 
     LocalMotorUnitCtrl:Start()
     LocalFishEnter:Start()
