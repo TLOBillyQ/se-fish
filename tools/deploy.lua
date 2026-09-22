@@ -2,8 +2,8 @@
 -- 在仓库根执行 `lua tools/cli.lua deploy`；直接 `lua tools/deploy.lua` 亦可。
 -- 反方向回同步见 tools/sync.lua；先例：se-defense tools/deploy.lua（WSL 接缝版）。
 --
--- 本模块只管搬字节：哪些子树归本仓库（部署规则）在 tools/deploy_plan 回答，宿主目录在哪
--- 在 tools/eggy_workspace，Windows 侧怎么跑在 tools/win_shell，编辑器收尾在
+-- 本模块只管搬字节并核验搬运结果：哪些子树归本仓库（部署规则）在 tools/deploy_plan 回答，
+-- 宿主目录在哪在 tools/eggy_workspace，Windows 侧怎么跑在 tools/win_shell，编辑器收尾在
 -- tools/editor_finalize。
 --
 -- 部署树：<端>/<child>/... → 宿主目录 <端>/<child>/...（端 = 白名单 client/common/server，
@@ -38,7 +38,8 @@ function M.usage()
     "把仓库根 <端>/<child> 字节镜像进编辑器宿主目录 <端>/<child>（先重置目标子树）。",
     "端为白名单 " .. table.concat(plan.REALMS, "/") .. "（官方强制的工作区根，仓库根直接对齐）；",
     "仓库根其他内容不部署，宿主目录其余内容不碰。",
-    "传输一律 robocopy /MIR 增量镜像（退出码 0–7 成功、>= 8 失败，失败即整条命令失败），",
+    "传输一律 robocopy /MIR 增量镜像；每个目标镜像完都拿源/目标的文件集合对一遍，",
+    "命令没执行成、退出码 >= 8、或目标侧文件集合与源不一致，都算整条命令失败（退出码 1）；",
     "镜像完自动做编辑器收尾：code validate → code diff → 有差异才 push → 复核；",
     "editor-cli 不在或编辑器没开该地图时打印跳过并以退出码 0 结束（磁盘已是最新）。",
     "地图侧多出的文件只提示，不删。",
@@ -51,6 +52,75 @@ function M.usage()
     "            清地图侧要用 editor-cli code push --delete --yes。",
     "",
   }, "\n") .. "\n"
+end
+
+-- 源/目标文件集合差异（/ 分隔的相对路径清单，顺序无关）：missing = 源有目标无，extra = 目标有源无，
+-- 两张清单都按名排序；nil 当空清单。robocopy 说成功之后靠它确认字节真的到了目标侧。
+function M.file_set_diff(src, dst)
+  local in_src, in_dst = {}, {}
+  for _, path in ipairs(src or {}) do in_src[path] = true end
+  for _, path in ipairs(dst or {}) do in_dst[path] = true end
+  local missing, extra = {}, {}
+  for path in pairs(in_src) do
+    if not in_dst[path] then missing[#missing + 1] = path end
+  end
+  for path in pairs(in_dst) do
+    if not in_src[path] then extra[#extra + 1] = path end
+  end
+  table.sort(missing)
+  table.sort(extra)
+  return missing, extra
+end
+
+-- 差异清单压成一行：最多列 5 个，多的用省略号收尾。
+local function brief(paths)
+  local head = {}
+  for i = 1, math.min(#paths, 5) do head[i] = paths[i] end
+  if #paths > #head then head[#head + 1] = "…" end
+  return table.concat(head, ", ")
+end
+
+-- 单目标失败文案：目标、命令原文、退出码、原因（命令没执行 / 差异清单），失败时再带命令输出原文。
+local function failure_text(t, cmd, code, notes, output)
+  local lines = { "镜像失败: " .. t.rel, " 命令: " .. cmd, " 退出码: " .. tostring(code) }
+  for _, note in ipairs(notes) do lines[#lines + 1] = " " .. note end
+  if output and output ~= "" then lines[#lines + 1] = " 输出:\n" .. output end
+  return table.concat(lines, "\n")
+end
+
+-- 镜像一个目标并核验搬运结果。两层护栏：
+--   * tools/win_shell 的 mirror 保证命令真的执行过、且按 robocopy 口径成功（退出码 0–7）；
+--   * 这里再对一遍源/目标的文件集合（/MIR 之后本该一模一样）。robocopy 说成功而字节没到齐
+--     （命令被挡掉却回了 1、拷贝中途夭折、残留文件）在这层变成失败，不再落成一句 deploy ok。
+-- 返回 目标侧文件数 或 nil, 失败文案。
+local function mirror_and_verify(t)
+  local ok, res = shell.mirror(t)
+  if not ok then
+    local notes = {}
+    if not res.executed then notes[#notes + 1] = "命令没有执行过（重定向落点建不出来？）" end
+    return nil, failure_text(t, res.cmd, res.code, notes, res.output)
+  end
+
+  if t.dir then
+    local src, dst = shell.list_files(t.src), shell.list_files(t.dst)
+    if not src then return nil, failure_text(t, shell.mirror_cmd(t), res,
+      { "源目录读不出来: " .. t.src }, nil) end
+    local missing, extra = M.file_set_diff(src, dst)
+    local notes = {}
+    if #missing > 0 or #extra > 0 then
+      notes[#notes + 1] = "镜像结果与源不一致"
+      if #missing > 0 then notes[#notes + 1] = "目标侧缺 " .. #missing .. " 个文件: " .. brief(missing) end
+      if #extra > 0 then notes[#notes + 1] = "目标侧多出 " .. #extra .. " 个文件: " .. brief(extra) end
+      return nil, failure_text(t, shell.mirror_cmd(t), res, notes, nil)
+    end
+    return #dst
+  end
+
+  if not shell.exists(t.dst) then
+    return nil, failure_text(t, shell.mirror_cmd(t), res,
+      { "镜像结果与源不一致", "目标侧缺 1 个文件: " .. t.src:match("[^/]+$") }, nil)
+  end
+  return 1
 end
 
 local function run_deploy(clean_only)
@@ -72,13 +142,9 @@ local function run_deploy(clean_only)
   end
 
   for _, t in ipairs(targets) do
-    local ok, code, detail = shell.mirror(t)
-    if not ok then
-      detail = detail or ""
-      fail("robocopy 失败（退出码 " .. tostring(code) .. "）: " .. t.rel
-        .. (detail ~= "" and (":\n" .. detail) or ""))
-    end
-    print(t.rel .. ": " .. shell.file_count(t.src, t.dir) .. " 个文件 (robocopy)")
+    local n, err = mirror_and_verify(t)
+    if not n then fail(err) end
+    print(t.rel .. ": " .. n .. " 个文件 (robocopy)")
   end
 
   print("deploy ok → " .. WS)
