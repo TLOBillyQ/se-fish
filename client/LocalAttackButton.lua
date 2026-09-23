@@ -1,6 +1,4 @@
--- 攻击按钮：道具按钮的最小形态——手持物决定道具按钮的行为（吃、抛竿、挥砍……，见 CONTEXT.md「道具栏」）。
--- 物品/手持体系尚未落地（issue #6 列为后续），本模块先把「手持武器 → 按钮行为 = 挥砍」这条验证链路跑通：
--- 点按钮 = 经客户端聚合入口请求施放挥砍技能，权威判定在服务端（包内 RemoteEvent 通道）。
+-- 右手武器的 1 号操作位，独立于左手道具栏的 2 号操作位。
 local Players = game:GetService("Players")
 local World = game:GetService("World")
 
@@ -13,7 +11,7 @@ local BUTTON_SIZE = Vector2.New(180, 180)
 -- 设备分辨率像素、节点中心定位、左下原点；右下角是原生按钮区，放右缘中部避开
 local BUTTON_MARGIN = Vector2.New(220, 900)
 
--- 挥砍技能槽位由配置决定（手持物体系落地后改由手持物反查）
+-- 右手武器的挥砍技能槽位由配置决定。
 local function findMeleeSlot()
     for _, entry in ipairs(GameCfg.Ability.InitialAbilities or {}) do
         if entry.AnchorBehavior == "melee_hit" then

@@ -8,6 +8,14 @@ GameCfg.Items = {
     ItemBarSlots = 8,
     Id = { Tilapia = 'tilapia', Carp = 'carp', KnifeFish = 'knifeFish', Bass = 'bass', Catfish = 'catfish', Goldfish = 'goldfish', Worm = 'worm', StarterRod = 'starterRod' },
     InitialWormCount = 10,
+    ActionCooldownSec = 0.12,
+    RodVisual = {
+        -- Mesh 来自试玩世界单位「中式杆」（原 AssetId=map://preset/u46466002b9a47c588001c2e65ef4c3a）；
+        -- 原场景 Scale=(0.2,1,0.2)，这里的缩放是左手持竿表现参数。
+        Mesh = 'official://mesh/50450',
+        Socket = 'l_weapon',
+        Scale = { x = 0.2, y = 0.25, z = 0.2 },
+    },
     Definitions = {
         tilapia = { Name = '罗非鱼', Icon = 'official://image/11164' },
         carp = { Name = '鲤鱼', Icon = 'official://image/11164' },

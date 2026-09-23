@@ -30,6 +30,8 @@ function PlayerData:Init()
         RodLevel = 1,
         Containers = { [GameCfg.Items.ContainerId.ItemBar] = items },
         Bait = bait,
+        SelectedSlot = nil,
+        SelectedBait = nil,
         Progress = {},
     }
     self.Inited = true
@@ -38,29 +40,107 @@ end
 
 function PlayerData:GetItemBarSnapshot()
     if not self.Inited then return nil end
-    local snapshot = {}
+    local slots = {}
     local items = self.Data.Containers[GameCfg.Items.ContainerId.ItemBar]
-    for index, entry in ipairs(items) do
-        snapshot[index] = {
-            itemId = entry.itemId,
-            count = entry.count,
-            containerId = entry.containerId,
-        }
+    for index = 1, GameCfg.Items.ItemBarSlots do
+        local entry = items[index]
+        if entry and entry.count > 0 then
+            slots[index] = {
+                itemId = entry.itemId,
+                count = entry.count,
+                containerId = entry.containerId,
+            }
+        end
     end
-    -- 蚯蚓在鱼饵库存里计数，道具栏仅展示同一库存的入口。
-    local wormId = GameCfg.Items.Id.Worm
-    snapshot[#snapshot + 1] = {
-        itemId = wormId,
-        count = self.Data.Bait[wormId] or 0,
-        containerId = GameCfg.Items.ContainerId.Bait,
+    local bait = {}
+    for itemId, count in pairs(self.Data.Bait) do
+        bait[itemId] = count
+    end
+    return {
+        slots = slots,
+        slotCount = GameCfg.Items.ItemBarSlots,
+        bait = bait,
+        selectedSlot = self.Data.SelectedSlot,
+        selectedBait = self.Data.SelectedBait,
     }
-    return snapshot
+end
+
+function PlayerData:SelectSlot(index)
+    if not self.Inited or type(index) ~= 'number' or index ~= math.floor(index)
+        or index < 1 or index > GameCfg.Items.ItemBarSlots then return false end
+    local entry = self.Data.Containers[GameCfg.Items.ContainerId.ItemBar][index]
+    self.Data.SelectedSlot = self.Data.SelectedSlot ~= index and entry and entry.count > 0 and index or nil
+    return true
+end
+
+local function hasBait(data, itemId)
+    local count = data.Bait[itemId]
+    return type(count) == 'number' and count >= 1
+end
+
+function PlayerData:SelectBait(itemId)
+    if not self.Inited then return false end
+    if itemId == nil then
+        self.Data.SelectedBait = nil
+        return true
+    end
+    if type(itemId) ~= 'string' or not hasBait(self.Data, itemId) then return false end
+    self.Data.SelectedBait = itemId
+    return true
+end
+
+function PlayerData:EatBait(itemId)
+    if not self.Inited or type(itemId) ~= 'string' or not hasBait(self.Data, itemId) then return false end
+    self:UpdateData(function(data)
+        data.Bait[itemId] = data.Bait[itemId] - 1
+    end, true)
+    return true
+end
+
+function PlayerData:ConsumeSelectedBait()
+    if not self.Inited then return false, nil end
+    local itemId = self.Data.SelectedBait
+    if not itemId then return true, nil end
+    if not hasBait(self.Data, itemId) then
+        self.Data.SelectedBait = nil
+        self:PublishItemBar()
+        return false, nil
+    end
+    self:UpdateData(function(data)
+        data.Bait[itemId] = data.Bait[itemId] - 1
+    end, true)
+    return true, itemId
+end
+
+function PlayerData:DiscardSlot(index)
+    if not self.Inited or type(index) ~= 'number' or index ~= math.floor(index)
+        or index < 1 or index > GameCfg.Items.ItemBarSlots then return false end
+    local items = self.Data.Containers[GameCfg.Items.ContainerId.ItemBar]
+    if not items[index] then return false end
+    items[index] = nil
+    if self.Data.SelectedSlot == index then self.Data.SelectedSlot = nil end
+    return true
+end
+
+function PlayerData:PublishItemBar()
+    local mgr = _G.MgrPlayerData
+    if mgr and mgr:GetDataInst(self.Player) == self then
+        mgr:SendItemBar(self.Player)
+    end
 end
 
 function PlayerData:UpdateData(updateCallBack, doSync)
     if not self.Inited or not updateCallBack then return end
     updateCallBack(self.Data)
-    if doSync then self:Sync() end
+    local selected = self.Data.SelectedSlot
+    local entry = selected and self.Data.Containers[GameCfg.Items.ContainerId.ItemBar][selected]
+    if selected and (not entry or entry.count <= 0) then self.Data.SelectedSlot = nil end
+    local baitId = self.Data.SelectedBait
+    if baitId and not hasBait(self.Data, baitId) then self.Data.SelectedBait = nil end
+    if doSync then
+        self:Sync()
+        self:PublishItemBar()
+    end
 end
 
 function PlayerData:Sync()

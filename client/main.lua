@@ -4,7 +4,6 @@ LocalMgrUtil:Start()
 local Task = game:GetService("Task")
 
 local LocalMotorUnitCtrl = require("client.LocalMotorUnitCtrl")
-local LocalFishEnter = require("client.LocalFishEnter")
 local LocalAttackButton = require("client.LocalAttackButton")
 local LocalReelIn = require("client.LocalReelIn")
 
@@ -16,8 +15,7 @@ end
 
 Task:Spawn(function() 
     LocalMotorUnitCtrl:Start()
-    _G.MgrGameUI:GetScreen('ScreenMain')
-    LocalFishEnter:Start()
+    _G.MgrGameUI:OpenScreen('ScreenMain')
     LocalAttackButton:Start()
     LocalReelIn:Start()
 end)
