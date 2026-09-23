@@ -14,6 +14,7 @@
 - **读 issue（含评论）**：`tea issues -r qinyuanj/se-fish <index> --comments`。
 - **列 issue**：`tea issues list -r qinyuanj/se-fish --state all --labels ready-for-agent`。
 - **评论**：`tea comments -r qinyuanj/se-fish <index> "正文"`（等价于 `tea comments add`）。
+- **贴长正文（过程产物）**：调研全文、验证台账、验收记录作为评论贴到对应 issue，不落进仓库。正文超过几 KB 时走 REST：`tea api -X POST 'repos/qinyuanj/se-fish/issues/<index>/comments' -F body=@正文.md`（命令行长度与引号都不再是问题）；回读校验用 `tea api 'repos/qinyuanj/se-fish/issues/comments/<id>' -o out.json`，`jq -r .body` 与原文比对。注意 `tea api` 的 endpoint **不要以 `/` 开头**（`/repos/...` 会被拼成 `/api/v1//repos/...` 而 404）。
 - **打 / 摘标签**：`tea issues edit -r qinyuanj/se-fish <index> --add-labels "..." --remove-labels "..."`。
 - **指派 / 取消指派**：`tea issues edit -r qinyuanj/se-fish <index> --add-assignees <用户名>`。
 - **关闭**：`tea issues close -r qinyuanj/se-fish <index>`；要带结案说明就先评论再关闭。

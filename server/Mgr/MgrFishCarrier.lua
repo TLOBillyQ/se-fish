@@ -3,7 +3,7 @@
 -- 为什么需要这一层：包内 `server/packages/ability_system/anchors/melee_hit.lua:107` 的
 -- _applyDamage 只认两条路——`target:TakeDamage(...)`，退到 `target.Controller:TakeDamage(...)`。
 -- 本图自建单位两条都没有，M15 实测「伤害恒 0 只击退」。M18 把可行接缝逐条查实（见
--- docs/verification/m0-playtest-ledger.md §1），结论是引擎里只有 BaseController 有 TakeDamage，
+-- issue #25 的 M0 试玩验证台账 §1，评论 9865），结论是引擎里只有 BaseController 有 TakeDamage，
 -- 而 Controller 只能由单位类型自己在创建时带出来：
 --   * WorldUnit 加 `EnableController = true` 也拿不到 Controller（本体读 `.Controller` 恒 nil，
 --     且赋 `.Controller` / `.TakeDamage` 一律 `cannot access an internal table/userdata`）。

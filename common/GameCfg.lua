@@ -2,7 +2,7 @@ local GameCfg = {}
 
 -- MVP 物品表；官方图片目录没有这八个物品的同名图，按 issue #33 确认使用代表图。
 -- 鱼获共用 11164「鱼」，蚯蚓用 14066「勾爪-距离」的弯曲线条，鱼竿用 12024「捕虫网」。
--- 对照记录见 docs/verification/issue-33-icons.md。
+-- 对照记录见 issue #33（评论 9859）。
 GameCfg.Items = {
     ContainerId = { ItemBar = 'itemBar', Bait = 'bait' },
     ItemBarSlots = 8,
@@ -238,7 +238,7 @@ GameCfg.Ability = {
 
 -- 水判定（M0-V1）：每个钓鱼区一条。Center 只用到 x/z（y 留作场景溯源），HalfXZ 是水平半宽（米），
 -- SurfaceY 是水面高度（米）；判定语义与配置校验见 common/MathWaterJudge.lua，
--- 边界用例见 tests/water_judge_test.lua，取值溯源见 docs/verification/m0-modules-ledger.md。
+-- 边界用例见 tests/water_judge_test.lua，取值溯源见 issue #25 的 M0 模块线台账（评论 9862）。
 -- 数值来源：#12 在本图 SE 试玩里的实测（宿主目录 log.txt 2026-09-22 11:46:49 的 PROTO_WATER INSPECT 行）——
 --   WaterCircle1  Position(-11.75, 1.05, 27.75) Size(3, 1, 3) Scale(1, 1, 1)
 --   WaterCircle2  Position(-11.75, 1.05, 27.75) Size(6, 1, 6) Scale(2, 1, 2)
@@ -248,7 +248,7 @@ GameCfg.Ability = {
 -- 注意 2（#31 改正）：**Position.y 是底面、Size 是包围盒半长**，单位顶面 y = Position.y + Size.y——
 --         大地板 pos.y=0 + size.y=2 = 顶面 2.000，与射线实测命中的 y=2.0 自洽；水圈
 --         pos.y=1.18 + size.y=1 = 顶面 ≈2.183。旧值 1.55（1.05 + Size.y/2，按 Position 是几何中心算）
---         偏低、已作废；实测来源 docs/verification/m0-playtest-ledger.md。
+--         偏低、已作废；实测来源见 issue #25 的 M0 试玩验证台账（评论 9865）。
 -- 注意 3：水圈在运行时会漂移（同一次 M15 试玩里 pos.y 从 1.05 变到 1.09 / 1.18），y 阈值本身不稳——
 --         判定以 (x,z) 矩形为主、y 只当松过滤（台账 §3）。这里取漂移高点的顶面 2.183 而不是低点
 --         2.05：判低会把真在水面的点漏成陆地（V4 实测的入水点 y=2.15 在旧值 1.55 下也判不到），
@@ -280,7 +280,7 @@ GameCfg.ReelIn = {
 }
 
 -- V3 鱼载体实例化（M0-V3）：官方鱼模型号与 mesh id 的写法已查实，F-7 的 [未查证] 由此消除。
--- 数据源：docs/verification/m0-playtest-ledger.md §2.1（mission M15 在本图 SE 试玩里实测，2026-09-22）。
+-- 数据源：issue #25 的 M0 试玩验证台账 §2.1（评论 9865；mission M15 在本图 SE 试玩里实测，2026-09-22）。
 -- 建法（F-7）：World:CreateUnit("WorldUnit") + RenderMeshId；克隆场景里的鱼只作对照（台账 §2.2）。
 -- RenderMeshId 的写法：**official://mesh/<模型号>**；PhysicsMeshId 创建时可省略，缺省就取 RenderMeshId
 --   （EggyAPI.lua:6747），也可以像本图现有鱼那样两个字段写同一个值。

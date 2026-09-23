@@ -14,7 +14,7 @@ local MathWaterJudge = require("common.MathWaterJudge")
 local CENTER_X = -11.75
 local CENTER_Z = 27.75
 -- 水面高度（#31 改正）：Position.y 是底面、Size.y 是包围盒半长 ⇒ 水圈顶面 = 1.18 + 1 ≈ 2.183。
--- 来源 docs/verification/m0-playtest-ledger.md（M15 试玩里水圈会漂移，1.18 是 16:24 那次的高点）。
+-- 来源 issue #25 的 M0 试玩验证台账（评论 9865；M15 试玩里水圈会漂移，1.18 是 16:24 那次的高点）。
 local SURFACE_Y = 2.183
 local OUTER_HALF = 3.0 -- WaterCircle2 的 Size.x / 2（Size 已含 Scale，不再乘 Scale）
 local UNDER_WATER_Y = 2.08 -- 水面下 ≈0.1m

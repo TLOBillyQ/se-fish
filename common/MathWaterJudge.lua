@@ -14,7 +14,7 @@
 -- 所以这组纯函数能在宿主机 lua 单测里跑（tests/water_judge_test.lua）。
 --
 -- 配置见 GameCfg.Water.Zones。HalfXZ 直接写运行时该水区的半边尺寸：运行时读到的 Size 已含
--- Scale，配置时再乘缩放会翻倍（#12 W-4）。取值与溯源见 docs/verification/m0-modules-ledger.md。
+-- Scale，配置时再乘缩放会翻倍（#12 W-4）。取值与溯源见 issue #25 的 M0 模块线台账（评论 9862）。
 
 local MathWaterJudge = {}
 

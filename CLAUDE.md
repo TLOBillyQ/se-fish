@@ -66,4 +66,5 @@
 - `CONTEXT.md`：领域术语表，给出每个玩法概念该说的词与该避开的说法；起名、读设计案、写玩家可见文案前先查。
 - `docs/`：`技术难点识别.md` 是已识别的技术难点，`to-questionnaire-策划案内部矛盾.md` 是待策划确认的矛盾；写技术方案或怀疑策划案自相矛盾时先看。
 - issue：自建 Gitea `lzxsvn:3000` 的 `qinyuanj/se-fish`，用 `tea` 操作；读写 issue 前看 `docs/agents/issue-tracker.md`，打 triage 标签前看 `docs/agents/triage-labels.md`。
+- 执行过程产物（调研全文、验证台账、验收记录、开发计划）贴进对应 issue 的评论，不落进仓库；`docs/` 只留长期有效的参考（术语、技术难点、vendor 说明、ADR）。`eggy-dev-plan` 默认落 `docs/plan/`，本仓库改为贴 issue。
 - ADR 放 `docs/adr/`；探索代码前该读什么见 `docs/agents/domain.md`。
