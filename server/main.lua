@@ -23,6 +23,7 @@ local MgrMap = {
     MgrShop = require("server.Mgr.MgrShop"),
     MgrQuest = require("server.Mgr.MgrQuest"),
     MgrVitals = require("server.Mgr.MgrVitals"),
+    MgrStory = require("server.Mgr.MgrStory"),
 }
 
 MgrMap.MgrCast.ReelIn = MgrMap.MgrReelIn

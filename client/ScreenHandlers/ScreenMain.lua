@@ -41,6 +41,22 @@ function ScreenHandler:Show(state)
     self.BtnDiscardLabel.Visible = selected ~= nil
 end
 
+-- 上钩提示（#54）：同一收线会话只触发一次；提示音缺失或播放失败时只保留文字与高亮
+function ScreenHandler:StartHookAlert(session)
+    if session == nil or session == self.AlertedSession then return end
+    self.AlertedSession = session
+    local alert = GameCfg.HookAlert
+    self.HookAlertUntil = World:GetServerTime() + alert.DurationSec
+    local ok, err = false, '未配置提示音'
+    if alert.Sound then
+        ok, err = pcall(function()
+            game:GetService('SoundService'):PlayLocalSound(alert.Sound, alert.Volume, 1)
+        end)
+    end
+    print('[ScreenMain] 上钩提示', tostring(session), ok and ('音效 ' .. alert.Sound)
+        or ('音效缺失，只保留文字与高亮 ' .. tostring(err)))
+end
+
 -- 选中格里能吃的物品（配了 EatPercent 的鱼获），没有返回 nil
 function ScreenHandler:SelectedFood()
     local state = self.Snapshot
@@ -123,9 +139,20 @@ function ScreenHandler:ShowCast()
     self.BtnItemActionLabel.Visible = visible
     self.BtnItemAction.TouchEnabled = self.IsOpen == true
         and ((rod and phase == 'idle') or drop or phase == 'cast' or active == true) or false
+    -- 上钩提示（#54）：本收线会话的前 DurationSec 秒按钮呼吸式高亮、文字改为提示语
+    local alert = GameCfg.HookAlert
+    local now = active == true and self.HookAlertUntil ~= nil and World:GetServerTime()
+    local alerting = now and now < self.HookAlertUntil
     -- 上岸停留期间按钮灰化（#37），其余时候用常规底色
-    self.BtnItemAction.ButtonNormalColor = phase == 'landed' and Color.New(120, 120, 120, 255)
-        or Color.New(54, 100, 140, 255)
+    if alerting then
+        local k = (math.sin(now * 2 * math.pi / alert.BreathPeriodSec) + 1) / 2
+        local h = alert.HighlightColor
+        self.BtnItemAction.ButtonNormalColor = Color.New(math.floor(54 + (h[1] - 54) * k),
+            math.floor(100 + (h[2] - 100) * k), math.floor(140 + (h[3] - 140) * k), h[4])
+    else
+        self.BtnItemAction.ButtonNormalColor = phase == 'landed' and Color.New(120, 120, 120, 255)
+            or Color.New(54, 100, 140, 255)
+    end
     self.BtnItemActionLabel.Text = phase == 'hooked' and '点击收线'
         or phase == 'landed' and '已上岸' or phase == 'cast' and '收竿' or drop and '放下'
         or rod and '抛竿' or '使用'
@@ -142,7 +169,7 @@ function ScreenHandler:ShowCast()
     end
     if self.HookHint then
         self.HookHint.Visible = active == true or phase == 'landed'
-        self.HookHint.Text = phase == 'landed' and '鱼已上岸'
+        self.HookHint.Text = phase == 'landed' and '鱼已上岸' or alerting and alert.Text
             or active and '收线 ' .. tostring(math.floor(progress + 0.5)) .. '%' or ''
     end
     if self.BtnReelClose then
@@ -427,6 +454,7 @@ function ScreenHandler:Init()
         end
         if state.phase == 'hooked' then
             _G.LocalReelIn:SetSession(state.reelSession)
+            self:StartHookAlert(state.reelSession)
         else
             _G.LocalReelIn:Clear(self.CastState and self.CastState.reelSession)
         end
@@ -434,6 +462,12 @@ function ScreenHandler:Init()
         self:ShowCast()
     end)
     self:Listen(_G.REUtil:GetRE('QuestState').OnClientEvent, function(state) self:ShowQuest(state) end)
+    -- 开场对话降级的单行公告（#54，server/Mgr/MgrStory.lua）
+    self:Listen(_G.REUtil:GetRE('StoryNotice').OnClientEvent, function(payload)
+        if type(payload) == 'table' and type(payload.text) == 'string' and _G.LocalMsgNotice then
+            _G.LocalMsgNotice(payload.text)
+        end
+    end)
     self:Listen(_G.REUtil:GetRE('ReelInRE').OnClientEvent, function()
         self:ShowCast()
     end)
@@ -475,6 +509,8 @@ function ScreenHandler:OpenScreen()
     _G.REUtil:GetRE('RequestItemBar'):FireServer()
     _G.REUtil:GetRE('RequestCastState'):FireServer()
     _G.REUtil:GetRE('RequestQuest'):FireServer()
+    -- 开场对话（#54）：服务端每名玩家本局只播一次，重开界面不重播
+    _G.REUtil:GetRE('RequestStory'):FireServer()
 end
 
 function ScreenHandler:CloseScreen()

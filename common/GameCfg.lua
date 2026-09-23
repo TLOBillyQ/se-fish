@@ -165,6 +165,32 @@ GameCfg.Quest = {
     },
 }
 
+-- 开场对话（#54，#40 规格；设计案「游戏开场：对话介绍游戏背景」）：进图后（客户端主界面首次打开时）
+-- 对每名玩家调一次 StoryService:StartStory(player, StoryId)，可跳过由剧情系统自带的跳过按钮负责；
+-- 任务推进与剧情无关，剧情信号只打日志取证（server/Mgr/MgrStory.lua）。
+-- 降级：StoryId 未配置、StoryService 不可用、StartStory 报错，或 StartTimeoutSec 秒内没收到 OnStoryStart，
+-- 就改发一条单行公告 FallbackText，并打带「[MgrStory] 降级」前缀的日志（原因 / 影响 / 接受者）。
+-- [未查证] 本图剧情配表里还没有开场剧情（CLI 没有剧情编辑子命令，要在编辑器里配），StoryId 暂为 nil 走降级；
+-- 配好后只填这里。FallbackText 是占位文案，非策划定案。
+GameCfg.Story = {
+    StoryId = nil,
+    StartTimeoutSec = 3,
+    FallbackText = '欢迎来到钓场！钓鱼佬什么都吃，钓场老板卖鱼竿——跟着左上角的新手任务开始吧。',
+}
+
+-- 上钩提示（#54，#40 规格的占位方案，非策划定案，替换点在此一处）：抛竿会话进入 hooked 相位的那一次，
+-- 同时给出文字 Text、2 号位收线按钮高亮（HighlightColor 与常规底色按 BreathPeriodSec 呼吸式明暗）、提示音 Sound 一次，
+-- 持续 DurationSec 秒后高亮停止、文字回到收线百分比。同一收线会话只提示一次（界面重开不重复）。
+-- [未查证] Sound 取官方音频库示例号 10001（docs SoundUnit 示例），实际音色待 #55 试听；播放失败只保留文字与高亮并打日志
+GameCfg.HookAlert = {
+    DurationSec = 3,
+    Text = '鱼上钩了！狂点收线',
+    HighlightColor = { 255, 190, 40, 255 },
+    BreathPeriodSec = 0.6,
+    Sound = 'official://audio/10001',
+    Volume = 100,
+}
+
 -- 交互点（#44，#27 规格）：场景既有触发器单位登记为可交互目标，当前只有钓鱼佬（TGUnitFish，
 -- 退役入口 LocalFishEnter 用它做靠近判定）。Radius 米内（只看 x/z：触发器中心在高处）显示「对话」「喂食」，
 -- 服务端复验多给 Slack 米容差。喂食即出售：鱼获 floor(BasePrice × mult)，鱼饵每只 BaitPrice 金币。
