@@ -1,5 +1,29 @@
 local GameCfg = {}
 
+-- MVP 物品表；官方图片目录没有这八个物品的同名图，按 issue #33 确认使用代表图。
+-- 鱼获共用 11164「鱼」，蚯蚓用 14066「勾爪-距离」的弯曲线条，鱼竿用 12024「捕虫网」。
+-- 对照记录见 docs/verification/issue-33-icons.md。
+GameCfg.Items = {
+    ContainerId = { ItemBar = 'itemBar', Bait = 'bait' },
+    ItemBarSlots = 8,
+    Id = { Tilapia = 'tilapia', Carp = 'carp', KnifeFish = 'knifeFish', Bass = 'bass', Catfish = 'catfish', Goldfish = 'goldfish', Worm = 'worm', StarterRod = 'starterRod' },
+    InitialWormCount = 10,
+    Definitions = {
+        tilapia = { Name = '罗非鱼', Icon = 'official://image/11164' },
+        carp = { Name = '鲤鱼', Icon = 'official://image/11164' },
+        knifeFish = { Name = '刀鱼', Icon = 'official://image/11164' },
+        bass = { Name = '鲈鱼', Icon = 'official://image/11164' },
+        catfish = { Name = '鲶鱼', Icon = 'official://image/11164' },
+        goldfish = { Name = '金鱼', Icon = 'official://image/11164' },
+        worm = { Name = '蚯蚓', Icon = 'official://image/14066' },
+        starterRod = { Name = '新手鱼竿', Icon = 'official://image/12024' },
+    },
+}
+GameCfg.Items.InitialGrants = {
+    { itemId = GameCfg.Items.Id.StarterRod, count = 1, containerId = GameCfg.Items.ContainerId.ItemBar },
+    { itemId = GameCfg.Items.Id.Worm, count = GameCfg.Items.InitialWormCount, containerId = GameCfg.Items.ContainerId.Bait },
+}
+
 GameCfg.FishMap = {
     Fish001 = {Id = "Fish001",  Name = "草鱼",  Icon = 37132,    ReqStep = 3,    Coin = 40}, --Icon = "official://image/37132"
     Fish002 = {Id = "Fish002",  Name = "小丑鱼",    Icon = 37137,    ReqStep = 2,    Coin = 25},

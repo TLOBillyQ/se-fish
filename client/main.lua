@@ -16,6 +16,7 @@ end
 
 Task:Spawn(function() 
     LocalMotorUnitCtrl:Start()
+    _G.MgrGameUI:GetScreen('ScreenMain')
     LocalFishEnter:Start()
     LocalAttackButton:Start()
     LocalReelIn:Start()
@@ -23,8 +24,6 @@ end)
 Task:Delay(1, function() 
     _G.MgrGameUI:OpenScreen("ScreenMsg")
 end)
-
-
 
 
 
