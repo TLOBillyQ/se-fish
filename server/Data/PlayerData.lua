@@ -46,6 +46,7 @@ function PlayerData:GetItemBarSnapshot()
                 itemId = entry.itemId,
                 count = entry.count,
                 containerId = entry.containerId,
+                mult = entry.mult,
             }
         end
     end
@@ -116,6 +117,22 @@ function PlayerData:ConsumeSelectedBait()
         data.Bait[itemId] = data.Bait[itemId] - 1
     end, true)
     return true, itemId
+end
+
+-- 放进道具栏第一个空格（#43）：每件占一格、不叠加，mult 是鱼获的个体倍率；满格返回 false
+function PlayerData:AddItem(itemId, mult)
+    if not self.Inited or type(itemId) ~= 'string' then return false end
+    local items = self.Data.Containers[GameCfg.Items.ContainerId.ItemBar]
+    for index = 1, GameCfg.Items.ItemBarSlots do
+        local entry = items[index]
+        if not entry or entry.count <= 0 then
+            self:UpdateData(function()
+                items[index] = { itemId = itemId, count = 1, containerId = GameCfg.Items.ContainerId.ItemBar, mult = mult }
+            end, true)
+            return true
+        end
+    end
+    return false
 end
 
 function PlayerData:DiscardSlot(index)

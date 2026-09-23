@@ -7,7 +7,7 @@
 ## 代码结构
 
 - `server/`：`main.lua` 的 `MgrMap`（`server/main.lua:12`）注册 `server/Mgr/` 下的管理器，由它统一分发 `Start` / `OnPlayerAdded` / `OnPlayerRemoving` / `Update`，新管理器加进 `MgrMap`。`server/_trigger/` 是编辑器触发器系统的运行时脚本（`GlobalVars` 是它的变量库）。
-- `client/`：`main.lua` 启动本地逻辑（`LocalMgrUtil` / `LocalMotorUnitCtrl` / `LocalAttackButton` / `LocalReelIn`），并打开 `ScreenMain`；旧钓鱼入口 `LocalFishEnter` 已退役、不再启动。界面交给 `MgrGameUI`；每个界面一个 handler 放 `client/ScreenHandlers/`，文件名要与 EUI 节点同名（`MgrGameUI:GetScreen` 按节点名 require handler）。
+- `client/`：`main.lua` 启动本地逻辑（`LocalMgrUtil` / `LocalMotorUnitCtrl` / `LocalAttackButton` / `LocalReelIn` / `LocalLoot`），并打开 `ScreenMain`；旧钓鱼入口 `LocalFishEnter` 已退役、不再启动。界面交给 `MgrGameUI`；每个界面一个 handler 放 `client/ScreenHandlers/`，文件名要与 EUI 节点同名（`MgrGameUI:GetScreen` 按节点名 require handler）。
 - `common/`：双端共享，`GameCfg.lua` 是数值配置（鱼等级、鱼竿等级等），`Util` / `REUtil` / `FXUtil` / `TeleportUtil` 是工具模块。
 - `server/packages/` / `client/packages/` / `common/packages/`：官方技能包 `ability_system` 整包 vendor，内部代码只读。业务层经双端根入口 `server/AbilityAPI.lua` / `client/AbilityAPI.lua` 用技能包，装配在 `server/Mgr/MgrAbility.lua`，配置在 `GameCfg.Ability`。碰技能包、改接缝或建编辑器侧预设前读 `docs/ability_system-vendor.md`。
 - `data/`：编辑器插件导出（Prefab / UI 节点 / 字体 ID），只读，改动回编辑器重新导出、用 sync 回灌。

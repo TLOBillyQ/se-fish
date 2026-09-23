@@ -361,6 +361,26 @@ function Mgr:UpdateEscaping(fish, now)
     end
 end
 
+function Mgr:FindByCarrier(carrier)
+    for _, fish in pairs(self.Fish) do
+        if fish.Carrier == carrier then return fish end
+    end
+end
+
+-- 鱼被打死（#43）：举着的先解除抓举（挂点销毁、持有者空手），鱼获位置取持有者脚下；
+-- 其余状态取鱼本体位置。随后移除活鱼，返回 {fishId, mult, position}，只会成功一次
+function Mgr:TakeKilled(fish)
+    if not fish or self.Fish[fish.Id] ~= fish then return nil end
+    local holder = fish.State == Mgr.State.Held and fish.Holder or nil
+    local pos = holder and holder.Character and readPosition(holder.Character)
+        or readPosition(fish.Carrier.Body) or fish.Anchor
+    self:Remove(fish)
+    print('[MgrFishUnit] 被打死', fish.FishId, fish.Mult, holder and ('held by ' .. tostring(holder.UserId)) or fish.State,
+        'fish=' .. tostring(fish.Id))
+    if holder and self.Cast then self.Cast:PushState(holder) end
+    return { fishId = fish.FishId, mult = fish.Mult, position = pos }
+end
+
 function Mgr:GetFish(player)
     local list = {}
     for _, fish in pairs(self.Fish) do

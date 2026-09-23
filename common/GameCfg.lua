@@ -35,8 +35,7 @@ GameCfg.Items.InitialGrants = {
 -- 鱼种基础值（design 钓鱼表 / 物品表的鱼塘行）：Health=血量，BaseWeight=基础重量 kg，
 -- BasePrice=基础出售价，Model=GameCfg.FishCarrier.Models 的模型号。
 -- 个体重量 = BaseWeight × 倍率、售价 = BasePrice × 倍率，由 common/FishCatch.lua 派生，不存快照。
--- 极品鲶鱼 / 极品鲈鱼的血量、重量、售价照表抄（表里与普通版对调，疑问记在 #37）。
--- 电鳗是精英鱼，MVP 不做精英，暂不进渔获表（#37 评论）。
+-- MVP 只留鱼塘 6 种普通鱼（#27 鱼种表收敛，#43）：极品鱼与电鳗随极品鱼获 / 抽奖机 / 精英鱼一起在 MVP 之外。
 GameCfg.Fish = {
     tilapia = { Name = '罗非鱼', Grade = 'normal', Health = 5, BaseWeight = 1, BasePrice = 3, Model = '7000557', Speed = 3 },
     carp = { Name = '鲤鱼', Grade = 'normal', Health = 10, BaseWeight = 5, BasePrice = 4, Model = '7000552', Speed = 3 },
@@ -44,12 +43,6 @@ GameCfg.Fish = {
     bass = { Name = '鲈鱼', Grade = 'normal', Health = 20, BaseWeight = 2, BasePrice = 6, Model = '7000551', Speed = 3 },
     catfish = { Name = '鲶鱼', Grade = 'normal', Health = 25, BaseWeight = 5, BasePrice = 7, Model = '7000553', Speed = 3 },
     goldfish = { Name = '金鱼', Grade = 'normal', Health = 3, BaseWeight = 0.1, BasePrice = 8, Model = '7000559', Speed = 3 },
-    premiumTilapia = { Name = '极品罗非鱼', Grade = 'premium', Health = 5, BaseWeight = 1, BasePrice = 3, Model = '7000557' },
-    premiumCarp = { Name = '极品鲤鱼', Grade = 'premium', Health = 10, BaseWeight = 5, BasePrice = 4, Model = '7000552' },
-    premiumKnifeFish = { Name = '极品刀鱼', Grade = 'premium', Health = 15, BaseWeight = 0.5, BasePrice = 5, Model = '7000545' },
-    premiumCatfish = { Name = '极品鲶鱼', Grade = 'premium', Health = 20, BaseWeight = 2, BasePrice = 6, Model = '7000553' },
-    premiumBass = { Name = '极品鲈鱼', Grade = 'premium', Health = 25, BaseWeight = 5, BasePrice = 7, Model = '7000551' },
-    premiumGoldfish = { Name = '极品金鱼', Grade = 'premium', Health = 3, BaseWeight = 0.1, BasePrice = 8, Model = '7000559' },
 }
 
 -- 活鱼（#41 起，server/Mgr/MgrFishUnit.lua）。来源：M0 试玩验证台账（issue #25 评论 9865）§1 V2 与 #27 规格。
@@ -79,6 +72,18 @@ GameCfg.FishUnit = {
     GlobalEscapePerPlayer = 2,
 }
 
+-- 鱼获（#43，#27 规格）：鱼死亡时在它的位置（举着时在持有者脚下）向下探地，贴地生成一份
+-- 不参与物理、不消失的鱼获；PickupRadius 米内客户端显示「拾取」文字泡（策划案 line 151 的 2 米），
+-- 服务端复验时多给 PickupSlack 米容差（网络延迟下角色位置两端不一致）[未查证：容差取值待 #55 实测]
+GameCfg.Loot = {
+    PickupRadius = 2,
+    PickupSlack = 0.5,
+    GroundRayUp = 1,
+    GroundRayDown = 20,
+    Height = 0.2,
+    BubbleHeight = 1.2,
+}
+
 GameCfg.Casting = {
     Distance = 5,
     HookDelaySec = 3,
@@ -98,12 +103,6 @@ GameCfg.Casting = {
             { Id = 'bass', Bait = 'worm', RodLevel = 1, Weight = 32 },
             { Id = 'catfish', Bait = 'worm', RodLevel = 1, Weight = 24 },
             { Id = 'goldfish', Bait = 'worm', RodLevel = 1, Weight = 16 },
-            { Id = 'premiumTilapia', Bait = 0, RodLevel = 1, Weight = 2 },
-            { Id = 'premiumCarp', Bait = 'worm', RodLevel = 1, Weight = 2 },
-            { Id = 'premiumKnifeFish', Bait = 'worm', RodLevel = 1, Weight = 2 },
-            { Id = 'premiumCatfish', Bait = 'worm', RodLevel = 1, Weight = 8 },
-            { Id = 'premiumBass', Bait = 'worm', RodLevel = 1, Weight = 6 },
-            { Id = 'premiumGoldfish', Bait = 'worm', RodLevel = 1, Weight = 4 },
         },
     },
 }

@@ -120,6 +120,13 @@ function Mgr:Start()
         local data = self:GetDataInst(player)
         if not data or type(payload) ~= 'table' then return end
         local action = payload.action
+        -- 拾取鱼获（#43）走同一动作通道，由鱼获管理器复验并发放
+        if action == 'Pickup' then
+            if self.Loot and not _G.REUtil:CheckRECD(player, 'ItemBarAction', GameCfg.Items.ActionCooldownSec) then
+                self.Loot:Pickup(player, payload.value)
+            end
+            return
+        end
         local method = type(action) == 'string' and actions[action]
         if not method then return end
         local value = payload.value
