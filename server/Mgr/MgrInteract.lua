@@ -48,6 +48,17 @@ local function feedable(data, point)
     end
 end
 
+-- 角色是否在交互点 point（带 AnchorName / Radius / Slack）的水平范围内；在就返回锚点单位。
+-- 商店（#48）复用同一套复验
+function Mgr:InRange(player, point)
+    local character = player and player.Character
+    local pos = character and character.Position
+    local anchor = pos and self:FindAnchor(point.AnchorName)
+    local center = anchor and anchor.Position
+    if not center or flatDistance(pos, center) > point.Radius + point.Slack then return nil end
+    return anchor
+end
+
 function Mgr:PlayEat(anchor, point)
     -- 引擎单位读不存在的成员可能直接报错，所以连读取也包进 pcall
     local okRead, play = pcall(function() return anchor.PlayAnimation end)
@@ -81,15 +92,12 @@ function Mgr:Handle(player, payload)
     local seq = payload.seq
     if not method or type(seq) ~= 'number' or seq ~= math.floor(seq) then return false end
     local data = self.PlayerData and self.PlayerData:GetDataInst(player)
-    local character = data and player.Character
-    local pos = character and character.Position
-    if not pos then return false end
+    if not data then return false end
     local last = self.LastSeq[player.UserId]
     if last and seq <= last then return false end
     local point = entry.Cfg()
-    local anchor = self:FindAnchor(point.AnchorName)
-    local center = anchor and anchor.Position
-    if not center or flatDistance(pos, center) > point.Radius + point.Slack then return false end
+    local anchor = self:InRange(player, point)
+    if not anchor then return false end
     self.LastSeq[player.UserId] = seq
     return self[method](self, player, data, anchor, point)
 end

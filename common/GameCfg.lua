@@ -120,6 +120,27 @@ GameCfg.Interact = {
     },
 }
 
+-- 钓场商店（#48，#28 规格）：价格真源是 design 商店表（渔力全开--商店表.xlsx）的「商店售价」列，
+-- Goods 每行照抄表列：物品、商店售价 Price、所属分页 Page、最低商店等级 MinShopLevel、每人购买次数上限 PurchaseLimit。
+-- MVP 白名单只上架「钓具」分页的新手鱼竿（表编号 14）与蚯蚓（表编号 13）；表里其余钓具（假饵 / 各级鱼竿等）、
+-- 「武器」「升级」分页均未实现，不进白名单。商店等级 Level 取当前钓鱼区序号（第一区 = 1，规格推断，替换点在此一处）；
+-- PurchaseLimit 两件都是 0（不限），MVP 只读不实现。入口复用场景触发器 TGUnitShop 与旧入口用过的文字泡预设；
+-- Radius 米内（只看 x/z）显示提示，出了 Radius 自动关商店，服务端复验多给 Slack 米
+-- [未查证] Radius 与触发器实际尺寸是否一致、文字泡高度，待 #55 实测
+GameCfg.Shop = {
+    AnchorName = 'TGUnitShop',
+    BubblePreset = 'map://preset/uf5ad80a4c6a40d59b7f6e0eb99a58c0',
+    BubbleHeight = 7,
+    HintText = '看看有什么可买的',
+    Radius = 5,
+    Slack = 0.5,
+    Level = 1,
+    Goods = {
+        { ItemId = 'starterRod', Price = 5, Page = '钓具', MinShopLevel = 1, PurchaseLimit = 0 },
+        { ItemId = 'worm', Price = 1, Page = '钓具', MinShopLevel = 1, PurchaseLimit = 0 },
+    },
+}
+
 GameCfg.Casting = {
     Distance = 5,
     HookDelaySec = 3,

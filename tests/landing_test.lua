@@ -261,9 +261,14 @@ local function read(path)
 end
 
 function TestLandingRetired:test_old_level_and_fish_chain_are_gone()
+    -- ScreenShop.lua 在 #48 按规格复用既有商店节点重写为商品行，只断言旧等级逻辑不再出现
     for _, path in ipairs({ 'server/Mgr/MgrFish.lua', 'client/LocalFishEnter.lua',
-        'client/ScreenHandlers/ScreenFishing.lua', 'client/ScreenHandlers/ScreenShop.lua' }) do
+        'client/ScreenHandlers/ScreenFishing.lua' }) do
         lu.assertNil(read(path), path .. ' 应已退役')
+    end
+    local shop = read('client/ScreenHandlers/ScreenShop.lua') or ''
+    for _, key in ipairs({ 'RodLevel', 'FishLevel', 'LvUp', 'ResetGM' }) do
+        lu.assertNil(shop:find(key, 1, true), 'ScreenShop 仍有旧等级逻辑 ' .. key)
     end
     local cfg = assert(loadfile('common/GameCfg.lua'))()
     for _, key in ipairs({ 'FishMap', 'RodLevelMap', 'FishLevelMap', 'MaxRodLv', 'MaxFishLv', 'GetLootRst' }) do

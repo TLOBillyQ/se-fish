@@ -147,18 +147,28 @@ function PlayerData:AddBait(itemId, count)
     return true
 end
 
--- 按物品表的 Container 放进对应容器（#47）：鱼饵加计数，其余每件占一格；空格不够一件都不发
-function PlayerData:GrantItem(itemId, count)
+-- 能否整批放下（#47 / #48）：鱼饵计数没有上限，其余每件占一格；返回 true 或 false, 原因（bad / full）
+function PlayerData:CanGrant(itemId, count)
     local definition = type(itemId) == 'string' and GameCfg.Items.Definitions[itemId]
     if not self.Inited or not definition or type(count) ~= 'number' or count < 1
         or count ~= math.floor(count) then return false, 'bad' end
-    if definition.Container == GameCfg.Items.ContainerId.Bait then return self:AddBait(itemId, count) end
+    if definition.Container == GameCfg.Items.ContainerId.Bait then return true end
     local items = self.Data.Containers[GameCfg.Items.ContainerId.ItemBar]
     local free = 0
     for index = 1, GameCfg.Items.ItemBarSlots do
         if not items[index] or items[index].count <= 0 then free = free + 1 end
     end
     if free < count then return false, 'full' end
+    return true
+end
+
+-- 按物品表的 Container 放进对应容器（#47）：鱼饵加计数，其余每件占一格；空格不够一件都不发
+function PlayerData:GrantItem(itemId, count)
+    local ok, reason = self:CanGrant(itemId, count)
+    if not ok then return false, reason end
+    if GameCfg.Items.Definitions[itemId].Container == GameCfg.Items.ContainerId.Bait then
+        return self:AddBait(itemId, count)
+    end
     for _ = 1, count do self:AddItem(itemId) end
     return true
 end
