@@ -10,7 +10,7 @@
 - `packages/`：官方技能包 `ability_system` 整包 vendor（`server/` / `client/` / `common/` 各一份），内部代码一行不改；来源、升级纪律与首期启用范围见 `docs/ability_system-vendor.md`。业务层不直接 require 包内模块——技能包的接缝是双端根聚合入口 `server/AbilityAPI.lua` 与 `client/AbilityAPI.lua`（转发名单在 `common/AbilityAPIBase.lua`，单测拿包内源码校对；`AbilityAPI.AttachAnchor` 是本图为锚点补挂加的包外接口）。装配由 `server/Mgr/MgrAbility.lua` 负责：进图建技能管理器、装初始技能、挂锚点，配置在 `GameCfg.Ability`。本编辑器不认包内的 `---@export_prefab_type` 自定义预设类型，编辑器侧资产（技能 / 技能背包 / 锚点预设）怎么建见 issue #7（加速链路）与 #8（挥砍链路，含锚点实例属性覆盖与触发盒 57450 结论）；各端 `packages/` 下有 README 汇总来源与纪律。预设建在图里、不进 git，一键重建用 `lua tools/cli.lua ability-presets`（issue #9）。
 - `data/`：编辑器插件导出（Prefab / UI 节点 / 字体 ID），只读，改动回编辑器重新导出、用 sync 回灌。
 - `unit_scripts/`：引擎侧生成，内容不在本仓库管理。
-- `tools/`：本仓库的工具链（deploy / sync 与 acceptance 设施），入口见下面「工具链」。
+- `tools/`：本仓库的工具链（deploy / sync、acceptance 与 quality 设施），入口见下面「工具链」。
 - `tests/`：luaunit 单测，`lua tests/run.lua` 一条命令跑完；`tests/lib/` 是 vendored 的 luaunit。
 - `features/`：Gherkin 验收 feature（`features/<车道>/<名字>.feature`，`# language: zh-CN` 开头），由 `bash tools/acceptance/run_acceptance.sh` 跑。
 - `EggyAPI.lua` / `EggyEditorAPI.lua`：运行时 / 编辑时 API 声明。
@@ -26,7 +26,9 @@
 | 重建技能包编辑器预设 | `lua tools/cli.lua ability-presets` | 按 `GameCfg.Ability` 的 key 查：预设还在就原地重刷锚点壳与属性，不在就复制官方模板重建并把新 key 回写 `GameCfg.lua`；要编辑器开着本图且在编辑态，多实例加 `--editor-instance <pid>`，`--dry-run` 只打印计划 |
 | 修技能包预设的 Name 类型 | `lua tools/cli.lua ability-presets --fix-names` | 预设 Name 被 change-asset-value 写成编辑器侧 unicode 后（症状：每场 1 条 `expected String, got userdata`、该预设单位名空，见 issue #22）用 `create-unit-by-asset → editor-unit rename → SyncAssetFromUnit → 删场景单位` 四步把 Name 修回 Lua string，逐个报修前/修后类型；要编辑器开着本图且在编辑态，`--dry-run` 只打印计划；保原预设 id、不改 `GameCfg.lua`、**全程不存盘** |
 | 单测 | `lua tests/run.lua` | luaunit，跑 `tests/*_test.lua` |
-| 验收 / 回归 | `bash tools/acceptance/run_acceptance.sh` | Gherkin 车道，目前只有 `features/engineering/deploy-mirror.feature`（`tmp/` 下临时工作区验「镜像 + 不碰非自有文件」）；不需要 luarocks、不依赖 WSL，详见 `tools/acceptance/README.md` |
+| 验收 / 回归 | `bash tools/acceptance/run_acceptance.sh` | Gherkin 车道，目前只有 `features/engineering/deploy-mirror.feature`；`acceptance4lua` 固定提交缓存在 `.toolcache/`，不需要 luarocks、不依赖 WSL，详见 `tools/acceptance/README.md` |
+| 四项质量检查 | `bash tools/quality/run.sh` | Git Bash + Lua 5.4；固定缓存四个 4lua 工具及依赖，跑验收、luacov 单测、CRAP 和 DRY 分析；排除 `packages/`，结果在 `build/quality/`；仅报告存量质量问题，工具故障返回失败 |
+| 独立变异检查 | `bash tools/quality/mutate.sh` | 在 `build/quality/mutation/` 的副本上测 `common/RateLimit.lua`，工作区源码不改；`build/quality/mutate.json` 记录存活变异，首期不设门槛 |
 
 宿主目录默认 `C:\Users\<用户名>\Desktop\dev\eggy\LuaSource_钓鱼怎么这么危险啊喂！`，`EGGY_WORKSPACE` 可覆盖；宿主目录本身不是本仓库，只镜像、不往里放别的东西。
 
@@ -48,7 +50,7 @@
 
 | 命令 | 预期输出 |
 |---|---|
-| `lua tests/run.lua` | 统计行 `0 failures`（当前 `68 successes, 0 failures`），末行 `OK` |
+| `lua tests/run.lua` | 统计行 `0 failures`（当前 `193 successes, 0 failures`），末行 `OK` |
 | `bash tools/acceptance/run_acceptance.sh` | `N passed, 0 failed`（当前 `3 passed, 0 failed`），末行 `acceptance run OK` |
 | `lua -e "assert(loadfile('<file>'))"`（每个改过的 `.lua` 跑一次） | 无输出、退出码 0；有语法错时抛 `loadfile` 的报错 |
 | `"$USERPROFILE/.eggitor/cli/editor-cli.exe" code validate --strict --json --workspace "<宿主目录>"`（`deploy` 之后） | `{"ok":true,"data":{"valid":true,"is_se_map":true,"issues":[]},"meta":{"warnings":[]}}` |

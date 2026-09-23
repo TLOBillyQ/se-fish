@@ -44,7 +44,12 @@ for feature in "${features[@]}"; do
   echo "== $feature"
   stem="$(echo "${feature#features/}" | sed 's|/|_|g; s|\.feature$||')"
   tools/acceptance/gherkin-parser "$feature" "$IR_DIR/$stem.json"
-  tools/acceptance/ir-dry-checker "$IR_DIR/$stem.json" "$DRY_DIR/$stem.json" || true
+  if ! tools/acceptance/ir-dry-checker "$IR_DIR/$stem.json" "$DRY_DIR/$stem.json"; then
+    if [ "${ACCEPTANCE_STRICT_TOOLS:-0}" = 1 ]; then
+      echo "IR-DRY 工具运行失败：$feature" >&2
+      exit 1
+    fi
+  fi
   mkdir -p "$GEN_DIR/$stem"
   tools/acceptance/entrypoint_generator "$IR_DIR/$stem.json" "$GEN_DIR/$stem/feature_acceptance_spec.lua"
   if ! ACCEPTANCE_FEATURE_JSON="$IR_DIR/$stem.json" LUA_PATH="$LUA_PATH_FOR_SPECS" \

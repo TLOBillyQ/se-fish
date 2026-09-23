@@ -1,19 +1,33 @@
--- tools/acceptance/bootstrap.lua —— 把 acceptance4lua 放到 package.path 上，
--- 树不存在时先从内网 Gitea clone 到 .toolcache/（在仓库根运行）。
---
--- 与 se-defense 那套的差别：不走 luarocks。acceptance4lua 是纯 Lua（src/acceptance4lua/*.lua），
--- 不必编译、不必装 rock，clone 下来把 src/ 直接拼进 LUA_PATH 即可；本机也没有 luarocks。
--- 树的位置可用 SE_FISH_LUA_TOOLS 覆盖；跟随上游 main（不锁版本），删掉 .toolcache/ 即重装。
+-- 四个 4lua 仓库按固定提交放入 .toolcache/；缓存存在时只校验，不访问网络。
+-- acceptance4lua 的位置可用 SE_FISH_LUA_TOOLS 覆盖；不依赖 luarocks。
 local shell = require("tools.win_shell")
 
 local M = {}
 
 M.tree = os.getenv("SE_FISH_LUA_TOOLS") or ".toolcache/acceptance4lua"
 M.repo_url = "http://lzxsvn:3000/eggy/acceptance4lua"
+M.pins = {
+  acceptance4lua = "8dd107144a7635596d75e4fccfce35121dc67570",
+  crap4lua = "ceba141e5d3138f8aadb78b2c3d6e8e20c571d6c",
+  dry4lua = "1dd42d73116921cd54a00c7b132a9b097e4a288a",
+  mutate4lua = "18f68492e110462a22ee11b96bb411c6bd6f5398",
+}
 
--- 装好的标志：框架的 init.lua 就位。
-local function marker()
-  return M.tree .. "/src/acceptance4lua/init.lua"
+local function tree(name)
+  if name == "acceptance4lua" then return M.tree end
+  return ".toolcache/" .. name
+end
+
+local function marker(name)
+  if name == "mutate4lua" then return tree(name) .. "/src/cli.lua" end
+  return tree(name) .. "/src/" .. name .. "/" .. (name == "acceptance4lua" and "init" or "cli") .. ".lua"
+end
+
+local function revision(name)
+  local code, output = shell.capture("git -C " .. shell.q(tree(name)) .. " rev-parse HEAD")
+  if code ~= 0 then return nil end
+  local hash = output:match("(%x+)")
+  return hash and #hash == 40 and hash or nil
 end
 
 local function exists(path)
@@ -49,25 +63,41 @@ function M.lua_path()
   return table.concat(parts, ";")
 end
 
-function M.install()
-  print("[acceptance] clone " .. M.repo_url .. " → " .. M.tree)
-  shell.ensure_dir(M.tree:match("^(.*)/[^/]+$") or ".")
-  if not run("git clone --depth 1 " .. url_q(M.repo_url) .. " " .. shell.q(M.tree)) then
-    return nil, "git clone 失败: " .. M.repo_url .. "（内网 Gitea 要可访问）"
+function M.install(name)
+  name = name or "acceptance4lua"
+  if not M.pins[name] then return nil, "未知工具: " .. tostring(name) end
+  local dest = tree(name)
+  local url = name == "acceptance4lua" and M.repo_url or "http://lzxsvn:3000/eggy/" .. name
+  print("[4lua] clone " .. url .. " → " .. dest)
+  shell.ensure_dir(dest:match("^(.*)/[^/]+$") or ".")
+  if not run("git clone " .. url_q(url) .. " " .. shell.q(dest)) then
+    return nil, "git clone 失败: " .. url
   end
-  if not exists(marker()) then
-    return nil, "clone 完仍找不到 " .. marker() .. "（仓库布局变了？）"
+  if not run("git -C " .. shell.q(dest) .. " checkout --detach " .. M.pins[name]) then
+    return nil, "检出固定提交失败: " .. name
   end
   return true
 end
 
--- 就位检查 + 装 path；失败返回 nil, 原因（调用方负责打印并退出）。
-function M.ensure()
-  if not exists(marker()) then
-    local ok, err = M.install()
-    if not ok then return nil, "error: " .. err end
+function M.ensure(name)
+  name = name or "acceptance4lua"
+  if not M.pins[name] then return nil, "未知工具: " .. tostring(name) end
+  if not exists(marker(name)) and not revision(name) then
+    local ok, err = M.install(name)
+    if not ok then return nil, err end
   end
-  package.path = M.lua_path() .. ";" .. package.path
+  if revision(name) ~= M.pins[name] or not exists(marker(name)) then
+    return nil, name .. " 缓存缺失或提交不符（期望 " .. M.pins[name] .. "）"
+  end
+  local code, changes = shell.capture("git -C " .. shell.q(tree(name)) .. " status --porcelain --untracked-files=no")
+  if code ~= 0 or changes:match("%S") then
+    return nil, name .. " 缓存源码已修改或状态不可读"
+  end
+  if name == "acceptance4lua" then
+    package.path = M.lua_path() .. ";" .. package.path
+  else
+    package.path = tree(name) .. "/src/?.lua;" .. tree(name) .. "/src/?/init.lua;" .. package.path
+  end
   return true
 end
 

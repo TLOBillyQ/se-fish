@@ -26,7 +26,7 @@ bash tools/acceptance/run_acceptance.sh      # parse → dry-check（advisory）
   路径与引用交给 `tools/win_shell`。
 - `tools/acceptance/bootstrap.lua` —— 把 `acceptance4lua` 放到 `package.path` 上；树不在时先
   `git clone` 到 `.toolcache/acceptance4lua`（上游是纯 Lua，clone 下来直接把 `src/` 拼进 LUA_PATH，
-  不走 luarocks）。树的位置可用 `SE_FISH_LUA_TOOLS` 覆盖；跟随上游 main，删 `.toolcache/` 即重装。
+  不走 luarocks）。树的位置可用 `SE_FISH_LUA_TOOLS` 覆盖；固定提交 `8dd107144a7635596d75e4fccfce35121dc67570`，缓存就位后离线运行，版本不符直接报错。
 - `tools/acceptance/cli/*.lua` —— `acceptance4lua.cli.*` 的宿主 wrapper；同目录的
   `gherkin-parser` / `ir-dry-checker` / `entrypoint_generator` 是 bash 入口，按路径调用即可
   （`entrypoint_generator` 把生成的 spec 绑到 `tools.acceptance.steps`）。
@@ -35,7 +35,7 @@ bash tools/acceptance/run_acceptance.sh      # parse → dry-check（advisory）
 ## 约定
 
 - 每次运行先清 `build/acceptance/generated/` 再生成：改过 feature 名字不会留下旧 stem 继续跑。
-- `ir-dry-checker` 只出报告、不拦流水线（`|| true`）。
+- `ir-dry-checker` 只出报告；单独跑验收时工具错误不拦流水线，`tools/quality/run.sh` 设置 `ACCEPTANCE_STRICT_TOOLS=1`，工具错误会失败。
 - 临时工作区与那次 deploy 的输出留在 `tmp/deploy-mirror-workspace`、`tmp/deploy-mirror.out`
   （都在 `.gitignore` 里），失败时直接翻；部署步骤用的伪 home 是 `tmp/deploy-mirror-home`
   （只需它在盘上不存在，不建目录）。
