@@ -16,6 +16,9 @@ local function signal()
 end
 
 function TestItemBarFlow:setUp()
+    -- #49：进图白送只在调试开关下发放，这些用例沿用它的起始库存（鱼竿在第 1 格、蚯蚓若干）
+    self.savedGrantDebug = require('common.GameCfg').Debug
+    require('common.GameCfg').Debug = { Enabled = true, InitialGrants = self.savedGrantDebug.InitialGrants }
     self.previousREUtil = _G.REUtil
     self.events = {}
     self.now = 0
@@ -48,6 +51,7 @@ function TestItemBarFlow:setUp()
 end
 
 function TestItemBarFlow:tearDown()
+    require('common.GameCfg').Debug = self.savedGrantDebug
     Mgr:OnPlayerRemoving(self.player)
     _G.REUtil = self.previousREUtil
 end

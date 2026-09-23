@@ -21,6 +21,8 @@ function TestFishFeed:setUp()
     self.savedCfg = package.loaded['common.GameCfg']
     package.loaded['common.GameCfg'] = nil
     self.cfg = require('common.GameCfg')
+    -- #49：进图白送只在调试开关下发放，这里沿用它的起始库存（鱼竿在第 1 格、蚯蚓若干）
+    self.cfg.Debug = { Enabled = true, InitialGrants = self.cfg.Debug.InitialGrants }
     local PlayerData = assert(loadfile('server/Data/PlayerData.lua'))()
     self.attrs = {}
     self.player = { UserId = 1, Character = { Position = vec(3, 1, 3) },
@@ -82,7 +84,7 @@ function TestFishFeed:test_feed_selected_fish_takes_that_slot_and_pays_once()
     lu.assertNil(self.data.Data.Containers.itemBar[slot])
     lu.assertEquals(self.data.Data.Containers.itemBar[2].itemId, 'carp')
     lu.assertNil(self.data.Data.SelectedSlot)
-    lu.assertEquals(self.data.Data.Bait.worm, self.cfg.Items.InitialWormCount)
+    lu.assertEquals(self.data.Data.Bait.worm, self.cfg.Debug.InitialGrants[2].count)
     lu.assertEquals(self.synced, { self.player })
     lu.assertEquals(self.plays, { self.cfg.Interact.Fisherman.EatAnimation })
     lu.assertTrue(self.replies[#self.replies].payload.ok)

@@ -18,6 +18,9 @@ local function signal()
 end
 
 function TestRodVisual:setUp()
+    -- #49：进图白送只在调试开关下发放，这些用例沿用它的起始库存（鱼竿在第 1 格、蚯蚓若干）
+    self.savedGrantDebug = require('common.GameCfg').Debug
+    require('common.GameCfg').Debug = { Enabled = true, InitialGrants = self.savedGrantDebug.InitialGrants }
     self.oldGame, self.oldVector3, self.oldREUtil = _G.game, _G.Vector3, _G.REUtil
     self.failKind = nil
     self.created = {}
@@ -49,6 +52,7 @@ function TestRodVisual:setUp()
 end
 
 function TestRodVisual:tearDown()
+    require('common.GameCfg').Debug = self.savedGrantDebug
     Mgr:OnPlayerRemoving(self.player)
     _G.game, _G.Vector3, _G.REUtil = self.oldGame, self.oldVector3, self.oldREUtil
 end

@@ -11,8 +11,15 @@ local function player()
 end
 
 function TestItemBar:setUp()
+    -- #49：进图白送只在调试开关下发放，这些用例沿用它的起始库存（鱼竿在第 1 格、蚯蚓若干）
+    self.savedGrantDebug = require('common.GameCfg').Debug
+    require('common.GameCfg').Debug = { Enabled = true, InitialGrants = self.savedGrantDebug.InitialGrants }
     self.data = PlayerData.New(player())
     self.data:Init()
+end
+
+function TestItemBar:tearDown()
+    require('common.GameCfg').Debug = self.savedGrantDebug
 end
 
 function TestItemBar:test_injected_item_bar_notification_without_global_manager()

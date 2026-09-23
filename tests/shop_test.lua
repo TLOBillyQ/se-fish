@@ -12,6 +12,9 @@ local lu = require('luaunit')
 TestShop = {}
 
 function TestShop:setUp()
+    -- #49：进图白送只在调试开关下发放，这些用例沿用它的起始库存（鱼竿在第 1 格、蚯蚓若干）
+    self.savedGrantDebug = require('common.GameCfg').Debug
+    require('common.GameCfg').Debug = { Enabled = true, InitialGrants = self.savedGrantDebug.InitialGrants }
     local env = self
     self.cfg = require('common.GameCfg')
     self.savedShop = self.cfg.Shop
@@ -33,6 +36,7 @@ function TestShop:setUp()
 end
 
 function TestShop:tearDown()
+    require('common.GameCfg').Debug = self.savedGrantDebug
     self.cfg.Shop = self.savedShop
 end
 

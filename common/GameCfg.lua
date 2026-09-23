@@ -7,7 +7,6 @@ GameCfg.Items = {
     ContainerId = { ItemBar = 'itemBar', Bait = 'bait' },
     ItemBarSlots = 8,
     Id = { Tilapia = 'tilapia', Carp = 'carp', KnifeFish = 'knifeFish', Bass = 'bass', Catfish = 'catfish', Goldfish = 'goldfish', Worm = 'worm', StarterRod = 'starterRod' },
-    InitialWormCount = 10,
     ActionCooldownSec = 0.12,
     RodVisual = {
         -- Mesh 来自试玩世界单位「中式杆」（原 AssetId=map://preset/u46466002b9a47c588001c2e65ef4c3a）；
@@ -27,15 +26,15 @@ GameCfg.Items = {
         starterRod = { Name = '新手鱼竿', Icon = 'official://image/12024', Level = 1 },
     },
 }
-GameCfg.Items.InitialGrants = {
-    { itemId = GameCfg.Items.Id.StarterRod, count = 1, containerId = GameCfg.Items.ContainerId.ItemBar },
-    { itemId = GameCfg.Items.Id.Worm, count = GameCfg.Items.InitialWormCount, containerId = GameCfg.Items.ContainerId.Bait },
-}
-
--- 调试开关（#47，#28 规格）：唯一的调试入口，默认关闭。开启后服务端接受 GM 发放
--- （server/Mgr/MgrGM.lua，客户端控制台 _G.GM.Coin / _G.GM.Item）；M1 的进图白送由 #49 并入这里
+-- 调试开关（#47 / #49，#28 规格）：唯一的调试入口，默认关闭。开启后服务端接受 GM 发放
+-- （server/Mgr/MgrGM.lua，客户端控制台 _G.GM.Coin / _G.GM.Item），进图时按 InitialGrants 白送（M1 的进图白送降级至此）。
+-- 关闭时正式获取路径只有拾饵、喂食换金币与商店购买。
 GameCfg.Debug = {
     Enabled = false,
+    InitialGrants = {
+        { itemId = GameCfg.Items.Id.StarterRod, count = 1, containerId = GameCfg.Items.ContainerId.ItemBar },
+        { itemId = GameCfg.Items.Id.Worm, count = 10, containerId = GameCfg.Items.ContainerId.Bait },
+    },
 }
 
 -- 鱼种基础值（design 钓鱼表 / 物品表的鱼塘行）：Health=血量，BaseWeight=基础重量 kg，
@@ -141,6 +140,9 @@ GameCfg.Shop = {
     },
 }
 
+-- 抛竿选鱼（钓鱼表）。Zones 每行：Id=鱼种，Bait=需要的鱼饵（0 = 不挂饵也可），RodLevel=鱼竿等级下限
+-- （鱼竿 Definitions.Level ≥ RodLevel 才可钓，第一区全为 1），DrawWeight=钓鱼表的「抽签权重」。
+-- DrawWeight 与基础重量 BaseWeight（kg）、个体重量 FishCatch.Weight 无关，别拿它乘倍率（#49 从 Weight 改名）
 GameCfg.Casting = {
     Distance = 5,
     HookDelaySec = 3,
@@ -154,12 +156,12 @@ GameCfg.Casting = {
     LandingHeight = 0.5,
     Zones = {
         WaterCircle2 = {
-            { Id = 'tilapia', Bait = 0, RodLevel = 1, Weight = 8 },
-            { Id = 'carp', Bait = 'worm', RodLevel = 1, Weight = 8 },
-            { Id = 'knifeFish', Bait = 'worm', RodLevel = 1, Weight = 8 },
-            { Id = 'bass', Bait = 'worm', RodLevel = 1, Weight = 32 },
-            { Id = 'catfish', Bait = 'worm', RodLevel = 1, Weight = 24 },
-            { Id = 'goldfish', Bait = 'worm', RodLevel = 1, Weight = 16 },
+            { Id = 'tilapia', Bait = 0, RodLevel = 1, DrawWeight = 8 },
+            { Id = 'carp', Bait = 'worm', RodLevel = 1, DrawWeight = 8 },
+            { Id = 'knifeFish', Bait = 'worm', RodLevel = 1, DrawWeight = 8 },
+            { Id = 'bass', Bait = 'worm', RodLevel = 1, DrawWeight = 32 },
+            { Id = 'catfish', Bait = 'worm', RodLevel = 1, DrawWeight = 24 },
+            { Id = 'goldfish', Bait = 'worm', RodLevel = 1, DrawWeight = 16 },
         },
     },
 }

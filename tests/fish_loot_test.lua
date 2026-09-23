@@ -19,6 +19,9 @@ local function vec(x, y, z)
 end
 
 function TestFishLoot:setUp()
+    -- #49：进图白送只在调试开关下发放，这些用例沿用它的起始库存（鱼竿在第 1 格、蚯蚓若干）
+    self.savedGrantDebug = require('common.GameCfg').Debug
+    require('common.GameCfg').Debug = { Enabled = true, InitialGrants = self.savedGrantDebug.InitialGrants }
     TestFishLift.setUp(self)
     local env = self
     self.lootModule = package.loaded['server.Mgr.MgrLoot']
@@ -64,6 +67,7 @@ function TestFishLoot:setUp()
 end
 
 function TestFishLoot:tearDown()
+    require('common.GameCfg').Debug = self.savedGrantDebug
     package.loaded['server.Mgr.MgrLoot'] = self.lootModule
     TestFishLift.tearDown(self)
 end

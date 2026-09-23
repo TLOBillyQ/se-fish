@@ -16,6 +16,9 @@ local function vec3(x, y, z)
 end
 
 function TestBaitSpot:setUp()
+    -- #49：进图白送只在调试开关下发放，这些用例沿用它的起始库存（鱼竿在第 1 格、蚯蚓若干）
+    self.savedGrantDebug = require('common.GameCfg').Debug
+    require('common.GameCfg').Debug = { Enabled = true, InitialGrants = self.savedGrantDebug.InitialGrants }
     self.cfg = require('common.GameCfg')
     self.savedSpots = self.cfg.BaitSpots
     self.cfg.BaitSpots = {
@@ -30,6 +33,7 @@ function TestBaitSpot:setUp()
 end
 
 function TestBaitSpot:tearDown()
+    require('common.GameCfg').Debug = self.savedGrantDebug
     TestFishLoot.tearDown(self)
     self.cfg.BaitSpots = self.savedSpots
 end

@@ -16,7 +16,7 @@ function TestGMCoin:setUp()
     self.savedGame = rawget(_G, 'game')
     self.cfg = require('common.GameCfg')
     self.savedDebug = self.cfg.Debug
-    self.cfg.Debug = { Enabled = true }
+    self.cfg.Debug = { Enabled = true, InitialGrants = self.savedDebug.InitialGrants }
     local PlayerData = assert(loadfile('server/Data/PlayerData.lua'))()
     self.attrs = {}
     local function newPlayer(id)

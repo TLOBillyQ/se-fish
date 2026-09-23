@@ -7,12 +7,13 @@ function PlayerData.New(player, onItemBarChanged)
     return setmetatable({ Player = player, Inited = false, OnItemBarChanged = onItemBarChanged }, PlayerData)
 end
 
--- 本局只有这里发放初始物品；重复 Init 不会重置已有库存。
+-- 进图白送只在调试开关打开时发放（#49）；重复 Init 不会重置已有库存。
 function PlayerData:Init()
     if not self.Player or self.Inited then return end
     local items = {}
     local bait = {}
-    for _, grant in ipairs(GameCfg.Items.InitialGrants) do
+    local debug = GameCfg.Debug
+    for _, grant in ipairs(debug and debug.Enabled and debug.InitialGrants or {}) do
         if grant.containerId == GameCfg.Items.ContainerId.ItemBar then
             items[#items + 1] = {
                 itemId = grant.itemId,
