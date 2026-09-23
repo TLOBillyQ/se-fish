@@ -6,6 +6,15 @@ local GameCfg = require('common.GameCfg')
 local Mgr = { Sessions = {}, Connections = {} }
 Mgr.CHANNEL = 'ReelInRE'
 
+local function advanceIdle(session, now)
+    local progress = session.Progress
+    local outcome = progress:Advance(now - GameCfg.HighFreqInput.AggregateSec)
+    if not outcome and progress.ZeroAt and now > progress.ZeroAt + GameCfg.ReelIn.GraceSec then
+        return progress:Advance(now)
+    end
+    return outcome
+end
+
 function Mgr:Begin(player, id, now)
     local previous = self.Sessions[player.UserId]
     if previous and previous.Player == player and previous.Id == id then return true end
@@ -46,6 +55,11 @@ function Mgr:Accept(player, payload)
     local now = self.World:GetServerTime()
     local result = session.Receiver:Accept(now, payload)
     if result.Status ~= RateLimit.Result.Ok then return end
+    local expired = advanceIdle(session, now)
+    if expired then
+        self:Finish(session, expired)
+        return
+    end
     local outcome = session.Progress:Advance(now, result.Accepted, GameCfg.HighFreqInput.AggregateSec)
     if outcome then self:Finish(session, outcome)
     else self:Reply(session, 'progress', result.Accepted) end
@@ -132,7 +146,7 @@ function Mgr:Update()
     if not self.World then return end
     local now = self.World:GetServerTime()
     for _, session in pairs(self.Sessions) do
-        local outcome = session.Progress:Advance(now - GameCfg.HighFreqInput.AggregateSec)
+        local outcome = advanceIdle(session, now)
         if outcome then
             self:Finish(session, outcome)
         elseif not session.LastReport or now - session.LastReport >= GameCfg.HighFreqInput.AggregateSec then

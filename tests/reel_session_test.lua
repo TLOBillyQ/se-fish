@@ -75,16 +75,33 @@ end
 
 function TestReelSession:test_update_does_not_change_delayed_batch_result()
     local progress = self.mgr.Sessions[1].Progress
-    self.now = 10.179
+    self.now = 10.159
     self.mgr:Update()
     lu.assertNil(self.a.results[1])
     lu.assertAlmostEquals(progress.Progress, 0, 0.5)
-    self.now = 10.19
+    self.now = 10.17
     self.events.ReelInRE.OnServerEvent:Fire(self.a, { s = 's1', n = 2, q = 1 })
     local direct = require('common.ReelProgress').New(0, require('common.GameCfg').ReelIn)
-    direct:Advance(10.19, 2, 0.1)
+    direct:Advance(10.17, 2, 0.1)
     lu.assertNil(self.a.results[1])
     lu.assertAlmostEquals(progress.Progress, direct.Progress, 0.5)
+end
+
+function TestReelSession:test_grace_never_extends_past_two_hundred_ms()
+    self.now = 10.179
+    self.mgr:Update()
+    lu.assertNil(self.a.results[1])
+    self.now = 10.201
+    self.events.ReelInRE.OnServerEvent:Fire(self.a, { s = 's1', n = 10, q = 1 })
+    lu.assertEquals(self.a.results, { 'unhooked' })
+    lu.assertNil(self.mgr.Sessions[1])
+    lu.assertNotNil(self.mgr.Sessions[2])
+end
+
+function TestReelSession:test_no_click_unhooks_after_hundred_eighty_ms()
+    self.now = 10.181
+    self.mgr:Update()
+    lu.assertEquals(self.a.results, { 'unhooked' })
 end
 
 function TestReelSession:test_restart_cleans_connections_and_sessions()
