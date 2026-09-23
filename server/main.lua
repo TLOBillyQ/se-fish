@@ -12,6 +12,7 @@ MgrUtil:Start()
 local MgrMap = {
     MgrPlayer = require("server.Mgr.MgrPlayer"),
     MgrPlayerData = require("server.Mgr.MgrPlayerData"),
+    MgrCast = require("server.Mgr.MgrCast"),
     MgrAbility = require("server.Mgr.MgrAbility"),
     MgrReelIn = require("server.Mgr.MgrReelIn"),
     MgrFishCarrier = require("server.Mgr.MgrFishCarrier"),

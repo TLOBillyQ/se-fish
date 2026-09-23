@@ -32,6 +32,29 @@ GameCfg.Items.InitialGrants = {
     { itemId = GameCfg.Items.Id.Worm, count = GameCfg.Items.InitialWormCount, containerId = GameCfg.Items.ContainerId.Bait },
 }
 
+GameCfg.Casting = {
+    Distance = 5,
+    HookDelaySec = 3,
+    ActionCooldownSec = 0.12,
+    Zones = {
+        WaterCircle2 = {
+            { Id = 'tilapia', Bait = 0, RodLevel = 1, Weight = 8 },
+            { Id = 'carp', Bait = 'worm', RodLevel = 1, Weight = 8 },
+            { Id = 'knifeFish', Bait = 'worm', RodLevel = 1, Weight = 8 },
+            { Id = 'bass', Bait = 'worm', RodLevel = 1, Weight = 32 },
+            { Id = 'catfish', Bait = 'worm', RodLevel = 1, Weight = 24 },
+            { Id = 'goldfish', Bait = 'worm', RodLevel = 1, Weight = 16 },
+            { Id = 'premiumTilapia', Bait = 0, RodLevel = 1, Weight = 2 },
+            { Id = 'premiumCarp', Bait = 'worm', RodLevel = 1, Weight = 2 },
+            { Id = 'premiumKnifeFish', Bait = 'worm', RodLevel = 1, Weight = 2 },
+            { Id = 'premiumCatfish', Bait = 'worm', RodLevel = 1, Weight = 8 },
+            { Id = 'premiumBass', Bait = 'worm', RodLevel = 1, Weight = 6 },
+            { Id = 'premiumGoldfish', Bait = 'worm', RodLevel = 1, Weight = 4 },
+            { Id = 'electricEel', Bait = 'worm', RodLevel = 1, Weight = 10 },
+        },
+    },
+}
+
 GameCfg.FishMap = {
     Fish001 = {Id = "Fish001",  Name = "草鱼",  Icon = 37132,    ReqStep = 3,    Coin = 40}, --Icon = "official://image/37132"
     Fish002 = {Id = "Fish002",  Name = "小丑鱼",    Icon = 37137,    ReqStep = 2,    Coin = 25},
