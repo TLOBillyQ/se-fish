@@ -52,6 +52,21 @@ GameCfg.Fish = {
     premiumGoldfish = { Name = '极品金鱼', Grade = 'premium', Health = 3, BaseWeight = 0.1, BasePrice = 8, Model = '7000559' },
 }
 
+-- 活鱼（#41 起，server/Mgr/MgrFishUnit.lua）。来源：M0 试玩验证台账（issue #25 评论 9865）§1 V2 与 #27 规格。
+GameCfg.FishUnit = {
+    -- 顶鱼挂点：OnLiftedBegin 里立刻建在角色上，鱼 Parent 到挂点下（V2 实测 35s/69m 恒 (0,1.9,0)）
+    LiftSocket = 'origin',
+    LiftSocketOffset = { x = 0, y = 1.9, z = 0 },
+    -- 服务端 Lift() 后等 OnLiftedBegin 的确认窗；没确认才重试，最多 LiftAttempts 次
+    -- （Lift 是占用语义，确认前连调会把刚抓起的鱼放开）
+    LiftConfirmSec = 1,
+    LiftAttempts = 3,
+    -- 待抓的鱼：关重力 + 阻尼，偏离生成点超过容差（米）或坐标 NaN 就拉回并清速度（M18-2）
+    AwaitDriftTolerance = 0.05,
+    LinearDamping = 5,
+    AngularDamping = 5,
+}
+
 GameCfg.Casting = {
     Distance = 5,
     HookDelaySec = 3,
@@ -59,8 +74,10 @@ GameCfg.Casting = {
     -- 上岸停留：收线到 100% 后按钮灰化、播放上岸动作，停留结束归位到选中鱼竿（#37）
     LandedHoldSec = 1.2,
     LandedAnimation = 'official://animation/24450', -- 官方动画「钓鱼」
-    -- 活鱼落在玩家正前方的水平距离（米），要在原生抓举的命中范围内（#27 接口契约）
-    LandingOffset = 1.5,
+    -- 活鱼落在玩家正前方的水平距离与离地高度（米），要在原生抓举的命中范围内（#27 接口契约）；
+    -- 取 M0 抓举夹具实测能抓中的角色局部 (0, 0.5, 2)（issue #25 台账 §6.5，tmp/qa25/lift-unforced.lua）
+    LandingOffset = 2,
+    LandingHeight = 0.5,
     Zones = {
         WaterCircle2 = {
             { Id = 'tilapia', Bait = 0, RodLevel = 1, Weight = 8 },

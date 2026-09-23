@@ -46,16 +46,19 @@ function ScreenHandler:ShowCast()
     local reel = _G.LocalReelIn
     local active = self.IsOpen and phase == 'hooked' and reel
         and reel.SessionId == self.CastState.reelSession
-    local visible = rod or phase ~= 'idle'
+    -- 头上顶着鱼（#41，以服务端 holding 为准）：空闲时 2 号位是「放下」
+    local drop = phase == 'idle' and self.CastState ~= nil and self.CastState.holding ~= nil
+    local visible = rod == true or phase ~= 'idle' or drop
     self.BtnItemAction.Visible = visible
     self.BtnItemActionLabel.Visible = visible
     self.BtnItemAction.TouchEnabled = self.IsOpen == true
-        and ((rod and phase == 'idle') or phase == 'cast' or active == true) or false
+        and ((rod and phase == 'idle') or drop or phase == 'cast' or active == true) or false
     -- 上岸停留期间按钮灰化（#37），其余时候用常规底色
     self.BtnItemAction.ButtonNormalColor = phase == 'landed' and Color.New(120, 120, 120, 255)
         or Color.New(54, 100, 140, 255)
     self.BtnItemActionLabel.Text = phase == 'hooked' and '点击收线'
-        or phase == 'landed' and '已上岸' or phase == 'cast' and '收竿' or rod and '抛竿' or '使用'
+        or phase == 'landed' and '已上岸' or phase == 'cast' and '收竿' or drop and '放下'
+        or rod and '抛竿' or '使用'
     local result = reel and reel.LastResult
     -- 收线中显示本地反馈并平滑追平权威进度（#38）；其余时候显示最后一次权威值
     local progress = active and reel.DisplayProgress and reel:DisplayProgress()
@@ -243,6 +246,8 @@ function ScreenHandler:Init()
             self:ShowCast()
         elseif phase == 'cast' then
             _G.REUtil:GetRE('CastAction'):FireServer({ action = 'Reel' })
+        elseif phase == 'idle' and self.CastState and self.CastState.holding then
+            _G.REUtil:GetRE('CastAction'):FireServer({ action = 'Drop' })
         elseif phase == 'idle' and self.Snapshot then
             local slot = self.Snapshot.selectedSlot
             local entry = slot and self.Snapshot.slots[slot]

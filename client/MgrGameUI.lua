@@ -133,8 +133,13 @@ function MgrGameUI:SetCustomControlUI(uiNode, value)
     AllCustomUINodeMap[uiNode] = value
 end
 
+function MgrGameUI:HideLiftButton()
+    pcall(function() StarterGui:SetCoreGuiEnabled(Enums.CoreGuiType.LiftButton, false) end)
+end
+
 function MgrGameUI:SetControlUI(visible)
     StarterGui:SetCoreGuiEnabled(Enums.CoreGuiType.All, visible)
+    self:HideLiftButton()
     for k, v in pairs(AllCustomUINodeMap) do
         k.Visible = visible
         print("[SetControlUI]", k, visible)

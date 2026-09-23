@@ -3,6 +3,9 @@ LocalMgrUtil:Start()
 
 local Task = game:GetService("Task")
 
+-- 原生「举起」按钮在客户端发起的抓举无效、举着时再按有甩鱼风险，举鱼一律由服务端发起（#41）
+_G.MgrGameUI:HideLiftButton()
+
 local LocalMotorUnitCtrl = require("client.LocalMotorUnitCtrl")
 local LocalAttackButton = require("client.LocalAttackButton")
 local LocalReelIn = require("client.LocalReelIn")

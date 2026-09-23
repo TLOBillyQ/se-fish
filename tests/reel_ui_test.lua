@@ -190,3 +190,29 @@ function TestReelUI:test_landed_greys_out_action_button()
     lu.assertEquals(self.nodes.ItemAction2.ButtonNormalColor, normal)
     lu.assertEquals(self.nodes.BtnItemActionLabel.Text, '抛竿')
 end
+
+-- #41：服务端报告头上顶着鱼时 2 号位显示「放下」并只发放下请求；没带 holding 就回到抛竿
+function TestReelUI:test_holding_fish_turns_action_into_drop()
+    self.events.ItemBarState.OnClientEvent:Fire({ slots = {
+        [1] = { itemId = 'starterRod', count = 1 },
+    }, bait = { worm = 1 }, selectedSlot = 1 })
+    self.events.CastState.OnClientEvent:Fire({ phase = 'idle', holding = { fishId = 'bass', mult = 1.2 } })
+    lu.assertEquals(self.nodes.BtnItemActionLabel.Text, '放下')
+    lu.assertTrue(self.nodes.ItemAction2.TouchEnabled)
+    local sent = #self.sent
+    self.nodes.ItemAction2.OnClicked:Fire()
+    lu.assertEquals(#self.sent, sent + 1)
+    lu.assertEquals(self.sent[#self.sent].name, 'CastAction')
+    lu.assertEquals(self.sent[#self.sent].payload, { action = 'Drop' })
+    self.events.CastState.OnClientEvent:Fire({ phase = 'idle' })
+    lu.assertEquals(self.nodes.BtnItemActionLabel.Text, '抛竿')
+end
+
+function TestReelUI:test_holding_fish_shows_drop_even_without_rod_selected()
+    self.events.ItemBarState.OnClientEvent:Fire({ slots = {
+        [1] = { itemId = 'starterRod', count = 1 },
+    }, bait = { worm = 1 } })
+    self.events.CastState.OnClientEvent:Fire({ phase = 'idle', holding = { fishId = 'carp', mult = 1 } })
+    lu.assertTrue(self.nodes.ItemAction2.Visible)
+    lu.assertEquals(self.nodes.BtnItemActionLabel.Text, '放下')
+end

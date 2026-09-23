@@ -8,7 +8,9 @@ local MgrFishUnit = require('server.Mgr.MgrFishUnit')
 local Mgr = { Sessions = {}, FishUnit = MgrFishUnit }
 MathWaterJudge.Build(GameCfg.Water.Zones)
 
+-- holding：头上顶着的活鱼 {fishId, mult}（#41），客户端 2 号位据此切到「放下」
 function Mgr:SendState(player, session)
+    local holding = self.FishUnit and self.FishUnit:HeldInfo(player) or nil
     REUtil:GetRE('CastState'):FireClient(player, session and {
         phase = session.phase,
         landing = session.landing,
@@ -16,13 +18,21 @@ function Mgr:SendState(player, session)
         fishId = session.fishId,
         mult = session.mult,
         reelSession = session.reelSession,
-    } or { phase = 'idle' })
+        holding = holding,
+    } or { phase = 'idle', holding = holding })
+end
+
+-- 状态有变（举起 / 放下）时按当前会话重发一次
+function Mgr:PushState(player)
+    local current = self.Sessions[player.UserId]
+    self:SendState(player, current and current.player == player and current.session or nil)
 end
 
 function Mgr:Cast(player, payload)
     local data = MgrPlayerData:GetDataInst(player)
     local character = player and player.Character
     if not data or not character or self.Sessions[player.UserId] then return end
+    if self.FishUnit and not self.FishUnit:CanCast(player) then return end
     local selected = data.Data.SelectedSlot
     local entry = selected and data.Data.Containers[GameCfg.Items.ContainerId.ItemBar][selected]
     if not entry or entry.count < 1 or entry.itemId ~= GameCfg.Items.Id.StarterRod
@@ -110,7 +120,7 @@ function Mgr:Land(player, session)
         dx = GameCfg.Casting.LandingOffset * forward.x / length
         dz = GameCfg.Casting.LandingOffset * forward.z / length
     end
-    local position = Vector3.New(origin.x + dx, origin.y, origin.z + dz)
+    local position = Vector3.New(origin.x + dx, origin.y + GameCfg.Casting.LandingHeight, origin.z + dz)
     local fish, err = self.FishUnit:SpawnLanded(player, { fishId = session.fishId, mult = session.mult }, position)
     if fish then
         print('[MgrCast] 上岸', player.UserId, session.fishId, session.mult, 'fish=' .. tostring(fish.Id))
@@ -139,8 +149,7 @@ function Mgr:Start()
             elseif payload.action == 'Reel' then self:Reel(player) end
         end),
         REUtil:GetRE('RequestCastState').OnServerEvent:Connect(function(player)
-            local current = self.Sessions[player.UserId]
-            self:SendState(player, current and current.player == player and current.session or nil)
+            self:PushState(player)
         end),
     }
 end

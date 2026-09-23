@@ -22,6 +22,7 @@ local MgrMap = {
 MgrMap.MgrCast.ReelIn = MgrMap.MgrReelIn
 MgrMap.MgrReelIn.Cast = MgrMap.MgrCast
 MgrMap.MgrCast.FishUnit = MgrMap.MgrFishUnit
+MgrMap.MgrFishUnit.Cast = MgrMap.MgrCast
 
 local function HandlePlayerAdded(player)
     for k, mgr in pairs(MgrMap) do
