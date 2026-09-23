@@ -27,6 +27,7 @@
 | 修技能包预设的 Name 类型 | `lua tools/cli.lua ability-presets --fix-names` | 预设 Name 被 change-asset-value 写成编辑器侧 unicode 后（症状：每场 1 条 `expected String, got userdata`、该预设单位名空，见 issue #22）用 `create-unit-by-asset → editor-unit rename → SyncAssetFromUnit → 删场景单位` 四步把 Name 修回 Lua string，逐个报修前/修后类型；要编辑器开着本图且在编辑态，`--dry-run` 只打印计划；保原预设 id、不改 `GameCfg.lua`、**全程不存盘** |
 | 单测 | `lua tests/run.lua` | luaunit，跑 `tests/*_test.lua` |
 | 验收 / 回归 | `bash tools/acceptance/run_acceptance.sh` | Gherkin 车道，目前只有 `features/engineering/deploy-mirror.feature`；`acceptance4lua` 固定提交缓存在 `.toolcache/`，不需要 luarocks、不依赖 WSL，详见 `tools/acceptance/README.md` |
+| Gherkin 示例值变异 | `bash tools/acceptance/mutate.sh` | 独立 runner-worker 车道，变异 feature 副本；`build/acceptance/mutation/report.json` 报告存活 / 杀死，故障失败，存活不设门槛 |
 | 四项质量检查 | `bash tools/quality/run.sh` | Git Bash + Lua 5.4；固定缓存四个 4lua 工具及依赖，跑验收、luacov 单测、CRAP 和 DRY 分析；排除 `packages/`，结果在 `build/quality/`；仅报告存量质量问题，工具故障返回失败 |
 | 独立变异检查 | `bash tools/quality/mutate.sh` | 在 `build/quality/mutation/` 的副本上测 `common/RateLimit.lua`，工作区源码不改；`build/quality/mutate.json` 记录存活变异，首期不设门槛 |
 

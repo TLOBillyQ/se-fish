@@ -42,4 +42,16 @@ bash tools/acceptance/run_acceptance.sh      # parse → dry-check（advisory）
 - 车道里没有真编辑器：工作区预置的 `eggy.json` 是伪造的绑定，部署步骤把 `USERPROFILE` 指到空的
   临时 home，让编辑器收尾按「找不到 editor-cli.exe」跳过，结果不随本机装没装 editor-cli 变化。
   带编辑器的收尾（validate → diff → push）由真机跑 `lua tools/cli.lua deploy` 覆盖，不在这条车道里。
-- 变异设施（`gherkin-mutator`）没有移植：本仓库没有 runner-worker 车道，要变异得先补一个。
+## 示例值变异（独立入口）
+
+```sh
+bash tools/acceptance/mutate.sh
+```
+
+入口先跑原版验收作基线，再把 `deploy-mirror.feature` 复制到 `build/acceptance/mutation/`；固定版本
+`acceptance4lua` 的 mutator 以 `full` 模式改变 Examples 单元格，由单进程 runner-worker 逐条执行
+生成的 spec。原 feature、步骤实现和业务源码都不会被改写；上游仅可能给产物目录中的副本写入验证标记。
+三个变异分别覆盖部署树路径、预置路径与保留路径，报告列出每条变异对应的场景、原值、新值和
+`killed` / `survived` / `error`。结构化结果在 `build/acceptance/mutation/report.json`，基线输出在
+`baseline.txt`，均被 Git 忽略。存活变异只报告、不作为退出门槛；基线失败、mutator / worker 故障、
+零变异或报告写入失败均返回非零。日常快速验收仍只需运行 `run_acceptance.sh`。
