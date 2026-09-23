@@ -12,9 +12,11 @@ function ScreenHandler:Show(snapshot)
         slot.Icon.Visible = definition ~= nil
         if definition then
             slot.Icon.Image = definition.Icon
-            slot.Label.Text = definition.Name .. ' ×' .. tostring(entry.count)
+            slot.Label.Text = definition.Name
+            slot.Count.Text = tostring(entry.count)
         else
             slot.Label.Text = ''
+            slot.Count.Text = ''
         end
     end
 end
@@ -35,25 +37,33 @@ function ScreenHandler:Init()
             Name = 'ItemBarSlot' .. index,
             Image = 'official://image/11017',
             Color = Color.New(35, 53, 68, 220),
-            Position = Vector2.New(firstX + (index - 1) * step, 310),
+            Position = Vector2.New(firstX + (index - 1) * step, 400),
             Size = Vector2.New(110, 110),
         })
         local icon = World:CreateUnit('EUIImage', {
             Parent = background,
             Name = 'ItemBarIcon' .. index,
-            Position = Vector2.New(0, 10),
-            Size = Vector2.New(62, 62),
+            Position = Vector2.New(55, 70),
+            Size = Vector2.New(78, 78),
         })
         icon.Visible = false
         local label = World:CreateUnit('EUITextLabel', {
             Parent = background,
             Name = 'ItemBarCount' .. index,
-            Position = Vector2.New(0, -40),
+            Position = Vector2.New(55, 20),
             Size = Vector2.New(110, 28),
-            FontSize = 18,
+            FontSize = 22,
             TextColor = Color.New(255, 255, 255, 255),
         })
-        self.Slots[index] = { Background = background, Icon = icon, Label = label }
+        local amount = World:CreateUnit('EUITextLabel', {
+            Parent = background,
+            Name = 'ItemBarAmount' .. index,
+            Position = Vector2.New(92, 92),
+            Size = Vector2.New(30, 30),
+            FontSize = 24,
+            TextColor = Color.New(255, 220, 40, 255),
+        })
+        self.Slots[index] = { Background = background, Icon = icon, Label = label, Count = amount }
     end
     _G.REUtil:GetRE('ItemBarState').OnClientEvent:Connect(function(snapshot)
         self:Show(snapshot)
