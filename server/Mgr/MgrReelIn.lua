@@ -33,9 +33,9 @@ function Mgr:Begin(player, id, now)
     return self.Sessions[player.UserId] == session
 end
 
-function Mgr:Reply(session, action, accepted)
+function Mgr:Reply(session, action, accepted, q)
     self.RE:FireClient(session.Player, { action = action, session = session.Id,
-        progress = session.Progress.Progress, accepted = accepted })
+        progress = session.Progress.Progress, accepted = accepted, q = q })
 end
 
 function Mgr:Finish(session, outcome, notify)
@@ -62,7 +62,7 @@ function Mgr:Accept(player, payload)
     end
     local outcome = session.Progress:Advance(now, result.Accepted, GameCfg.HighFreqInput.AggregateSec)
     if outcome then self:Finish(session, outcome)
-    else self:Reply(session, 'progress', result.Accepted) end
+    else self:Reply(session, 'progress', result.Accepted, payload.q) end
 end
 
 function Mgr:Close(player, payload)

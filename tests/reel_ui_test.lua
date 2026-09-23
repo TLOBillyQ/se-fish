@@ -24,7 +24,8 @@ function TestReelUI:setUp()
     local env = self
     self.events, self.sent, self.nodes = {}, {}, {}
     self.heartbeat = signal()
-    local world = { GetServerTime = function() return 0 end }
+    self.now = 0
+    local world = { GetServerTime = function() return env.now end }
     function world:CreateUnit(kind, attrs)
         local node = { Kind = kind, OnClicked = signal() }
         for key, value in pairs(attrs) do node[key] = value end
@@ -81,6 +82,37 @@ function TestReelUI:tearDown()
     end
 end
 
+-- 让本地追平走完：时间跳过 ChaseSec（0.25 秒，期间按 5%/秒衰减 1.25%）再逐帧刷新
+function TestReelUI:settle()
+    self.now = self.now + 0.25
+    self.heartbeat:Fire()
+end
+
+-- #38：点击立即显示 +5%，服务端报告落后超过 5% 时逐帧平滑追平
+function TestReelUI:test_click_feedback_and_smooth_chase_on_the_bar()
+    self.events.ItemBarState.OnClientEvent:Fire({ slots = {
+        [1] = { itemId = 'starterRod', count = 1 },
+    }, bait = { worm = 1 }, selectedSlot = 1 })
+    self.events.CastState.OnClientEvent:Fire({ phase = 'hooked', reelSession = 'p1' })
+    self.events.ReelInRE.OnClientEvent:Fire({ action = 'started', session = 'p1', progress = 50 })
+    self.nodes.ItemAction2.OnClicked:Fire()
+    lu.assertEquals(self.nodes.ReelProgress.Percent, 55)
+    self.now = 0.1
+    self.heartbeat:Fire()
+    local sent = self.sent[#self.sent]
+    lu.assertEquals(sent.payload, { s = 'p1', n = 1, q = 1 })
+    lu.assertAlmostEquals(self.nodes.ReelProgress.Percent, 54.5, 1e-9)
+    self.events.ReelInRE.OnClientEvent:Fire({ action = 'progress', session = 'p1', progress = 40, accepted = 0, q = 1 })
+    lu.assertAlmostEquals(self.nodes.ReelProgress.Percent, 54.5, 1e-9)
+    self.now = 0.19
+    self.heartbeat:Fire()
+    local mid = self.nodes.ReelProgress.Percent
+    lu.assertTrue(mid < 54.5 and mid > 39.55, tostring(mid))
+    self.now = 0.3
+    self.heartbeat:Fire()
+    lu.assertAlmostEquals(self.nodes.ReelProgress.Percent, 39, 1e-9)
+end
+
 function TestReelUI:test_close_flush_and_stale_echo_cannot_reopen()
     self.events.ItemBarState.OnClientEvent:Fire({ slots = {
         [1] = { itemId = 'starterRod', count = 1 },
@@ -92,7 +124,9 @@ function TestReelUI:test_close_flush_and_stale_echo_cannot_reopen()
     lu.assertFalse(self.nodes.ReelProgress.SwallowTouchEnabled)
     lu.assertEquals(self.nodes.ReelProgress.Percent, 50)
     self.events.ReelInRE.OnClientEvent:Fire({ action = 'progress', session = 's1', progress = 37.25 })
-    lu.assertEquals(self.nodes.ReelProgress.Percent, 37.25)
+    lu.assertEquals(self.nodes.ReelProgress.Percent, 50)
+    self:settle()
+    lu.assertEquals(self.nodes.ReelProgress.Percent, 36)
     self.nodes.ReelProgress.OnClicked:Fire()
     lu.assertEquals(self.reel.Aggregator:PendingCount(), 0)
     self.nodes.ItemAction2.OnClicked:Fire()
@@ -119,9 +153,11 @@ function TestReelUI:test_close_flush_and_stale_echo_cannot_reopen()
     lu.assertTrue(self.nodes.ItemAction2.TouchEnabled)
     lu.assertTrue(self.nodes.ReelProgress.Visible)
     self.events.ReelInRE.OnClientEvent:Fire({ action = 'progress', session = 's2', progress = 0 })
+    self:settle()
     lu.assertEquals(self.nodes.ReelProgress.Percent, 0)
     self.events.ReelInRE.OnClientEvent:Fire({ action = 'progress', session = 's2', progress = 100 })
-    lu.assertEquals(self.nodes.ReelProgress.Percent, 100)
+    self:settle()
+    lu.assertEquals(self.nodes.ReelProgress.Percent, 98.75)
 end
 
 function TestReelUI:test_started_during_closed_screen_is_cancelled_without_opening()

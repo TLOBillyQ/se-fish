@@ -228,3 +228,12 @@ function TestReelSession:test_land_result_is_a_single_handoff()
     self.events.ReelInRE.OnServerEvent:Fire(self.a, { s = 's1', n = 10, q = 2 })
     lu.assertEquals(self.a.results, { 'landed' })
 end
+
+-- #38：progress 回包带上本批序号，客户端据此确认在途点击
+function TestReelSession:test_progress_reply_echoes_batch_sequence()
+    self.events.ReelInRE.OnServerEvent:Fire(self.a, { s = 's1', n = 3, q = 7 })
+    local reply = self.a.messages[#self.a.messages]
+    lu.assertEquals(reply.action, 'progress')
+    lu.assertEquals(reply.q, 7)
+    lu.assertEquals(reply.accepted, 3)
+end

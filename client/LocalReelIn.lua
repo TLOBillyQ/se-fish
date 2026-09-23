@@ -1,6 +1,7 @@
 local REUtil = require('common.REUtil')
 local RateLimit = require('common.RateLimit')
 local GameCfg = require('common.GameCfg')
+local ReelDisplay = require('common.ReelDisplay')
 
 local LocalReelIn = { SessionId = nil }
 LocalReelIn.CHANNEL = 'ReelInRE'
@@ -11,18 +12,31 @@ function LocalReelIn:SetSession(id)
     self.SessionId = id
     self.Aggregator = RateLimit.NewAggregator({ SessionId = id,
         AggregateSec = GameCfg.HighFreqInput.AggregateSec })
+    self.Display = ReelDisplay.New(self.World:GetServerTime(), GameCfg.ReelIn)
     return true
+end
+
+function LocalReelIn:Send(payload)
+    if not payload then return end
+    if self.Display then self.Display:Sent(payload.q, payload.n, self.World:GetServerTime()) end
+    self.RE:FireServer(payload)
 end
 
 function LocalReelIn:Flush()
     if not self.Aggregator then return end
-    local payload = self.Aggregator:Flush()
-    if payload then self.RE:FireServer(payload) end
+    self:Send(self.Aggregator:Flush())
 end
 
 function LocalReelIn:Click()
     if not self.Aggregator then return end
-    self.Aggregator:Click(self.World:GetServerTime())
+    local now = self.World:GetServerTime()
+    self.Aggregator:Click(now)
+    if self.Display then self.Display:Click(now) end
+end
+
+-- 当前会话的显示进度（本地反馈 + 平滑追平）；没有会话返回 nil
+function LocalReelIn:DisplayProgress()
+    return self.Display and self.Display:Value(self.World:GetServerTime()) or nil
 end
 
 function LocalReelIn:Close(id)
@@ -33,6 +47,7 @@ function LocalReelIn:Close(id)
     self.ClosedSession = session
     self.SessionId = nil
     self.Aggregator = nil
+    self.Display = nil
     if payload then self.RE:FireServer(payload) end
     self.CloseRE:FireServer({ session = session })
 end
@@ -51,6 +66,7 @@ function LocalReelIn:Clear(id)
     self.ClosedSession = id
     self.SessionId = nil
     self.Aggregator = nil
+    self.Display = nil
 end
 
 function LocalReelIn:Stop()
@@ -76,14 +92,16 @@ function LocalReelIn:Start()
             if not self:SetSession(payload.session) then return end
         elseif self.SessionId ~= payload.session then return end
         self.LastResult = payload
+        if self.Display and (payload.action == 'progress' or payload.action == 'started') then
+            self.Display:Authority(self.World:GetServerTime(), payload.progress, payload.q)
+        end
         if payload.action == 'landed' or payload.action == 'unhooked' then
             self:Clear(payload.session)
         end
     end)
     self.UpdateConnection = game:GetService('RunService').Heartbeat:Connect(function()
         if self.Aggregator then
-            local payload = self.Aggregator:Collect(self.World:GetServerTime())
-            if payload then self.RE:FireServer(payload) end
+            self:Send(self.Aggregator:Collect(self.World:GetServerTime()))
         end
     end)
 end

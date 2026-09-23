@@ -163,6 +163,11 @@ GameCfg.ReelIn = {
     DecayPerSec = 5,
     ClickGain = 5,
     GraceSec = 0.18,
+    -- 本地显示（#38，common/ReelDisplay.lua）：与权威差距 ≤ Tolerance（%）不调整，超过则 ChaseSec 内平滑追平；
+    -- 已发出的批次等服务端回包确认，超过 PendingTimeoutSec 没回就不再计入本地超前
+    Tolerance = 5,
+    ChaseSec = 0.18,
+    PendingTimeoutSec = 1,
 }
 
 -- V3 鱼载体实例化（M0-V3）：官方鱼模型号与 mesh id 的写法已查实，F-7 的 [未查证] 由此消除。

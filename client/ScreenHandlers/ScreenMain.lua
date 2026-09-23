@@ -57,8 +57,9 @@ function ScreenHandler:ShowCast()
     self.BtnItemActionLabel.Text = phase == 'hooked' and '点击收线'
         or phase == 'landed' and '已上岸' or phase == 'cast' and '收竿' or rod and '抛竿' or '使用'
     local result = reel and reel.LastResult
-    local progress = result and self.CastState
-        and result.session == self.CastState.reelSession and result.progress or 50
+    -- 收线中显示本地反馈并平滑追平权威进度（#38）；其余时候显示最后一次权威值
+    local progress = active and reel.DisplayProgress and reel:DisplayProgress()
+        or result and self.CastState and result.session == self.CastState.reelSession and result.progress or 50
     if type(progress) ~= 'number' or progress ~= progress then progress = 50 end
     progress = math.max(0, math.min(100, progress))
     if self.ReelBar then
@@ -239,6 +240,7 @@ function ScreenHandler:Init()
         if phase == 'hooked' and self.IsOpen
             and _G.LocalReelIn.SessionId == self.CastState.reelSession then
             _G.LocalReelIn:Click()
+            self:ShowCast()
         elseif phase == 'cast' then
             _G.REUtil:GetRE('CastAction'):FireServer({ action = 'Reel' })
         elseif phase == 'idle' and self.Snapshot then
@@ -279,6 +281,13 @@ function ScreenHandler:Init()
     self:Listen(_G.REUtil:GetRE('ReelInRE').OnClientEvent, function()
         self:ShowCast()
     end)
+    -- 追平要 150–200ms 内连续变化，服务端 100ms 一报不够平滑，收线中逐帧刷新进度条
+    local runService = game:GetService('RunService')
+    if runService and runService.Heartbeat then
+        self:Listen(runService.Heartbeat, function()
+            if self.ReelBar and self.ReelBar.Visible then self:ShowCast() end
+        end)
+    end
     self.BoundRootNode = root
     self.Inited = true
     self.IsOpen = false
