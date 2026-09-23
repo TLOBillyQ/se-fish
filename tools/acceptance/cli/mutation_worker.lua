@@ -12,7 +12,8 @@ local shell = require("tools.win_shell")
 for line in io.lines() do
   local decoded, job = pcall(json.decode, line)
   if not decoded or type(job) ~= "table" or type(job.id) ~= "string"
-    or type(job.feature_json) ~= "string" or type(job.generated_dir) ~= "string" then
+    or type(job.feature_json) ~= "string" or type(job.generated_dir) ~= "string"
+    or type(job.work_dir) ~= "string" then
     io.stderr:write("无效的 runner-worker 任务\n")
     os.exit(1)
   end
@@ -25,6 +26,7 @@ for line in io.lines() do
       .. shell.q(os.getenv("ACCEPTANCE_LUA_BIN") or "lua")
       .. " " .. shell.q(job.generated_dir .. "/feature_acceptance_spec.lua"),
   }, " & ")
+  os.remove(output_path)
   local _, _, code = os.execute(command)
   local file = io.open(output_path, "rb")
   local output = file and file:read("a") or ""
