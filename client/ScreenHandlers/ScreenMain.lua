@@ -31,10 +31,22 @@ function ScreenHandler:Show(state)
     self.BtnEat.TouchEnabled = count > 0
     self.BtnEatLabel.Text = count > 0 and '吃蚯蚓' or '蚯蚓用尽'
     self.BtnNoneLabel.Text = '不挂鱼饵'
+    self:ShowCoin(state.coin)
     self:ShowCast()
     local selected = state.selectedSlot and state.slots[state.selectedSlot]
     self.BtnDiscard.Visible = selected ~= nil
     self.BtnDiscardLabel.Visible = selected ~= nil
+end
+
+-- 金币 HUD（#47）：接回场景既有的 ImageCoin / LabelCoin，以服务端同步的 FishCoin 属性为准
+function ScreenHandler:ShowCoin(value)
+    if not self.LabelCoin then return end
+    if type(value) ~= 'number' then
+        local players = game:GetService('Players')
+        local player = players and players.LocalPlayer
+        value = player and player:GetAttribute('FishCoin')
+    end
+    self.LabelCoin.Text = tostring(math.floor(tonumber(value) or 0))
 end
 
 function ScreenHandler:ShowCast()
@@ -136,6 +148,7 @@ function ScreenHandler:Cleanup()
     self.HookHint = nil
     self.ReelBar = nil
     self.ReelBarBg = nil
+    self.LabelCoin = nil
     self.Snapshot = nil
     self.CastState = nil
     self.BoundRootNode = nil
@@ -153,6 +166,10 @@ function ScreenHandler:Init()
     local root = self.RootNode
     local oldEntry = root:FindFirstChild('BtnFishEnter', true)
     if oldEntry then oldEntry.Visible = false end
+    self.LabelCoin = root:FindFirstChild('LabelCoin', true)
+    local imageCoin = root:FindFirstChild('ImageCoin', true)
+    if self.LabelCoin then self.LabelCoin.Visible = true else print('[ScreenMain] 找不到 LabelCoin 节点') end
+    if imageCoin then imageCoin.Visible = true end
     self.Slots = {}
     self.Connections = {}
     self.Overlays = {}
@@ -293,6 +310,17 @@ function ScreenHandler:Init()
             if self.ReelBar and self.ReelBar.Visible then self:ShowCast() end
         end)
     end
+    -- 进图早期注册 FishCoin 属性监听不稳定（退役的 LocalFishEnter 同样延迟 1 秒），延迟后再挂
+    local task = game:GetService('Task')
+    if task and task.Delay then
+        task:Delay(1, function()
+            if not self.Inited or self.BoundRootNode ~= root then return end
+            local player = game:GetService('Players').LocalPlayer
+            if not player then return end
+            self:Listen(player:GetAttributeChangedSignal('FishCoin'), function() self:ShowCoin() end)
+            self:ShowCoin()
+        end)
+    end
     self.BoundRootNode = root
     self.Inited = true
     self.IsOpen = false
@@ -303,6 +331,7 @@ function ScreenHandler:OpenScreen()
     self.IsOpen = true
     _G.LocalReelIn:Resume()
     self:ShowCast()
+    self:ShowCoin()
     _G.REUtil:GetRE('RequestItemBar'):FireServer()
     _G.REUtil:GetRE('RequestCastState'):FireServer()
 end

@@ -58,6 +58,7 @@ function PlayerData:GetItemBarSnapshot()
         slots = slots,
         slotCount = GameCfg.Items.ItemBarSlots,
         bait = bait,
+        coin = self.Data.FishCoin,
         selectedSlot = self.Data.SelectedSlot,
         selectedBait = self.Data.SelectedBait,
     }
@@ -137,7 +138,8 @@ end
 
 -- 鱼饵进计数库存（#45）：不占道具栏格、没有满格限制；只收物品表里已有的鱼饵
 function PlayerData:AddBait(itemId, count)
-    if not self.Inited or type(itemId) ~= 'string' or not GameCfg.Items.Definitions[itemId]
+    local definition = type(itemId) == 'string' and GameCfg.Items.Definitions[itemId]
+    if not self.Inited or not definition or definition.Container ~= GameCfg.Items.ContainerId.Bait
         or type(count) ~= 'number' or count < 1 or count ~= math.floor(count) then return false end
     self:UpdateData(function(data)
         data.Bait[itemId] = (data.Bait[itemId] or 0) + count
@@ -145,14 +147,52 @@ function PlayerData:AddBait(itemId, count)
     return true
 end
 
--- 金币唯一写入口（#44）：spend 在同一次更新里扣掉换钱的物品，扣除与入账一起落地并同步 FishCoin
-function PlayerData:AddCoin(amount, spend)
-    if not self.Inited or type(amount) ~= 'number' or amount ~= math.floor(amount) or amount < 0 then return false end
-    self:UpdateData(function(data)
-        if spend then spend(data) end
-        data.FishCoin = data.FishCoin + amount
-    end, true)
+-- 按物品表的 Container 放进对应容器（#47）：鱼饵加计数，其余每件占一格；空格不够一件都不发
+function PlayerData:GrantItem(itemId, count)
+    local definition = type(itemId) == 'string' and GameCfg.Items.Definitions[itemId]
+    if not self.Inited or not definition or type(count) ~= 'number' or count < 1
+        or count ~= math.floor(count) then return false, 'bad' end
+    if definition.Container == GameCfg.Items.ContainerId.Bait then return self:AddBait(itemId, count) end
+    local items = self.Data.Containers[GameCfg.Items.ContainerId.ItemBar]
+    local free = 0
+    for index = 1, GameCfg.Items.ItemBarSlots do
+        if not items[index] or items[index].count <= 0 then free = free + 1 end
+    end
+    if free < count then return false, 'full' end
+    for _ = 1, count do self:AddItem(itemId) end
     return true
+end
+
+local function isPositiveInt(n)
+    return type(n) == 'number' and n >= 1 and n == math.floor(n)
+end
+
+-- 金币唯一写入口（#44 / #47）：喂食、购买、GM 都经这里，余额不会为负；apply 在同一次更新里
+-- 扣掉换钱的物品或发放买到的物品，与金币一起落地并同步 FishCoin。每笔按收入 / 支出打日志供对账
+function PlayerData:ChangeCoin(delta, apply, reason)
+    if not self.Inited then return false end
+    local balance = self.Data.FishCoin + delta
+    if balance < 0 then
+        print('[PlayerData] 金币不足', self.Player and self.Player.UserId, reason, delta, 'FishCoin=' .. tostring(self.Data.FishCoin))
+        return false
+    end
+    self:UpdateData(function(data)
+        if apply then apply(data) end
+        data.FishCoin = balance
+    end, true)
+    print('[PlayerData] 金币' .. (delta >= 0 and '收入' or '支出'), self.Player and self.Player.UserId, reason,
+        (delta >= 0 and '+' or '') .. tostring(delta), 'FishCoin=' .. tostring(balance))
+    return true
+end
+
+function PlayerData:AddCoin(amount, apply, reason)
+    if not isPositiveInt(amount) then return false end
+    return self:ChangeCoin(amount, apply, reason)
+end
+
+function PlayerData:SpendCoin(amount, apply, reason)
+    if not isPositiveInt(amount) then return false end
+    return self:ChangeCoin(-amount, apply, reason)
 end
 
 function PlayerData:DiscardSlot(index)

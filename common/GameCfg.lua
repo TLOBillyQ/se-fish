@@ -23,13 +23,19 @@ GameCfg.Items = {
         bass = { Name = '鲈鱼', Icon = 'official://image/11164' },
         catfish = { Name = '鲶鱼', Icon = 'official://image/11164' },
         goldfish = { Name = '金鱼', Icon = 'official://image/11164' },
-        worm = { Name = '蚯蚓', Icon = 'official://image/14066' },
+        worm = { Name = '蚯蚓', Icon = 'official://image/14066', Container = 'bait' },
         starterRod = { Name = '新手鱼竿', Icon = 'official://image/12024', Level = 1 },
     },
 }
 GameCfg.Items.InitialGrants = {
     { itemId = GameCfg.Items.Id.StarterRod, count = 1, containerId = GameCfg.Items.ContainerId.ItemBar },
     { itemId = GameCfg.Items.Id.Worm, count = GameCfg.Items.InitialWormCount, containerId = GameCfg.Items.ContainerId.Bait },
+}
+
+-- 调试开关（#47，#28 规格）：唯一的调试入口，默认关闭。开启后服务端接受 GM 发放
+-- （server/Mgr/MgrGM.lua，客户端控制台 _G.GM.Coin / _G.GM.Item）；M1 的进图白送由 #49 并入这里
+GameCfg.Debug = {
+    Enabled = false,
 }
 
 -- 鱼种基础值（design 钓鱼表 / 物品表的鱼塘行）：Health=血量，BaseWeight=基础重量 kg，

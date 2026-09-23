@@ -19,6 +19,7 @@ local MgrMap = {
     MgrFishUnit = require("server.Mgr.MgrFishUnit"),
     MgrLoot = require("server.Mgr.MgrLoot"),
     MgrInteract = require("server.Mgr.MgrInteract"),
+    MgrGM = require("server.Mgr.MgrGM"),
 }
 
 MgrMap.MgrCast.ReelIn = MgrMap.MgrReelIn
@@ -29,6 +30,7 @@ MgrMap.MgrLoot.FishUnit = MgrMap.MgrFishUnit
 MgrMap.MgrLoot.PlayerData = MgrMap.MgrPlayerData
 MgrMap.MgrPlayerData.Loot = MgrMap.MgrLoot
 MgrMap.MgrInteract.PlayerData = MgrMap.MgrPlayerData
+MgrMap.MgrGM.PlayerData = MgrMap.MgrPlayerData
 
 local function HandlePlayerAdded(player)
     for k, mgr in pairs(MgrMap) do

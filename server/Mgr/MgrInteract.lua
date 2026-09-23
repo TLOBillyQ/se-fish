@@ -65,7 +65,7 @@ function Mgr:Feed(player, data, anchor, point)
         self:Reply(player, { ok = false, reason = 'nothing' })
         return false
     end
-    if not data:AddCoin(coins, spend) then return false end
+    if not data:AddCoin(coins, spend, 'feed') then return false end
     print('[MgrInteract] 喂食', player.UserId, what, '+' .. tostring(coins), 'FishCoin=' .. tostring(data.Data.FishCoin))
     self.PlayerData:SendItemBar(player)
     self:Reply(player, { ok = true, action = 'Feed', coins = coins })
