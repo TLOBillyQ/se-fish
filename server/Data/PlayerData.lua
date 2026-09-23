@@ -106,6 +106,19 @@ function PlayerData:EatBait(itemId)
     return true
 end
 
+-- 吃掉选中的道具栏格（#53）：只吃物品表配了 EatPercent 的物品（鱼获），吃掉整格；返回被吃的物品 id
+function PlayerData:EatSlot(index)
+    if not self.Inited or type(index) ~= 'number' or index ~= self.Data.SelectedSlot then return nil end
+    local items = self.Data.Containers[GameCfg.Items.ContainerId.ItemBar]
+    local entry = items[index]
+    local definition = entry and entry.count > 0 and GameCfg.Items.Definitions[entry.itemId]
+    if not definition or type(definition.EatPercent) ~= 'number' then return nil end
+    self:UpdateData(function(data)
+        data.Containers[GameCfg.Items.ContainerId.ItemBar][index] = nil
+    end, true)
+    return entry.itemId
+end
+
 function PlayerData:ConsumeSelectedBait()
     if not self.Inited then return false, nil end
     local itemId = self.Data.SelectedBait

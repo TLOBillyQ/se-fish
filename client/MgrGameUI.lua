@@ -137,9 +137,15 @@ function MgrGameUI:HideLiftButton()
     pcall(function() StarterGui:SetCoreGuiEnabled(Enums.CoreGuiType.LiftButton, false) end)
 end
 
+-- 原生血条与 ScreenMain 自绘血球重复（#53），关掉；SetCoreGuiEnabled(All) 会把它重新打开，之后要再关一次
+function MgrGameUI:HideNativeHealth()
+    pcall(function() StarterGui:SetCoreGuiEnabled(Enums.CoreGuiType.Health, false) end)
+end
+
 function MgrGameUI:SetControlUI(visible)
     StarterGui:SetCoreGuiEnabled(Enums.CoreGuiType.All, visible)
     self:HideLiftButton()
+    self:HideNativeHealth()
     for k, v in pairs(AllCustomUINodeMap) do
         k.Visible = visible
         print("[SetControlUI]", k, visible)

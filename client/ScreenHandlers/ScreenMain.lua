@@ -28,14 +28,63 @@ function ScreenHandler:Show(state)
     self.BtnBait.ButtonNormalColor = state.selectedBait == baitId
         and Color.New(36, 130, 94, 255) or Color.New(54, 100, 140, 255)
     self.BtnBait.TouchEnabled = count > 0
-    self.BtnEat.TouchEnabled = count > 0
-    self.BtnEatLabel.Text = count > 0 and '吃蚯蚓' or '蚯蚓用尽'
+    -- 吃（#53）：选中格是能吃的鱼获时吃它，否则吃蚯蚓
+    local food = self:SelectedFood()
+    self.BtnEat.TouchEnabled = food ~= nil or count > 0
+    self.BtnEatLabel.Text = food and '吃' .. GameCfg.Items.Definitions[food.itemId].Name
+        or count > 0 and '吃蚯蚓' or '蚯蚓用尽'
     self.BtnNoneLabel.Text = '不挂鱼饵'
     self:ShowCoin(state.coin)
     self:ShowCast()
     local selected = state.selectedSlot and state.slots[state.selectedSlot]
     self.BtnDiscard.Visible = selected ~= nil
     self.BtnDiscardLabel.Visible = selected ~= nil
+end
+
+-- 选中格里能吃的物品（配了 EatPercent 的鱼获），没有返回 nil
+function ScreenHandler:SelectedFood()
+    local state = self.Snapshot
+    local slot = state and state.selectedSlot
+    local entry = slot and state.slots[slot]
+    local definition = entry and GameCfg.Items.Definitions[entry.itemId]
+    if definition and type(definition.EatPercent) == 'number' then return entry, slot end
+end
+
+-- 血球 / 饥饿球（#53）：数值只读服务端写的玩家属性 Health / MaxHealth / Hunger / MaxHunger
+function ScreenHandler:ShowVitals()
+    if not self.HealthRing then return end
+    local player = game:GetService('Players').LocalPlayer
+    if not player then return end
+    local c = GameCfg.Vitals
+    local function read(key, default)
+        local value = tonumber(player:GetAttribute(key))
+        return value and math.floor(value) or default
+    end
+    local health, maxHealth = read('Health', c.MaxHealth), read('MaxHealth', c.MaxHealth)
+    local hunger, maxHunger = read('Hunger', c.MaxHunger), read('MaxHunger', c.MaxHunger)
+    self.HealthRing.Percent = maxHealth > 0 and math.max(0, math.min(100, health * 100 / maxHealth)) or 0
+    self.HungerRing.Percent = maxHunger > 0 and math.max(0, math.min(100, hunger * 100 / maxHunger)) or 0
+    self.HealthText.Text = '血 ' .. tostring(health)
+    self.HungerText.Text = '饥饿 ' .. tostring(hunger)
+    local starving = hunger <= 0 and health > 0
+    if starving and not self.Starving then self.NextWarnAt = nil end
+    self.Starving = starving
+    self:UpdateStarveFx()
+end
+
+-- 饥饿归零期间：四边红框按 FlashPeriodSec 亮灭，WarnText 每 WarnIntervalSec 秒提示一次（不刷屏）
+function ScreenHandler:UpdateStarveFx()
+    if not self.FlashEdges then return end
+    local c = GameCfg.Vitals
+    local now = World:GetServerTime()
+    local on = self.Starving == true and math.floor(now / c.FlashPeriodSec) % 2 == 0
+    for _, edge in ipairs(self.FlashEdges) do edge.Visible = on end
+    if not self.Starving then return end
+    if not self.NextWarnAt or now >= self.NextWarnAt then
+        self.NextWarnAt = now + c.WarnIntervalSec
+        if _G.LocalMsgNotice then _G.LocalMsgNotice(c.WarnText) end
+        print('[ScreenMain] 饥饿提示', c.WarnText)
+    end
 end
 
 -- 金币 HUD（#47）：接回场景既有的 ImageCoin / LabelCoin，以服务端同步的 FishCoin 属性为准
@@ -128,6 +177,64 @@ local function overlay(parent, name, x, y, width, height, text, size, color)
     return label
 end
 
+local function color(rgba)
+    return Color.New(rgba[1], rgba[2], rgba[3], rgba[4])
+end
+
+local function passive(node)
+    node.TouchEnabled = false
+    node.SwallowTouchEnabled = false
+    return node
+end
+
+-- 左上角血球 / 饥饿球与四边红框（#53）；图片用途见 GameCfg.Vitals
+-- [未查证：位置是否与场景既有的 LabelCoin 重叠，待 #55 截图迭代；原点左下、Y 向上]
+function ScreenHandler:BuildVitals(root, resolution)
+    local c = GameCfg.Vitals
+    local y = resolution.y - 130
+    local rings = {
+        { 'Health', 130, c.HealthRing, c.HealthColor },
+        { 'Hunger', 290, c.HungerRing, c.HungerColor },
+    }
+    for _, spec in ipairs(rings) do
+        local name, x = spec[1], spec[2]
+        local bg = passive(World:CreateUnit('EUIImage', {
+            Parent = root, Name = name .. 'RingBg',
+            Position = Vector2.New(x, y), Size = Vector2.New(128, 128), Image = c.RingBg,
+        }))
+        local ring = passive(World:CreateUnit('EUIProgressTimer', {
+            Parent = root, Name = name .. 'Ring',
+            Position = Vector2.New(x, y), Size = Vector2.New(128, 128), Image = spec[3], Percent = 100,
+        }))
+        ring.Color = color(spec[4])
+        ring.LocalZOrder = 1
+        local text = overlay(root, name .. 'Text', x, y, 140, 40, '', 26, Color.New(255, 255, 255, 255))
+        text.LocalZOrder = 2
+        self[name .. 'Ring'] = ring
+        self[name .. 'Text'] = text
+        self.Overlays[#self.Overlays + 1] = bg
+        self.Overlays[#self.Overlays + 1] = ring
+        self.Overlays[#self.Overlays + 1] = text
+    end
+    local t, w, h = c.FlashThickness, resolution.x, resolution.y
+    local edges = {
+        { 'FlashTop', w / 2, h - t / 2, w, t }, { 'FlashBottom', w / 2, t / 2, w, t },
+        { 'FlashLeft', t / 2, h / 2, t, h }, { 'FlashRight', w - t / 2, h / 2, t, h },
+    }
+    self.FlashEdges = {}
+    for _, spec in ipairs(edges) do
+        local edge = passive(World:CreateUnit('EUIImage', {
+            Parent = root, Name = spec[1],
+            Position = Vector2.New(spec[2], spec[3]), Size = Vector2.New(spec[4], spec[5]), Image = c.FlashImage,
+        }))
+        edge.Color = color(c.FlashColor)
+        edge.LocalZOrder = 3
+        edge.Visible = false
+        self.FlashEdges[#self.FlashEdges + 1] = edge
+        self.Overlays[#self.Overlays + 1] = edge
+    end
+end
+
 function ScreenHandler:Listen(source, callback)
     self.Connections[#self.Connections + 1] = source:Connect(callback)
 end
@@ -156,6 +263,13 @@ function ScreenHandler:Cleanup()
     self.BtnItemActionLabel = nil
     self.HookHint = nil
     self.QuestLabel = nil
+    self.HealthRing = nil
+    self.HungerRing = nil
+    self.HealthText = nil
+    self.HungerText = nil
+    self.FlashEdges = nil
+    self.Starving = nil
+    self.NextWarnAt = nil
     self.ReelBar = nil
     self.ReelBarBg = nil
     self.LabelCoin = nil
@@ -241,6 +355,7 @@ function ScreenHandler:Init()
         '', 30, Color.New(255, 255, 255, 255))
     self.QuestLabel.Visible = false
     self.Overlays[#self.Overlays + 1] = self.QuestLabel
+    self:BuildVitals(root, resolution)
     self.ReelBarBg = World:CreateUnit('EUIImage', {
         Parent = root, Name = 'ReelProgressBg',
         Position = Vector2.New(resolution.x - 600, 860), Size = Vector2.New(400, 36),
@@ -292,7 +407,10 @@ function ScreenHandler:Init()
     end)
     self:Listen(self.BtnBait.OnClicked, function() self:Action('SelectBait', GameCfg.Items.Id.Worm) end)
     self:Listen(self.BtnNone.OnClicked, function() self:Action('SelectBait') end)
-    self:Listen(self.BtnEat.OnClicked, function() self:Action('EatBait', GameCfg.Items.Id.Worm) end)
+    self:Listen(self.BtnEat.OnClicked, function()
+        local _, slot = self:SelectedFood()
+        if slot then self:Action('EatSlot', slot) else self:Action('EatBait', GameCfg.Items.Id.Worm) end
+    end)
     self:Listen(self.BtnDiscard.OnClicked, function()
         if self.Snapshot and self.Snapshot.selectedSlot then
             self:Action('DiscardSlot', self.Snapshot.selectedSlot)
@@ -324,6 +442,7 @@ function ScreenHandler:Init()
     if runService and runService.Heartbeat then
         self:Listen(runService.Heartbeat, function()
             if self.ReelBar and self.ReelBar.Visible then self:ShowCast() end
+            if self.Starving then self:UpdateStarveFx() end
         end)
     end
     -- 进图早期注册 FishCoin 属性监听不稳定（退役的 LocalFishEnter 同样延迟 1 秒），延迟后再挂
@@ -335,6 +454,10 @@ function ScreenHandler:Init()
             if not player then return end
             self:Listen(player:GetAttributeChangedSignal('FishCoin'), function() self:ShowCoin() end)
             self:ShowCoin()
+            for _, key in ipairs({ 'Health', 'MaxHealth', 'Hunger', 'MaxHunger' }) do
+                self:Listen(player:GetAttributeChangedSignal(key), function() self:ShowVitals() end)
+            end
+            self:ShowVitals()
         end)
     end
     self.BoundRootNode = root
@@ -348,6 +471,7 @@ function ScreenHandler:OpenScreen()
     _G.LocalReelIn:Resume()
     self:ShowCast()
     self:ShowCoin()
+    self:ShowVitals()
     _G.REUtil:GetRE('RequestItemBar'):FireServer()
     _G.REUtil:GetRE('RequestCastState'):FireServer()
     _G.REUtil:GetRE('RequestQuest'):FireServer()

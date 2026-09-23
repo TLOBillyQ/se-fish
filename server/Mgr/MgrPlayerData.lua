@@ -130,6 +130,17 @@ function Mgr:Start()
         local method = type(action) == 'string' and actions[action]
         if not method then return end
         local value = payload.value
+        if action == 'EatSlot' then
+            -- 吃选中的鱼获（#53）：先问 Vitals 能不能吃（死亡期间不能），再扣格、再恢复
+            if _G.REUtil:CheckRECD(player, 'ItemBarAction', GameCfg.Items.ActionCooldownSec) then return end
+            local slot = data.Data.SelectedSlot
+            local entry = type(value) == 'number' and value == slot
+                and data.Data.Containers[GameCfg.Items.ContainerId.ItemBar][slot]
+            if not entry or not self.Vitals or not self.Vitals:CanEat(player, entry.itemId) then return end
+            local itemId = data:EatSlot(slot)
+            if itemId then self.Vitals:Eat(player, itemId) end
+            return
+        end
         if action == 'SelectSlot' or action == 'DiscardSlot' then
             if type(value) ~= 'number' or value ~= math.floor(value)
                 or value < 1 or value > GameCfg.Items.ItemBarSlots then return end
@@ -139,7 +150,13 @@ function Mgr:Start()
             return
         end
         if _G.REUtil:CheckRECD(player, 'ItemBarAction', GameCfg.Items.ActionCooldownSec) then return end
-        if data[method](data, value) and method ~= 'EatBait' then
+        -- 吃鱼饵（#53）：同一份鱼饵库存，能吃才扣；扣成功后按食用恢复百分比恢复血量与饥饿
+        if method == 'EatBait' then
+            if self.Vitals and not self.Vitals:CanEat(player, value) then return end
+            if data:EatBait(value) and self.Vitals then self.Vitals:Eat(player, value) end
+            return
+        end
+        if data[method](data, value) then
             self:SendItemBar(player)
             -- 新手任务「挂饵」事实（#52）：挂上一种饵才算，取消不算；服务端计数保证每次 eventId 不同
             if method == 'SelectBait' and value ~= nil and self.Quest then

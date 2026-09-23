@@ -2,6 +2,7 @@
 -- 客户端发 GMAction{action, target, ...}；target 缺省是发起者自己，给数字 UserId 则发给在线的那名玩家，
 -- 查不到就失败、不落到别人身上。加 / 扣币走 PlayerData:AddCoin / SpendCoin 这一唯一入口（扣不成负数），
 -- 发物品走 PlayerData:GrantItem 按物品表的 Container 路由（鱼竿进道具栏、蚯蚓进鱼饵库存）。
+-- 设血量 / 饥饿度（#53）走 MgrVitals:SetHealth / SetHunger。
 local GameCfg = require('common.GameCfg')
 
 local Mgr = {}
@@ -39,7 +40,16 @@ function Mgr:Item(data, payload)
     return (data:GrantItem(payload.itemId, count))
 end
 
-local Actions = { Coin = 'Coin', Item = 'Item' }
+-- 设血量 / 饥饿度（#53）：走 MgrVitals 的同名入口（调低血量经 ApplyDamage 单点），越界值拒绝
+function Mgr:SetHealth(_, payload, target)
+    return self.Vitals ~= nil and self.Vitals:SetHealth(target, payload.value)
+end
+
+function Mgr:SetHunger(_, payload, target)
+    return self.Vitals ~= nil and self.Vitals:SetHunger(target, payload.value)
+end
+
+local Actions = { Coin = 'Coin', Item = 'Item', SetHealth = 'SetHealth', SetHunger = 'SetHunger' }
 
 -- 处理一次 GM 请求；发放成功返回 true
 function Mgr:Handle(player, payload)
@@ -51,9 +61,9 @@ function Mgr:Handle(player, payload)
     local method = Actions[payload.action]
     local target = method and self:ResolveTarget(player, payload.target)
     local data = target and self.PlayerData and self.PlayerData:GetDataInst(target)
-    local ok = data and self[method](self, data, payload) or false
+    local ok = data and self[method](self, data, payload, target) or false
     print('[MgrGM]', ok and '发放' or '拒绝', player and player.UserId, '->', target and target.UserId,
-        tostring(payload.action), tostring(payload.amount or payload.itemId), tostring(payload.count or ''))
+        tostring(payload.action), tostring(payload.amount or payload.itemId or payload.value), tostring(payload.count or ''))
     if ok then self.PlayerData:SendItemBar(target) end
     self:Reply(player, { ok = ok, action = payload.action, target = target and target.UserId })
     return ok

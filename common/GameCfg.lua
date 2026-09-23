@@ -3,6 +3,7 @@ local GameCfg = {}
 -- MVP 物品表；官方图片目录没有这八个物品的同名图，按 issue #33 确认使用代表图。
 -- 鱼获共用 11164「鱼」，蚯蚓用 14066「勾爪-距离」的弯曲线条，鱼竿用 12024「捕虫网」。
 -- 对照记录见 issue #33（评论 9859）。
+-- EatPercent = 物品表「食用恢复百分比」（#53）：吃一件恢复 EatPercent% × 上限的血量与饥饿度，没配的物品不能吃。
 GameCfg.Items = {
     ContainerId = { ItemBar = 'itemBar', Bait = 'bait' },
     ItemBarSlots = 8,
@@ -16,18 +17,49 @@ GameCfg.Items = {
         Scale = { x = 0.2, y = 0.25, z = 0.2 },
     },
     Definitions = {
-        tilapia = { Name = '罗非鱼', Icon = 'official://image/11164' },
-        carp = { Name = '鲤鱼', Icon = 'official://image/11164' },
-        knifeFish = { Name = '刀鱼', Icon = 'official://image/11164' },
-        bass = { Name = '鲈鱼', Icon = 'official://image/11164' },
-        catfish = { Name = '鲶鱼', Icon = 'official://image/11164' },
-        goldfish = { Name = '金鱼', Icon = 'official://image/11164' },
-        worm = { Name = '蚯蚓', Icon = 'official://image/14066', Container = 'bait' },
+        tilapia = { Name = '罗非鱼', EatPercent = 15, Icon = 'official://image/11164' },
+        carp = { Name = '鲤鱼', EatPercent = 20, Icon = 'official://image/11164' },
+        knifeFish = { Name = '刀鱼', EatPercent = 20, Icon = 'official://image/11164' },
+        bass = { Name = '鲈鱼', EatPercent = 25, Icon = 'official://image/11164' },
+        catfish = { Name = '鲶鱼', EatPercent = 25, Icon = 'official://image/11164' },
+        goldfish = { Name = '金鱼', EatPercent = 30, Icon = 'official://image/11164' },
+        worm = { Name = '蚯蚓', EatPercent = 5, Icon = 'official://image/14066', Container = 'bait' },
         starterRod = { Name = '新手鱼竿', Icon = 'official://image/12024', Level = 1 },
     },
 }
+-- 血量与饥饿（#53，#40 规格；设计案「玩家属性」）：上限各 300，饥饿每秒 −HungerPerSec，归零后的下一秒起
+-- 每秒经 MgrVitals:ApplyDamage 掉 StarveDamagePerSec 血；按 World:GetServerTime() 的整秒推进，
+-- 服务端卡顿后一次最多补算 MaxCatchUpSec 秒。死亡后引擎 ReviveDelaySec 秒复活（编辑器面板复活延时，M0 已核），
+-- 超过 ReviveDelaySec + ReviveGraceSec 仍没复活，服务端兜底调一次 Controller:Reborn()。复活后两项回满。
+-- HUD（client/ScreenHandlers/ScreenMain.lua）：左上角两个环形进度 + 数值；饥饿归零期间屏幕四边红框
+-- 每 FlashPeriodSec 秒亮灭一次，WarnText 每 WarnIntervalSec 秒提示一次（设计案只写「闪红」和这句提示，
+-- 频率与间隔是替换点）。图片资源用途：
+--   HealthRing / HungerRing  环形进度填充 30013（标准环形 128×128），RingBg 环形背景 30014
+--   FlashImage               四边红框的底图 11081（圆角矩形），按 FlashColor 染红
+-- [未查证：环形图、红框观感与 HUD 位置是否与 LabelCoin / 任务条重叠，待 #55 截图迭代]
+GameCfg.Vitals = {
+    MaxHealth = 300,
+    MaxHunger = 300,
+    HungerPerSec = 1,
+    StarveDamagePerSec = 5,
+    MaxCatchUpSec = 5,
+    ReviveDelaySec = 5,
+    ReviveGraceSec = 2,
+    FlashPeriodSec = 0.5,
+    WarnIntervalSec = 5,
+    WarnText = '我要饿死了！',
+    HealthRing = 'official://image/30013',
+    HungerRing = 'official://image/30013',
+    RingBg = 'official://image/30014',
+    HealthColor = { 230, 60, 60, 255 },
+    HungerColor = { 240, 170, 40, 255 },
+    FlashImage = 'official://image/11081',
+    FlashColor = { 255, 0, 0, 150 },
+    FlashThickness = 40,
+}
+
 -- 调试开关（#47 / #49，#28 规格）：唯一的调试入口，默认关闭。开启后服务端接受 GM 发放
--- （server/Mgr/MgrGM.lua，客户端控制台 _G.GM.Coin / _G.GM.Item），进图时按 InitialGrants 白送（M1 的进图白送降级至此）。
+-- （server/Mgr/MgrGM.lua，客户端控制台 _G.GM.Coin / _G.GM.Item / _G.GM.SetHealth / _G.GM.SetHunger），进图时按 InitialGrants 白送（M1 的进图白送降级至此）。
 -- 关闭时正式获取路径只有拾饵、喂食换金币与商店购买。
 GameCfg.Debug = {
     Enabled = false,

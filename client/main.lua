@@ -5,6 +5,8 @@ local Task = game:GetService("Task")
 
 -- 原生「举起」按钮在客户端发起的抓举无效、举着时再按有甩鱼风险，举鱼一律由服务端发起（#41）
 _G.MgrGameUI:HideLiftButton()
+-- 原生血条关掉，血量看 ScreenMain 的自绘血球（#53）
+_G.MgrGameUI:HideNativeHealth()
 
 local LocalMotorUnitCtrl = require("client.LocalMotorUnitCtrl")
 local LocalAttackButton = require("client.LocalAttackButton")
