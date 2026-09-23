@@ -58,6 +58,8 @@ function TestFishLoot:setUp()
     self.loot.Broadcast = function() env.broadcasts = env.broadcasts + 1 end
     self.loot.Reply = function(_, player, payload) env.replies[#env.replies + 1] = { player = player, payload = payload } end
     self.loot.Listen = function() end
+    -- 固定点位鱼饵（#45）另有 tests/bait_spot_test.lua，这里不生成，免得混进鱼获断言
+    if not self.keepSpots then self.loot.StartSpots = function() end end
     self.loot:Start()
 end
 

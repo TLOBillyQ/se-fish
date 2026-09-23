@@ -84,6 +84,20 @@ GameCfg.Loot = {
     BubbleHeight = 1.2,
 }
 
+-- 固定点位鱼饵（#45，#27 规格）：每个点位同时最多一份，复用鱼获的 2 米拾取与服务端复验，
+-- 拾取成功后 RespawnSec 秒在原位刷新；鱼饵进 Bait 计数库存，不占道具栏格。鱼获不刷新、不消失。
+-- Spots 的 Position 只用 x/z，y 由向下探地决定（Position.y 是探地起点参考）。
+-- 这里的 spot-shore 是机制占位点（水圈中心 x+5 的岸边），正式新手点位由 M4 #51 布置 [未查证：坐标待 #55 实测]。
+-- Mesh 取官方资产「飘逸尾鳍」（软体蠕虫状，official://mesh/7000571），没有官方蚯蚓模型 [未查证：观感待 #55 截图]
+GameCfg.BaitSpots = {
+    RespawnSec = 15,
+    Mesh = 'official://mesh/7000571',
+    Scale = 0.3,
+    Spots = {
+        { Id = 'spot-shore', ItemId = 'worm', Count = 1, Position = { x = -6.75, y = 4, z = 27.75 } },
+    },
+}
+
 -- 交互点（#44，#27 规格）：场景既有触发器单位登记为可交互目标，当前只有钓鱼佬（TGUnitFish，
 -- 退役入口 LocalFishEnter 用它做靠近判定）。Radius 米内（只看 x/z：触发器中心在高处）显示「对话」「喂食」，
 -- 服务端复验多给 Slack 米容差。喂食即出售：鱼获 floor(BasePrice × mult)，鱼饵每只 BaitPrice 金币。

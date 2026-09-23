@@ -135,6 +135,16 @@ function PlayerData:AddItem(itemId, mult)
     return false
 end
 
+-- 鱼饵进计数库存（#45）：不占道具栏格、没有满格限制；只收物品表里已有的鱼饵
+function PlayerData:AddBait(itemId, count)
+    if not self.Inited or type(itemId) ~= 'string' or not GameCfg.Items.Definitions[itemId]
+        or type(count) ~= 'number' or count < 1 or count ~= math.floor(count) then return false end
+    self:UpdateData(function(data)
+        data.Bait[itemId] = (data.Bait[itemId] or 0) + count
+    end, true)
+    return true
+end
+
 -- 金币唯一写入口（#44）：spend 在同一次更新里扣掉换钱的物品，扣除与入账一起落地并同步 FishCoin
 function PlayerData:AddCoin(amount, spend)
     if not self.Inited or type(amount) ~= 'number' or amount ~= math.floor(amount) or amount < 0 then return false end
