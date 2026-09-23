@@ -66,6 +66,12 @@ function Mgr:Cast(player, payload)
     self.Sessions[player.UserId] = { player = player, session = session }
     self:SendState(player, session)
     print('[MgrCast] 抛竿', player.UserId, session.zoneId or 'land', baitId or 'none')
+    -- 新手任务「水边抛竿」事实（#52）：只有落点判进水区才算，陆地抛竿不报
+    if session.zoneId and self.Quest then
+        self.NextCastId = (self.NextCastId or 0) + 1
+        self.Quest:Notify('CastWater', player, { itemId = baitId,
+            eventId = 'cast:' .. tostring(player.UserId) .. ':' .. tostring(self.NextCastId) })
+    end
 end
 
 -- 一次钓鱼结束（收竿 / 脱钩 / 上岸停留完）：清会话，归位到抛竿时选中的鱼竿
@@ -115,6 +121,10 @@ function Mgr:FinishReel(player, sessionId, outcome, notify)
         session.idleAt = self.World:GetServerTime() + GameCfg.Casting.LandedHoldSec
         self:Land(player, session)
         if notify ~= false then self:SendState(player, session) end
+        -- 新手任务「上岸」事实（#52）：hooked → landed 只会走一次，收线会话 id 即唯一 eventId
+        if self.Quest then
+            self.Quest:Notify('Land', player, { itemId = session.fishId, eventId = 'reel:' .. tostring(sessionId) })
+        end
     else
         self:EndSession(player, current, notify)
     end

@@ -245,6 +245,12 @@ function Mgr:Release(fish, reason)
     local pos = readPosition(body) or origin
     if pos then self:SetHeading(fish, towardWater(pos)) end
     print('[MgrFishUnit] 放下', holder and holder.UserId, reason, fish.FishId, 'fish=' .. tostring(fish.Id))
+    -- 新手任务「丢在岸上」事实（#52）：只认持有者主动放下且落点不在水区；抓举结束 / 死亡松手、水里放下都不算
+    if reason == 'drop' and holder and self.Quest and not (pos and inWater(pos)) then
+        self.NextFactId = (self.NextFactId or 0) + 1
+        self.Quest:Notify('DropShore', holder, { itemId = fish.FishId,
+            eventId = 'drop:' .. tostring(fish.Id) .. ':' .. tostring(self.NextFactId) })
+    end
     self:EnforceEscapeCap(holder, fish)
     if self.Cast and holder then self.Cast:PushState(holder) end
     return true
@@ -378,6 +384,11 @@ function Mgr:TakeKilled(fish)
     print('[MgrFishUnit] 被打死', fish.FishId, fish.Mult, holder and ('held by ' .. tostring(holder.UserId)) or fish.State,
         'fish=' .. tostring(fish.Id))
     if holder and self.Cast then self.Cast:PushState(holder) end
+    -- 新手任务「打死」事实（#52）：引擎 Died / TakeDamage 不带攻击者，服务端能确认的归属是鱼的主人（上岸者），
+    -- 只推进这一名玩家；TakeKilled 对一条鱼只成功一次，鱼 id 即唯一 eventId
+    if fish.Owner and self.Quest then
+        self.Quest:Notify('Kill', fish.Owner, { itemId = fish.FishId, eventId = 'kill:' .. tostring(fish.Id) })
+    end
     return { fishId = fish.FishId, mult = fish.Mult, position = pos }
 end
 

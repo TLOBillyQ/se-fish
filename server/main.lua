@@ -38,6 +38,9 @@ MgrMap.MgrShop.Interact = MgrMap.MgrInteract
 MgrMap.MgrLoot.Quest = MgrMap.MgrQuest
 MgrMap.MgrInteract.Quest = MgrMap.MgrQuest
 MgrMap.MgrShop.Quest = MgrMap.MgrQuest
+MgrMap.MgrPlayerData.Quest = MgrMap.MgrQuest
+MgrMap.MgrCast.Quest = MgrMap.MgrQuest
+MgrMap.MgrFishUnit.Quest = MgrMap.MgrQuest
 
 local function HandlePlayerAdded(player)
     for k, mgr in pairs(MgrMap) do

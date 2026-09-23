@@ -293,3 +293,50 @@ function TestLandingRetired:test_every_catchable_fish_has_species_values()
     end
     lu.assertEquals(cfg.Items.Definitions.starterRod.Level, 1)
 end
+
+-- #52 新手任务事实（失败方式 8. 陆地抛竿冒充「水边抛竿」、每次落水不带唯一 eventId；
+--   9. 脱钩 / 收竿也报「上岸」，或一次上岸报两次）
+function TestLanding:spyQuest()
+    local env = self
+    env.facts = {}
+    self.cast.Quest = { Notify = function(_, kind, player, payload)
+        env.facts[#env.facts + 1] = { kind = kind, player = player, itemId = payload.itemId, eventId = payload.eventId }
+        return true
+    end }
+end
+
+function TestLanding:test_cast_into_water_notifies_each_cast_and_land_cast_does_not()
+    self:spyQuest()
+    self.player.Character.Position = vec(10, 2, 20)
+    self.cast:Cast(self.player, { slot = 1, itemId = 'starterRod' })
+    lu.assertNil(self.cast.Sessions[self.player.UserId].session.zoneId)
+    lu.assertEquals(#self.facts, 0)
+    self.cast:Reel(self.player)
+    self.player.Character.Position = vec(-11.75, 2, 22.75)
+    self.cast:Cast(self.player, { slot = 1, itemId = 'starterRod' })
+    lu.assertNotNil(self.cast.Sessions[self.player.UserId].session.zoneId)
+    self.cast:Reel(self.player)
+    self.cast:Cast(self.player, { slot = 1, itemId = 'starterRod' })
+    lu.assertEquals(#self.facts, 2)
+    lu.assertEquals(self.facts[1].kind, 'CastWater')
+    lu.assertEquals(self.facts[1].player, self.player)
+    lu.assertNotNil(self.facts[1].eventId)
+    lu.assertNotEquals(self.facts[1].eventId, self.facts[2].eventId)
+end
+
+function TestLanding:test_landed_notifies_land_once_and_unhook_does_not()
+    self:spyQuest()
+    local lost = self:hook('carp', 1.1)
+    self.now = 30
+    self.reel:Update()
+    lu.assertEquals(#self.facts, 0)
+    local id = self:hook('bass', 1.2)
+    self:reelIn(id, 10, 1)
+    self.cast:FinishReel(self.player, id, 'landed')
+    lu.assertEquals(#self.facts, 1)
+    lu.assertEquals(self.facts[1].kind, 'Land')
+    lu.assertEquals(self.facts[1].itemId, 'bass')
+    lu.assertEquals(self.facts[1].player, self.player)
+    lu.assertTrue(tostring(self.facts[1].eventId):find(id, 1, true) ~= nil)
+    lu.assertNotEquals(lost, id)
+end

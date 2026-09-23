@@ -169,3 +169,34 @@ function TestItemBarFlow:test_action_rate_limit_is_per_player()
     lu.assertEquals(other.lastState.bait.worm, 9)
     Mgr:OnPlayerRemoving(other)
 end
+
+-- #52 新手任务「挂饵」事实（失败方式：取消挂饵 / 挂不存在或已用完的饵也报挂饵；
+--   每次挂饵不带唯一 eventId；别的动作也报挂饵）
+function TestItemBarFlow:test_select_bait_success_notifies_equip_with_distinct_ids()
+    local facts = {}
+    Mgr.Quest = { Notify = function(_, kind, player, payload)
+        facts[#facts + 1] = { kind = kind, player = player, itemId = payload.itemId, eventId = payload.eventId }
+        return true
+    end }
+    local ok, err = pcall(function()
+        local action = self.events.ItemBarAction.OnServerEvent
+        action:Fire(self.player, { action = 'SelectSlot', value = 1 })
+        action:Fire(self.player, { action = 'SelectBait', value = 'other' })
+        action:Fire(self.player, { action = 'SelectBait' })
+        action:Fire(self.player, { action = 'EatBait', value = 'worm' })
+        lu.assertEquals(#facts, 0)
+        action:Fire(self.player, { action = 'SelectBait', value = 'worm' })
+        action:Fire(self.player, { action = 'SelectBait', value = 'worm' })
+        lu.assertEquals(#facts, 2)
+        lu.assertEquals(facts[1].kind, 'EquipBait')
+        lu.assertEquals(facts[1].itemId, 'worm')
+        lu.assertEquals(facts[1].player, self.player)
+        lu.assertNotNil(facts[1].eventId)
+        lu.assertNotEquals(facts[1].eventId, facts[2].eventId)
+        Mgr:GetDataInst(self.player):UpdateData(function(state) state.Bait.worm = 0 end, true)
+        action:Fire(self.player, { action = 'SelectBait', value = 'worm' })
+        lu.assertEquals(#facts, 2)
+    end)
+    Mgr.Quest = nil
+    if not ok then error(err, 0) end
+end

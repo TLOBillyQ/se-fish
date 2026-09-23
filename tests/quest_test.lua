@@ -11,6 +11,14 @@
 --   9. 任务推进时额外发奖励（金币 / 物品变动）；
 --  10. 推进后不下发任务状态、不写玩家属性、不给完成提示，客户端无从显示步骤与计数；
 --  11. 正式点位不走配置、少于 5 个（第 1 步只能等刷新），或丢了 2 米拾取 / 15 秒刷新的复用。
+-- #52 第四至九步（挂饵 → 水边抛竿 → 收线上岸 → 岸上放下 → 打死 → 喂鱼获）：
+--  12. 步骤表不是设计案的 9 步顺序，或文案不集中在配置；
+--  13. 第 9 步被任意喂食（喂蚯蚓）完成，而不是喂鱼获；
+--  14. 第 4 步时收到后面步骤的事实（上岸 / 放下 / 打死 / 喂鱼获）就计数或跳步；
+--  15. 9 步走完没有收尾提示、任务条不显示完成，或完成后仍有事实被计数；
+--  16. 任务系统反查玩法系统（require 了 server 下的玩法管理器）。
+-- 各玩法侧的事实发送（挂饵 / 抛竿落水 / 上岸 / 岸上放下 / 击杀归属）分别在 item_bar_flow / landing /
+-- fish_lift 的测试里。
 local lu = require('luaunit')
 
 TestQuest = {}
@@ -39,8 +47,8 @@ function TestQuest:tearDown()
     self.cfg.Debug = self.savedDebug
 end
 
-function TestQuest:notify(player, kind, itemId, eventId)
-    return self.quest:Notify(kind, player, { itemId = itemId, eventId = eventId })
+function TestQuest:notify(player, kind, itemId, eventId, category)
+    return self.quest:Notify(kind, player, { itemId = itemId, eventId = eventId, category = category })
 end
 
 function TestQuest:state(player)
@@ -57,6 +65,74 @@ end
 function TestQuest:toStep3(player)
     for i = 1, 5 do self:notify(player, 'PickBait', 'worm', 'loot:' .. i) end
     for i = 1, 5 do self:notify(player, 'Feed', 'worm', 'feed:' .. player.UserId .. ':' .. i) end
+end
+
+-- 把玩家推进到第 9 步（喂鱼获）
+function TestQuest:toStep9(player)
+    self:toStep3(player)
+    local uid = player.UserId
+    self:notify(player, 'Buy', 'starterRod', 'shop:' .. uid .. ':1')
+    self:notify(player, 'EquipBait', 'worm', 'bait:' .. uid .. ':1')
+    self:notify(player, 'CastWater', nil, 'cast:' .. uid .. ':1')
+    self:notify(player, 'Land', 'bass', 'reel:1:' .. uid)
+    self:notify(player, 'DropShore', 'bass', 'drop:' .. uid .. ':1')
+    self:notify(player, 'Kill', 'bass', 'kill:1')
+end
+
+function TestQuest:test_config_nine_steps_in_design_order()
+    local steps = self.cfg.Quest.Steps
+    lu.assertEquals(#steps, 9)
+    local kinds = {}
+    for i, step in ipairs(steps) do kinds[i] = step.Kind end
+    lu.assertEquals(kinds, { 'PickBait', 'Feed', 'Buy', 'EquipBait', 'CastWater', 'Land', 'DropShore', 'Kill', 'Feed' })
+    lu.assertEquals(steps[4].ItemId, 'worm')
+    lu.assertEquals(steps[9].Category, 'fish')
+    lu.assertNil(steps[9].ItemId)
+    for i = 3, 9 do lu.assertEquals(steps[i].Need, 1) end
+end
+
+function TestQuest:test_step9_needs_fish_feed_not_any_feed()
+    self:toStep9(self.a)
+    lu.assertEquals(self:state(self.a).step, 9)
+    lu.assertFalse(self:notify(self.a, 'Feed', 'worm', 'feed:1:50', 'bait'))
+    lu.assertFalse(self:notify(self.a, 'Feed', 'bass', 'feed:1:51'))
+    lu.assertEquals(self:state(self.a).step, 9)
+    lu.assertTrue(self:notify(self.a, 'Feed', 'bass', 'feed:1:52', 'fish'))
+    lu.assertEquals(self:state(self.a).step, 10)
+end
+
+function TestQuest:test_late_step_facts_ignored_at_step4()
+    self:toStep3(self.a)
+    self:notify(self.a, 'Buy', 'starterRod', 'shop:1:1')
+    lu.assertEquals(self:state(self.a).step, 4)
+    lu.assertFalse(self:notify(self.a, 'Land', 'bass', 'reel:9:1'))
+    lu.assertFalse(self:notify(self.a, 'DropShore', 'bass', 'drop:1:9'))
+    lu.assertFalse(self:notify(self.a, 'Kill', 'bass', 'kill:9'))
+    lu.assertFalse(self:notify(self.a, 'Feed', 'bass', 'feed:1:9', 'fish'))
+    lu.assertFalse(self:notify(self.a, 'EquipBait', 'other', 'bait:1:9'))
+    lu.assertEquals(self:state(self.a).step, 4)
+    lu.assertEquals(self:state(self.a).count, 0)
+end
+
+function TestQuest:test_finish_gives_closing_notice_and_stops_counting()
+    self:toStep9(self.a)
+    self:notify(self.a, 'Feed', 'bass', 'feed:1:60', 'fish')
+    local last = self:lastSent(self.a)
+    lu.assertTrue(last.done)
+    lu.assertEquals(last.notice, self.cfg.Quest.DoneText)
+    lu.assertEquals(last.text, self.cfg.Quest.DoneText)
+    lu.assertEquals(self.a.Attrs.QuestText, self.cfg.Quest.DoneText)
+    lu.assertFalse(self:notify(self.a, 'Feed', 'bass', 'feed:1:61', 'fish'))
+    lu.assertFalse(self:notify(self.a, 'PickBait', 'worm', 'loot:61'))
+    -- 另一名玩家不受影响
+    lu.assertEquals(self:state(self.b).step, 1)
+end
+
+function TestQuest:test_quest_does_not_require_gameplay_managers()
+    local handle = assert(io.open('server/Mgr/MgrQuest.lua', 'r'))
+    local source = handle:read('a')
+    handle:close()
+    lu.assertNil(source:find("require%(%s*['\"]server%."))
 end
 
 function TestQuest:test_config_three_steps_in_design_order()

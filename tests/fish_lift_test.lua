@@ -240,3 +240,64 @@ function TestFishLift:test_owner_leaving_removes_held_fish_and_mount()
     lu.assertTrue(self:mounts()[1].Destroyed)
     self.mgr:Update()
 end
+
+-- #52 新手任务事实（失败方式 11. 水里放下 / 持有者死亡 / 抓举结束也报「岸上放下」，或一次放下报两次；
+--   12. 击杀事实不归属到鱼的主人、推进了别人，或同一条鱼报两次）
+function TestFishLift:spyQuest()
+    local env = self
+    env.facts = {}
+    self.mgr.Quest = { Notify = function(_, kind, player, payload)
+        env.facts[#env.facts + 1] = { kind = kind, player = player, itemId = payload.itemId, eventId = payload.eventId }
+        return true
+    end }
+end
+
+function TestFishLift:hold(player)
+    local fish = self:land(player)
+    fish.Carrier.Body.OnLiftedBegin:Fire(player.Character)
+    lu.assertEquals(self.mgr:GetHeld(player), fish)
+    return fish
+end
+
+function TestFishLift:test_drop_on_shore_notifies_holder_once()
+    self:spyQuest()
+    local fish = self:hold(self.player)
+    lu.assertTrue(self.mgr:Drop(self.player))
+    lu.assertFalse(self.mgr:Drop(self.player))
+    self.mgr:Release(fish, 'liftEnd')
+    lu.assertEquals(#self.facts, 1)
+    lu.assertEquals(self.facts[1].kind, 'DropShore')
+    lu.assertEquals(self.facts[1].player, self.player)
+    lu.assertEquals(self.facts[1].itemId, 'bass')
+    lu.assertNotNil(self.facts[1].eventId)
+end
+
+function TestFishLift:test_drop_in_water_death_and_lift_end_do_not_notify()
+    self:spyQuest()
+    self.player.Character.Position = vec(-11.75, 2, 26)
+    self:hold(self.player)
+    self.mgr:Drop(self.player)
+    self.player.Character.Position = vec(10, 2, 20)
+    self:hold(self.player)
+    self.mgr:OnDied(self.player)
+    local fish = self:hold(self.player)
+    self.mgr:Release(fish, 'liftEnd')
+    lu.assertEquals(#self.facts, 0)
+end
+
+function TestFishLift:test_kill_is_attributed_to_owner_only_once()
+    self:spyQuest()
+    local fish = self:land(self.player)
+    lu.assertNotNil(self.mgr:TakeKilled(fish))
+    lu.assertNil(self.mgr:TakeKilled(fish))
+    lu.assertEquals(#self.facts, 1)
+    lu.assertEquals(self.facts[1].kind, 'Kill')
+    lu.assertEquals(self.facts[1].player, self.player)
+    lu.assertEquals(self.facts[1].itemId, 'bass')
+    lu.assertNotNil(self.facts[1].eventId)
+    local held = self:hold(self.other)
+    self.mgr:TakeKilled(held)
+    lu.assertEquals(#self.facts, 2)
+    lu.assertEquals(self.facts[2].player, self.other)
+    lu.assertNotEquals(self.facts[1].eventId, self.facts[2].eventId)
+end

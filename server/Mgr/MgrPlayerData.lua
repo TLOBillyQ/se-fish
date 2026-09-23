@@ -141,6 +141,12 @@ function Mgr:Start()
         if _G.REUtil:CheckRECD(player, 'ItemBarAction', GameCfg.Items.ActionCooldownSec) then return end
         if data[method](data, value) and method ~= 'EatBait' then
             self:SendItemBar(player)
+            -- 新手任务「挂饵」事实（#52）：挂上一种饵才算，取消不算；服务端计数保证每次 eventId 不同
+            if method == 'SelectBait' and value ~= nil and self.Quest then
+                self.NextFactId = (self.NextFactId or 0) + 1
+                self.Quest:Notify('EquipBait', player, { itemId = value,
+                    eventId = 'bait:' .. tostring(player.UserId) .. ':' .. tostring(self.NextFactId) })
+            end
         end
     end)
 end

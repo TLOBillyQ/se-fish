@@ -110,7 +110,11 @@ GameCfg.BaitSpots = {
 }
 
 -- 新手任务（#51 前三步，#52 续写第 4–9 步；#40 规格）：文案对应策划案「新手任务」的 9 句（钓场老板按 CONTEXT.md 用词），
--- Kind 是玩法事实种类（MgrQuest:Notify 的 kind），ItemId 是要求的物品，Need 是次数。任务不发奖励，进度单局内存态。
+-- Kind 是玩法事实种类（MgrQuest:Notify 的 kind），ItemId 是要求的物品，Category 是要求的物品类别（fish = 鱼获），
+-- Need 是次数。任务不发奖励，进度单局内存态。
+-- 事实来源：PickBait 拾饵（MgrLoot）、Feed 喂食（MgrInteract）、Buy 购买（MgrShop）、EquipBait 鱼饵栏挂饵成功
+-- （MgrPlayerData）、CastWater 抛竿落点在水区（MgrCast）、Land 收线上岸（MgrCast）、DropShore 主动放下且落点
+-- 不在水区（MgrFishUnit）、Kill 鱼被打死，归属鱼的主人即上岸者（MgrFishUnit）。
 -- 任务条文案「<Title> 步号/总步数：<Text>（计数）」；推进时消息条提示 NextNotice，全部完成提示 DoneText
 GameCfg.Quest = {
     Title = '新手任务',
@@ -120,6 +124,12 @@ GameCfg.Quest = {
         { Kind = 'PickBait', ItemId = 'worm', Need = 5, Text = '拾取 5 只蚯蚓' },
         { Kind = 'Feed', ItemId = 'worm', Need = 5, Text = '喂钓鱼佬吃 5 只蚯蚓' },
         { Kind = 'Buy', ItemId = 'starterRod', Need = 1, Text = '向钓场老板购买 1 只新手鱼竿' },
+        { Kind = 'EquipBait', ItemId = 'worm', Need = 1, Text = '捡只蚯蚓，挂饵' },
+        { Kind = 'CastWater', Need = 1, Text = '水边第一次抛竿' },
+        { Kind = 'Land', Need = 1, Text = '咬钩后狂点收线，将它拉上岸' },
+        { Kind = 'DropShore', Need = 1, Text = '将鱼丢在岸上' },
+        { Kind = 'Kill', Need = 1, Text = '揍它！把鱼打死！' },
+        { Kind = 'Feed', Category = 'fish', Need = 1, Text = '捡起鱼，再喂给钓鱼佬' },
     },
 }
 

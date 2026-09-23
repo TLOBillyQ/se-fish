@@ -41,7 +41,8 @@ function Mgr:Notify(kind, player, payload)
     local state = self:GetState(player)
     if not state or type(payload) ~= 'table' then return false end
     local c = cfg()
-    local counted, advanced = QuestSteps.Apply(c.Steps, state, kind, payload.itemId, payload.eventId, payload.count)
+    local counted, advanced = QuestSteps.Apply(c.Steps, state, { kind = kind, itemId = payload.itemId,
+        category = payload.category, eventId = payload.eventId, count = payload.count })
     if not counted then return false end
     local notice
     if advanced then

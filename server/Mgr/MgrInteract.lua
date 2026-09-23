@@ -38,13 +38,13 @@ local function feedable(data, point)
     local species = entry and entry.count > 0 and GameCfg.Fish[entry.itemId]
     if species then
         return FishCatch.Price(species, entry.mult), function() items[slot] = nil end,
-            entry.itemId .. ' x' .. tostring(entry.mult or 1) .. ' slot=' .. tostring(slot), entry.itemId
+            entry.itemId .. ' x' .. tostring(entry.mult or 1) .. ' slot=' .. tostring(slot), entry.itemId, 'fish'
     end
     local baitId = data.Data.SelectedBait
     local price = baitId and point.BaitPrice[baitId]
     local count = baitId and data.Data.Bait[baitId]
     if price and type(count) == 'number' and count >= 1 then
-        return price, function(d) d.Bait[baitId] = d.Bait[baitId] - 1 end, baitId, baitId
+        return price, function(d) d.Bait[baitId] = d.Bait[baitId] - 1 end, baitId, baitId, 'bait'
     end
 end
 
@@ -71,7 +71,7 @@ function Mgr:PlayEat(anchor, point)
 end
 
 function Mgr:Feed(player, data, anchor, point, seq)
-    local coins, spend, what, itemId = feedable(data, point)
+    local coins, spend, what, itemId, category = feedable(data, point)
     if not coins then
         self:Reply(player, { ok = false, reason = 'nothing' })
         return false
@@ -81,9 +81,11 @@ function Mgr:Feed(player, data, anchor, point, seq)
     self.PlayerData:SendItemBar(player)
     self:Reply(player, { ok = true, action = 'Feed', coins = coins })
     self:PlayEat(anchor, point)
-    -- 新手任务事实（#51）：序号每人严格递增、只结算一次，玩家 + 序号即这次喂食的唯一 eventId
+    -- 新手任务事实（#51 / #52）：序号每人严格递增、只结算一次，玩家 + 序号即这次喂食的唯一 eventId；
+    -- category 区分鱼获（fish，只能来自本人拾取进道具栏）与鱼饵（bait）
     if self.Quest then
-        self.Quest:Notify('Feed', player, { itemId = itemId, eventId = 'feed:' .. tostring(player.UserId) .. ':' .. tostring(seq) })
+        self.Quest:Notify('Feed', player, { itemId = itemId, category = category,
+            eventId = 'feed:' .. tostring(player.UserId) .. ':' .. tostring(seq) })
     end
     return true
 end
