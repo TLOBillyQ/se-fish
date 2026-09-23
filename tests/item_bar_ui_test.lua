@@ -5,8 +5,16 @@ TestItemBarUI = {}
 local function signal()
     local listeners = {}
     return {
-        Connect = function(_, fn) listeners[#listeners + 1] = fn end,
+        Connect = function(_, fn)
+            listeners[#listeners + 1] = fn
+            return { Disconnect = function()
+                for i, cb in ipairs(listeners) do
+                    if cb == fn then table.remove(listeners, i) break end
+                end
+            end }
+        end,
         Fire = function(_, ...) for _, fn in ipairs(listeners) do fn(...) end end,
+        Count = function() return #listeners end,
     }
 end
 
@@ -14,33 +22,49 @@ function TestItemBarUI:setUp()
     self.previous = { game = _G.game, Vector2 = _G.Vector2, Color = _G.Color,
         REUtil = _G.REUtil, GameUI = _G.GameUI }
     self.nodes = {}
-    local world = { CreateUnit = function(_, kind, attrs)
+    self.created = {}
+    local testCase = self
+    local world = { Created = self.created }
+    function world:CreateUnit(kind, attrs)
         local node = { Kind = kind, OnClicked = signal() }
         for key, value in pairs(attrs) do node[key] = value end
-        self.nodes[node.Name] = node
+        function node:Destroy()
+            self.Destroyed = true
+            for _, child in ipairs(world.Created) do
+                if child.Parent == self then child:Destroy() end
+            end
+        end
+        testCase.nodes[node.Name] = node
+        testCase.created[#testCase.created + 1] = node
         return node
-    end }
+    end
     _G.game = { GetService = function(_, name) if name == 'World' then return world end end }
     _G.Vector2 = { New = function(x, y) return { x = x, y = y } end }
     _G.Color = { New = function(...) return { ... } end }
     _G.GameUI = { GetEuiManager = function() return {
         GetDeviceResolution = function() return { x = 1920, y = 1080 } end,
-    } end }
+    } end, GetUIRoot = function() return self.uiRoot end }
     self.commands = {}
-    local states = signal()
+    self.events = {}
     _G.REUtil = { GetRE = function(_, name)
-        if name == 'ItemBarState' then return { OnClientEvent = states } end
-        return { FireServer = function(_, payload)
-            if name == 'ItemBarAction' then self.commands[#self.commands + 1] = payload end
-        end }
+        if not self.events[name] then
+            self.events[name] = { OnClientEvent = signal(), FireServer = function(_, payload)
+                if name == 'ItemBarAction' then self.commands[#self.commands + 1] = payload end
+            end }
+        end
+        return self.events[name]
     end }
-    self.states = states
+    self.states = _G.REUtil:GetRE('ItemBarState').OnClientEvent
     self.handler = assert(loadfile('client/ScreenHandlers/ScreenMain.lua'))()
     self.handler.RootNode = {
         Name = 'ScreenMain',
         FindFirstChild = function(_, name) return self.nodes[name] end,
     }
     self.nodes.BtnFishEnter = { Visible = true }
+    self.currentRoot = self.handler.RootNode
+    self.uiRoot = { FindFirstChild = function(_, name)
+        if name == 'ScreenMain' then return self.currentRoot end
+    end }
     self.handler:Init()
 end
 
@@ -70,6 +94,8 @@ function TestItemBarUI:test_fixed_slots_bait_and_action_placement()
         bait = { worm = 10 }, selectedSlot = 1 })
     lu.assertEquals(self.nodes.ItemAction2.ButtonText, '抛竿')
     lu.assertTrue(self.nodes.ItemAction2.Visible)
+    self.states:Fire({ slots = {}, bait = { worm = 10 }, selectedBait = 'worm' })
+    lu.assertEquals(self.nodes.BaitNone.ButtonText, '不挂鱼饵')
     self.nodes.ItemBarSlot1.OnClicked:Fire()
     lu.assertEquals(self.commands[1].action, 'SelectSlot')
     lu.assertEquals(self.commands[1].value, 1)
@@ -90,6 +116,11 @@ function TestItemBarUI:test_legacy_entry_is_not_registered()
     lu.assertNil(client:find('LocalFishEnter:Start()', 1, true))
     lu.assertNil(server:find('MgrFish = require', 1, true))
     lu.assertStrContains(client, "OpenScreen('ScreenMain')")
+    local agentsFile = assert(io.open('AGENTS.md', 'r'))
+    local agents = agentsFile:read('*a')
+    agentsFile:close()
+    lu.assertStrContains(agents, '旧钓鱼入口 `LocalFishEnter` 已退役、不再启动')
+    lu.assertNil(agents:find('`LocalFishEnter` / `LocalAttackButton`', 1, true))
 end
 
 function TestItemBarUI:test_empty_and_depleted_state_refresh()
@@ -98,7 +129,52 @@ function TestItemBarUI:test_empty_and_depleted_state_refresh()
     lu.assertFalse(self.nodes.BaitWorm.TouchEnabled)
     lu.assertFalse(self.nodes.BaitEat.TouchEnabled)
     lu.assertEquals(self.nodes.BaitEat.ButtonText, '蚯蚓用尽')
-    lu.assertEquals(self.nodes.BaitNone.ButtonText, '无鱼饵')
+    lu.assertEquals(self.nodes.BaitNone.ButtonText, '不挂鱼饵')
+    self.nodes.BaitNone.OnClicked:Fire()
+    lu.assertEquals(self.commands[1].action, 'SelectBait')
+    lu.assertNil(self.commands[1].value)
     self.nodes.ItemBarSlot8.OnClicked:Fire()
-    lu.assertEquals(self.commands[1].value, 8)
+    lu.assertEquals(self.commands[2].value, 8)
+end
+
+function TestItemBarUI:test_reentry_cleans_old_root_and_listeners()
+    local originals = {
+        ['common.Util'] = package.loaded['common.Util'],
+        ['common.REUtil'] = package.loaded['common.REUtil'],
+        ['client.GameUI'] = package.loaded['client.GameUI'],
+        ['client.ScreenHandlers.ScreenMain'] = package.loaded['client.ScreenHandlers.ScreenMain'],
+    }
+    package.loaded['common.Util'] = {}
+    package.loaded['common.REUtil'] = _G.REUtil
+    package.loaded['client.GameUI'] = _G.GameUI
+    package.loaded['client.ScreenHandlers.ScreenMain'] = self.handler
+    local ok, err = pcall(function()
+        local mgr = assert(loadfile('client/MgrGameUI.lua'))()
+        local oldRoot, oldButton = self.currentRoot, self.nodes.ItemBarSlot1
+        lu.assertIs(mgr:GetScreen('ScreenMain').RootNode, oldRoot)
+        lu.assertIs(mgr:GetScreen('ScreenMain').RootNode, oldRoot)
+        lu.assertEquals(self.states:Count(), 1)
+        lu.assertEquals(oldButton.OnClicked:Count(), 1)
+        self.currentRoot = { Name = 'ScreenMain', Visible = true,
+            FindFirstChild = function() return nil end }
+        mgr:GetScreen('ScreenMain')
+        lu.assertTrue(oldButton.Destroyed)
+        lu.assertEquals(oldButton.OnClicked:Count(), 0)
+        lu.assertEquals(self.states:Count(), 1)
+        local newButton = self.nodes.ItemBarSlot1
+        lu.assertNotIs(newButton, oldButton)
+        oldButton.OnClicked:Fire()
+        lu.assertEquals(#self.commands, 0)
+        newButton.OnClicked:Fire()
+        lu.assertEquals(#self.commands, 1)
+        self.handler:Cleanup()
+        lu.assertEquals(self.states:Count(), 0)
+        lu.assertTrue(newButton.Destroyed)
+        self.handler:Destroy()
+    end)
+    for _, key in ipairs({ 'common.Util', 'common.REUtil', 'client.GameUI',
+        'client.ScreenHandlers.ScreenMain' }) do
+        package.loaded[key] = originals[key]
+    end
+    lu.assertTrue(ok, tostring(err))
 end

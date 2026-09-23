@@ -15,6 +15,26 @@ function TestItemBar:setUp()
     self.data:Init()
 end
 
+function TestItemBar:test_injected_item_bar_notification_without_global_manager()
+    local previous = _G.MgrPlayerData
+    _G.MgrPlayerData = setmetatable({}, { __index = function() error('不应反查管理器') end })
+    local events = {}
+    local bound = PlayerData.New(player(), function(owner, data)
+        events[#events + 1] = { owner = owner, data = data }
+    end)
+    local ok, err = pcall(function()
+        bound:Init()
+        bound:SelectBait('worm')
+        bound:EatBait('worm')
+        lu.assertEquals(#events, 1)
+        lu.assertIs(events[1].owner, bound.Player)
+        lu.assertIs(events[1].data, bound)
+        bound:Destroy()
+    end)
+    _G.MgrPlayerData = previous
+    lu.assertTrue(ok, tostring(err))
+end
+
 function TestItemBar:test_initial_snapshot_has_eight_slots_and_separate_bait()
     local state = self.data:GetItemBarSnapshot()
     lu.assertEquals(state.slotCount, 8)

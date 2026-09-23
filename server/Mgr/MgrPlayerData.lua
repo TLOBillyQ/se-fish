@@ -75,7 +75,9 @@ function Mgr:OnPlayerAdded(player)
     local current = DataMap[player.UserId]
     if current and current.Player == player then return end
     if current then self:OnPlayerRemoving(current.Player) end
-    local data = PlayerData.New(player)
+    local data = PlayerData.New(player, function(owner, source)
+        if self:GetDataInst(owner) == source then self:SendItemBar(owner) end
+    end)
     DataMap[player.UserId] = data
     data:Init()
     CharacterLinks[player.UserId] = {

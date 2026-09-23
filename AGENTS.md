@@ -5,7 +5,7 @@
 ## 代码结构
 
 - `server/`：`main.lua` 的 `MgrMap`（`server/main.lua:12`）注册 `server/Mgr/` 下的管理器，由它统一分发 `Start` / `OnPlayerAdded` / `OnPlayerRemoving` / `Update`，新管理器加进 `MgrMap`。`server/_trigger/` 是编辑器触发器系统的运行时脚本（`GlobalVars` 是它的变量库）。
-- `client/`：`main.lua` 启动本地逻辑（`LocalMgrUtil` / `LocalMotorUnitCtrl` / `LocalFishEnter` / `LocalAttackButton`），界面交给 `MgrGameUI`；每个界面一个 handler 放 `client/ScreenHandlers/`，文件名要与 EUI 节点同名（`MgrGameUI:GetScreen` 按节点名 require handler）。
+- `client/`：`main.lua` 启动本地逻辑（`LocalMgrUtil` / `LocalMotorUnitCtrl` / `LocalAttackButton` / `LocalReelIn`），并打开 `ScreenMain`；旧钓鱼入口 `LocalFishEnter` 已退役、不再启动。界面交给 `MgrGameUI`；每个界面一个 handler 放 `client/ScreenHandlers/`，文件名要与 EUI 节点同名（`MgrGameUI:GetScreen` 按节点名 require handler）。
 - `common/`：双端共享，`GameCfg.lua` 是数值配置（鱼等级、鱼竿等级等），`Util` / `REUtil` / `FXUtil` / `TeleportUtil` 是工具模块。
 - `packages/`：官方技能包 `ability_system` 整包 vendor（`server/` / `client/` / `common/` 各一份），内部代码一行不改；来源、升级纪律与首期启用范围见 `docs/ability_system-vendor.md`。业务层不直接 require 包内模块——技能包的接缝是双端根聚合入口 `server/AbilityAPI.lua` 与 `client/AbilityAPI.lua`（转发名单在 `common/AbilityAPIBase.lua`，单测拿包内源码校对；`AbilityAPI.AttachAnchor` 是本图为锚点补挂加的包外接口）。装配由 `server/Mgr/MgrAbility.lua` 负责：进图建技能管理器、装初始技能、挂锚点，配置在 `GameCfg.Ability`。本编辑器不认包内的 `---@export_prefab_type` 自定义预设类型，编辑器侧资产（技能 / 技能背包 / 锚点预设）怎么建见 issue #7（加速链路）与 #8（挥砍链路，含锚点实例属性覆盖与触发盒 57450 结论）；各端 `packages/` 下有 README 汇总来源与纪律。预设建在图里、不进 git，一键重建用 `lua tools/cli.lua ability-presets`（issue #9）。
 - `data/`：编辑器插件导出（Prefab / UI 节点 / 字体 ID），只读，改动回编辑器重新导出、用 sync 回灌。

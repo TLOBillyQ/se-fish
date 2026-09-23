@@ -27,7 +27,8 @@ function MgrGameUI:GetScreen(screenName)
 
     screenHandler.ScreenName = screenName
     screenHandler.RootNode = screenNode
-    if not screenHandler.Inited and screenHandler.UINodes and screenHandler.UINodeMap then
+    if (not screenHandler.Inited or screenHandler.BoundRootNode and screenHandler.BoundRootNode ~= screenNode)
+        and screenHandler.UINodes and screenHandler.UINodeMap then
         for k, v in pairs(screenHandler.UINodes) do
             local uiNode = screenNode:FindFirstChild(v, true)
             if uiNode then

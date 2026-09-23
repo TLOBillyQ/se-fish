@@ -28,7 +28,7 @@ function ScreenHandler:Show(state)
     self.BtnBait.TouchEnabled = count > 0
     self.BtnEat.TouchEnabled = count > 0
     self.BtnEat.ButtonText = count > 0 and '吃蚯蚓' or '蚯蚓用尽'
-    self.BtnNone.ButtonText = state.selectedBait and '不挂鱼饵' or '无鱼饵'
+    self.BtnNone.ButtonText = '不挂鱼饵'
     local selected = state.selectedSlot and state.slots[state.selectedSlot]
     self.BtnItemAction.Visible = selected ~= nil
     self.BtnItemAction.ButtonText = selected and selected.itemId == GameCfg.Items.Id.StarterRod
@@ -52,8 +52,32 @@ local function button(parent, name, x, y, width, text)
     return btn
 end
 
+function ScreenHandler:Listen(source, callback)
+    self.Connections[#self.Connections + 1] = source:Connect(callback)
+end
+
+function ScreenHandler:Cleanup()
+    for _, connection in ipairs(self.Connections or {}) do connection:Disconnect() end
+    for _, slot in ipairs(self.Slots or {}) do slot.Background:Destroy() end
+    for _, node in ipairs(self.Buttons or {}) do node:Destroy() end
+    self.Connections = nil
+    self.Slots = nil
+    self.Buttons = nil
+    self.BtnBait = nil
+    self.BtnNone = nil
+    self.BtnEat = nil
+    self.BtnDiscard = nil
+    self.BtnItemAction = nil
+    self.Snapshot = nil
+    self.BoundRootNode = nil
+    self.Inited = false
+end
+
 function ScreenHandler:Init()
-    if self.Inited then return end
+    if self.Inited then
+        if self.BoundRootNode == self.RootNode then return end
+        self:Cleanup()
+    end
     local euiMgr = _G.GameUI:GetEuiManager()
     if not euiMgr then return end
     local resolution = euiMgr:GetDeviceResolution()
@@ -61,6 +85,7 @@ function ScreenHandler:Init()
     local oldEntry = root:FindFirstChild('BtnFishEnter', true)
     if oldEntry then oldEntry.Visible = false end
     self.Slots = {}
+    self.Connections = {}
     local count = GameCfg.Items.ItemBarSlots
     local step = 120
     local firstX = (resolution.x - (count - 1) * step) / 2
@@ -84,27 +109,34 @@ function ScreenHandler:Init()
             FontSize = 24, TextColor = Color.New(255, 220, 40, 255),
         })
         self.Slots[index] = { Background = background, Icon = icon, Label = label, Count = amount }
-        background.OnClicked:Connect(function() self:Action('SelectSlot', index) end)
+        self:Listen(background.OnClicked, function() self:Action('SelectSlot', index) end)
     end
     self.BtnBait = button(root, 'BaitWorm', firstX + 80, 540, 170, '蚯蚓')
     self.BtnNone = button(root, 'BaitNone', firstX + 270, 540, 170, '不挂鱼饵')
     self.BtnEat = button(root, 'BaitEat', firstX + 460, 540, 170, '吃蚯蚓')
     self.BtnDiscard = button(root, 'ItemDiscard', firstX + 650, 540, 170, '丢弃选中物')
     self.BtnItemAction = button(root, 'ItemAction2', resolution.x - 220, 690, 180, '抛竿')
+    self.Buttons = { self.BtnBait, self.BtnNone, self.BtnEat, self.BtnDiscard, self.BtnItemAction }
     self.BtnItemAction.TouchEnabled = false
     self.BtnItemAction.Visible = false
     self.BtnDiscard.Visible = false
-    self.BtnBait.OnClicked:Connect(function() self:Action('SelectBait', GameCfg.Items.Id.Worm) end)
-    self.BtnNone.OnClicked:Connect(function() self:Action('SelectBait') end)
-    self.BtnEat.OnClicked:Connect(function() self:Action('EatBait', GameCfg.Items.Id.Worm) end)
-    self.BtnDiscard.OnClicked:Connect(function()
+    self:Listen(self.BtnBait.OnClicked, function() self:Action('SelectBait', GameCfg.Items.Id.Worm) end)
+    self:Listen(self.BtnNone.OnClicked, function() self:Action('SelectBait') end)
+    self:Listen(self.BtnEat.OnClicked, function() self:Action('EatBait', GameCfg.Items.Id.Worm) end)
+    self:Listen(self.BtnDiscard.OnClicked, function()
         if self.Snapshot and self.Snapshot.selectedSlot then
             self:Action('DiscardSlot', self.Snapshot.selectedSlot)
         end
     end)
-    _G.REUtil:GetRE('ItemBarState').OnClientEvent:Connect(function(state) self:Show(state) end)
+    self:Listen(_G.REUtil:GetRE('ItemBarState').OnClientEvent, function(state) self:Show(state) end)
+    self.BoundRootNode = root
     self.Inited = true
     _G.REUtil:GetRE('RequestItemBar'):FireServer()
+end
+
+function ScreenHandler:Destroy()
+    self:Cleanup()
+    self.RootNode = nil
 end
 
 return ScreenHandler

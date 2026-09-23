@@ -3,8 +3,8 @@ local GameCfg = require('common.GameCfg')
 local PlayerData = {}
 PlayerData.__index = PlayerData
 
-function PlayerData.New(player)
-    return setmetatable({ Player = player, Inited = false }, PlayerData)
+function PlayerData.New(player, onItemBarChanged)
+    return setmetatable({ Player = player, Inited = false, OnItemBarChanged = onItemBarChanged }, PlayerData)
 end
 
 -- 本局只有这里发放初始物品；重复 Init 不会重置已有库存。
@@ -123,9 +123,8 @@ function PlayerData:DiscardSlot(index)
 end
 
 function PlayerData:PublishItemBar()
-    local mgr = _G.MgrPlayerData
-    if mgr and mgr:GetDataInst(self.Player) == self then
-        mgr:SendItemBar(self.Player)
+    if self.OnItemBarChanged then
+        self.OnItemBarChanged(self.Player, self)
     end
 end
 
@@ -153,6 +152,7 @@ end
 function PlayerData:Destroy()
     self.Player = nil
     self.Data = nil
+    self.OnItemBarChanged = nil
     self.Inited = false
 end
 
