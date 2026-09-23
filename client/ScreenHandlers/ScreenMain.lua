@@ -16,40 +16,54 @@ function ScreenHandler:Show(state)
         slot.Icon.Visible = definition ~= nil
         if definition then slot.Icon.Image = definition.Icon end
         slot.Label.Text = definition and definition.Name or ''
+        slot.Label.Visible = definition ~= nil
         slot.Count.Text = definition and tostring(entry.count) or ''
+        slot.Count.Visible = definition ~= nil
         slot.Background.ButtonNormalColor = index == state.selectedSlot
             and Color.New(36, 130, 94, 255) or Color.New(54, 100, 140, 255)
     end
     local baitId = GameCfg.Items.Id.Worm
     local count = state.bait and state.bait[baitId] or 0
-    self.BtnBait.ButtonText = '蚯蚓 ×' .. tostring(count)
+    self.BtnBaitLabel.Text = '蚯蚓 ×' .. tostring(count)
     self.BtnBait.ButtonNormalColor = state.selectedBait == baitId
         and Color.New(36, 130, 94, 255) or Color.New(54, 100, 140, 255)
     self.BtnBait.TouchEnabled = count > 0
     self.BtnEat.TouchEnabled = count > 0
-    self.BtnEat.ButtonText = count > 0 and '吃蚯蚓' or '蚯蚓用尽'
-    self.BtnNone.ButtonText = '不挂鱼饵'
+    self.BtnEatLabel.Text = count > 0 and '吃蚯蚓' or '蚯蚓用尽'
+    self.BtnNoneLabel.Text = '不挂鱼饵'
     local selected = state.selectedSlot and state.slots[state.selectedSlot]
     self.BtnItemAction.Visible = selected ~= nil
-    self.BtnItemAction.ButtonText = selected and selected.itemId == GameCfg.Items.Id.StarterRod
+    self.BtnItemActionLabel.Visible = selected ~= nil
+    self.BtnItemActionLabel.Text = selected and selected.itemId == GameCfg.Items.Id.StarterRod
         and '抛竿' or '使用'
     self.BtnDiscard.Visible = selected ~= nil
+    self.BtnDiscardLabel.Visible = selected ~= nil
 end
 
-local function button(parent, name, x, y, width, text)
+local function button(parent, name, x, y, width)
     local btn = World:CreateUnit('EUIButton', {
         Parent = parent, Name = name,
         Position = Vector2.New(x, y), Size = Vector2.New(width, 90),
     })
     btn.TouchEnabled = true
-    btn.ButtonText = text
+    btn.ButtonText = ''
     btn.NormalImage = 'official://image/11017'
     btn.PressImage = 'official://image/11017'
     btn.DisableImage = 'official://image/11017'
     btn.ButtonNormalColor = Color.New(54, 100, 140, 255)
-    btn.ButtonTextColor = Color.New(255, 255, 255, 255)
-    btn.ButtonTextFontSize = 30
     return btn
+end
+
+local function overlay(parent, name, x, y, width, height, text, size, color)
+    local label = World:CreateUnit('EUITextLabel', {
+        Parent = parent, Name = name,
+        Position = Vector2.New(x, y), Size = Vector2.New(width, height),
+        Text = text, FontSize = size, TextColor = color,
+    })
+    label.TouchEnabled = false
+    label.SwallowTouchEnabled = false
+    label.LocalZOrder = 1
+    return label
 end
 
 function ScreenHandler:Listen(source, callback)
@@ -58,9 +72,11 @@ end
 
 function ScreenHandler:Cleanup()
     for _, connection in ipairs(self.Connections or {}) do connection:Disconnect() end
+    for _, node in ipairs(self.Overlays or {}) do node:Destroy() end
     for _, slot in ipairs(self.Slots or {}) do slot.Background:Destroy() end
     for _, node in ipairs(self.Buttons or {}) do node:Destroy() end
     self.Connections = nil
+    self.Overlays = nil
     self.Slots = nil
     self.Buttons = nil
     self.BtnBait = nil
@@ -68,6 +84,11 @@ function ScreenHandler:Cleanup()
     self.BtnEat = nil
     self.BtnDiscard = nil
     self.BtnItemAction = nil
+    self.BtnBaitLabel = nil
+    self.BtnNoneLabel = nil
+    self.BtnEatLabel = nil
+    self.BtnDiscardLabel = nil
+    self.BtnItemActionLabel = nil
     self.Snapshot = nil
     self.BoundRootNode = nil
     self.Inited = false
@@ -86,40 +107,59 @@ function ScreenHandler:Init()
     if oldEntry then oldEntry.Visible = false end
     self.Slots = {}
     self.Connections = {}
+    self.Overlays = {}
     local count = GameCfg.Items.ItemBarSlots
     local step = 120
     local firstX = (resolution.x - (count - 1) * step) / 2
     for index = 1, count do
-        local background = button(root, 'ItemBarSlot' .. index,
-            firstX + (index - 1) * step, 400, 110, '')
+        local x, y = firstX + (index - 1) * step, 400
+        local background = button(root, 'ItemBarSlot' .. index, x, y, 110)
         background.Size = Vector2.New(110, 110)
         local icon = World:CreateUnit('EUIImage', {
-            Parent = background, Name = 'ItemBarIcon' .. index,
-            Position = Vector2.New(55, 70), Size = Vector2.New(78, 78),
+            Parent = root, Name = 'ItemBarIcon' .. index,
+            Position = Vector2.New(x, y + 15), Size = Vector2.New(78, 78),
         })
+        icon.TouchEnabled = false
+        icon.SwallowTouchEnabled = false
+        icon.LocalZOrder = 1
         icon.Visible = false
-        local label = World:CreateUnit('EUITextLabel', {
-            Parent = background, Name = 'ItemBarLabel' .. index,
-            Position = Vector2.New(55, 20), Size = Vector2.New(110, 28),
-            FontSize = 24, TextColor = Color.New(255, 255, 255, 255),
-        })
-        local amount = World:CreateUnit('EUITextLabel', {
-            Parent = background, Name = 'ItemBarAmount' .. index,
-            Position = Vector2.New(92, 92), Size = Vector2.New(30, 30),
-            FontSize = 24, TextColor = Color.New(255, 220, 40, 255),
-        })
+        local label = overlay(root, 'ItemBarLabel' .. index, x, y - 35, 110, 28,
+            '', 24, Color.New(255, 255, 255, 255))
+        local amount = overlay(root, 'ItemBarAmount' .. index, x + 37, y + 37, 30, 30,
+            '', 24, Color.New(255, 220, 40, 255))
+        label.Visible = false
+        amount.Visible = false
+        self.Overlays[#self.Overlays + 1] = icon
+        self.Overlays[#self.Overlays + 1] = label
+        self.Overlays[#self.Overlays + 1] = amount
         self.Slots[index] = { Background = background, Icon = icon, Label = label, Count = amount }
         self:Listen(background.OnClicked, function() self:Action('SelectSlot', index) end)
     end
-    self.BtnBait = button(root, 'BaitWorm', firstX + 80, 540, 170, '蚯蚓')
-    self.BtnNone = button(root, 'BaitNone', firstX + 270, 540, 170, '不挂鱼饵')
-    self.BtnEat = button(root, 'BaitEat', firstX + 460, 540, 170, '吃蚯蚓')
-    self.BtnDiscard = button(root, 'ItemDiscard', firstX + 650, 540, 170, '丢弃选中物')
-    self.BtnItemAction = button(root, 'ItemAction2', resolution.x - 220, 690, 180, '抛竿')
+    self.BtnBait = button(root, 'BaitWorm', firstX + 80, 540, 170)
+    self.BtnNone = button(root, 'BaitNone', firstX + 270, 540, 170)
+    self.BtnEat = button(root, 'BaitEat', firstX + 460, 540, 170)
+    self.BtnDiscard = button(root, 'ItemDiscard', firstX + 650, 540, 170)
+    self.BtnItemAction = button(root, 'ItemAction2', resolution.x - 220, 690, 180)
     self.Buttons = { self.BtnBait, self.BtnNone, self.BtnEat, self.BtnDiscard, self.BtnItemAction }
+    local labels = {
+        { 'BtnBaitLabel', self.BtnBait, '蚯蚓' },
+        { 'BtnNoneLabel', self.BtnNone, '不挂鱼饵' },
+        { 'BtnEatLabel', self.BtnEat, '吃蚯蚓' },
+        { 'BtnDiscardLabel', self.BtnDiscard, '丢弃选中物' },
+        { 'BtnItemActionLabel', self.BtnItemAction, '抛竿' },
+    }
+    for _, entry in ipairs(labels) do
+        local btn = entry[2]
+        local label = overlay(root, entry[1], btn.Position.x, btn.Position.y,
+            btn.Size.x, btn.Size.y, entry[3], 30, Color.New(255, 255, 255, 255))
+        self[entry[1]] = label
+        self.Overlays[#self.Overlays + 1] = label
+    end
     self.BtnItemAction.TouchEnabled = false
     self.BtnItemAction.Visible = false
+    self.BtnItemActionLabel.Visible = false
     self.BtnDiscard.Visible = false
+    self.BtnDiscardLabel.Visible = false
     self:Listen(self.BtnBait.OnClicked, function() self:Action('SelectBait', GameCfg.Items.Id.Worm) end)
     self:Listen(self.BtnNone.OnClicked, function() self:Action('SelectBait') end)
     self:Listen(self.BtnEat.OnClicked, function() self:Action('EatBait', GameCfg.Items.Id.Worm) end)
