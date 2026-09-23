@@ -93,7 +93,27 @@ function Mgr:OnPlayerRemoving(player)
     end
 end
 
+function Mgr:Stop()
+    if self.REConnection then self.REConnection:Disconnect() end
+    if self.CloseConnection then self.CloseConnection:Disconnect() end
+    self.REConnection = nil
+    self.CloseConnection = nil
+    for _, links in pairs(self.Connections) do
+        for name, connection in pairs(links) do
+            if name ~= 'Player' then connection:Disconnect() end
+        end
+    end
+    self.Connections = {}
+    for _, session in pairs(self.Sessions) do
+        self:Finish(session, 'unhooked', false)
+    end
+    self.Sessions = {}
+    self.World = nil
+    self.RE = nil
+end
+
 function Mgr:Start()
+    if self.REConnection then return end
     self.World = game:GetService('World')
     self.RE = REUtil:GetRE(self.CHANNEL)
     self.REConnection = self.RE.OnServerEvent:Connect(function(player, payload)
@@ -102,13 +122,17 @@ function Mgr:Start()
     self.CloseConnection = REUtil:GetRE('CloseReelIn').OnServerEvent:Connect(function(player, payload)
         self:Close(player, payload)
     end)
+    local players = game:GetService('Players')
+    if players then
+        for _, player in ipairs(players:GetPlayers()) do self:OnPlayerAdded(player) end
+    end
 end
 
 function Mgr:Update()
     if not self.World then return end
     local now = self.World:GetServerTime()
     for _, session in pairs(self.Sessions) do
-        local outcome = session.Progress:Advance(now)
+        local outcome = session.Progress:Advance(now - GameCfg.HighFreqInput.AggregateSec)
         if outcome then
             self:Finish(session, outcome)
         elseif not session.LastReport or now - session.LastReport >= GameCfg.HighFreqInput.AggregateSec then

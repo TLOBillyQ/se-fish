@@ -53,7 +53,19 @@ function LocalReelIn:Clear(id)
     self.Aggregator = nil
 end
 
+function LocalReelIn:Stop()
+    self:Close()
+    if self.Connection then self.Connection:Disconnect() end
+    if self.UpdateConnection then self.UpdateConnection:Disconnect() end
+    self.Connection = nil
+    self.UpdateConnection = nil
+    self.World = nil
+    self.RE = nil
+    self.CloseRE = nil
+end
+
 function LocalReelIn:Start()
+    if self.Connection then return end
     self.World = game:GetService('World')
     self.RE = REUtil:GetRE(self.CHANNEL)
     self.CloseRE = REUtil:GetRE('CloseReelIn')

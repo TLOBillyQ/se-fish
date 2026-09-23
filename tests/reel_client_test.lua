@@ -58,6 +58,22 @@ function TestReelClient:test_snapshot_does_not_reset_pending_and_close_flushes_f
     lu.assertEquals(#self.sent, 2)
 end
 
+function TestReelClient:test_restart_does_not_stack_listeners_or_leave_pending_clicks()
+    local first = self.client.Connection
+    local update = self.client.UpdateConnection
+    self.client:Start()
+    lu.assertIs(self.client.Connection, first)
+    lu.assertIs(self.client.UpdateConnection, update)
+    self.client:SetSession('s1')
+    self.client:Click()
+    self.client:Stop()
+    lu.assertNil(self.client.SessionId)
+    lu.assertNil(self.client.Connection)
+    lu.assertEquals(self.sent[#self.sent], { name = 'CloseReelIn', payload = { session = 's1' } })
+    self.client:Start()
+    lu.assertNotIs(self.client.Connection, first)
+end
+
 function TestReelClient:test_heartbeat_collects_after_hundred_ms()
     self.client:SetSession('s1')
     self.client:Click()

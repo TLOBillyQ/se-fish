@@ -73,6 +73,32 @@ function TestReelSession:test_identity_session_sequence_and_clamp()
     lu.assertEquals(#self.b.messages, 1)
 end
 
+function TestReelSession:test_update_does_not_change_delayed_batch_result()
+    local progress = self.mgr.Sessions[1].Progress
+    self.now = 10.179
+    self.mgr:Update()
+    lu.assertNil(self.a.results[1])
+    lu.assertAlmostEquals(progress.Progress, 0, 0.5)
+    self.now = 10.19
+    self.events.ReelInRE.OnServerEvent:Fire(self.a, { s = 's1', n = 2, q = 1 })
+    local direct = require('common.ReelProgress').New(0, require('common.GameCfg').ReelIn)
+    direct:Advance(10.19, 2, 0.1)
+    lu.assertNil(self.a.results[1])
+    lu.assertAlmostEquals(progress.Progress, direct.Progress, 0.5)
+end
+
+function TestReelSession:test_restart_cleans_connections_and_sessions()
+    local first = self.mgr.REConnection
+    self.mgr:Start()
+    lu.assertIs(self.mgr.REConnection, first)
+    self.mgr:Stop()
+    lu.assertNil(self.mgr.REConnection)
+    lu.assertNil(self.mgr.Sessions[1])
+    lu.assertNil(self.mgr.Connections[1])
+    self.mgr:Start()
+    lu.assertNotIs(self.mgr.REConnection, first)
+end
+
 function TestReelSession:test_close_cannot_end_another_player_and_finishes_once()
     local close = self.events.CloseReelIn.OnServerEvent
     close:Fire(self.a, { session = 's2' })
