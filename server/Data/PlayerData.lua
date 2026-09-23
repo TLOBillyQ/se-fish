@@ -135,6 +135,16 @@ function PlayerData:AddItem(itemId, mult)
     return false
 end
 
+-- 金币唯一写入口（#44）：spend 在同一次更新里扣掉换钱的物品，扣除与入账一起落地并同步 FishCoin
+function PlayerData:AddCoin(amount, spend)
+    if not self.Inited or type(amount) ~= 'number' or amount ~= math.floor(amount) or amount < 0 then return false end
+    self:UpdateData(function(data)
+        if spend then spend(data) end
+        data.FishCoin = data.FishCoin + amount
+    end, true)
+    return true
+end
+
 function PlayerData:DiscardSlot(index)
     if not self.Inited or type(index) ~= 'number' or index ~= math.floor(index)
         or index < 1 or index > GameCfg.Items.ItemBarSlots then return false end

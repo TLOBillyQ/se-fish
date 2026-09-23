@@ -30,9 +30,9 @@ function FishCatch.Weight(species, mult)
     return math.floor(species.BaseWeight * percent(mult) + 0.5 + 1e-9) / 100
 end
 
--- 出售价（整数，四舍五入）= 基础出售价 × 倍率
+-- 出售价（整数金币，向下取整）= floor(基础出售价 × 倍率)，倍率缺省 1（#27 / #44）
 function FishCatch.Price(species, mult)
-    return math.floor(species.BasePrice * percent(mult) / 100 + 0.5 + 1e-9)
+    return math.floor(species.BasePrice * percent(mult or 1) / 100 + 1e-9)
 end
 
 return FishCatch
