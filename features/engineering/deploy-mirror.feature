@@ -30,7 +30,7 @@
 
   例子:
   | 路径列表                                                                                                                     |
-  | server/main.lua server/Mgr/MgrFish.lua server/Mgr/MgrAbility.lua server/_trigger/GlobalVars.lua server/packages/ability_system/api.lua client/main.lua client/ScreenHandlers/ScreenFishing.lua common/GameCfg.lua common/Util.lua |
+  | server/main.lua server/Mgr/MgrFishUnit.lua server/Mgr/MgrAbility.lua server/_trigger/GlobalVars.lua server/packages/ability_system/api.lua client/main.lua client/ScreenHandlers/ScreenMain.lua common/GameCfg.lua common/Util.lua |
 
 场景大纲: 部署镜像 2: 部署不触碰工作区中不归本仓库的文件
   假如 临时工作区预置文件<预置列表>

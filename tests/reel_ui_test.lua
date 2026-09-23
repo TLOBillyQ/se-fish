@@ -135,3 +135,22 @@ function TestReelUI:test_started_during_closed_screen_is_cancelled_without_openi
     lu.assertNil(self.reel.SessionId)
     lu.assertFalse(self.nodes.ItemAction2.TouchEnabled)
 end
+
+-- #37：上岸瞬间「收线」按钮灰化且不可点，回到 idle 后恢复成抛竿
+function TestReelUI:test_landed_greys_out_action_button()
+    self.events.ItemBarState.OnClientEvent:Fire({ slots = {
+        [1] = { itemId = 'starterRod', count = 1 },
+    }, bait = { worm = 1 }, selectedSlot = 1 })
+    local normal = self.nodes.ItemAction2.ButtonNormalColor
+    self.events.CastState.OnClientEvent:Fire({ phase = 'hooked', reelSession = 'g1' })
+    self.events.CastState.OnClientEvent:Fire({ phase = 'landed', reelSession = 'g1' })
+    lu.assertFalse(self.nodes.ItemAction2.TouchEnabled)
+    lu.assertEquals(self.nodes.ItemAction2.ButtonNormalColor, { 120, 120, 120, 255 })
+    local sent = #self.sent
+    self.nodes.ItemAction2.OnClicked:Fire()
+    lu.assertEquals(#self.sent, sent)
+    self.events.CastState.OnClientEvent:Fire({ phase = 'idle' })
+    lu.assertTrue(self.nodes.ItemAction2.TouchEnabled)
+    lu.assertEquals(self.nodes.ItemAction2.ButtonNormalColor, normal)
+    lu.assertEquals(self.nodes.BtnItemActionLabel.Text, '抛竿')
+end

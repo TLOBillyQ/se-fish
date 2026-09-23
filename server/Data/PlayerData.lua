@@ -25,9 +25,6 @@ function PlayerData:Init()
     end
     self.Data = {
         FishCoin = 0,
-        FishCount = 0,
-        FishLevel = 1,
-        RodLevel = 1,
         Containers = { [GameCfg.Items.ContainerId.ItemBar] = items },
         Bait = bait,
         SelectedSlot = nil,
@@ -70,6 +67,15 @@ function PlayerData:SelectSlot(index)
         or index < 1 or index > GameCfg.Items.ItemBarSlots then return false end
     local entry = self.Data.Containers[GameCfg.Items.ContainerId.ItemBar][index]
     self.Data.SelectedSlot = self.Data.SelectedSlot ~= index and entry and entry.count > 0 and index or nil
+    return true
+end
+
+-- 钓鱼结束后归位：该格仍是鱼竿才选中它（不像 SelectSlot 那样切换取消）
+function PlayerData:RestoreSlot(index)
+    if not self.Inited or type(index) ~= 'number' then return false end
+    local entry = self.Data.Containers[GameCfg.Items.ContainerId.ItemBar][index]
+    if not entry or entry.count < 1 or entry.itemId ~= GameCfg.Items.Id.StarterRod then return false end
+    self.Data.SelectedSlot = index
     return true
 end
 
@@ -144,9 +150,7 @@ end
 
 function PlayerData:Sync()
     if not self.Player or not self.Inited then return end
-    for _, key in ipairs({ 'FishCoin', 'FishCount', 'FishLevel', 'RodLevel' }) do
-        self.Player:SetAttribute(key, self.Data[key])
-    end
+    self.Player:SetAttribute('FishCoin', self.Data.FishCoin)
 end
 
 function PlayerData:Destroy()

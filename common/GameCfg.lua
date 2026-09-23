@@ -24,7 +24,7 @@ GameCfg.Items = {
         catfish = { Name = '鲶鱼', Icon = 'official://image/11164' },
         goldfish = { Name = '金鱼', Icon = 'official://image/11164' },
         worm = { Name = '蚯蚓', Icon = 'official://image/14066' },
-        starterRod = { Name = '新手鱼竿', Icon = 'official://image/12024' },
+        starterRod = { Name = '新手鱼竿', Icon = 'official://image/12024', Level = 1 },
     },
 }
 GameCfg.Items.InitialGrants = {
@@ -32,10 +32,35 @@ GameCfg.Items.InitialGrants = {
     { itemId = GameCfg.Items.Id.Worm, count = GameCfg.Items.InitialWormCount, containerId = GameCfg.Items.ContainerId.Bait },
 }
 
+-- 鱼种基础值（design 钓鱼表 / 物品表的鱼塘行）：Health=血量，BaseWeight=基础重量 kg，
+-- BasePrice=基础出售价，Model=GameCfg.FishCarrier.Models 的模型号。
+-- 个体重量 = BaseWeight × 倍率、售价 = BasePrice × 倍率，由 common/FishCatch.lua 派生，不存快照。
+-- 极品鲶鱼 / 极品鲈鱼的血量、重量、售价照表抄（表里与普通版对调，疑问记在 #37）。
+-- 电鳗是精英鱼，MVP 不做精英，暂不进渔获表（#37 评论）。
+GameCfg.Fish = {
+    tilapia = { Name = '罗非鱼', Grade = 'normal', Health = 5, BaseWeight = 1, BasePrice = 3, Model = '7000557' },
+    carp = { Name = '鲤鱼', Grade = 'normal', Health = 10, BaseWeight = 5, BasePrice = 4, Model = '7000552' },
+    knifeFish = { Name = '刀鱼', Grade = 'normal', Health = 15, BaseWeight = 0.5, BasePrice = 5, Model = '7000545' },
+    bass = { Name = '鲈鱼', Grade = 'normal', Health = 20, BaseWeight = 2, BasePrice = 6, Model = '7000551' },
+    catfish = { Name = '鲶鱼', Grade = 'normal', Health = 25, BaseWeight = 5, BasePrice = 7, Model = '7000553' },
+    goldfish = { Name = '金鱼', Grade = 'normal', Health = 3, BaseWeight = 0.1, BasePrice = 8, Model = '7000559' },
+    premiumTilapia = { Name = '极品罗非鱼', Grade = 'premium', Health = 5, BaseWeight = 1, BasePrice = 3, Model = '7000557' },
+    premiumCarp = { Name = '极品鲤鱼', Grade = 'premium', Health = 10, BaseWeight = 5, BasePrice = 4, Model = '7000552' },
+    premiumKnifeFish = { Name = '极品刀鱼', Grade = 'premium', Health = 15, BaseWeight = 0.5, BasePrice = 5, Model = '7000545' },
+    premiumCatfish = { Name = '极品鲶鱼', Grade = 'premium', Health = 20, BaseWeight = 2, BasePrice = 6, Model = '7000553' },
+    premiumBass = { Name = '极品鲈鱼', Grade = 'premium', Health = 25, BaseWeight = 5, BasePrice = 7, Model = '7000551' },
+    premiumGoldfish = { Name = '极品金鱼', Grade = 'premium', Health = 3, BaseWeight = 0.1, BasePrice = 8, Model = '7000559' },
+}
+
 GameCfg.Casting = {
     Distance = 5,
     HookDelaySec = 3,
     ActionCooldownSec = 0.12,
+    -- 上岸停留：收线到 100% 后按钮灰化、播放上岸动作，停留结束归位到选中鱼竿（#37）
+    LandedHoldSec = 1.2,
+    LandedAnimation = 'official://animation/24450', -- 官方动画「钓鱼」
+    -- 活鱼落在玩家正前方的水平距离（米），要在原生抓举的命中范围内（#27 接口契约）
+    LandingOffset = 1.5,
     Zones = {
         WaterCircle2 = {
             { Id = 'tilapia', Bait = 0, RodLevel = 1, Weight = 8 },
@@ -50,148 +75,9 @@ GameCfg.Casting = {
             { Id = 'premiumCatfish', Bait = 'worm', RodLevel = 1, Weight = 8 },
             { Id = 'premiumBass', Bait = 'worm', RodLevel = 1, Weight = 6 },
             { Id = 'premiumGoldfish', Bait = 'worm', RodLevel = 1, Weight = 4 },
-            { Id = 'electricEel', Bait = 'worm', RodLevel = 1, Weight = 10 },
         },
     },
 }
-
-GameCfg.FishMap = {
-    Fish001 = {Id = "Fish001",  Name = "草鱼",  Icon = 37132,    ReqStep = 3,    Coin = 40}, --Icon = "official://image/37132"
-    Fish002 = {Id = "Fish002",  Name = "小丑鱼",    Icon = 37137,    ReqStep = 2,    Coin = 25},
-    Fish003 = {Id = "Fish003",  Name = "鲫鱼",  Icon = 37134,    ReqStep = 3,    Coin = 30},
-    Fish004 = {Id = "Fish004",  Name = "黑鱼",  Icon = 37125,    ReqStep = 3,    Coin = 35},
-    Fish005 = {Id = "Fish005",  Name = "章鱼",  Icon = 15970,    ReqStep = 4,    Coin = 80},
-    Fish006 = {Id = "Fish006",  Name = "旗鱼",  Icon = 37119,    ReqStep = 4,    Coin = 70},
-    Fish007 = {Id = "Fish007",  Name = "蝴蝶鱼",    Icon = 37123,    ReqStep = 4,    Coin = 90},
-    Fish008 = {Id = "Fish008",  Name = "鳐鱼",  Icon = 37121,    ReqStep = 5,    Coin = 150},    --150
-    Fish009 = {Id = "Fish009",  Name = "三文鱼",  Icon = 37130,    ReqStep = 5,    Coin = 160},  --160
-    Fish010 = {Id = "Fish010",  Name = "大马哈鱼",  Icon = 37118,    ReqStep = 5,    Coin = 120},   --120
-    Fish011 = {Id = "Fish011",  Name = "鲨鱼",  Icon = 37120,    ReqStep = 6,    Coin = 200},
-    Fish012 = {Id = "Fish012",  Name = "七彩鱼",  Icon = 37129,    ReqStep = 6,    Coin = 300},
-    Fish013 = {Id = "Fish013",  Name = "大章鱼",  Icon = 33706,    ReqStep = 6,    Coin = 250},
-}
---35971 鱼竿
-GameCfg.MaxRodLv = 5
-GameCfg.RodLevelMap = {}
-GameCfg.RodLevelMap[1] = {
-    Cost = 100, --升级需求
-    FishTime = 4,
-}
-
-GameCfg.RodLevelMap[2] = {
-    Cost = 500,
-    FishTime = 4.5,
-}
-
-GameCfg.RodLevelMap[3] = {
-    Cost = 1000,
-    FishTime = 5,
-}
-
-GameCfg.RodLevelMap[4] = {
-    Cost = 10000,
-    FishTime = 5.5,
-}
-
-GameCfg.RodLevelMap[5] = {
-    Cost = 0,
-    FishTime = 6,
-}
-
-GameCfg.MaxFishLv = 5
-GameCfg.FishLevelMap = {}
-GameCfg.FishLevelMap[1] = {
-    Cost = 100,
-    Loot = {
-        Fish001 = 1,
-        Fish002 = 1,
-        Fish003 = 1,
-        Fish004 = 1,
-    }
-}
-
-GameCfg.FishLevelMap[2] = {
-    Cost = 500,
-    Loot = {
-        Fish001 = 1,
-        Fish002 = 1,
-        Fish003 = 1,
-        Fish004 = 1,
-        Fish005 = 1,
-        Fish006 = 1,
-        Fish007 = 1,
-    }
-}
-
-GameCfg.FishLevelMap[3] = {
-    Cost = 1000,
-    Loot = {
-        Fish001 = 1,
-        Fish002 = 1,
-        Fish003 = 1,
-        Fish004 = 1,
-        Fish005 = 2,
-        Fish006 = 2,
-        Fish007 = 2,
-        Fish008 = 1,
-        Fish009 = 1,
-        Fish010 = 1,
-    }
-}
-
-GameCfg.FishLevelMap[4] = {
-    Cost = 10000,
-    Loot = {
-        Fish001 = 1,
-        Fish002 = 1,
-        Fish003 = 1,
-        Fish004 = 1,
-        Fish005 = 2,
-        Fish006 = 2,
-        Fish007 = 2,
-        Fish008 = 2,
-        Fish009 = 2,
-        Fish010 = 2,
-        Fish011 = 1,
-        Fish012 = 1,
-        Fish013 = 1,
-    }
-}
-
-GameCfg.FishLevelMap[5] = {
-    Cost = 0,
-    Loot = {
-        Fish001 = 1,
-        Fish002 = 1,
-        Fish003 = 1,
-        Fish004 = 1,
-        Fish005 = 2,
-        Fish006 = 2,
-        Fish007 = 2,
-        Fish008 = 3,
-        Fish009 = 3,
-        Fish010 = 3,
-        Fish011 = 4,
-        Fish012 = 4,
-        Fish013 = 4,
-    }
-}
-
-function GameCfg:GetLootRst(loot)
-    local total = 0
-    for _, v in pairs(loot) do
-        total = total + v
-    end
-
-    local randomValue = math.random(total)
-    for k, v in pairs(loot) do
-        if randomValue > v then
-            randomValue = randomValue - v
-        else
-            return k
-        end
-    end
-end
 
 -- 技能包（ability_system）在本图的接入配置。
 -- 预设本体存在图里、不进 git，这里只记 key；预设的建法与完整命令记录见 issue #7 / #8——
@@ -288,12 +174,7 @@ GameCfg.ReelIn = {
 --   别拿预设号当 mesh id。
 -- Models = 官方鱼模型库 20 条（模型号 7000544–7000563 ↔ 官方预设 9000092–9000121），
 --   Mesh 是建议直接写进 RenderMeshId 的值，Preset 只作溯源与编辑器侧对照。
--- 与 GameCfg.FishMap 的鱼种对照（台账 §2.1）：13 个鱼种里 11 个在号段内一一对上——
---   Fish010 大马哈鱼 7000544 / Fish006 旗鱼 7000545 / Fish011 鲨鱼 7000546 / Fish008 鳐鱼 7000547 /
---   Fish007 蝴蝶鱼 7000549 / Fish004 黑鱼 7000551 / Fish012 七彩鱼 7000555 / Fish009 三文鱼 7000556 /
---   Fish001 草鱼 7000558 / Fish003 鲫鱼 7000560 / Fish002 小丑鱼 7000563
--- 未定案（要策划拍，本表不猜）：Fish005 章鱼不在号段内（台账记为模型号 6000019 /
---   official://preset/1510600）、Fish013 大章鱼没有对应模型号（台账建议退化为章鱼）。
+-- 鱼种用哪个模型见 GameCfg.Fish 的 Model（#37 起旧 FishMap 已退役）。
 -- 谁消费：M2「打鱼变现」按上面的写法建鱼；改本表时 tests/water_judge_test.lua 的
 -- TestFishCarrierConfig 会先红（它钉住写法与 20 条的号段）。
 GameCfg.FishCarrier = {

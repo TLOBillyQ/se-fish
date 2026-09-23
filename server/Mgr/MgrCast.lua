@@ -3,8 +3,9 @@ local MathWaterJudge = require('common.MathWaterJudge')
 local FishCatch = require('common.FishCatch')
 local MgrPlayerData = require('server.Mgr.MgrPlayerData')
 local REUtil = require('common.REUtil')
+local MgrFishUnit = require('server.Mgr.MgrFishUnit')
 
-local Mgr = { Sessions = {} }
+local Mgr = { Sessions = {}, FishUnit = MgrFishUnit }
 MathWaterJudge.Build(GameCfg.Water.Zones)
 
 function Mgr:SendState(player, session)
@@ -48,7 +49,8 @@ function Mgr:Cast(player, payload)
         landing = { x = x, y = zone and zone.SurfaceY or origin.y, z = z },
         zoneId = zone and zone.Id or nil,
         baitId = baitId,
-        rodLevel = data.Data.RodLevel,
+        slot = selected,
+        rodLevel = GameCfg.Items.Definitions[entry.itemId].Level or 1,
         hookAt = zone and (self.World:GetServerTime() + GameCfg.Casting.HookDelaySec) or nil,
     }
     self.Sessions[player.UserId] = { player = player, session = session }
@@ -56,12 +58,25 @@ function Mgr:Cast(player, payload)
     print('[MgrCast] 抛竿', player.UserId, session.zoneId or 'land', baitId or 'none')
 end
 
+-- 一次钓鱼结束（收竿 / 脱钩 / 上岸停留完）：清会话，归位到抛竿时选中的鱼竿
+function Mgr:EndSession(player, current, notify)
+    if self.Sessions[player.UserId] ~= current then return end
+    self.Sessions[player.UserId] = nil
+    if notify == false then return end
+    local slot = current.session.slot
+    local data = slot and MgrPlayerData:GetDataInst(player)
+    if data and data.Data.SelectedSlot ~= slot
+        and data:RestoreSlot(slot) then
+        MgrPlayerData:SendItemBar(player)
+    end
+    self:SendState(player)
+end
+
 function Mgr:Reel(player)
     local current = self.Sessions[player.UserId]
     if not current or current.player ~= player or current.session.phase ~= 'cast' then return end
     if REUtil:CheckRECD(player, 'CastAction', GameCfg.Casting.ActionCooldownSec) then return end
-    self.Sessions[player.UserId] = nil
-    self:SendState(player)
+    self:EndSession(player, current)
     print('[MgrCast] 收竿', player.UserId)
 end
 
@@ -70,12 +85,42 @@ function Mgr:FinishReel(player, sessionId, outcome, notify)
     if not current or current.player ~= player or current.session.reelSession ~= sessionId
         or current.session.phase ~= 'hooked' then return end
     if outcome == 'landed' then
-        current.session.phase = 'landed'
-        if notify ~= false then self:SendState(player, current.session) end
+        local session = current.session
+        session.phase = 'landed'
+        session.idleAt = self.World:GetServerTime() + GameCfg.Casting.LandedHoldSec
+        self:Land(player, session)
+        if notify ~= false then self:SendState(player, session) end
     else
-        self.Sessions[player.UserId] = nil
-        if notify ~= false then self:SendState(player) end
+        self:EndSession(player, current, notify)
     end
+end
+
+-- 上岸结算：phase 已从 hooked 切到 landed，这里只会走一次；活鱼落在玩家正前方，交给活鱼单位管理器
+function Mgr:Land(player, session)
+    local character = player.Character
+    local origin, rotation = character and character.Position, character and character.Rotation
+    if not origin or not rotation then
+        print('[MgrCast] 上岸但角色不在，未生成活鱼', player.UserId, session.fishId)
+        return
+    end
+    local forward = rotation:GetForward()
+    local length = math.sqrt(forward.x * forward.x + forward.z * forward.z)
+    local dx, dz = 0, 0
+    if length >= 0.01 then
+        dx = GameCfg.Casting.LandingOffset * forward.x / length
+        dz = GameCfg.Casting.LandingOffset * forward.z / length
+    end
+    local position = Vector3.New(origin.x + dx, origin.y, origin.z + dz)
+    local fish, err = self.FishUnit:SpawnLanded(player, { fishId = session.fishId, mult = session.mult }, position)
+    if fish then
+        print('[MgrCast] 上岸', player.UserId, session.fishId, session.mult, 'fish=' .. tostring(fish.Id))
+    else
+        print('[MgrCast] 上岸生成活鱼失败', player.UserId, session.fishId, tostring(err))
+    end
+    local ok, playErr = pcall(function()
+        character.Animator:LoadAnimation(GameCfg.Casting.LandedAnimation):Play()
+    end)
+    if not ok then print('[MgrCast] 上岸动作播放失败', player.UserId, tostring(playErr)) end
 end
 
 function Mgr:Stop()
@@ -109,7 +154,9 @@ function Mgr:Update()
     local now = self.World:GetServerTime()
     for _, current in pairs(self.Sessions) do
         local session = current.session
-        if session.phase == 'cast' and session.hookAt and now >= session.hookAt then
+        if session.phase == 'landed' and session.idleAt and now >= session.idleAt then
+            self:EndSession(current.player, current)
+        elseif session.phase == 'cast' and session.hookAt and now >= session.hookAt then
             local rows = GameCfg.Casting.Zones[session.zoneId]
             local fishId = FishCatch.Select(rows, session.rodLevel, session.baitId, math.random)
             if fishId then

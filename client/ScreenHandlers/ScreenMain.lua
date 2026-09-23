@@ -51,6 +51,9 @@ function ScreenHandler:ShowCast()
     self.BtnItemActionLabel.Visible = visible
     self.BtnItemAction.TouchEnabled = self.IsOpen == true
         and ((rod and phase == 'idle') or phase == 'cast' or active == true) or false
+    -- 上岸停留期间按钮灰化（#37），其余时候用常规底色
+    self.BtnItemAction.ButtonNormalColor = phase == 'landed' and Color.New(120, 120, 120, 255)
+        or Color.New(54, 100, 140, 255)
     self.BtnItemActionLabel.Text = phase == 'hooked' and '点击收线'
         or phase == 'landed' and '已上岸' or phase == 'cast' and '收竿' or rod and '抛竿' or '使用'
     local result = reel and reel.LastResult

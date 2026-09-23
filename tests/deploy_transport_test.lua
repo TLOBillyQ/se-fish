@@ -97,9 +97,9 @@ end
 
 function TestDeployTransport:test_mirror_lands_the_repo_tree()
   for _, rel in ipairs({ "client/main.lua", "common/Util.lua", "server/main.lua",
-                         "server/Mgr/MgrFish.lua", "server/Mgr/MgrAbility.lua",
+                         "server/Mgr/MgrFishUnit.lua", "server/Mgr/MgrAbility.lua",
                          "server/packages/ability_system/api.lua",
-                         "client/ScreenHandlers/ScreenFishing.lua" }) do
+                         "client/ScreenHandlers/ScreenMain.lua" }) do
     lu.assertTrue(shell.exists(WS .. "/" .. rel), rel .. " 未落到宿主目录")
   end
 end
