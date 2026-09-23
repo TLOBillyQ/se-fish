@@ -18,6 +18,9 @@ local MgrMap = {
     MgrFishCarrier = require("server.Mgr.MgrFishCarrier"),
 }
 
+MgrMap.MgrCast.ReelIn = MgrMap.MgrReelIn
+MgrMap.MgrReelIn.Cast = MgrMap.MgrCast
+
 local function HandlePlayerAdded(player)
     for k, mgr in pairs(MgrMap) do
         if mgr.OnPlayerAdded then

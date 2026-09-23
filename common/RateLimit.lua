@@ -237,8 +237,8 @@ function Receiver:Accept(now, msg)
     local n = msg.n
     local q = msg.q
     if type(msg.s) ~= "string" or msg.s == ""
-        or not isFiniteNumber(n) or n < 1
-        or not isFiniteNumber(q) or q < 1 then
+        or not isFiniteNumber(n) or n < 1 or n ~= math.floor(n)
+        or not isFiniteNumber(q) or q < 1 or q ~= math.floor(q) then
         return drop(RateLimit.Reason.BadPayload, nil)
     end
 

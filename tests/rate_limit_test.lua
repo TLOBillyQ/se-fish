@@ -225,6 +225,8 @@ function TestRateLimitReceiver:test_malformed_payload_is_dropped_not_raised()
   lu.assertEquals(rx:Accept(0, { s = "s-1", n = 0 / 0, q = 1 }).Reason, "bad-payload")
   lu.assertEquals(rx:Accept(0, { s = "s-1", n = 1 }).Reason, "bad-payload")     -- 缺 q
   lu.assertEquals(rx:Accept(0, { s = "s-1", n = 1, q = 0 }).Reason, "bad-payload")
+  lu.assertEquals(rx:Accept(0, { s = "s-1", n = 1.5, q = 1 }).Reason, "bad-payload")
+  lu.assertEquals(rx:Accept(0, { s = "s-1", n = 1, q = 1.5 }).Reason, "bad-payload")
 end
 
 -- 恶意大包：一次报 n=10^9 只采纳窗口额度，不报错、不崩、不影响后续判定。

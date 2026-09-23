@@ -1,94 +1,79 @@
--- 收线（ReelIn）通道客户端半：把点击聚合成 {s,n,q} 打给服务端，并接服务端下发的结果。
---
--- 聚合窗口（100ms）与滑动窗（1s ≤10）的算法在 `common/RateLimit.lua`（模块线）：
--- 这里不重复实现，只留一个「怎么攒包」的接入点——`SetAggregator(agg)`。
--- 没有接入聚合器时，`RequestReel` 退化成「一次点击一个包」，只用于 M0 的通道取证，
--- M1 落地时必须在启动阶段注入真聚合器（否则上限行为与 C-2 不符）。
+local REUtil = require('common.REUtil')
+local RateLimit = require('common.RateLimit')
+local GameCfg = require('common.GameCfg')
 
-local REUtil = require("common.REUtil")
+local LocalReelIn = { SessionId = nil }
+LocalReelIn.CHANNEL = 'ReelInRE'
 
-local LocalReelIn = {}
-
-LocalReelIn.CHANNEL = "ReelInRE"
-
--- 单调序号（C-3 的 q 字段），从 1 起
-LocalReelIn.Seq = 0
--- 当前会话 id：只接受服务端下发的（交接约束 3）
-LocalReelIn.SessionId = nil
--- 可选聚合器：[客户端聚合器] = { Click = fn(now), Collect = fn(now) -> payload|nil }
-LocalReelIn.Aggregator = nil
-
-function LocalReelIn:SetAggregator(agg)
-	self.Aggregator = agg
+function LocalReelIn:SetSession(id)
+    if type(id) ~= 'string' or id == '' or self.Suspended or self.ClosedSession == id then return false end
+    if self.SessionId == id then return true end
+    self.SessionId = id
+    self.Aggregator = RateLimit.NewAggregator({ SessionId = id,
+        AggregateSec = GameCfg.HighFreqInput.AggregateSec })
+    return true
 end
 
-function LocalReelIn:SetSession(sessionId)
-	if type(sessionId) ~= "string" or sessionId == "" then
-		return false
-	end
-	self.SessionId = sessionId
-	if self.Aggregator and self.Aggregator.SetSession then
-		self.Aggregator:SetSession(sessionId)
-	end
-	return true
+function LocalReelIn:Flush()
+    if not self.Aggregator then return end
+    local payload = self.Aggregator:Flush()
+    if payload then self.RE:FireServer(payload) end
 end
 
--- 攒包入口：有聚合器走聚合器，没有就现攒一个单点击包（M0 取证用）
-function LocalReelIn:BuildPayload(count)
-	if self.Aggregator then
-		local World = game:GetService("World")
-		local now = World and World:GetServerTime() or 0
-		self.Aggregator:Click(now)
-		local payload = self.Aggregator:Collect(now)
-		if payload then
-			self.Seq = payload.q
-		end
-		return payload
-	end
-	local n = count or 1
-	local payload = { s = self.SessionId or "local", n = n, q = self.Seq + 1 }
-	self.Seq = payload.q
-	return payload
+function LocalReelIn:Click()
+    if not self.Aggregator then return end
+    self.Aggregator:Click(self.World:GetServerTime())
 end
 
-function LocalReelIn:RequestReel(count, sessionId)
-	local re = self.RE or REUtil:GetRE(self.CHANNEL)
-	if not re then
-		print("[LocalReelIn] 通道不可用: " .. tostring(self.CHANNEL))
-		return false
-	end
-	if sessionId then
-		self:SetSession(sessionId)
-	end
-	local payload = self:BuildPayload(count)
-	if not payload then
-		return false
-	end
-	re:FireServer(payload)
-	return true, payload
+function LocalReelIn:Close(id)
+    local session = id or self.SessionId
+    if not session or (self.SessionId and self.SessionId ~= session)
+        or self.ClosedSession == session then return end
+    local payload = self.Aggregator and self.Aggregator:Flush()
+    self.ClosedSession = session
+    self.SessionId = nil
+    self.Aggregator = nil
+    if payload then self.RE:FireServer(payload) end
+    self.CloseRE:FireServer({ session = session })
+end
+
+function LocalReelIn:Suspend(id)
+    self.Suspended = true
+    self:Close(id)
+end
+
+function LocalReelIn:Resume()
+    self.Suspended = false
+end
+
+function LocalReelIn:Clear(id)
+    if not id or self.SessionId ~= id then return end
+    self.ClosedSession = id
+    self.SessionId = nil
+    self.Aggregator = nil
 end
 
 function LocalReelIn:Start()
-	local re = REUtil:GetRE(self.CHANNEL)
-	if not re then
-		print("[LocalReelIn] 通道建立失败: " .. tostring(self.CHANNEL))
-		return
-	end
-	self.RE = re
-	re.OnClientEvent:Connect(function(payload)
-		if type(payload) ~= "table" then
-			return
-		end
-		-- 会话切换由服务端下发
-		if payload.session then
-			self:SetSession(payload.session)
-		end
-		LocalReelIn.LastResult = payload
-		print("[LocalReelIn] 收到结果 action=" .. tostring(payload.action)
-			.. " session=" .. tostring(payload.session)
-			.. " progress=" .. tostring(payload.progress))
-	end)
-	print("[LocalReelIn] 通道就绪 " .. self.CHANNEL)
+    self.World = game:GetService('World')
+    self.RE = REUtil:GetRE(self.CHANNEL)
+    self.CloseRE = REUtil:GetRE('CloseReelIn')
+    self.Connection = self.RE.OnClientEvent:Connect(function(payload)
+        if type(payload) ~= 'table' or type(payload.session) ~= 'string' then return end
+        if payload.action == 'started' then
+            if self.Suspended then self:Close(payload.session) end
+            if not self:SetSession(payload.session) then return end
+        elseif self.SessionId ~= payload.session then return end
+        self.LastResult = payload
+        if payload.action == 'landed' or payload.action == 'unhooked' then
+            self:Clear(payload.session)
+        end
+    end)
+    self.UpdateConnection = game:GetService('RunService').Heartbeat:Connect(function()
+        if self.Aggregator then
+            local payload = self.Aggregator:Collect(self.World:GetServerTime())
+            if payload then self.RE:FireServer(payload) end
+        end
+    end)
 end
 
 return LocalReelIn

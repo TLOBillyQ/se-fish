@@ -43,15 +43,34 @@ function ScreenHandler:ShowCast()
     local selected = state and state.selectedSlot and state.slots[state.selectedSlot]
     local rod = selected and selected.itemId == GameCfg.Items.Id.StarterRod
     local phase = self.CastState and self.CastState.phase or 'idle'
+    local reel = _G.LocalReelIn
+    local active = self.IsOpen and phase == 'hooked' and reel
+        and reel.SessionId == self.CastState.reelSession
     local visible = rod or phase ~= 'idle'
     self.BtnItemAction.Visible = visible
     self.BtnItemActionLabel.Visible = visible
-    self.BtnItemAction.TouchEnabled = (rod and phase == 'idle') or phase == 'cast'
-    self.BtnItemActionLabel.Text = phase == 'hooked' and '收线'
-        or phase == 'cast' and '收竿' or rod and '抛竿' or '使用'
+    self.BtnItemAction.TouchEnabled = self.IsOpen == true
+        and ((rod and phase == 'idle') or phase == 'cast' or active == true) or false
+    self.BtnItemActionLabel.Text = phase == 'hooked' and '点击收线'
+        or phase == 'landed' and '已上岸' or phase == 'cast' and '收竿' or rod and '抛竿' or '使用'
+    local result = reel and reel.LastResult
+    local progress = result and self.CastState
+        and result.session == self.CastState.reelSession and result.progress or 50
+    if type(progress) ~= 'number' or progress ~= progress then progress = 50 end
+    progress = math.max(0, math.min(100, progress))
+    if self.ReelBar then
+        self.ReelBar.Visible = active == true
+        self.ReelBarBg.Visible = active == true
+        self.ReelBar.Percent = progress
+    end
     if self.HookHint then
-        self.HookHint.Visible = phase == 'hooked'
-        self.HookHint.Text = phase == 'hooked' and '鱼上钩了！准备收线' or ''
+        self.HookHint.Visible = active == true or phase == 'landed'
+        self.HookHint.Text = phase == 'landed' and '鱼已上岸'
+            or active and '收线 ' .. tostring(math.floor(progress + 0.5)) .. '%' or ''
+    end
+    if self.BtnReelClose then
+        self.BtnReelClose.Visible = active == true
+        self.BtnReelCloseLabel.Visible = active == true
     end
 end
 
@@ -86,6 +105,7 @@ function ScreenHandler:Listen(source, callback)
 end
 
 function ScreenHandler:Cleanup()
+    self:CloseScreen()
     for _, connection in ipairs(self.Connections or {}) do connection:Disconnect() end
     for _, node in ipairs(self.Overlays or {}) do node:Destroy() end
     for _, slot in ipairs(self.Slots or {}) do slot.Background:Destroy() end
@@ -99,12 +119,16 @@ function ScreenHandler:Cleanup()
     self.BtnEat = nil
     self.BtnDiscard = nil
     self.BtnItemAction = nil
+    self.BtnReelClose = nil
+    self.BtnReelCloseLabel = nil
     self.BtnBaitLabel = nil
     self.BtnNoneLabel = nil
     self.BtnEatLabel = nil
     self.BtnDiscardLabel = nil
     self.BtnItemActionLabel = nil
     self.HookHint = nil
+    self.ReelBar = nil
+    self.ReelBarBg = nil
     self.Snapshot = nil
     self.CastState = nil
     self.BoundRootNode = nil
@@ -157,8 +181,10 @@ function ScreenHandler:Init()
     self.BtnEat = button(root, 'BaitEat', firstX + 460, 540, 170)
     self.BtnDiscard = button(root, 'ItemDiscard', firstX + 650, 540, 170)
     self.BtnItemAction = button(root, 'ItemAction2', resolution.x - 220, 690, 180)
-    self.Buttons = { self.BtnBait, self.BtnNone, self.BtnEat, self.BtnDiscard, self.BtnItemAction }
+    self.BtnReelClose = button(root, 'ReelClose', resolution.x - 220, 570, 180)
+    self.Buttons = { self.BtnBait, self.BtnNone, self.BtnEat, self.BtnDiscard, self.BtnItemAction, self.BtnReelClose }
     local labels = {
+        { 'BtnReelCloseLabel', self.BtnReelClose, '结束收线' },
         { 'BtnBaitLabel', self.BtnBait, '蚯蚓' },
         { 'BtnNoneLabel', self.BtnNone, '不挂鱼饵' },
         { 'BtnEatLabel', self.BtnEat, '吃蚯蚓' },
@@ -176,14 +202,41 @@ function ScreenHandler:Init()
         '', 32, Color.New(255, 220, 40, 255))
     self.HookHint.Visible = false
     self.Overlays[#self.Overlays + 1] = self.HookHint
+    self.ReelBarBg = World:CreateUnit('EUIImage', {
+        Parent = root, Name = 'ReelProgressBg',
+        Position = Vector2.New(resolution.x - 600, 860), Size = Vector2.New(400, 36),
+        Image = 'official://image/30008',
+    })
+    self.ReelBar = World:CreateUnit('EUILoadingBar', {
+        Parent = root, Name = 'ReelProgress',
+        Position = Vector2.New(resolution.x - 600, 860), Size = Vector2.New(400, 36),
+        Image = 'official://image/30007', Direction = 0, Percent = 50,
+        Color = Color.New(36, 200, 94, 255),
+    })
+    for _, node in ipairs({ self.ReelBarBg, self.ReelBar }) do
+        node.TouchEnabled = false
+        node.SwallowTouchEnabled = false
+        node.Visible = false
+        self.Overlays[#self.Overlays + 1] = node
+    end
     self.BtnItemAction.TouchEnabled = false
     self.BtnItemAction.Visible = false
     self.BtnItemActionLabel.Visible = false
+    self.BtnReelClose.Visible = false
+    self.BtnReelCloseLabel.Visible = false
+    self:Listen(self.BtnReelClose.OnClicked, function()
+        _G.LocalReelIn:Close()
+        self:ShowCast()
+    end)
     self.BtnDiscard.Visible = false
     self.BtnDiscardLabel.Visible = false
     self:Listen(self.BtnItemAction.OnClicked, function()
+        if not self.IsOpen then return end
         local phase = self.CastState and self.CastState.phase or 'idle'
-        if phase == 'cast' then
+        if phase == 'hooked' and self.IsOpen
+            and _G.LocalReelIn.SessionId == self.CastState.reelSession then
+            _G.LocalReelIn:Click()
+        elseif phase == 'cast' then
             _G.REUtil:GetRE('CastAction'):FireServer({ action = 'Reel' })
         elseif phase == 'idle' and self.Snapshot then
             local slot = self.Snapshot.selectedSlot
@@ -206,14 +259,44 @@ function ScreenHandler:Init()
     self:Listen(_G.REUtil:GetRE('ItemBarState').OnClientEvent, function(state) self:Show(state) end)
     self:Listen(_G.REUtil:GetRE('CastState').OnClientEvent, function(state)
         if type(state) ~= 'table'
-            or (state.phase ~= 'idle' and state.phase ~= 'cast' and state.phase ~= 'hooked') then return end
+            or (state.phase ~= 'idle' and state.phase ~= 'cast'
+                and state.phase ~= 'hooked' and state.phase ~= 'landed') then return end
+        if not self.IsOpen then
+            if state.phase == 'hooked' then _G.LocalReelIn:Close(state.reelSession) end
+            return
+        end
+        if state.phase == 'hooked' then
+            _G.LocalReelIn:SetSession(state.reelSession)
+        else
+            _G.LocalReelIn:Clear(self.CastState and self.CastState.reelSession)
+        end
         self.CastState = state
+        self:ShowCast()
+    end)
+    self:Listen(_G.REUtil:GetRE('ReelInRE').OnClientEvent, function()
         self:ShowCast()
     end)
     self.BoundRootNode = root
     self.Inited = true
+    self.IsOpen = false
+    if _G.LocalReelIn then _G.LocalReelIn:Suspend() end
+end
+
+function ScreenHandler:OpenScreen()
+    self.IsOpen = true
+    _G.LocalReelIn:Resume()
+    self:ShowCast()
     _G.REUtil:GetRE('RequestItemBar'):FireServer()
     _G.REUtil:GetRE('RequestCastState'):FireServer()
+end
+
+function ScreenHandler:CloseScreen()
+    self.IsOpen = false
+    if _G.LocalReelIn then
+        _G.LocalReelIn:Suspend(self.CastState and self.CastState.reelSession)
+    end
+    self.CastState = nil
+    self:ShowCast()
 end
 
 function ScreenHandler:Destroy()

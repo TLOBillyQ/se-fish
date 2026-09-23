@@ -14,6 +14,7 @@ function Mgr:SendState(player, session)
         zoneId = session.zoneId,
         fishId = session.fishId,
         mult = session.mult,
+        reelSession = session.reelSession,
     } or { phase = 'idle' })
 end
 
@@ -64,6 +65,19 @@ function Mgr:Reel(player)
     print('[MgrCast] 收竿', player.UserId)
 end
 
+function Mgr:FinishReel(player, sessionId, outcome, notify)
+    local current = self.Sessions[player.UserId]
+    if not current or current.player ~= player or current.session.reelSession ~= sessionId
+        or current.session.phase ~= 'hooked' then return end
+    if outcome == 'landed' then
+        current.session.phase = 'landed'
+        if notify ~= false then self:SendState(player, current.session) end
+    else
+        self.Sessions[player.UserId] = nil
+        if notify ~= false then self:SendState(player) end
+    end
+end
+
 function Mgr:Stop()
     for _, connection in ipairs(self.Connections or {}) do connection:Disconnect() end
     self.Connections = nil
@@ -102,8 +116,13 @@ function Mgr:Update()
                 session.phase = 'hooked'
                 session.fishId = fishId
                 session.mult = FishCatch.Multiplier(math.random)
-                self:SendState(current.player, session)
-                print('[MgrCast] 上钩', current.player.UserId, fishId, session.mult)
+                self.NextReelId = (self.NextReelId or 0) + 1
+                session.reelSession = tostring(self.NextReelId) .. ':' .. tostring(current.player.UserId)
+                if self.ReelIn:Begin(current.player, session.reelSession, now)
+                    and self.Sessions[current.player.UserId] == current and session.phase == 'hooked' then
+                    self:SendState(current.player, session)
+                    print('[MgrCast] 上钩', current.player.UserId, fishId, session.mult)
+                end
             end
         end
     end

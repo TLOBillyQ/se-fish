@@ -15,9 +15,10 @@ end
 
 Task:Spawn(function() 
     LocalMotorUnitCtrl:Start()
+    _G.LocalReelIn = LocalReelIn
+    LocalReelIn:Start()
     _G.MgrGameUI:OpenScreen('ScreenMain')
     LocalAttackButton:Start()
-    LocalReelIn:Start()
 end)
 Task:Delay(1, function() 
     _G.MgrGameUI:OpenScreen("ScreenMsg")

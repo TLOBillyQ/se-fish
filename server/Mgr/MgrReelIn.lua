@@ -1,134 +1,121 @@
--- 收线（ReelIn）通道：M0-V5 的「通道那一半」。
---
--- 只做两件事：建通道（`common/REUtil.lua:GetRE`）、把载荷过一遍「身份 + 类型」两层校验，
--- 然后把批次原样转给订阅者。频率校验（滑动窗 1s ≤10、超限 clamp 不报错）与聚合窗口的解包
--- 归高频输入骨架（`common/RateLimit.lua`，模块线），本模块不自己发明规则，只留 Subscribe 接缝。
---
--- 载荷口径（来源 issue #14 调研 + 模块线交接）：
---   { s = 会话id（非空字符串）, n = 窗口内点击数（≥1 的有限整数）, q = 单调序号（≥1 的有限整数）}
--- 官方对 RemoteEvent 的频率 / 包大小 / 超限行为都没有数值（R-1/R-7），只有两条硬约束：
--- 一次只传一个 Any 载荷、不支持直接传 CFrame（`docs/research/remoteevent-limits.md` §2.2），
--- 所以字段固定三个、客户端只发这张表，不追加字段（R-7 的字节上界就是按三个字段推的）。
+local REUtil = require('common.REUtil')
+local RateLimit = require('common.RateLimit')
+local ReelProgress = require('common.ReelProgress')
+local GameCfg = require('common.GameCfg')
 
-local REUtil = require("common.REUtil")
+local Mgr = { Sessions = {}, Connections = {} }
+Mgr.CHANNEL = 'ReelInRE'
 
-local Mgr = {}
-
--- 通道名是常量：换名等于换通道，两端必须同时改。
-Mgr.CHANNEL = "ReelInRE"
-
--- [userId] = 服务端下发的会话 id（会话切换只由服务端发起，见交接约束 3）
-Mgr.Sessions = {}
-
--- 订阅者名单：fn(player, batch, raw) → 是否已处理
-Mgr.Subscribers = {}
-
--- 取证计数：通过校验并转给订阅者的批次数
-Mgr.AcceptedBatches = 0
--- 取证计数：被「身份/类型」校验挡下的包数（频率层不算）
-Mgr.RejectedBatches = 0
-
-function Mgr:Subscribe(fn)
-	if type(fn) ~= "function" then
-		return false
-	end
-	self.Subscribers[#self.Subscribers + 1] = fn
-	return true
+function Mgr:Begin(player, id, now)
+    local previous = self.Sessions[player.UserId]
+    if previous and previous.Player == player and previous.Id == id then return true end
+    if previous then self:Finish(previous, 'unhooked') end
+    if self.Sessions[player.UserId] then return false end
+    local current = self.Cast.Sessions[player.UserId]
+    if not current or current.player ~= player or current.session.phase ~= 'hooked'
+        or current.session.reelSession ~= id then return false end
+    local cfg = GameCfg.HighFreqInput
+    local receiver = RateLimit.NewReceiver({ WindowSec = cfg.WindowSec, MaxCount = cfg.MaxCount })
+    receiver:SetSession(id)
+    local session = { Player = player, Id = id, Receiver = receiver,
+        Progress = ReelProgress.New(now, GameCfg.ReelIn) }
+    self.Sessions[player.UserId] = session
+    self:Reply(session, 'started')
+    return self.Sessions[player.UserId] == session
 end
 
-function Mgr:SetSession(player, sessionId)
-	if not player or type(sessionId) ~= "string" or sessionId == "" then
-		return false
-	end
-	self.Sessions[player.UserId] = sessionId
-	return true
+function Mgr:Reply(session, action, accepted)
+    self.RE:FireClient(session.Player, { action = action, session = session.Id,
+        progress = session.Progress.Progress, accepted = accepted })
 end
 
-local function isCount(v)
-	if type(v) ~= "number" then
-		return false
-	end
-	-- nan / inf 一律不当数。**不是**因为 math.floor 会抛错——本机 Lua 5.4.6 实测
-	-- `pcall(math.floor, 0/0)` → `true, -nan(ind)`，它不抛。真实危害是 nan 与任何值比较都恒为 false：
-	-- 在带窗口账目的用法里（高频输入骨架）会让限流静默失效。这里显式拦一道，判定就不依赖
-	-- 「nan 的比较恰好全是 false」这种偶然性质，下面的 math.floor 整数化也只会面对有限数。
-	if v ~= v or v == math.huge or v == -math.huge then
-		return false
-	end
-	if v < 1 or v ~= math.floor(v) then
-		return false
-	end
-	return true
+function Mgr:Finish(session, outcome, notify)
+    if self.Sessions[session.Player.UserId] ~= session then return end
+    self.Sessions[session.Player.UserId] = nil
+    session.Receiver:EndSession()
+    self.Cast:FinishReel(session.Player, session.Id, outcome, notify)
+    if notify ~= false then self:Reply(session, outcome) end
 end
 
--- 类型层：只认 {s,n,q} 三个字段，形状不对直接丢（不报错、不回包——超限行为无官方口径，R-5）
-local function checkPayload(payload)
-	if type(payload) ~= "table" then
-		return false, "not-table"
-	end
-	if type(payload.s) ~= "string" or payload.s == "" then
-		return false, "session-not-string"
-	end
-	if not isCount(payload.n) then
-		return false, "bad-count"
-	end
-	if not isCount(payload.q) then
-		return false, "bad-seq"
-	end
-	return true
+function Mgr:Accept(player, payload)
+    local session = player and self.Sessions[player.UserId]
+    if not session or session.Player ~= player or type(payload) ~= 'table' then return end
+    local current = self.Cast.Sessions[player.UserId]
+    if not current or current.player ~= player or current.session.phase ~= 'hooked'
+        or current.session.reelSession ~= session.Id then return end
+    local now = self.World:GetServerTime()
+    local result = session.Receiver:Accept(now, payload)
+    if result.Status ~= RateLimit.Result.Ok then return end
+    local outcome = session.Progress:Advance(now, result.Accepted, GameCfg.HighFreqInput.AggregateSec)
+    if outcome then self:Finish(session, outcome)
+    else self:Reply(session, 'progress', result.Accepted) end
 end
 
-function Mgr:Start()
-	local re = REUtil:GetRE(self.CHANNEL)
-	if not re then
-		print("[MgrReelIn] 通道建立失败: " .. tostring(self.CHANNEL))
-		return
-	end
-	self.RE = re
-
-	re.OnServerEvent:Connect(function(player, payload)
-		-- 身份层：player 只能来自事件实参，不信客户端自报
-		if not player then
-			return
-		end
-		local ok, reason = checkPayload(payload)
-		if not ok then
-			self.RejectedBatches = self.RejectedBatches + 1
-			return
-		end
-		local batch = {
-			SessionId = payload.s,
-			Count = payload.n,
-			Seq = payload.q,
-			Player = player,
-		}
-		-- 业务条件层留给订阅者（是否在收线会话里、是否在钓点……）
-		for _, fn in ipairs(self.Subscribers) do
-			pcall(fn, player, batch, payload)
-		end
-		self.AcceptedBatches = self.AcceptedBatches + 1
-	end)
-
-	-- 结果下发层：服务端权威判定后回包，客户端只做表现（R-5：不能假设超限会有错误回执）
-	local Players = game:GetService("Players")
-	if Players then
-		Players.PlayerRemoving:Connect(function(player)
-			self.Sessions[player.UserId] = nil
-		end)
-	end
-
-	print("[MgrReelIn] 通道就绪 " .. self.CHANNEL)
+function Mgr:Close(player, payload)
+    local session = player and self.Sessions[player.UserId]
+    if not session or session.Player ~= player or type(payload) ~= 'table'
+        or payload.session ~= session.Id then return end
+    session.Progress:Advance(self.World:GetServerTime())
+    self:Finish(session, session.Progress.Result or 'unhooked')
 end
 
 function Mgr:OnPlayerAdded(player)
-	self.Sessions[player.UserId] = nil
+    local prior = self.Connections[player.UserId]
+    if prior and prior.Player == player then return end
+    if prior then self:OnPlayerRemoving(prior.Player) end
+    local links = { Player = player }
+    local function characterGone()
+        local session = self.Sessions[player.UserId]
+        if session and session.Player == player then self:Finish(session, 'unhooked') end
+    end
+    local function bind(character)
+        if links.Died then links.Died:Disconnect() end
+        links.Died = nil
+        local controller = character and character.Controller
+        if controller and controller.Died then
+            links.Died = controller.Died:Connect(characterGone)
+        end
+    end
+    if player.CharacterRemoving then links.Removing = player.CharacterRemoving:Connect(characterGone) end
+    if player.CharacterAdded then links.Added = player.CharacterAdded:Connect(bind) end
+    bind(player.Character)
+    self.Connections[player.UserId] = links
 end
 
 function Mgr:OnPlayerRemoving(player)
-	self.Sessions[player.UserId] = nil
+    local session = self.Sessions[player.UserId]
+    if session and session.Player == player then self:Finish(session, 'unhooked', false) end
+    local links = self.Connections[player.UserId]
+    if not links or links.Player ~= player then return end
+    self.Connections[player.UserId] = nil
+    for name, connection in pairs(links) do
+        if name ~= 'Player' then connection:Disconnect() end
+    end
 end
 
-function Mgr:Update(deltaTime)
+function Mgr:Start()
+    self.World = game:GetService('World')
+    self.RE = REUtil:GetRE(self.CHANNEL)
+    self.REConnection = self.RE.OnServerEvent:Connect(function(player, payload)
+        self:Accept(player, payload)
+    end)
+    self.CloseConnection = REUtil:GetRE('CloseReelIn').OnServerEvent:Connect(function(player, payload)
+        self:Close(player, payload)
+    end)
+end
+
+function Mgr:Update()
+    if not self.World then return end
+    local now = self.World:GetServerTime()
+    for _, session in pairs(self.Sessions) do
+        local outcome = session.Progress:Advance(now)
+        if outcome then
+            self:Finish(session, outcome)
+        elseif not session.LastReport or now - session.LastReport >= GameCfg.HighFreqInput.AggregateSec then
+            session.LastReport = now
+            self:Reply(session, 'progress', 0)
+        end
+    end
 end
 
 return Mgr

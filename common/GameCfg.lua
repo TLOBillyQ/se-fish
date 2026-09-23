@@ -272,6 +272,12 @@ GameCfg.HighFreqInput = {
     MaxCount = 10,      -- 1s ≤ 10 次（C-2）；超限 clamp 不丢弃、不向玩家报错
     AggregateSec = 0.1, -- 客户端聚合窗口 = 100ms（C-1）；上行上限 10 包/秒/人
 }
+GameCfg.ReelIn = {
+    Initial = 50,
+    DecayPerSec = 5,
+    ClickGain = 5,
+    GraceSec = 0.18,
+}
 
 -- V3 鱼载体实例化（M0-V3）：官方鱼模型号与 mesh id 的写法已查实，F-7 的 [未查证] 由此消除。
 -- 数据源：docs/verification/m0-playtest-ledger.md §2.1（mission M15 在本图 SE 试玩里实测，2026-09-22）。
