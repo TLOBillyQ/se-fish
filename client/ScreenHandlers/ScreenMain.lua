@@ -49,6 +49,15 @@ function ScreenHandler:ShowCoin(value)
     self.LabelCoin.Text = tostring(math.floor(tonumber(value) or 0))
 end
 
+-- 新手任务条（#51）：左上角一行「新手任务 步号/总数：文案（计数）」，以服务端 QuestState 为准；
+-- 推进那一次带 notice，走既有消息条提示下一步
+function ScreenHandler:ShowQuest(state)
+    if not self.QuestLabel or type(state) ~= 'table' or type(state.text) ~= 'string' then return end
+    self.QuestLabel.Text = state.text
+    self.QuestLabel.Visible = true
+    if type(state.notice) == 'string' and _G.LocalMsgNotice then _G.LocalMsgNotice(state.notice) end
+end
+
 function ScreenHandler:ShowCast()
     if not self.BtnItemAction then return end
     local state = self.Snapshot
@@ -146,6 +155,7 @@ function ScreenHandler:Cleanup()
     self.BtnDiscardLabel = nil
     self.BtnItemActionLabel = nil
     self.HookHint = nil
+    self.QuestLabel = nil
     self.ReelBar = nil
     self.ReelBarBg = nil
     self.LabelCoin = nil
@@ -226,6 +236,11 @@ function ScreenHandler:Init()
         '', 32, Color.New(255, 220, 40, 255))
     self.HookHint.Visible = false
     self.Overlays[#self.Overlays + 1] = self.HookHint
+    -- [未查证：任务条位置与 LabelCoin / 血球饥饿球（#53）是否重叠，待 #55 截图迭代]
+    self.QuestLabel = overlay(root, 'QuestLabel', 500, resolution.y - 330, 900, 56,
+        '', 30, Color.New(255, 255, 255, 255))
+    self.QuestLabel.Visible = false
+    self.Overlays[#self.Overlays + 1] = self.QuestLabel
     self.ReelBarBg = World:CreateUnit('EUIImage', {
         Parent = root, Name = 'ReelProgressBg',
         Position = Vector2.New(resolution.x - 600, 860), Size = Vector2.New(400, 36),
@@ -300,6 +315,7 @@ function ScreenHandler:Init()
         self.CastState = state
         self:ShowCast()
     end)
+    self:Listen(_G.REUtil:GetRE('QuestState').OnClientEvent, function(state) self:ShowQuest(state) end)
     self:Listen(_G.REUtil:GetRE('ReelInRE').OnClientEvent, function()
         self:ShowCast()
     end)
@@ -334,6 +350,7 @@ function ScreenHandler:OpenScreen()
     self:ShowCoin()
     _G.REUtil:GetRE('RequestItemBar'):FireServer()
     _G.REUtil:GetRE('RequestCastState'):FireServer()
+    _G.REUtil:GetRE('RequestQuest'):FireServer()
 end
 
 function ScreenHandler:CloseScreen()

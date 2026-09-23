@@ -30,7 +30,7 @@ local function flatDistance(a, b)
     return math.sqrt(dx * dx + dz * dz)
 end
 
--- 选中的可喂物：选中格是鱼获优先，其次是选中的鱼饵；返回 金币数, 扣除函数, 日志描述
+-- 选中的可喂物：选中格是鱼获优先，其次是选中的鱼饵；返回 金币数, 扣除函数, 日志描述, 物品 id
 local function feedable(data, point)
     local items = data.Data.Containers[GameCfg.Items.ContainerId.ItemBar]
     local slot = data.Data.SelectedSlot
@@ -38,13 +38,13 @@ local function feedable(data, point)
     local species = entry and entry.count > 0 and GameCfg.Fish[entry.itemId]
     if species then
         return FishCatch.Price(species, entry.mult), function() items[slot] = nil end,
-            entry.itemId .. ' x' .. tostring(entry.mult or 1) .. ' slot=' .. tostring(slot)
+            entry.itemId .. ' x' .. tostring(entry.mult or 1) .. ' slot=' .. tostring(slot), entry.itemId
     end
     local baitId = data.Data.SelectedBait
     local price = baitId and point.BaitPrice[baitId]
     local count = baitId and data.Data.Bait[baitId]
     if price and type(count) == 'number' and count >= 1 then
-        return price, function(d) d.Bait[baitId] = d.Bait[baitId] - 1 end, baitId
+        return price, function(d) d.Bait[baitId] = d.Bait[baitId] - 1 end, baitId, baitId
     end
 end
 
@@ -70,8 +70,8 @@ function Mgr:PlayEat(anchor, point)
     if not ok then print('[MgrInteract] 吃动作播放失败', tostring(err)) end
 end
 
-function Mgr:Feed(player, data, anchor, point)
-    local coins, spend, what = feedable(data, point)
+function Mgr:Feed(player, data, anchor, point, seq)
+    local coins, spend, what, itemId = feedable(data, point)
     if not coins then
         self:Reply(player, { ok = false, reason = 'nothing' })
         return false
@@ -81,6 +81,10 @@ function Mgr:Feed(player, data, anchor, point)
     self.PlayerData:SendItemBar(player)
     self:Reply(player, { ok = true, action = 'Feed', coins = coins })
     self:PlayEat(anchor, point)
+    -- 新手任务事实（#51）：序号每人严格递增、只结算一次，玩家 + 序号即这次喂食的唯一 eventId
+    if self.Quest then
+        self.Quest:Notify('Feed', player, { itemId = itemId, eventId = 'feed:' .. tostring(player.UserId) .. ':' .. tostring(seq) })
+    end
     return true
 end
 
@@ -99,7 +103,7 @@ function Mgr:Handle(player, payload)
     local anchor = self:InRange(player, point)
     if not anchor then return false end
     self.LastSeq[player.UserId] = seq
-    return self[method](self, player, data, anchor, point)
+    return self[method](self, player, data, anchor, point, seq)
 end
 
 function Mgr:Start()

@@ -122,6 +122,10 @@ function Mgr:GiveBait(player, data, loot)
         spot.RespawnAt = self:Now() + GameCfg.BaitSpots.RespawnSec
     end
     print('[MgrLoot] 拾饵', player.UserId, loot.ItemId, loot.Count, 'spot=' .. tostring(loot.SpotId), 'loot=' .. tostring(loot.Id))
+    -- 新手任务事实（#51）：鱼饵 id 全局唯一、每份只能被拾一次，用作 eventId
+    if self.Quest then
+        self.Quest:Notify('PickBait', player, { itemId = loot.ItemId, count = loot.Count, eventId = 'loot:' .. tostring(loot.Id) })
+    end
     self.PlayerData:SendItemBar(player)
     self:Reply(player, { ok = true, id = loot.Id })
     self:Broadcast()

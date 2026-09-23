@@ -92,14 +92,34 @@ GameCfg.Loot = {
 -- 固定点位鱼饵（#45，#27 规格）：每个点位同时最多一份，复用鱼获的 2 米拾取与服务端复验，
 -- 拾取成功后 RespawnSec 秒在原位刷新；鱼饵进 Bait 计数库存，不占道具栏格。鱼获不刷新、不消失。
 -- Spots 的 Position 只用 x/z，y 由向下探地决定（Position.y 是探地起点参考）。
--- 这里的 spot-shore 是机制占位点（水圈中心 x+5 的岸边），正式新手点位由 M4 #51 布置 [未查证：坐标待 #55 实测]。
+-- 正式新手点位（#51，策划案「拾取岛周围刷新的蚯蚓」）：绕鱼塘（WaterCircle2 中心 (-11.75, 27.75)、半宽 3）
+-- 一圈 5 个，离水圈中心约 5 米、落在水圈外的岸上，新手任务第 1 步「拾取 5 只蚯蚓」不必等刷新。
+-- worm-1 沿用 #45 的机制点位（水圈中心 x+5）。[未查证：各点落地与遮挡待 #55 截图实测，改坐标只改这里]
 -- Mesh 取官方资产「飘逸尾鳍」（软体蠕虫状，official://mesh/7000571），没有官方蚯蚓模型 [未查证：观感待 #55 截图]
 GameCfg.BaitSpots = {
     RespawnSec = 15,
     Mesh = 'official://mesh/7000571',
     Scale = 0.3,
     Spots = {
-        { Id = 'spot-shore', ItemId = 'worm', Count = 1, Position = { x = -6.75, y = 4, z = 27.75 } },
+        { Id = 'worm-1', ItemId = 'worm', Count = 1, Position = { x = -6.75, y = 4, z = 27.75 } },
+        { Id = 'worm-2', ItemId = 'worm', Count = 1, Position = { x = -11.75, y = 4, z = 32.75 } },
+        { Id = 'worm-3', ItemId = 'worm', Count = 1, Position = { x = -16.75, y = 4, z = 27.75 } },
+        { Id = 'worm-4', ItemId = 'worm', Count = 1, Position = { x = -11.75, y = 4, z = 22.75 } },
+        { Id = 'worm-5', ItemId = 'worm', Count = 1, Position = { x = -8.25, y = 4, z = 31.25 } },
+    },
+}
+
+-- 新手任务（#51 前三步，#52 续写第 4–9 步；#40 规格）：文案对应策划案「新手任务」的 9 句（钓场老板按 CONTEXT.md 用词），
+-- Kind 是玩法事实种类（MgrQuest:Notify 的 kind），ItemId 是要求的物品，Need 是次数。任务不发奖励，进度单局内存态。
+-- 任务条文案「<Title> 步号/总步数：<Text>（计数）」；推进时消息条提示 NextNotice，全部完成提示 DoneText
+GameCfg.Quest = {
+    Title = '新手任务',
+    NextNotice = '任务完成，下一步：%s',
+    DoneText = '新手任务完成！',
+    Steps = {
+        { Kind = 'PickBait', ItemId = 'worm', Need = 5, Text = '拾取 5 只蚯蚓' },
+        { Kind = 'Feed', ItemId = 'worm', Need = 5, Text = '喂钓鱼佬吃 5 只蚯蚓' },
+        { Kind = 'Buy', ItemId = 'starterRod', Need = 1, Text = '向钓场老板购买 1 只新手鱼竿' },
     },
 }
 

@@ -20,7 +20,7 @@ end
 
 function TestFishLoot:setUp()
     -- #49：进图白送只在调试开关下发放，这些用例沿用它的起始库存（鱼竿在第 1 格、蚯蚓若干）
-    self.savedGrantDebug = require('common.GameCfg').Debug
+    self.savedGrantDebug = self.savedGrantDebug or require('common.GameCfg').Debug -- TestBaitSpot 复用本 setUp，别把已打开的开关存成原值
     require('common.GameCfg').Debug = { Enabled = true, InitialGrants = self.savedGrantDebug.InitialGrants }
     TestFishLift.setUp(self)
     local env = self

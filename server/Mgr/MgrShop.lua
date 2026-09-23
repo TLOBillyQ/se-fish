@@ -25,7 +25,7 @@ function Mgr:Fail(player, itemId, reason)
     return false
 end
 
-function Mgr:Buy(player, data, itemId)
+function Mgr:Buy(player, data, itemId, seq)
     local goods = self:FindGoods(itemId)
     if not goods then return self:Fail(player, itemId, 'item') end
     if not self.Interact:InRange(player, GameCfg.Shop) then return self:Fail(player, itemId, 'range') end
@@ -37,6 +37,10 @@ function Mgr:Buy(player, data, itemId)
     print('[MgrShop] 购买', player.UserId, itemId, '-' .. tostring(goods.Price), 'FishCoin=' .. tostring(data.Data.FishCoin))
     self.PlayerData:SendItemBar(player)
     self:Reply(player, { ok = true, itemId = itemId, price = goods.Price })
+    -- 新手任务事实（#51）：玩家 + 严格递增的请求序号即这次购买的唯一 eventId
+    if self.Quest then
+        self.Quest:Notify('Buy', player, { itemId = itemId, eventId = 'shop:' .. tostring(player.UserId) .. ':' .. tostring(seq) })
+    end
     return true
 end
 
@@ -50,7 +54,7 @@ function Mgr:Handle(player, payload)
     local last = self.LastSeq[player.UserId]
     if last and seq <= last then return false end
     self.LastSeq[player.UserId] = seq
-    return self:Buy(player, data, payload.itemId)
+    return self:Buy(player, data, payload.itemId, seq)
 end
 
 function Mgr:Start()

@@ -21,6 +21,7 @@ local MgrMap = {
     MgrInteract = require("server.Mgr.MgrInteract"),
     MgrGM = require("server.Mgr.MgrGM"),
     MgrShop = require("server.Mgr.MgrShop"),
+    MgrQuest = require("server.Mgr.MgrQuest"),
 }
 
 MgrMap.MgrCast.ReelIn = MgrMap.MgrReelIn
@@ -34,6 +35,9 @@ MgrMap.MgrInteract.PlayerData = MgrMap.MgrPlayerData
 MgrMap.MgrGM.PlayerData = MgrMap.MgrPlayerData
 MgrMap.MgrShop.PlayerData = MgrMap.MgrPlayerData
 MgrMap.MgrShop.Interact = MgrMap.MgrInteract
+MgrMap.MgrLoot.Quest = MgrMap.MgrQuest
+MgrMap.MgrInteract.Quest = MgrMap.MgrQuest
+MgrMap.MgrShop.Quest = MgrMap.MgrQuest
 
 local function HandlePlayerAdded(player)
     for k, mgr in pairs(MgrMap) do
