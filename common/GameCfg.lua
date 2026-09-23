@@ -38,12 +38,12 @@ GameCfg.Items.InitialGrants = {
 -- 极品鲶鱼 / 极品鲈鱼的血量、重量、售价照表抄（表里与普通版对调，疑问记在 #37）。
 -- 电鳗是精英鱼，MVP 不做精英，暂不进渔获表（#37 评论）。
 GameCfg.Fish = {
-    tilapia = { Name = '罗非鱼', Grade = 'normal', Health = 5, BaseWeight = 1, BasePrice = 3, Model = '7000557' },
-    carp = { Name = '鲤鱼', Grade = 'normal', Health = 10, BaseWeight = 5, BasePrice = 4, Model = '7000552' },
-    knifeFish = { Name = '刀鱼', Grade = 'normal', Health = 15, BaseWeight = 0.5, BasePrice = 5, Model = '7000545' },
-    bass = { Name = '鲈鱼', Grade = 'normal', Health = 20, BaseWeight = 2, BasePrice = 6, Model = '7000551' },
-    catfish = { Name = '鲶鱼', Grade = 'normal', Health = 25, BaseWeight = 5, BasePrice = 7, Model = '7000553' },
-    goldfish = { Name = '金鱼', Grade = 'normal', Health = 3, BaseWeight = 0.1, BasePrice = 8, Model = '7000559' },
+    tilapia = { Name = '罗非鱼', Grade = 'normal', Health = 5, BaseWeight = 1, BasePrice = 3, Model = '7000557', Speed = 3 },
+    carp = { Name = '鲤鱼', Grade = 'normal', Health = 10, BaseWeight = 5, BasePrice = 4, Model = '7000552', Speed = 3 },
+    knifeFish = { Name = '刀鱼', Grade = 'normal', Health = 15, BaseWeight = 0.5, BasePrice = 5, Model = '7000545', Speed = 3 },
+    bass = { Name = '鲈鱼', Grade = 'normal', Health = 20, BaseWeight = 2, BasePrice = 6, Model = '7000551', Speed = 3 },
+    catfish = { Name = '鲶鱼', Grade = 'normal', Health = 25, BaseWeight = 5, BasePrice = 7, Model = '7000553', Speed = 3 },
+    goldfish = { Name = '金鱼', Grade = 'normal', Health = 3, BaseWeight = 0.1, BasePrice = 8, Model = '7000559', Speed = 3 },
     premiumTilapia = { Name = '极品罗非鱼', Grade = 'premium', Health = 5, BaseWeight = 1, BasePrice = 3, Model = '7000557' },
     premiumCarp = { Name = '极品鲤鱼', Grade = 'premium', Health = 10, BaseWeight = 5, BasePrice = 4, Model = '7000552' },
     premiumKnifeFish = { Name = '极品刀鱼', Grade = 'premium', Health = 15, BaseWeight = 0.5, BasePrice = 5, Model = '7000545' },
@@ -65,6 +65,18 @@ GameCfg.FishUnit = {
     AwaitDriftTolerance = 0.05,
     LinearDamping = 5,
     AngularDamping = 5,
+    -- 放下 / 逃脱（#42，#27 规格）：落在角色正前方 DropOffset 米、抬高 DropHeight 米，Kinematic 由脚本驱动；
+    -- 鱼种没配 Speed 时用 EscapeSpeed（米/秒）。每 TurnSec 秒重新朝最近水区，RayHz 频率向前 RayDistance 米探墙，
+    -- 撞墙转 90°（V4 实测）。上限：每人在逃 ≤ PerPlayerEscapeCap，全局 ≤ 在线人数 × GlobalEscapePerPlayer
+    DropOffset = 1.5,
+    DropHeight = 0.5,
+    EscapeSpeed = 3,
+    TurnSec = 3,
+    RayHz = 8,
+    RayDistance = 1.5,
+    RayRetries = 3,
+    PerPlayerEscapeCap = 1,
+    GlobalEscapePerPlayer = 2,
 }
 
 GameCfg.Casting = {

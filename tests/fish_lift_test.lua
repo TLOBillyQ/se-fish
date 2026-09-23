@@ -36,7 +36,8 @@ end
 
 function TestFishLift:setUp()
     local env = self
-    self.saved = { game = rawget(_G, 'game'), Vector3 = rawget(_G, 'Vector3') }
+    self.saved = { game = rawget(_G, 'game'), Vector3 = rawget(_G, 'Vector3'),
+        RaycastParams = rawget(_G, 'RaycastParams') }
     self.modules = {}
     for _, name in ipairs({ 'server.Mgr.MgrFishCarrier', 'server.Mgr.MgrFishUnit' }) do
         self.modules[name] = package.loaded[name]
@@ -92,9 +93,10 @@ end
 function TestFishLift:newPlayer(id, position)
     local env = self
     local character
-    character = { Position = position, Controller = { Lift = function()
-        env.lifts[#env.lifts + 1] = character
-    end } }
+    character = { Position = position, Rotation = { GetForward = function() return vec(0, 0, 1) end },
+        Controller = { Died = signal(), Lift = function()
+            env.lifts[#env.lifts + 1] = character
+        end } }
     local player = { UserId = id, Character = character, CharacterAdded = signal(), CharacterRemoving = signal() }
     self.players[#self.players + 1] = player
     self.mgr:OnPlayerAdded(player)
@@ -109,6 +111,7 @@ function TestFishLift:tearDown()
     end
     _G.game = self.saved.game
     _G.Vector3 = self.saved.Vector3
+    _G.RaycastParams = self.saved.RaycastParams
 end
 
 function TestFishLift:land(player, fishId, mult)

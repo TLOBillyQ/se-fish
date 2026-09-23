@@ -90,6 +90,21 @@ function Mgr:Reel(player)
     print('[MgrCast] 收竿', player.UserId)
 end
 
+-- 2 号位「放下」（#42）：与抛竿 / 收竿共用操作冷却
+function Mgr:Drop(player)
+    if not self.FishUnit or not self.FishUnit:GetHeld(player) then return end
+    if REUtil:CheckRECD(player, 'CastAction', GameCfg.Casting.ActionCooldownSec) then return end
+    self.FishUnit:Drop(player)
+end
+
+-- 角色死亡（#42）：还在抛竿等上钩的会话直接结束；上钩后的断线由 MgrReelIn 处理
+function Mgr:Abort(player)
+    local current = self.Sessions[player.UserId]
+    if not current or current.player ~= player or current.session.phase ~= 'cast' then return end
+    self:EndSession(player, current)
+    print('[MgrCast] 死亡断线', player.UserId)
+end
+
 function Mgr:FinishReel(player, sessionId, outcome, notify)
     local current = self.Sessions[player.UserId]
     if not current or current.player ~= player or current.session.reelSession ~= sessionId
@@ -146,7 +161,8 @@ function Mgr:Start()
         REUtil:GetRE('CastAction').OnServerEvent:Connect(function(player, payload)
             if type(payload) ~= 'table' or not player then return end
             if payload.action == 'Cast' then self:Cast(player, payload)
-            elseif payload.action == 'Reel' then self:Reel(player) end
+            elseif payload.action == 'Reel' then self:Reel(player)
+            elseif payload.action == 'Drop' then self:Drop(player) end
         end),
         REUtil:GetRE('RequestCastState').OnServerEvent:Connect(function(player)
             self:PushState(player)

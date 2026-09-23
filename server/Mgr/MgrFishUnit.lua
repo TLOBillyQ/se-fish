@@ -2,13 +2,16 @@
 -- 一条活鱼只记上钩时定下的鱼种与个体倍率；重量、售价随取随算（FishCatch.Weight / Price），不存快照。
 -- 抓举（#41）：上岸即由服务端原生 Lift()（客户端发起无效，M0 台账 §1），只认服务端鱼本体的
 -- OnLiftedBegin，回调里立刻建骨骼挂点并把鱼挂进去；举着期间不改 BodyType（引擎已切 Kinematic）。
+-- 放下 / 逃脱（#42）：主动放下、OnLiftedEnd、持有者死亡走同一条幂等 Release——回世界、落在面前、
+-- Kinematic 朝最近水区跑；只按 (x,z) 判入水，入水即销毁、无收益。不调 Throw。
 local GameCfg = require('common.GameCfg')
 local FishCatch = require('common.FishCatch')
+local MathWaterJudge = require('common.MathWaterJudge')
 local MgrFishCarrier = require('server.Mgr.MgrFishCarrier')
 
 local Mgr = { Fish = {}, NextId = 0, Held = {}, Links = {} }
 
-Mgr.State = { AwaitLift = 'awaitLift', Held = 'held' }
+Mgr.State = { AwaitLift = 'awaitLift', Held = 'held', Escaping = 'escaping' }
 
 local function cfg()
     return GameCfg.FishUnit
@@ -89,6 +92,9 @@ function Mgr:SpawnLanded(player, catch, position)
         fish.Conns = {
             body.OnLiftedBegin:Connect(function(liftunit) self:OnLifted(fish, liftunit) end),
         }
+        if body.OnLiftedEnd then
+            fish.Conns[#fish.Conns + 1] = body.OnLiftedEnd:Connect(function() self:Release(fish, 'liftEnd') end)
+        end
     end
     self:RequestLift(fish)
     return fish
@@ -160,6 +166,201 @@ function Mgr:CanCast(player)
     return self:GetHeld(player) == nil
 end
 
+-- 主动放下：只有持有者能放自己头上的鱼
+function Mgr:Drop(player)
+    local fish = self:GetHeld(player)
+    return fish ~= nil and self:Release(fish, 'drop')
+end
+
+local function flatDirection(x, z)
+    local length = math.sqrt(x * x + z * z)
+    if length < 0.01 then return nil end
+    return x / length, z / length
+end
+
+-- 离 (x,z) 最近的水区中心方向（单位向量）
+local function towardWater(pos)
+    local best, bx, bz
+    for _, zone in ipairs(GameCfg.Water.Zones) do
+        local dx, dz = zone.Center.x - pos.x, zone.Center.z - pos.z
+        local d = dx * dx + dz * dz
+        if not best or d < best then best, bx, bz = d, dx, dz end
+    end
+    if best then return flatDirection(bx, bz) end
+end
+
+-- 入水只看 (x,z)：岸上鱼的 y 高于水面（V4 实测 2.15 > SurfaceY），按 y 判会永远判不进
+local function inWater(pos)
+    for _, zone in ipairs(GameCfg.Water.Zones) do
+        if MathWaterJudge.InZone(zone, { x = pos.x, y = zone.SurfaceY, z = pos.z }) then return zone end
+    end
+end
+
+function Mgr:Speed(fish)
+    local species = GameCfg.Fish[fish.FishId]
+    return species and species.Speed or cfg().EscapeSpeed
+end
+
+function Mgr:SetHeading(fish, x, z)
+    if not x then return end
+    local speed = self:Speed(fish)
+    fish.Heading = { x = x, z = z }
+    pcall(function() fish.Carrier.Body.LinearVelocity = Vector3.New(x * speed, 0, z * speed) end)
+end
+
+-- 释放举着的鱼（放下 / 抓举结束 / 持有者死亡）：只处理一次，之后重复触发都是空操作
+function Mgr:Release(fish, reason)
+    if self.Fish[fish.Id] ~= fish or fish.State ~= Mgr.State.Held then return false end
+    local holder = fish.Holder
+    if holder and self.Held[holder.UserId] == fish then self.Held[holder.UserId] = nil end
+    local body = fish.Carrier.Body
+    local world = self.World or game:GetService('World')
+    local character = holder and holder.Character
+    local origin = character and readPosition(character) or readPosition(body)
+    local fx, fz
+    pcall(function()
+        local forward = character.Rotation:GetForward()
+        fx, fz = flatDirection(forward.x, forward.z)
+    end)
+    fx, fz = fx or 0, fz or 0
+    pcall(function() body.Parent = world end)
+    if fish.Mount then pcall(function() fish.Mount:Destroy() end) end
+    fish.Mount = nil
+    if origin then
+        local c = cfg()
+        pcall(function()
+            body.Position = Vector3.New(origin.x + fx * c.DropOffset, origin.y + c.DropHeight, origin.z + fz * c.DropOffset)
+        end)
+    end
+    pcall(function()
+        body.BodyType = 2 -- Enums.BodyType.Kinematic：由脚本给速度驱动（V4）
+        body.AngularVelocity = Vector3.New(0, 0, 0)
+    end)
+    local now = self:Now()
+    fish.State = Mgr.State.Escaping
+    fish.EscapeAt = now
+    fish.EscapeBy = holder
+    fish.TurnAt = now + cfg().TurnSec
+    fish.RayAt = now
+    local pos = readPosition(body) or origin
+    if pos then self:SetHeading(fish, towardWater(pos)) end
+    print('[MgrFishUnit] 放下', holder and holder.UserId, reason, fish.FishId, 'fish=' .. tostring(fish.Id))
+    self:EnforceEscapeCap(holder, fish)
+    if self.Cast and holder then self.Cast:PushState(holder) end
+    return true
+end
+
+function Mgr:Escaping()
+    local list = {}
+    for _, fish in pairs(self.Fish) do
+        if fish.State == Mgr.State.Escaping then list[#list + 1] = fish end
+    end
+    table.sort(list, function(a, b)
+        if a.EscapeAt ~= b.EscapeAt then return a.EscapeAt < b.EscapeAt end
+        return a.Id < b.Id
+    end)
+    return list
+end
+
+local function trimOldest(self, list, extra, keep, why)
+    for _, fish in ipairs(list) do
+        if extra <= 0 then return end
+        if fish ~= keep then
+            print('[MgrFishUnit] 在逃超出' .. why .. '，清最旧', 'fish=' .. tostring(fish.Id))
+            self:Remove(fish)
+            extra = extra - 1
+        end
+    end
+end
+
+-- 在逃上限：先按触发者每人 ≤ PerPlayerEscapeCap，再按全局 ≤ 在线人数 × GlobalEscapePerPlayer；
+-- 都从最旧的清，刚放下的那条（keep）不清。每人 1 条先清过，全局超限时触发者已没有别的旧鱼可清
+function Mgr:EnforceEscapeCap(trigger, keep)
+    local c = cfg()
+    if trigger then
+        local own = {}
+        for _, fish in ipairs(self:Escaping()) do
+            if fish.EscapeBy == trigger then own[#own + 1] = fish end
+        end
+        trimOldest(self, own, #own - c.PerPlayerEscapeCap, keep, '每人上限')
+    end
+    local list = self:Escaping()
+    trimOldest(self, list, #list - #self:Players() * c.GlobalEscapePerPlayer, keep, '全局上限')
+end
+
+-- 探墙射线的排除表：所有玩家角色、所有鱼本体与受击体
+function Mgr:RayExclusions()
+    local list = {}
+    for _, player in ipairs(self:Players()) do
+        if player.Character then list[#list + 1] = player.Character end
+    end
+    for _, fish in pairs(self.Fish) do
+        if fish.Carrier then
+            list[#list + 1] = fish.Carrier.Body
+            if fish.Carrier.Receiver then list[#list + 1] = fish.Carrier.Receiver end
+        end
+    end
+    return list
+end
+
+-- 射线会命中 TGUnitShop 这类 TriggerUnit（V4 实测），它们和不碰撞的物体都不算墙
+local function passThrough(unit)
+    if not unit then return true end
+    local ok, trigger = pcall(function() return unit.IsA ~= nil and unit:IsA('TriggerUnit') end)
+    if ok and trigger then return true end
+    local okCollide, collide = pcall(function() return unit.CanCollide end)
+    return okCollide and collide == false
+end
+
+-- 前方 RayDistance 米内有实体墙返回 true；穿透物加进排除表重投，最多 RayRetries 次
+function Mgr:WallAhead(fish, pos)
+    local heading = fish.Heading
+    if not heading or not RaycastParams then return false end
+    local physics = game:GetService('PhysicsService')
+    if not physics then return false end
+    local distance = cfg().RayDistance
+    local params = RaycastParams.New()
+    local excluded = self:RayExclusions()
+    for _ = 1, cfg().RayRetries do
+        params.FilterDescendantsInstances = excluded
+        local ok, hit = pcall(physics.Raycast, physics, Vector3.New(pos.x, pos.y, pos.z),
+            Vector3.New(heading.x * distance, 0, heading.z * distance), params)
+        if not ok or not hit then return false end
+        if not passThrough(hit.Instance) then
+            return hit.Distance == nil or hit.Distance <= distance
+        end
+        excluded[#excluded + 1] = hit.Instance
+    end
+    return false
+end
+
+-- 在逃：坐标异常就移除，(x,z) 进水即销毁；每 TurnSec 重新朝水，RayHz 探墙，撞墙左转 90°
+function Mgr:UpdateEscaping(fish, now)
+    local pos = readPosition(fish.Carrier.Body)
+    if not pos then
+        print('[MgrFishUnit] 在逃的鱼坐标异常，移除', 'fish=' .. tostring(fish.Id))
+        self:Remove(fish)
+        return
+    end
+    local zone = inWater(pos)
+    if zone then
+        print('[MgrFishUnit] 逃回水里', zone.Id, fish.FishId, 'fish=' .. tostring(fish.Id))
+        self:Remove(fish)
+        return
+    end
+    if now >= fish.TurnAt then
+        fish.TurnAt = now + cfg().TurnSec
+        self:SetHeading(fish, towardWater(pos))
+    end
+    if now >= fish.RayAt then
+        fish.RayAt = now + 1 / cfg().RayHz
+        if self:WallAhead(fish, pos) then
+            local h = fish.Heading
+            self:SetHeading(fish, -h.z, h.x)
+        end
+    end
+end
+
 function Mgr:GetFish(player)
     local list = {}
     for _, fish in pairs(self.Fish) do
@@ -208,25 +409,55 @@ function Mgr:Start()
     self.World = game:GetService('World')
 end
 
+function Mgr:ClearLinks(player)
+    local links = self.Links[player.UserId]
+    if not links then return end
+    if links.Added then links.Added:Disconnect() end
+    if links.Died then links.Died:Disconnect() end
+    self.Links[player.UserId] = nil
+end
+
 function Mgr:Stop()
-    for _, link in pairs(self.Links) do link:Disconnect() end
+    for _, links in pairs(self.Links) do
+        if links.Added then links.Added:Disconnect() end
+        if links.Died then links.Died:Disconnect() end
+    end
     self.Links = {}
 end
 
-function Mgr:OnPlayerAdded(player)
-    if self.Links[player.UserId] then self.Links[player.UserId]:Disconnect() end
-    self.Links[player.UserId] = player.CharacterAdded:Connect(function(character)
-        self:IsolateCharacter(character)
-    end)
-    if player.Character then self:IsolateCharacter(player.Character) end
+-- 持有者死亡：放鱼进逃脱，并打断还在抛竿的会话（上钩后的断线由 MgrReelIn 处理）；道具栏不动
+function Mgr:OnDied(player)
+    local fish = self:GetHeld(player)
+    if fish then self:Release(fish, 'died') end
+    if self.Cast and self.Cast.Abort then self.Cast:Abort(player) end
 end
 
--- 主人离线：还没被举起的鱼与举在他头上的鱼一并清掉，避免场上留下无主的鱼和挂点
-function Mgr:OnPlayerRemoving(player)
-    if self.Links[player.UserId] then
-        self.Links[player.UserId]:Disconnect()
-        self.Links[player.UserId] = nil
+function Mgr:WatchCharacter(player, character)
+    local links = self.Links[player.UserId]
+    if links.Died then links.Died:Disconnect() end
+    links.Died = nil
+    if not character then return end
+    self:IsolateCharacter(character)
+    local controller = character.Controller
+    if controller and controller.Died then
+        links.Died = controller.Died:Connect(function() self:OnDied(player) end)
     end
+end
+
+function Mgr:OnPlayerAdded(player)
+    self:ClearLinks(player)
+    local links = {}
+    self.Links[player.UserId] = links
+    links.Added = player.CharacterAdded:Connect(function(character)
+        self:WatchCharacter(player, character)
+    end)
+    self:WatchCharacter(player, player.Character)
+end
+
+-- 主人离线：还没被举起的鱼与举在他头上的鱼一并清掉，避免场上留下无主的鱼和挂点；
+-- 已在逃的鱼留在场上，在线人数变少后由 Update 里的全局上限收
+function Mgr:OnPlayerRemoving(player)
+    self:ClearLinks(player)
     local held = self:GetHeld(player)
     if held then self:Remove(held) end
     for _, fish in ipairs(self:GetFish(player)) do
@@ -245,8 +476,11 @@ function Mgr:Update()
                     print('[MgrFishUnit] 抓举未确认，放弃重试', fish.Owner.UserId, 'fish=' .. tostring(fish.Id))
                 end
             end
+        elseif fish.State == Mgr.State.Escaping then
+            self:UpdateEscaping(fish, now)
         end
     end
+    self:EnforceEscapeCap(nil)
 end
 
 return Mgr
