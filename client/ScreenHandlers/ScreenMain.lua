@@ -359,8 +359,6 @@ function ScreenHandler:Init()
     if not euiMgr then return end
     local resolution = euiMgr:GetDeviceResolution()
     local root = self.RootNode
-    local oldEntry = root:FindFirstChild('BtnFishEnter', true)
-    if oldEntry then oldEntry.Visible = false end
     self.LabelCoin = root:FindFirstChild('LabelCoin', true)
     local imageCoin = root:FindFirstChild('ImageCoin', true)
     if self.LabelCoin then self.LabelCoin.Visible = true else print('[ScreenMain] 找不到 LabelCoin 节点') end

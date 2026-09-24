@@ -60,7 +60,6 @@ function TestItemBarUI:setUp()
         Name = 'ScreenMain',
         FindFirstChild = function(_, name) return self.nodes[name] end,
     }
-    self.nodes.BtnFishEnter = { Visible = true }
     self.currentRoot = self.handler.RootNode
     self.uiRoot = { FindFirstChild = function(_, name)
         if name == 'ScreenMain' then return self.currentRoot end
@@ -106,7 +105,6 @@ function TestItemBarUI:test_fixed_slots_bait_and_action_placement()
     lu.assertNotNil(self.nodes.ItemDiscard)
     lu.assertFalse(self.nodes.ItemAction2.TouchEnabled)
     lu.assertNil(self.nodes.BtnAttack)
-    lu.assertFalse(self.nodes.BtnFishEnter.Visible)
     self.states:Fire({ slots = { [1] = { itemId = 'starterRod', count = 1 } },
         bait = { worm = 10 }, selectedSlot = 1 })
     lu.assertTrue(self.nodes.ItemBarIcon1.Visible)
