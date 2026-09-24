@@ -523,7 +523,7 @@ function ScreenHandler:Init()
             if self.Starving then self:UpdateStarveFx() end
         end)
     end
-    -- 进图早期注册 FishCoin 属性监听不稳定（退役的 LocalFishEnter 同样延迟 1 秒），延迟后再挂
+    -- 进图早期注册 FishCoin 属性监听不稳定，延迟后再挂
     local task = game:GetService('Task')
     if task and task.Delay then
         task:Delay(1, function()

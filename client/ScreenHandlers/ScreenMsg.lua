@@ -4,12 +4,7 @@ ScreenHandler.UINodes = {
 }
 
 ScreenHandler.UINodeMap = {}
-local World = game:GetService("World")
-local Players = game:GetService("Players")
-local LocalPlayer = Players.LocalPlayer
-
 local Task = game:GetService("Task")
-local RunService = game:GetService("RunService")
 
 local function PopMsgNotice(msg, duration, textColor)
     local showItemUI = ScreenHandler.UINodeMap.ItemMsg:Clone()
@@ -42,9 +37,6 @@ local function PopMsgNotice(msg, duration, textColor)
     end)
 end
 
-local function Update()
-end
-
 function ScreenHandler:Init()
     self.Inited = true
     self.Links = {}
@@ -58,7 +50,6 @@ function ScreenHandler:OpenScreen(passBy)
         end
     end
     self.Links = {}
-    --self.Links["HbtUpdate"] = RunService.Heartbeat:Connect(Update)
 end
 
 function ScreenHandler:CloseScreen()

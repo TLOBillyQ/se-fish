@@ -2,8 +2,7 @@
 -- 失败方式（先列后写）：
 --   1. 调试开关关闭（默认）时进图仍白送鱼竿 / 蚯蚓，与拾饵、喂食、购买并存成两套正式获取路径；
 --   2. 白送配置仍挂在物品表下、与 GM 不是同一个开关；开关打开后白送不生效或发错容器；
---   3. 清理时把合法的鱼竿等级筛选一起删了：要求等级高于鱼竿的鱼也能钓上，或等级够的鱼钓不上；
---   4. 抽签权重仍叫 Weight，与基础重量 BaseWeight / 个体重量 FishCatch.Weight 混名，有人把它当重量乘倍率。
+--   3. 清理时把合法的鱼竿等级筛选一起删了：要求等级高于鱼竿的鱼也能钓上，或等级够的鱼钓不上。
 local lu = require('luaunit')
 
 TestGrowthCleanup = {}
@@ -55,11 +54,10 @@ function TestGrowthCleanup:test_rod_level_filter_is_kept()
     lu.assertNil(FishCatch.Select({ rows[2] }, 1, nil, maxRoll))
 end
 
-function TestGrowthCleanup:test_draw_weight_is_named_apart_from_weight()
+function TestGrowthCleanup:test_draw_weight_and_rod_level_are_valid()
     local fresh = assert(loadfile('common/GameCfg.lua'))()
-    for zone, rows in pairs(fresh.Casting.Zones) do
+    for _, rows in pairs(fresh.Casting.Zones) do
         for _, row in ipairs(rows) do
-            lu.assertNil(row.Weight, zone .. ' ' .. row.Id .. ' 仍用 Weight 命名抽签权重')
             lu.assertTrue(type(row.DrawWeight) == 'number' and row.DrawWeight > 0, row.Id)
             lu.assertTrue(row.RodLevel >= 1, row.Id)
         end

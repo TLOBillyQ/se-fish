@@ -1,9 +1,6 @@
 local MgrGameUI = {}
-local Task = game:GetService("Task")
 local StarterGui = game:GetService("StarterGui")
-local Util = require("common.Util")
 local GameUI = require("client.GameUI")
---local UINodes = require("data.UINodes")
 local REUtil = require("common.REUtil")
 local OpenScreenRE = REUtil:GetRE("OpenScreenRE")
 local CloseScreenRE = REUtil:GetRE("CloseScreenRE")
@@ -18,10 +15,9 @@ function MgrGameUI:GetScreen(screenName)
     
     local screenNode = UIRoot:FindFirstChild(screenName)
      if not screenNode then
-        print("[ShaoTest] MgrGameUI:GetScreen() can not find Screen Node", screenName)
+        print("[MgrGameUI] 找不到界面节点", screenName)
         return
     end
-    --EUILayout
     local handlerName = string.format("client.ScreenHandlers.%s", screenName)
     local screenHandler = require(handlerName)
 
@@ -33,9 +29,8 @@ function MgrGameUI:GetScreen(screenName)
             local uiNode = screenNode:FindFirstChild(v, true)
             if uiNode then
                 screenHandler.UINodeMap[v] = uiNode
-                --print("[ShaoTest]MgrGameUI:OpenScreen() find uiNode", v, uiNode)
             else
-                print("[ShaoTest]MgrGameUI:OpenScreen() Can not find", v)
+                print("[MgrGameUI] 找不到界面子节点", screenName, v)
             end
         end
         screenHandler:Init()
@@ -56,7 +51,6 @@ function MgrGameUI:OpenScreen(screenName, passBy, useAnim)
             local duration = 0.5
             screenHandler.AnimOpen = true
             screenHandler.RootNode:TweenOpacity(1, Enums.EasingDirection.Out, Enums.EasingStyle.Quad, duration, true, function()
-                --screenHandler.RootNode:StopOpacityAnim()
                 screenHandler.AnimOpen = nil
                 screenHandler.RootNode.Opacity = 1
             end)
@@ -79,7 +73,6 @@ function MgrGameUI:CloseScreen(screenName, useAnim)
 
     if screenHandler.RootNode.Visible then
         if useAnim then
-            print("[ShaoTest] start Opacity close anim")
             screenHandler.RootNode.Opacity = 1
             local duration = 0.5
             screenHandler.AnimClosing = true
@@ -98,12 +91,10 @@ function MgrGameUI:CloseScreen(screenName, useAnim)
 end
 
 OpenScreenRE.OnClientEvent:Connect(function(screenName, passBy, useAnim) 
-    print("[ShaoTest] OpenScreenRE", screenName, passBy, useAnim)
     MgrGameUI:OpenScreen(screenName, passBy, useAnim)
 end)
 
 CloseScreenRE.OnClientEvent:Connect(function(screenName, useAnim)
-    print("[ShaoTest] CloseScreenRE", screenName, useAnim) 
     MgrGameUI:CloseScreen(screenName, useAnim)
 end)
 
@@ -124,7 +115,6 @@ function MgrGameUI:IsAnyScreenOpen(exceptLst)
             table.insert(showLst, screenName)
         end
     end
-    --print("MgrGameUI:IsAnyScreenOpen()", showLst)
     return showLst
 end
 
@@ -148,7 +138,6 @@ function MgrGameUI:SetControlUI(visible)
     self:HideNativeHealth()
     for k, v in pairs(AllCustomUINodeMap) do
         k.Visible = visible
-        print("[SetControlUI]", k, visible)
     end
 end
 

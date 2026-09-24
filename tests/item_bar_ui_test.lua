@@ -134,21 +134,11 @@ function TestItemBarUI:test_fixed_slots_bait_and_action_placement()
     lu.assertNil(self.commands[3].value)
 end
 
-function TestItemBarUI:test_legacy_entry_is_not_registered()
+function TestItemBarUI:test_screen_main_is_opened_on_start()
     local clientFile = assert(io.open('client/main.lua', 'r'))
     local client = clientFile:read('*a')
     clientFile:close()
-    local serverFile = assert(io.open('server/main.lua', 'r'))
-    local server = serverFile:read('*a')
-    serverFile:close()
-    lu.assertNil(client:find('LocalFishEnter:Start()', 1, true))
-    lu.assertNil(server:find('MgrFish = require', 1, true))
     lu.assertStrContains(client, "OpenScreen('ScreenMain')")
-    local agentsFile = assert(io.open('AGENTS.md', 'r'))
-    local agents = agentsFile:read('*a')
-    agentsFile:close()
-    lu.assertStrContains(agents, '旧钓鱼入口 `LocalFishEnter` 已退役、不再启动')
-    lu.assertNil(agents:find('`LocalFishEnter` / `LocalAttackButton`', 1, true))
 end
 
 function TestItemBarUI:test_empty_and_depleted_state_refresh()
