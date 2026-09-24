@@ -1,6 +1,6 @@
 -- 活鱼单位管理器（#37 起）：上岸结算交来的活鱼在这里登记，M2 在此之上接抓举 / 放下 / 逃脱 / 死亡。
 -- 一条活鱼只记上钩时定下的鱼种与个体倍率；重量、售价随取随算（FishCatch.Weight / Price），不存快照。
--- 抓举（#41）：上岸即由服务端原生 Lift()（客户端发起无效，M0 台账 §1），只认服务端鱼本体的
+-- 抓举（#41）：上岸即由服务端原生 Lift(鱼本体)，只认服务端鱼本体的
 -- OnLiftedBegin，回调里立刻建骨骼挂点并把鱼挂进去；举着期间不改 BodyType（引擎已切 Kinematic）。
 -- 放下 / 逃脱（#42）：主动放下、OnLiftedEnd、持有者死亡走同一条幂等 Release——回世界、落在面前、
 -- Kinematic 朝最近水区跑；只按 (x,z) 判入水，入水即销毁、无收益。不调 Throw。
@@ -109,7 +109,9 @@ function Mgr:RequestLift(fish)
     if not controller then return false end
     fish.LiftAttempts = fish.LiftAttempts + 1
     fish.LiftAt = self:Now()
-    local ok, err = pcall(function() controller:Lift() end)
+    -- 不依赖身前目标搜索：鱼的受击体与场景单位可能干扰搜索，明确抓取本次上岸的鱼。
+    -- SE 实测 Lift 的指定目标支持 WorldUnit；仍由原生 OnLiftedBegin 确认成功。
+    local ok, err = pcall(function() controller:Lift(fish.Carrier.Body) end)
     if not ok then print('[MgrFishUnit] Lift 调用失败', owner.UserId, tostring(err)) end
     return ok
 end

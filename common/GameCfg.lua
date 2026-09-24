@@ -93,8 +93,9 @@ GameCfg.FishUnit = {
     LiftAttempts = 3,
     -- 待抓的鱼：关重力 + 阻尼，偏离生成点超过容差（米）或坐标 NaN 就拉回并清速度（M18-2）
     AwaitDriftTolerance = 0.05,
-    LinearDamping = 5,
-    AngularDamping = 5,
+    -- WorldUnit API 的阻尼范围为 0～1；越界值会在抓举时使坐标变为 NaN。
+    LinearDamping = 0.5,
+    AngularDamping = 0.5,
     -- 放下 / 逃脱（#42，#27 规格）：落在角色正前方 DropOffset 米、抬高 DropHeight 米，Kinematic 由脚本驱动；
     -- 鱼种没配 Speed 时用 EscapeSpeed（米/秒）。每 TurnSec 秒重新朝最近水区，RayHz 频率向前 RayDistance 米探墙，
     -- 撞墙转 90°（V4 实测）。上限：每人在逃 ≤ PerPlayerEscapeCap，全局 ≤ 在线人数 × GlobalEscapePerPlayer
