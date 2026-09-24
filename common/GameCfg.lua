@@ -125,20 +125,20 @@ GameCfg.Loot = {
 -- 固定点位鱼饵（#45，#27 规格）：每个点位同时最多一份，复用鱼获的 2 米拾取与服务端复验，
 -- 拾取成功后 RespawnSec 秒在原位刷新；鱼饵进 Bait 计数库存，不占道具栏格。鱼获不刷新、不消失。
 -- Spots 的 Position 只用 x/z，y 由向下探地决定（Position.y 是探地起点参考）。
--- 正式新手点位（#51，策划案「拾取岛周围刷新的蚯蚓」）：绕鱼塘（WaterCircle2 中心 (-11.75, 27.75)、半宽 3）
--- 一圈 5 个，离水圈中心约 5 米、落在水圈外的岸上，新手任务第 1 步「拾取 5 只蚯蚓」不必等刷新。
--- worm-1 沿用 #45 的机制点位（水圈中心 x+5）。[未查证：各点落地与遮挡待 #55 截图实测，改坐标只改这里]
+-- 正式新手点位（#51，策划案「拾取岛周围刷新的蚯蚓」）：绕鱼塘（WaterCircle2 中心 (-11.75, 27.75)、半宽 6）
+-- 2026-09-24 场景水平扩建两倍，五个点位随岸线外移，距水圈中心约 10 米；
+-- 新手任务第 1 步「拾取 5 只蚯蚓」不必等刷新，改坐标只改这里。
 -- Mesh 取官方资产「飘逸尾鳍」（软体蠕虫状，official://mesh/7000571），没有官方蚯蚓模型 [未查证：观感待 #55 截图]
 GameCfg.BaitSpots = {
     RespawnSec = 15,
     Mesh = 'official://mesh/7000571',
     Scale = 0.3,
     Spots = {
-        { Id = 'worm-1', ItemId = 'worm', Count = 1, Position = { x = -6.75, y = 4, z = 27.75 } },
-        { Id = 'worm-2', ItemId = 'worm', Count = 1, Position = { x = -11.75, y = 4, z = 32.75 } },
-        { Id = 'worm-3', ItemId = 'worm', Count = 1, Position = { x = -16.75, y = 4, z = 27.75 } },
-        { Id = 'worm-4', ItemId = 'worm', Count = 1, Position = { x = -11.75, y = 4, z = 22.75 } },
-        { Id = 'worm-5', ItemId = 'worm', Count = 1, Position = { x = -8.25, y = 4, z = 31.25 } },
+        { Id = 'worm-1', ItemId = 'worm', Count = 1, Position = { x = -1.75, y = 4, z = 27.75 } },
+        { Id = 'worm-2', ItemId = 'worm', Count = 1, Position = { x = -11.75, y = 4, z = 37.75 } },
+        { Id = 'worm-3', ItemId = 'worm', Count = 1, Position = { x = -21.75, y = 4, z = 27.75 } },
+        { Id = 'worm-4', ItemId = 'worm', Count = 1, Position = { x = -11.75, y = 4, z = 17.75 } },
+        { Id = 'worm-5', ItemId = 'worm', Count = 1, Position = { x = -4.75, y = 4, z = 34.75 } },
     },
 }
 
@@ -301,12 +301,12 @@ GameCfg.Ability = {
 -- 水判定（M0-V1）：每个钓鱼区一条。Center 只用到 x/z（y 留作场景溯源），HalfXZ 是水平半宽（米），
 -- SurfaceY 是水面高度（米）；判定语义与配置校验见 common/MathWaterJudge.lua，
 -- 边界用例见 tests/water_judge_test.lua，取值溯源见 issue #25 的 M0 模块线台账（评论 9862）。
--- 数值来源：#12 在本图 SE 试玩里的实测（宿主目录 log.txt 2026-09-22 11:46:49 的 PROTO_WATER INSPECT 行）——
---   WaterCircle1  Position(-11.75, 1.05, 27.75) Size(3, 1, 3) Scale(1, 1, 1)
---   WaterCircle2  Position(-11.75, 1.05, 27.75) Size(6, 1, 6) Scale(2, 1, 2)
+-- 2026-09-24 在 #12 的场景基础上水平扩建两倍，中心与高度不变；编辑器回读：
+--   WaterCircle1  Position(-11.75, 1.05, 27.75) Size(6, 1, 6) Scale(2, 1, 2)
+--   WaterCircle2  Position(-11.75, 1.05, 27.75) Size(12, 1, 12) Scale(4, 1, 4)
 --   两个水圈同心；HalfXZ 与 SurfaceY 的取值见下面两条注意，SurfaceY 已按 #31 的实测改正。
--- 注意 1：运行时读到的 Size 已含 Scale（WaterCircle2 的 Scale.x=2 已经算进 Size.x=6），
---         HalfXZ 直接写半边尺寸（6/2=3），配置时再乘缩放会翻倍（#12 W-4）。
+-- 注意 1：运行时读到的 Size 已含 Scale（WaterCircle2 的 Scale.x=4 已经算进 Size.x=12），
+--         HalfXZ 直接写半边尺寸（12/2=6），配置时再乘缩放会重复计算（#12 W-4）。
 -- 注意 2（#31 改正）：**Position.y 是底面、Size 是包围盒半长**，单位顶面 y = Position.y + Size.y——
 --         大地板 pos.y=0 + size.y=2 = 顶面 2.000，与射线实测命中的 y=2.0 自洽；水圈
 --         pos.y=1.18 + size.y=1 = 顶面 ≈2.183。旧值 1.55（1.05 + Size.y/2，按 Position 是几何中心算）
@@ -320,8 +320,8 @@ GameCfg.Ability = {
 -- 顺序：外圈 WaterCircle2 在前，同心时先命中它；M1 若要按水区选鱼表，改这里。
 GameCfg.Water = {
     Zones = {
-        { Id = "WaterCircle2", Center = { x = -11.75, y = 1.05, z = 27.75 }, HalfXZ = 3.0, SurfaceY = 2.183 },
-        { Id = "WaterCircle1", Center = { x = -11.75, y = 1.05, z = 27.75 }, HalfXZ = 1.5, SurfaceY = 2.183 },
+        { Id = "WaterCircle2", Center = { x = -11.75, y = 1.05, z = 27.75 }, HalfXZ = 6.0, SurfaceY = 2.183 },
+        { Id = "WaterCircle1", Center = { x = -11.75, y = 1.05, z = 27.75 }, HalfXZ = 3.0, SurfaceY = 2.183 },
     },
 }
 

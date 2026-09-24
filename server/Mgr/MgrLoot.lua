@@ -5,6 +5,7 @@
 -- 固定点位鱼饵（#45）共用这套记录、广播与拾取复验：Kind='bait'，拾取进 Bait 计数库存（不占格），
 -- 成功后该点位 RespawnSec 秒刷新一份新的（新 id，旧 id 重放无效）；鱼获（Kind='fish'）不刷新、不消失。
 local GameCfg = require('common.GameCfg')
+local MathWaterJudge = require('common.MathWaterJudge')
 local MgrFishCarrier = require('server.Mgr.MgrFishCarrier')
 
 local Mgr = { Loots = {}, NextId = 0, Spots = {} }
@@ -40,7 +41,7 @@ function Mgr:Ground(pos)
         params.FilterDescendantsInstances = self.FishUnit and self.FishUnit:RayExclusions() or {}
         local ok, hit = pcall(physics.Raycast, physics, Vector3.New(pos.x, pos.y + c.GroundRayUp, pos.z),
             Vector3.New(0, -c.GroundRayDown, 0), params)
-        if ok and hit and hit.Position then return hit.Position.y end
+        if ok and hit and hit.Position then return hit.Position.y, hit end
     end
     return pos.y
 end
@@ -142,7 +143,19 @@ function Mgr:SpawnBait(spotCfg)
     if not spot or spot.LootId then return nil end
     local c = GameCfg.BaitSpots
     local p = spotCfg.Position
-    local position = Vector3.New(p.x, self:Ground(p) + cfg().Height, p.z)
+    for _, zone in ipairs(GameCfg.Water.Zones) do
+        if MathWaterJudge.InZone(zone, { x = p.x, y = zone.SurfaceY, z = p.z }) then
+            print('[MgrLoot] 鱼饵点位在水区，跳过刷新', spotCfg.Id, zone.Id)
+            return nil
+        end
+    end
+    local groundY, hit = self:Ground(p)
+    if not hit or hit.Normal and hit.Normal.y < 0.5 then
+        print('[MgrLoot] 鱼饵点位未命中陆地，跳过刷新', spotCfg.Id)
+        spot.RespawnAt = self:Now() + c.RespawnSec
+        return nil
+    end
+    local position = Vector3.New(p.x, groundY + cfg().Height, p.z)
     self.NextId = self.NextId + 1
     local id = self.NextId
     local world = game:GetService('World')

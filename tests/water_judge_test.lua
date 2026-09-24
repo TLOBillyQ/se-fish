@@ -8,15 +8,15 @@ local lu = require("luaunit")
 local GameCfg = require("common.GameCfg")
 local MathWaterJudge = require("common.MathWaterJudge")
 
--- 本图实测值（#12，宿主目录 log.txt 2026-09-22 11:46:49 的 PROTO_WATER INSPECT 行）：
---   WaterCircle1 Position(-11.75, 1.05, 27.75) Size(3, 1, 3) Scale(1, 1, 1)
---   WaterCircle2 Position(-11.75, 1.05, 27.75) Size(6, 1, 6) Scale(2, 1, 2)
+-- 本图 2026-09-24 水平扩建两倍后的编辑器回读值：
+--   WaterCircle1 Position(-11.75, 1.05, 27.75) Size(6, 1, 6) Scale(2, 1, 2)
+--   WaterCircle2 Position(-11.75, 1.05, 27.75) Size(12, 1, 12) Scale(4, 1, 4)
 local CENTER_X = -11.75
 local CENTER_Z = 27.75
 -- 水面高度（#31 改正）：Position.y 是底面、Size.y 是包围盒半长 ⇒ 水圈顶面 = 1.18 + 1 ≈ 2.183。
 -- 来源 issue #25 的 M0 试玩验证台账（评论 9865；M15 试玩里水圈会漂移，1.18 是 16:24 那次的高点）。
 local SURFACE_Y = 2.183
-local OUTER_HALF = 3.0 -- WaterCircle2 的 Size.x / 2（Size 已含 Scale，不再乘 Scale）
+local OUTER_HALF = 6.0 -- WaterCircle2 的 Size.x / 2（Size 已含 Scale，不再乘 Scale）
 local UNDER_WATER_Y = 2.08 -- 水面下 ≈0.1m
 local AIR_Y = 3.18 -- 水面上 ≈1m
 local FLOOR_Y = 2.0 -- 大地板的表面高度（射线实测命中 2.0；现在低于水面，见下面 W-7 那条）
@@ -111,11 +111,11 @@ function TestWaterJudgeSemantics:test_point_at_floor_height_inside_pond_is_in_wa
   lu.assertFalse(inWater(at(CENTER_X, FLOOR_Y + 0.5, CENTER_Z)))
 end
 
--- 两圈同心但半宽不同：外圈 3.0 / 内圈 1.5，所以 dx=2.5 的点只在外圈里。
+-- 两圈同心但半宽不同：外圈 6.0 / 内圈 3.0，所以 dx=5.0 的点只在外圈里。
 function TestWaterJudgeSemantics:test_inner_circle_has_its_own_half_width()
   local outer = zoneById("WaterCircle2")
   local inner = zoneById("WaterCircle1")
-  local pos = at(CENTER_X + 2.5, UNDER_WATER_Y, CENTER_Z)
+  local pos = at(CENTER_X + 5.0, UNDER_WATER_Y, CENTER_Z)
 
   lu.assertTrue(MathWaterJudge.InZone(outer, pos))
   lu.assertFalse(MathWaterJudge.InZone(inner, pos))
@@ -132,11 +132,11 @@ end
 
 TestWaterJudgeConfig = {}
 
--- 配置口径：HalfXZ 直接写运行时半边尺寸，不再乘 Scale（WaterCircle2 的 Scale.x=2 已经算进 Size.x=6）。
+-- 配置口径：HalfXZ 直接写运行时半边尺寸，不再乘 Scale（WaterCircle2 的 Scale.x=4 已经算进 Size.x=12）。
 -- 谁「顺手」把 3.0 改成 6.0（乘了缩放），这条先红。
 function TestWaterJudgeConfig:test_half_width_does_not_multiply_scale()
   lu.assertEquals(zoneById("WaterCircle2").HalfXZ, OUTER_HALF)
-  lu.assertEquals(zoneById("WaterCircle1").HalfXZ, 1.5)
+  lu.assertEquals(zoneById("WaterCircle1").HalfXZ, 3.0)
 end
 
 function TestWaterJudgeConfig:test_center_and_surface_come_from_measured_values()
