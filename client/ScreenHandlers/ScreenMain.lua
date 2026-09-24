@@ -66,26 +66,48 @@ function ScreenHandler:SelectedFood()
     if definition and type(definition.EatPercent) == 'number' then return entry, slot end
 end
 
+local function readVital(player, key, default)
+    local value = tonumber(player:GetAttribute(key))
+    return value and math.floor(value) or default
+end
+
+local function vitalPercent(value, maximum)
+    return maximum > 0 and math.max(0, math.min(100, value * 100 / maximum)) or 0
+end
+
+local function updateStarving(self, health, hunger)
+    local starving = hunger <= 0 and health > 0
+    if starving and not self.Starving then self.NextWarnAt = nil end
+    self.Starving = starving
+    self:UpdateStarveFx()
+end
+
 -- 血球 / 饥饿球（#53）：数值只读服务端写的玩家属性 Health / MaxHealth / Hunger / MaxHunger
 function ScreenHandler:ShowVitals()
     if not self.HealthRing then return end
     local player = game:GetService('Players').LocalPlayer
     if not player then return end
     local c = GameCfg.Vitals
-    local function read(key, default)
-        local value = tonumber(player:GetAttribute(key))
-        return value and math.floor(value) or default
-    end
-    local health, maxHealth = read('Health', c.MaxHealth), read('MaxHealth', c.MaxHealth)
-    local hunger, maxHunger = read('Hunger', c.MaxHunger), read('MaxHunger', c.MaxHunger)
-    self.HealthRing.Percent = maxHealth > 0 and math.max(0, math.min(100, health * 100 / maxHealth)) or 0
-    self.HungerRing.Percent = maxHunger > 0 and math.max(0, math.min(100, hunger * 100 / maxHunger)) or 0
+    local health = readVital(player, 'Health', c.MaxHealth)
+    local maxHealth = readVital(player, 'MaxHealth', c.MaxHealth)
+    local hunger = readVital(player, 'Hunger', c.MaxHunger)
+    local maxHunger = readVital(player, 'MaxHunger', c.MaxHunger)
+    self.HealthRing.Percent = vitalPercent(health, maxHealth)
+    self.HungerRing.Percent = vitalPercent(hunger, maxHunger)
     self.HealthText.Text = '血 ' .. tostring(health)
     self.HungerText.Text = '饥饿 ' .. tostring(hunger)
-    local starving = hunger <= 0 and health > 0
-    if starving and not self.Starving then self.NextWarnAt = nil end
-    self.Starving = starving
-    self:UpdateStarveFx()
+    updateStarving(self, health, hunger)
+end
+
+local function warnStarving(self, now, config)
+    if self.NextWarnAt and now < self.NextWarnAt then return end
+    self.NextWarnAt = now + config.WarnIntervalSec
+    if _G.LocalMsgNotice then _G.LocalMsgNotice(config.WarnText) end
+    print('[ScreenMain] 饥饿提示', config.WarnText)
+end
+
+local function flashVisible(self, now, config)
+    return self.Starving == true and math.floor(now / config.FlashPeriodSec) % 2 == 0
 end
 
 -- 饥饿归零期间：四边红框按 FlashPeriodSec 亮灭，WarnText 每 WarnIntervalSec 秒提示一次（不刷屏）
@@ -93,14 +115,9 @@ function ScreenHandler:UpdateStarveFx()
     if not self.FlashEdges then return end
     local c = GameCfg.Vitals
     local now = World:GetServerTime()
-    local on = self.Starving == true and math.floor(now / c.FlashPeriodSec) % 2 == 0
+    local on = flashVisible(self, now, c)
     for _, edge in ipairs(self.FlashEdges) do edge.Visible = on end
-    if not self.Starving then return end
-    if not self.NextWarnAt or now >= self.NextWarnAt then
-        self.NextWarnAt = now + c.WarnIntervalSec
-        if _G.LocalMsgNotice then _G.LocalMsgNotice(c.WarnText) end
-        print('[ScreenMain] 饥饿提示', c.WarnText)
-    end
+    if self.Starving then warnStarving(self, now, c) end
 end
 
 -- 金币 HUD（#47）：接回场景既有的 ImageCoin / LabelCoin，以服务端同步的 FishCoin 属性为准
@@ -123,6 +140,58 @@ function ScreenHandler:ShowQuest(state)
     if type(state.notice) == 'string' and _G.LocalMsgNotice then _G.LocalMsgNotice(state.notice) end
 end
 
+local function castActionEnabled(self, phase, rod, drop, active)
+    return self.IsOpen == true
+        and ((rod and phase == 'idle') or drop or phase == 'cast' or active == true) or false
+end
+
+local function castActionColor(phase, now, alert)
+    -- 上岸停留期间按钮灰化（#37），其余时候用常规底色
+    if not now then
+        return phase == 'landed' and Color.New(120, 120, 120, 255)
+            or Color.New(54, 100, 140, 255)
+    end
+    local k = (math.sin(now * 2 * math.pi / alert.BreathPeriodSec) + 1) / 2
+    local h = alert.HighlightColor
+    return Color.New(math.floor(54 + (h[1] - 54) * k),
+        math.floor(100 + (h[2] - 100) * k), math.floor(140 + (h[3] - 140) * k), h[4])
+end
+
+local function showCastAction(self, phase, rod, drop, active, alertNow)
+    local visible = rod == true or phase ~= 'idle' or drop
+    self.BtnItemAction.Visible = visible
+    self.BtnItemActionLabel.Visible = visible
+    self.BtnItemAction.TouchEnabled = castActionEnabled(self, phase, rod, drop, active)
+    self.BtnItemAction.ButtonNormalColor = castActionColor(phase, alertNow, GameCfg.HookAlert)
+    self.BtnItemActionLabel.Text = phase == 'hooked' and '点击收线'
+        or phase == 'landed' and '已上岸' or phase == 'cast' and '收竿' or drop and '放下'
+        or rod and '抛竿' or '使用'
+end
+
+local function castProgress(self, reel, active)
+    local result = reel and reel.LastResult
+    -- 收线中显示本地反馈并平滑追平权威进度（#38）；其余时候显示最后一次权威值
+    return active and reel.DisplayProgress and reel:DisplayProgress()
+        or result and self.CastState and result.session == self.CastState.reelSession and result.progress or 50
+end
+
+local function showCastFeedback(self, phase, active, alerting, progress)
+    if self.ReelBar then
+        self.ReelBar.Visible = active == true
+        self.ReelBarBg.Visible = active == true
+        self.ReelBar.Percent = progress
+    end
+    if self.HookHint then
+        self.HookHint.Visible = active == true or phase == 'landed'
+        self.HookHint.Text = phase == 'landed' and '鱼已上岸' or alerting and GameCfg.HookAlert.Text
+            or active and '收线 ' .. tostring(math.floor(progress + 0.5)) .. '%' or ''
+    end
+    if self.BtnReelClose then
+        self.BtnReelClose.Visible = active == true
+        self.BtnReelCloseLabel.Visible = active == true
+    end
+end
+
 function ScreenHandler:ShowCast()
     if not self.BtnItemAction then return end
     local state = self.Snapshot
@@ -134,48 +203,14 @@ function ScreenHandler:ShowCast()
         and reel.SessionId == self.CastState.reelSession
     -- 头上顶着鱼（#41，以服务端 holding 为准）：空闲时 2 号位是「放下」
     local drop = phase == 'idle' and self.CastState ~= nil and self.CastState.holding ~= nil
-    local visible = rod == true or phase ~= 'idle' or drop
-    self.BtnItemAction.Visible = visible
-    self.BtnItemActionLabel.Visible = visible
-    self.BtnItemAction.TouchEnabled = self.IsOpen == true
-        and ((rod and phase == 'idle') or drop or phase == 'cast' or active == true) or false
     -- 上钩提示（#54）：本收线会话的前 DurationSec 秒按钮呼吸式高亮、文字改为提示语
-    local alert = GameCfg.HookAlert
     local now = active == true and self.HookAlertUntil ~= nil and World:GetServerTime()
     local alerting = now and now < self.HookAlertUntil
-    -- 上岸停留期间按钮灰化（#37），其余时候用常规底色
-    if alerting then
-        local k = (math.sin(now * 2 * math.pi / alert.BreathPeriodSec) + 1) / 2
-        local h = alert.HighlightColor
-        self.BtnItemAction.ButtonNormalColor = Color.New(math.floor(54 + (h[1] - 54) * k),
-            math.floor(100 + (h[2] - 100) * k), math.floor(140 + (h[3] - 140) * k), h[4])
-    else
-        self.BtnItemAction.ButtonNormalColor = phase == 'landed' and Color.New(120, 120, 120, 255)
-            or Color.New(54, 100, 140, 255)
-    end
-    self.BtnItemActionLabel.Text = phase == 'hooked' and '点击收线'
-        or phase == 'landed' and '已上岸' or phase == 'cast' and '收竿' or drop and '放下'
-        or rod and '抛竿' or '使用'
-    local result = reel and reel.LastResult
-    -- 收线中显示本地反馈并平滑追平权威进度（#38）；其余时候显示最后一次权威值
-    local progress = active and reel.DisplayProgress and reel:DisplayProgress()
-        or result and self.CastState and result.session == self.CastState.reelSession and result.progress or 50
+    showCastAction(self, phase, rod, drop, active, alerting and now)
+    local progress = castProgress(self, reel, active)
     if type(progress) ~= 'number' or progress ~= progress then progress = 50 end
     progress = math.max(0, math.min(100, progress))
-    if self.ReelBar then
-        self.ReelBar.Visible = active == true
-        self.ReelBarBg.Visible = active == true
-        self.ReelBar.Percent = progress
-    end
-    if self.HookHint then
-        self.HookHint.Visible = active == true or phase == 'landed'
-        self.HookHint.Text = phase == 'landed' and '鱼已上岸' or alerting and alert.Text
-            or active and '收线 ' .. tostring(math.floor(progress + 0.5)) .. '%' or ''
-    end
-    if self.BtnReelClose then
-        self.BtnReelClose.Visible = active == true
-        self.BtnReelCloseLabel.Visible = active == true
-    end
+    showCastFeedback(self, phase, active, alerting, progress)
 end
 
 local function button(parent, name, x, y, width)
@@ -304,6 +339,15 @@ function ScreenHandler:Cleanup()
     self.CastState = nil
     self.BoundRootNode = nil
     self.Inited = false
+end
+
+local function listenPlayerAttributes(self, player)
+    self:Listen(player:GetAttributeChangedSignal('FishCoin'), function() self:ShowCoin() end)
+    self:ShowCoin()
+    for _, key in ipairs({ 'Health', 'MaxHealth', 'Hunger', 'MaxHunger' }) do
+        self:Listen(player:GetAttributeChangedSignal(key), function() self:ShowVitals() end)
+    end
+    self:ShowVitals()
 end
 
 function ScreenHandler:Init()
@@ -486,12 +530,7 @@ function ScreenHandler:Init()
             if not self.Inited or self.BoundRootNode ~= root then return end
             local player = game:GetService('Players').LocalPlayer
             if not player then return end
-            self:Listen(player:GetAttributeChangedSignal('FishCoin'), function() self:ShowCoin() end)
-            self:ShowCoin()
-            for _, key in ipairs({ 'Health', 'MaxHealth', 'Hunger', 'MaxHunger' }) do
-                self:Listen(player:GetAttributeChangedSignal(key), function() self:ShowVitals() end)
-            end
-            self:ShowVitals()
+            listenPlayerAttributes(self, player)
         end)
     end
     self.BoundRootNode = root

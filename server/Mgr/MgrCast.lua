@@ -8,6 +8,34 @@ local MgrFishUnit = require('server.Mgr.MgrFishUnit')
 local Mgr = { Sessions = {}, FishUnit = MgrFishUnit }
 MathWaterJudge.Build(GameCfg.Water.Zones)
 
+local function selectedRod(data, payload)
+    local selected = data.Data.SelectedSlot
+    local entry = selected and data.Data.Containers[GameCfg.Items.ContainerId.ItemBar][selected]
+    if not entry or entry.count < 1 or entry.itemId ~= GameCfg.Items.Id.StarterRod
+        or payload.slot ~= selected or payload.itemId ~= entry.itemId then return end
+    return selected, entry
+end
+
+local function waterZone(x, z)
+    for _, candidate in ipairs(GameCfg.Water.Zones) do
+        if MathWaterJudge.InZone(candidate, { x = x, y = candidate.SurfaceY, z = z }) then
+            return candidate
+        end
+    end
+end
+
+local function castLanding(character)
+    local origin, rotation = character.Position, character.Rotation
+    if not origin or not rotation then return end
+    local forward = rotation:GetForward()
+    local length = math.sqrt(forward.x * forward.x + forward.z * forward.z)
+    if length < 0.01 then return end
+    local x = origin.x + GameCfg.Casting.Distance * forward.x / length
+    local z = origin.z + GameCfg.Casting.Distance * forward.z / length
+    local zone = waterZone(x, z)
+    return { x = x, y = zone and zone.SurfaceY or origin.y, z = z }, zone
+end
+
 -- holding：头上顶着的活鱼 {fishId, mult}（#41），客户端 2 号位据此切到「放下」
 function Mgr:SendState(player, session)
     local holding = self.FishUnit and self.FishUnit:HeldInfo(player) or nil
@@ -33,30 +61,16 @@ function Mgr:Cast(player, payload)
     local character = player and player.Character
     if not data or not character or self.Sessions[player.UserId] then return end
     if self.FishUnit and not self.FishUnit:CanCast(player) then return end
-    local selected = data.Data.SelectedSlot
-    local entry = selected and data.Data.Containers[GameCfg.Items.ContainerId.ItemBar][selected]
-    if not entry or entry.count < 1 or entry.itemId ~= GameCfg.Items.Id.StarterRod
-        or payload.slot ~= selected or payload.itemId ~= entry.itemId then return end
-    local origin, rotation = character.Position, character.Rotation
-    if not origin or not rotation then return end
-    local forward = rotation:GetForward()
-    local length = math.sqrt(forward.x * forward.x + forward.z * forward.z)
-    if length < 0.01 then return end
-    local x = origin.x + GameCfg.Casting.Distance * forward.x / length
-    local z = origin.z + GameCfg.Casting.Distance * forward.z / length
-    local zone
-    for _, candidate in ipairs(GameCfg.Water.Zones) do
-        if MathWaterJudge.InZone(candidate, { x = x, y = candidate.SurfaceY, z = z }) then
-            zone = candidate
-            break
-        end
-    end
+    local selected, entry = selectedRod(data, payload)
+    if not entry then return end
+    local landing, zone = castLanding(character)
+    if not landing then return end
     if REUtil:CheckRECD(player, 'CastAction', GameCfg.Casting.ActionCooldownSec) then return end
     local baitOk, baitId = data:ConsumeSelectedBait()
     if not baitOk then return end
     local session = {
         phase = 'cast',
-        landing = { x = x, y = zone and zone.SurfaceY or origin.y, z = z },
+        landing = landing,
         zoneId = zone and zone.Id or nil,
         baitId = baitId,
         slot = selected,
