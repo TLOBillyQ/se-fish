@@ -95,7 +95,9 @@ function TestAbilityAPIBase:test_every_configured_anchor_behavior_module_exists(
   local GameCfg = require("common.GameCfg")
   for _, entry in ipairs(GameCfg.Ability.InitialAbilities or {}) do
     if entry.AnchorBehavior then
-      local path = "server/packages/ability_system/anchors/" .. entry.AnchorBehavior .. ".lua"
+      local path = entry.AnchorBehavior == "melee_hit"
+        and "server/AbilityBehaviors/melee_hit.lua"
+        or "server/packages/ability_system/anchors/" .. entry.AnchorBehavior .. ".lua"
       lu.assertTrue(file_exists(path), path .. " 不存在（行为模块名写错或包升级改名）")
     end
   end
