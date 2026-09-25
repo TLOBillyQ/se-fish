@@ -1,13 +1,21 @@
 local GameCfg = {}
 
--- MVP 物品表；官方图片目录没有这八个物品的同名图，按 issue #33 确认使用代表图。
--- 鱼获共用 11164「鱼」，蚯蚓用 14066「勾爪-距离」的弯曲线条，鱼竿用 12024「捕虫网」。
--- 对照记录见 issue #33（评论 9859）。
+-- MVP 物品表；官方图片目录没有这些物品的同名图，按 issue #33 确认使用代表图。
+-- 鱼获共用 11164「鱼」，蚯蚓用 14066「勾爪-距离」的弯曲线条，鱼竿用 12024「捕虫网」；
+-- M1（#84）新增：肉用 13008「肉」，鸭子用 11154「鸡腿」（目录无鸭，禽类代表），船票用 14105「门票」；
+-- 选型核对的是官方目录 ID 与名称，试玩显示单独验收。对照记录见 issue #33（评论 9859）。
 -- EatPercent = 物品表「食用恢复百分比」（#53）：吃一件恢复 EatPercent% × 上限的血量与饥饿度，没配的物品不能吃。
+-- BasePrice = 物品表「基础出售价格（喂钓鱼佬）」：鱼获的 BasePrice 在 GameCfg.Fish 里（随个体倍率派生），
+-- 这里只给不挂在鱼种表上的物品（掉落部位、鱼饵、鱼竿、船票）；信物喂食走兑换不走金币（#87 落地）。
 GameCfg.Items = {
     ContainerId = { ItemBar = 'itemBar', Bait = 'bait' },
     ItemBarSlots = 8,
-    Id = { Tilapia = 'tilapia', Carp = 'carp', KnifeFish = 'knifeFish', Bass = 'bass', Catfish = 'catfish', Goldfish = 'goldfish', Worm = 'worm', StarterRod = 'starterRod' },
+    Id = { Tilapia = 'tilapia', Carp = 'carp', KnifeFish = 'knifeFish', Bass = 'bass', Catfish = 'catfish', Goldfish = 'goldfish', Worm = 'worm', StarterRod = 'starterRod',
+        Shrimp = 'shrimp', RiverShrimp = 'riverShrimp', Crayfish = 'crayfish', BostonLobster = 'bostonLobster', AussieLobster = 'aussieLobster', MilkLobster = 'milkLobster',
+        RareShrimp = 'rareShrimp', RareRiverShrimp = 'rareRiverShrimp', RareCrayfish = 'rareCrayfish',
+        RareBostonLobster = 'rareBostonLobster', RareAussieLobster = 'rareAussieLobster', RareMilkLobster = 'rareMilkLobster',
+        EelMeat = 'eelMeat', EelHead = 'eelHead', GarMeat = 'garMeat', GarHead = 'garHead', Duck = 'duck', ShrimpTicket = 'shrimpTicket',
+        ShrimpRod = 'shrimpRod', CrabRod = 'crabRod', NormalRod = 'normalRod', ProRod = 'proRod', AirforceRod = 'airforceRod', UnscientificRod = 'unscientificRod' },
     ActionCooldownSec = 0.12,
     RodVisual = {
         -- Mesh 来自试玩世界单位「中式杆」（原 AssetId=map://preset/u46466002b9a47c588001c2e65ef4c3a）；
@@ -23,8 +31,39 @@ GameCfg.Items = {
         bass = { Name = '鲈鱼', EatPercent = 25, Icon = 'official://image/11164' },
         catfish = { Name = '鲶鱼', EatPercent = 25, Icon = 'official://image/11164' },
         goldfish = { Name = '金鱼', EatPercent = 30, Icon = 'official://image/11164' },
-        worm = { Name = '蚯蚓', EatPercent = 5, Icon = 'official://image/14066', Container = 'bait' },
-        starterRod = { Name = '新手鱼竿', Icon = 'official://image/12024', Level = 1 },
+        worm = { Name = '蚯蚓', EatPercent = 5, Icon = 'official://image/14066', Container = 'bait', BasePrice = 1 },
+        starterRod = { Name = '新手鱼竿', Icon = 'official://image/12024', Level = 1, BasePrice = 3 },
+        -- 虾池鱼获（#84，GameSpec §5.2 / 物品表 17-28；售价在 GameCfg.Fish 对应鱼种行）
+        shrimp = { Name = '虾米', EatPercent = 15, Icon = 'official://image/11164' },
+        riverShrimp = { Name = '沼虾', EatPercent = 20, Icon = 'official://image/11164' },
+        crayfish = { Name = '小龙虾', EatPercent = 20, Icon = 'official://image/11164' },
+        bostonLobster = { Name = '波龙', EatPercent = 25, Icon = 'official://image/11164' },
+        aussieLobster = { Name = '澳龙', EatPercent = 25, Icon = 'official://image/11164' },
+        milkLobster = { Name = '奶龙', EatPercent = 30, Icon = 'official://image/11164' },
+        -- 极品鱼获同属极品食物，可投抽奖机（CONTEXT.md「信物」「抽奖机」）
+        rareShrimp = { Name = '极品虾米', EatPercent = 15, Icon = 'official://image/11164' },
+        rareRiverShrimp = { Name = '极品沼虾', EatPercent = 20, Icon = 'official://image/11164' },
+        rareCrayfish = { Name = '极品小龙虾', EatPercent = 20, Icon = 'official://image/11164' },
+        rareBostonLobster = { Name = '极品波龙', EatPercent = 25, Icon = 'official://image/11164' },
+        rareAussieLobster = { Name = '极品澳龙', EatPercent = 25, Icon = 'official://image/11164' },
+        rareMilkLobster = { Name = '极品奶龙', EatPercent = 30, Icon = 'official://image/11164' },
+        -- 精英/首领掉落部位（#84，物品表 13-16）：电鳗头 = 精英信物，鳄雀鳝鱼头 = 首领信物（GameSpec §5.1 注）
+        eelMeat = { Name = '电鳗肉', EatPercent = 50, Icon = 'official://image/13008', BasePrice = 10 },
+        eelHead = { Name = '电鳗头', EatPercent = 50, Icon = 'official://image/11164', BasePrice = 10 },
+        garMeat = { Name = '鳄雀鳝鱼肉', EatPercent = 100, Icon = 'official://image/13008', BasePrice = 15 },
+        garHead = { Name = '鳄雀鳝鱼头', EatPercent = 100, Icon = 'official://image/11164', BasePrice = 20 },
+        -- 首领饵「鸭子」（物品表 120）：只能由精英信物换得，挂它在任意水域抛竿必出鳄雀鳝（#88 落地）
+        duck = { Name = '鸭子', EatPercent = 10, Icon = 'official://image/11154', Container = 'bait', BasePrice = 10 },
+        -- 船票（过关道具，不能吃）：交给摆渡 NPC 去虾池（#89 落地）；物品表原名「虾池车票」，
+        -- 按 CONTEXT.md 术语定名「虾池船票」，后续钓鱼区各有一张
+        shrimpTicket = { Name = '虾池船票', Icon = 'official://image/14105', BasePrice = 1 },
+        -- 七级鱼竿（#84，GameSpec §4.5/§7.2；商店售价在 GameCfg.Shop.Goods）
+        shrimpRod = { Name = '钓虾竿', Icon = 'official://image/12024', Level = 2, BasePrice = 6 },
+        crabRod = { Name = '捕蟹竿', Icon = 'official://image/12024', Level = 3, BasePrice = 13 },
+        normalRod = { Name = '普通鱼竿', Icon = 'official://image/12024', Level = 4, BasePrice = 25 },
+        proRod = { Name = '专业鱼竿', Icon = 'official://image/12024', Level = 5, BasePrice = 50 },
+        airforceRod = { Name = '空军之竿', Icon = 'official://image/12024', Level = 6, BasePrice = 100 },
+        unscientificRod = { Name = '不科学鱼竿', Icon = 'official://image/12024', Level = 7, BasePrice = 250 },
     },
 }
 -- 血量与饥饿（#53，#40 规格；设计案「玩家属性」）：上限各 300，饥饿每秒 −HungerPerSec，归零后的下一秒起
@@ -69,17 +108,43 @@ GameCfg.Debug = {
     },
 }
 
--- 鱼种基础值（design 钓鱼表 / 物品表的鱼塘行）：Health=血量，BaseWeight=基础重量 kg，
--- BasePrice=基础出售价，Model=GameCfg.FishCarrier.Models 的模型号。
+-- 鱼种基础值（design 钓鱼表 / 物品表）：Health=血量，BaseWeight=基础重量 kg，
+-- BasePrice=基础出售价，Model=GameCfg.FishCarrier.Models 的模型号，Speed=逃脱移动速度（米/秒）。
 -- 个体重量 = BaseWeight × 倍率、售价 = BasePrice × 倍率，由 common/FishCatch.lua 派生，不存快照。
--- MVP 只留鱼塘 6 种普通鱼（#27 鱼种表收敛，#43）：极品鱼与电鳗随极品鱼获 / 抽奖机 / 精英鱼一起在 MVP 之外。
+-- Grade 品级（CONTEXT.md）：normal=普通鱼 / rare=极品鱼 / elite=精英鱼 / boss=首领。
+-- 精英/首领另配 Attack=攻击力、EscapeSec=逃跑时限（秒）、Drops=击杀掉落——它们不掉自身鱼获，
+-- 所以没有同名物品定义，BasePrice 记 0（行为在 #86/#88 落地，暂不进入 GameCfg.Casting 抽签表）；
+-- 普通/极品没有 Drops，鱼获即自身（物品定义同名）。
+-- M1（#84）：鱼塘加精英电鳗、首领鳄雀鳝；虾池 6 普通 + 6 极品（GameSpec §5.2），
+-- 极品数值与普通版相同（规格「同上」），虾池模型先用鱼塘鱼占位（已知差异不算 bug，正式模型随 #90）。
 GameCfg.Fish = {
+    -- 鱼塘（第一钓鱼区）普通鱼
     tilapia = { Name = '罗非鱼', Grade = 'normal', Health = 5, BaseWeight = 1, BasePrice = 3, Model = '7000557', Speed = 3 },
     carp = { Name = '鲤鱼', Grade = 'normal', Health = 10, BaseWeight = 5, BasePrice = 4, Model = '7000552', Speed = 3 },
     knifeFish = { Name = '刀鱼', Grade = 'normal', Health = 15, BaseWeight = 0.5, BasePrice = 5, Model = '7000545', Speed = 3 },
     bass = { Name = '鲈鱼', Grade = 'normal', Health = 20, BaseWeight = 2, BasePrice = 6, Model = '7000551', Speed = 3 },
     catfish = { Name = '鲶鱼', Grade = 'normal', Health = 25, BaseWeight = 5, BasePrice = 7, Model = '7000553', Speed = 3 },
     goldfish = { Name = '金鱼', Grade = 'normal', Health = 3, BaseWeight = 0.1, BasePrice = 8, Model = '7000559', Speed = 3 },
+    -- 鱼塘精英/首领（GameSpec §5.1 第 7/8 行；模型占位：电鳗用 7000545「旗鱼」（与刀鱼同模型）、
+    -- 鳄雀鳝用 7000546「鲨鱼」，正式模型随 #86/#88；鱼饵/权重是抽签表行字段，随 #86/#88 一并入表）
+    eel = { Name = '电鳗', Grade = 'elite', Health = 300, Attack = 10, BaseWeight = 5, BasePrice = 0, Model = '7000545', Speed = 6, EscapeSec = 180,
+        Drops = { { ItemId = 'eelMeat', Count = 2 }, { ItemId = 'eelHead', Count = 1 } } },
+    alligatorGar = { Name = '鳄雀鳝', Grade = 'boss', Health = 600, Attack = 30, BaseWeight = 5, BasePrice = 0, Model = '7000546', Speed = 6, EscapeSec = 300,
+        Drops = { { ItemId = 'garMeat', Count = 2 }, { ItemId = 'garHead', Count = 1 } } },
+    -- 虾池（第二钓鱼区）普通鱼（#84，GameSpec §5.2；模型按鱼塘六鱼顺次占位）
+    shrimp = { Name = '虾米', Grade = 'normal', Health = 20, BaseWeight = 0.02, BasePrice = 4, Model = '7000557', Speed = 3 },
+    riverShrimp = { Name = '沼虾', Grade = 'normal', Health = 30, BaseWeight = 0.05, BasePrice = 10, Model = '7000552', Speed = 3 },
+    crayfish = { Name = '小龙虾', Grade = 'normal', Health = 40, BaseWeight = 0.1, BasePrice = 12, Model = '7000545', Speed = 3 },
+    bostonLobster = { Name = '波龙', Grade = 'normal', Health = 50, BaseWeight = 1, BasePrice = 15, Model = '7000551', Speed = 4 },
+    aussieLobster = { Name = '澳龙', Grade = 'normal', Health = 60, BaseWeight = 2, BasePrice = 18, Model = '7000553', Speed = 4 },
+    milkLobster = { Name = '奶龙', Grade = 'normal', Health = 70, BaseWeight = 10, BasePrice = 21, Model = '7000559', Speed = 4 },
+    -- 虾池极品鱼：数值与普通版相同，模型跟随各自的普通版
+    rareShrimp = { Name = '极品虾米', Grade = 'rare', Health = 20, BaseWeight = 0.02, BasePrice = 4, Model = '7000557', Speed = 3 },
+    rareRiverShrimp = { Name = '极品沼虾', Grade = 'rare', Health = 30, BaseWeight = 0.05, BasePrice = 10, Model = '7000552', Speed = 3 },
+    rareCrayfish = { Name = '极品小龙虾', Grade = 'rare', Health = 40, BaseWeight = 0.1, BasePrice = 12, Model = '7000545', Speed = 3 },
+    rareBostonLobster = { Name = '极品波龙', Grade = 'rare', Health = 50, BaseWeight = 1, BasePrice = 15, Model = '7000551', Speed = 4 },
+    rareAussieLobster = { Name = '极品澳龙', Grade = 'rare', Health = 60, BaseWeight = 2, BasePrice = 18, Model = '7000553', Speed = 4 },
+    rareMilkLobster = { Name = '极品奶龙', Grade = 'rare', Health = 70, BaseWeight = 10, BasePrice = 21, Model = '7000559', Speed = 4 },
 }
 
 -- 活鱼（#41 起，server/Mgr/MgrFishUnit.lua）。来源：M0 试玩验证台账（issue #25 评论 9865）§1 V2 与 #27 规格。
@@ -210,9 +275,12 @@ GameCfg.Interact = {
 
 -- 钓场商店（#48，#28 规格）：价格真源是 design 商店表（渔力全开--商店表.xlsx）的「商店售价」列，
 -- Goods 每行照抄表列：物品、商店售价 Price、所属分页 Page、最低商店等级 MinShopLevel、每人购买次数上限 PurchaseLimit。
--- MVP 白名单只上架「钓具」分页的新手鱼竿（表编号 14）与蚯蚓（表编号 13）；表里其余钓具（假饵 / 各级鱼竿等）、
--- 「武器」「升级」分页均未实现，不进白名单。商店等级 Level 取当前钓鱼区序号（第一区 = 1，规格推断，替换点在此一处）；
--- PurchaseLimit 两件都是 0（不限），MVP 只读不实现。入口复用场景触发器 TGUnitShop 与旧入口用过的文字泡预设；
+-- MVP 白名单上架「钓具」分页的新手鱼竿（表编号 14）与蚯蚓（表编号 13）；
+-- M1（#84）鱼竿表按七级统一：竿级 = 商店表七支竿的顺序，第 N 钓鱼区起售竿级 N 的竿（MinShopLevel = 竿级）。
+-- 商店等级 Level 取当前钓鱼区序号（第一区 = 1，规格推断，替换点在此一处），
+-- 所以 Level=1 时只有新手鱼竿可购，其余六级是落盘配置——钓虾竿上架随 #90 虾池商店生效。
+-- 表里其余钓具（假饵等）、「武器」「升级」分页均未实现，不进白名单；
+-- PurchaseLimit 都是 0（不限），MVP 只读不实现。入口复用场景触发器 TGUnitShop 与旧入口用过的文字泡预设；
 -- Radius 米内（只看 x/z）显示提示，出了 Radius 自动关商店，服务端复验多给 Slack 米
 -- [未查证] Radius 与触发器实际尺寸是否一致、文字泡高度，待 #55 实测
 GameCfg.Shop = {
@@ -226,6 +294,12 @@ GameCfg.Shop = {
     Goods = {
         { ItemId = 'starterRod', Price = 5, Page = '钓具', MinShopLevel = 1, PurchaseLimit = 0 },
         { ItemId = 'worm', Price = 1, Page = '钓具', MinShopLevel = 1, PurchaseLimit = 0 },
+        { ItemId = 'shrimpRod', Price = 12, Page = '钓具', MinShopLevel = 2, PurchaseLimit = 0 },
+        { ItemId = 'crabRod', Price = 24, Page = '钓具', MinShopLevel = 3, PurchaseLimit = 0 },
+        { ItemId = 'normalRod', Price = 50, Page = '钓具', MinShopLevel = 4, PurchaseLimit = 0 },
+        { ItemId = 'proRod', Price = 100, Page = '钓具', MinShopLevel = 5, PurchaseLimit = 0 },
+        { ItemId = 'airforceRod', Price = 200, Page = '钓具', MinShopLevel = 6, PurchaseLimit = 0 },
+        { ItemId = 'unscientificRod', Price = 500, Page = '钓具', MinShopLevel = 7, PurchaseLimit = 0 },
     },
 }
 

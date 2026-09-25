@@ -209,15 +209,56 @@ function TestFishLoot:test_each_loot_takes_own_slot_and_full_bar_refuses_with_no
     lu.assertFalse(data:AddItem('carp', 1))
 end
 
-function TestFishLoot:test_fish_table_keeps_only_six_normal_pond_fish()
+function TestFishLoot:test_fish_table_matches_m1_spec()
     local cfg = assert(loadfile('common/GameCfg.lua'))()
-    local ids = {}
+    -- 鱼种表（#84，GameSpec §5.1/§5.2）：鱼塘 6 普通 + 精英电鳗 + 首领鳄雀鳝；虾池 6 普通 + 6 极品
+    local expected = {
+        tilapia = 'normal', carp = 'normal', knifeFish = 'normal', bass = 'normal', catfish = 'normal', goldfish = 'normal',
+        eel = 'elite', alligatorGar = 'boss',
+        shrimp = 'normal', riverShrimp = 'normal', crayfish = 'normal',
+        bostonLobster = 'normal', aussieLobster = 'normal', milkLobster = 'normal',
+        rareShrimp = 'rare', rareRiverShrimp = 'rare', rareCrayfish = 'rare',
+        rareBostonLobster = 'rare', rareAussieLobster = 'rare', rareMilkLobster = 'rare',
+    }
+    local count = 0
     for id, species in pairs(cfg.Fish) do
-        ids[#ids + 1] = id
-        lu.assertEquals(species.Grade, 'normal', id)
-        lu.assertNotNil(cfg.Items.Definitions[id], id .. ' 没有物品定义')
+        count = count + 1
+        lu.assertEquals(species.Grade, expected[id], id)
     end
-    lu.assertEquals(#ids, 6)
+    lu.assertEquals(count, 20)
+    -- 极品版数值与普通版一致（GameSpec §5.2「同上」），防双写漂移
+    for _, pair in ipairs({ { 'shrimp', 'rareShrimp' }, { 'riverShrimp', 'rareRiverShrimp' }, { 'crayfish', 'rareCrayfish' },
+        { 'bostonLobster', 'rareBostonLobster' }, { 'aussieLobster', 'rareAussieLobster' }, { 'milkLobster', 'rareMilkLobster' } }) do
+        local base, rare = cfg.Fish[pair[1]], cfg.Fish[pair[2]]
+        lu.assertEquals({ rare.Health, rare.BaseWeight, rare.BasePrice, rare.Model, rare.Speed },
+            { base.Health, base.BaseWeight, base.BasePrice, base.Model, base.Speed }, pair[2])
+        lu.assertEquals(rare.Name, '极品' .. base.Name, pair[2])
+    end
+    -- 普通/极品的鱼获即自身（同名物品定义）；精英/首领不掉自身，Drops 逐项落到已有物品定义
+    for id, species in pairs(cfg.Fish) do
+        if species.Drops then
+            for _, drop in ipairs(species.Drops) do
+                lu.assertNotNil(cfg.Items.Definitions[drop.ItemId], id .. ' 的掉落 ' .. drop.ItemId .. ' 没有物品定义')
+                lu.assertTrue(drop.Count >= 1, id .. ' 的掉落 ' .. drop.ItemId .. ' 数量')
+            end
+        else
+            lu.assertNotNil(cfg.Items.Definitions[id], id .. ' 没有物品定义')
+        end
+    end
+    -- 精英/首领数值（GameSpec §5.1 第 7/8 行与已确认结论）
+    lu.assertEquals({ cfg.Fish.eel.Health, cfg.Fish.eel.Attack, cfg.Fish.eel.EscapeSec }, { 300, 10, 180 })
+    lu.assertEquals({ cfg.Fish.alligatorGar.Health, cfg.Fish.alligatorGar.Attack, cfg.Fish.alligatorGar.EscapeSec }, { 600, 30, 300 })
+    lu.assertEquals(cfg.Fish.eel.Drops, { { ItemId = 'eelMeat', Count = 2 }, { ItemId = 'eelHead', Count = 1 } })
+    lu.assertEquals(cfg.Fish.alligatorGar.Drops, { { ItemId = 'garMeat', Count = 2 }, { ItemId = 'garHead', Count = 1 } })
+    -- 信物 / 首领饵 / 船票物品定义（鸭子挂饵必出鳄雀鳝的钓取逻辑在 #88 落地）
+    local defs = cfg.Items.Definitions
+    lu.assertEquals(defs.eelHead.Name, '电鳗头')     -- 精英信物
+    lu.assertEquals(defs.garHead.Name, '鳄雀鳝鱼头') -- 首领信物
+    lu.assertEquals(defs.duck.Name, '鸭子')
+    lu.assertEquals(defs.duck.Container, 'bait')
+    lu.assertEquals(defs.shrimpTicket.Name, '虾池船票')
+    lu.assertNil(defs.shrimpTicket.EatPercent) -- 过关道具不能吃
+    -- 抽签表不变：电鳗/鳄雀鳝的入表与虾池水区随 #86/#88/#90 落地
     for _, rows in pairs(cfg.Casting.Zones) do
         for _, row in ipairs(rows) do lu.assertNotNil(cfg.Fish[row.Id], row.Id) end
         lu.assertEquals(#rows, 6)

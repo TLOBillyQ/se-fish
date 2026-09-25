@@ -55,7 +55,28 @@ end
 function TestShop:test_prices_come_from_shop_table()
     local prices = {}
     for _, goods in ipairs(self.cfg.Shop.Goods) do prices[goods.ItemId] = goods.Price end
-    lu.assertEquals(prices, { starterRod = 5, worm = 1 })
+    -- #84 七级鱼竿统一进商店表；钓虾竿起的六级竿要求商店等级 ≥ 竿级，第一区买不到
+    lu.assertEquals(prices, { starterRod = 5, worm = 1, shrimpRod = 12, crabRod = 24, normalRod = 50,
+        proRod = 100, airforceRod = 200, unscientificRod = 500 })
+end
+
+function TestShop:test_rod_table_unified_seven_levels()
+    local defs = self.cfg.Items.Definitions
+    local rods = { 'starterRod', 'shrimpRod', 'crabRod', 'normalRod', 'proRod', 'airforceRod', 'unscientificRod' }
+    local prices = { 5, 12, 24, 50, 100, 200, 500 }
+    for level, id in ipairs(rods) do
+        lu.assertEquals(defs[id].Level, level, id)
+        local goods
+        for _, g in ipairs(self.cfg.Shop.Goods) do
+            if g.ItemId == id then goods = g end
+        end
+        lu.assertNotNil(goods, id .. ' 不在商店表')
+        lu.assertEquals(goods.Price, prices[level], id)
+        lu.assertEquals(goods.MinShopLevel, level, id) -- 第 N 钓鱼区起售竿级 N（GameSpec §4.5）
+    end
+    -- 当前商店等级 1：只有新手鱼竿可购（钓虾竿上架随 #90 虾池商店）
+    lu.assertNotNil(self.shop:FindGoods('starterRod'))
+    for level = 2, 7 do lu.assertNil(self.shop:FindGoods(rods[level]), rods[level]) end
 end
 
 function TestShop:test_buy_rod_and_worm_into_their_containers()
