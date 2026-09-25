@@ -71,4 +71,49 @@ Lua 命令使用 **Lua 5.4**，执行前用 `lua -v` 核对；验收脚本可用
 2. **产出物用中文。** 写入仓库的文档、代码注释、commit 信息、PR 描述、写给 agent 的文件（SKILL.md、rules）用中文；代码标识符与文件名用英文。
 3. **专有名词与代码原样保留。** SE、FS、editor-cli、skill 名、命令、路径、代码片段不翻译。
 4. **用户明确要求其他语言时以用户为准。** 引用英文原文时保留原文，并附中文说明。
+
+# 蛋仔（eggy）工程
+
+工程根 AGENTS.md 与本规则冲突时，以工程为准。
+
+## 术语
+
+- SE / FS：状态同步 / 帧同步地图，由工程根 `eggy.json` 的 `isSEMap` 判定（`true` 为 SE）。
+- 资源（Resource）：图片、模型、动画等素材。单位（Unit）：单个逻辑物件。资产（Asset）：一个或多个单位的集合。
+- editor-cli：操作编辑器的命令行，位于 Windows 用户目录的 `.eggitor\cli\editor-cli.exe`；WSL 里调用 `/mnt/c/Users/<Windows 用户名>/.eggitor/cli/editor-cli.exe`（WSL 家目录下的 Linux 版连不上 Windows 编辑器）。子命令与参数以 `editor-cli <命令> --help` 为准。
+
+## 路由
+
+接到下表任务，先按名字调用对应 skill；调用不了就直接读工程根下 agent 技能目录里的 `<名字>/SKILL.md`——Claude 是 `.claude/skills/`、Codex 是 `.codex/skills/`、Kimi 是 `.kimi-code/skills/`、ZCode 是 `.zcode/skills/`、DSH（DeepSeek Harness）是 `.dsh/skills/`。
+
+| 任务 | skill |
+|---|---|
+| 写玩法设计案、策划案 | `eggy-design` |
+| 写技术方案、开发计划、拆任务 | `eggy-dev-plan` |
+| 把 AIGC 模型从 FS 搬进 SE（导入组件、贴图、尺寸） | `eggy-aigc-model` |
+
+## 查 API 的顺序
+
+1. grep 工程自带的 API 存根：SE 是 editor-cli 同一用户目录下的 `.eggitor/eggy_api/api_lua_doc/EggyAPI.lua`，FS 是工程根目录的 `EggyAPI.lua`（两份不是一套：SE 图上工程根也有一份，与 SE 存根 md5 一致，grep 哪份都行；FS 存根 9953 行、SE 存根 7406 行）。
+2. 编辑器在线时用 `editor-cli api get <名字>` 确认签名（SE、FS 都覆盖）。
+3. 语义和用法查 `editor-cli docs search "<问题>"`。
+
+三步都查不到的 API 名标 `[未查证]`。（本文路径与命令验证：2026-09-19，editor-cli 0.18.0；两份存根不同与 FS 存根位置在 2026-09-19 核实；五个 agent 的技能目录核实：前四个按 teamai-cli 0.24.1 的安装目标，DSH 的 `.dsh/skills` 于 2026-09-21 在本机 0.24.2 实测）
+
+# 蛋仔 SE 程序
+
+接到下表任务，按常驻规则"路由"一节的方式调用对应 skill。
+
+| 任务 | skill |
+|---|---|
+| 实现功能、写或改 Lua、同步代码、试玩 | `eggy-lua` |
+| 试玩报错、运行期报错、修 bug | `eggy-debug` |
+| 改场景（摆单位、移动、改属性、删除、存盘） | `eggy-editor-cli` |
+| 做或改 EUI 界面 | `eggy-se-eui` |
+| 上传图片 / 音频 / FBX、发布单资产 | `eggy-se-editor-cli` |
+| 测试验证、回归测试 | `eggy-qa` |
+| 性能优化、卡顿 | `eggy-perf` |
+| 做编辑器插件 | `eggy-se-plugin-dev` |
+
+SE 专属的是差异层 `eggy-se-lua`、`eggy-se-editor-cli` 加 `eggy-se-eui`、`eggy-se-plugin-dev`：改场景、写 Lua、做界面或插件前先读它们。公共层（`eggy-lua`、`eggy-debug`、`eggy-editor-cli`、`eggy-qa`、`eggy-perf`）的流程对 SE 同样适用。
 <!-- [teamai:rules:end] -->
