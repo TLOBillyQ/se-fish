@@ -59,3 +59,16 @@ Lua 命令使用 **Lua 5.4**，执行前用 `lua -v` 核对；验收脚本可用
 ## 产物归属
 
 执行过程产物（调研全文、验证台账、验收记录、开发计划）贴进对应 issue 的评论；`docs/` 只留长期参考（术语、技术难点、vendor 说明、ADR）。`eggy-dev-plan` 默认的 `docs/plan/` 输出在本仓库改为 issue 评论。
+
+<!-- [teamai:rules:start] -->
+<!-- DO NOT EDIT: This section is auto-managed by teamai -->
+
+# netease 团队基线：语言
+
+适用于所有任务。
+
+1. **思考与回复使用中文。**
+2. **产出物用中文。** 写入仓库的文档、代码注释、commit 信息、PR 描述、写给 agent 的文件（SKILL.md、rules）用中文；代码标识符与文件名用英文。
+3. **专有名词与代码原样保留。** SE、FS、editor-cli、skill 名、命令、路径、代码片段不翻译。
+4. **用户明确要求其他语言时以用户为准。** 引用英文原文时保留原文，并附中文说明。
+<!-- [teamai:rules:end] -->
