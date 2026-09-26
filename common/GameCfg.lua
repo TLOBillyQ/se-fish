@@ -328,6 +328,34 @@ GameCfg.Shop = {
     },
 }
 
+-- 摆渡（#89，GameSpec §8.3 已确认细则）：去程一人在船边交 1 张船票，倒计时 CountdownSec 秒后
+-- 带走 BoatRange 米内（只看 x/z）所有玩家到虾池落点，无票同行者搭便船合法；倒计时中再交票拒绝且不扣。
+-- 返程在虾池侧锚点按人付 Price 金币、立即传送回第一钓鱼区。船与虾池都是占位表现（#90 才铺虾池内容）；
+-- 区域名写入 PlayerData.Data.Zone（#92 存档用），HomeZone 是开局区域。返程票价为占位值，待策划校准。
+GameCfg.Ferry = {
+    HomeZone = 'fishPond1',
+    Outbound = {
+        AnchorName = 'FerryBoat',
+        Ticket = 'shrimpTicket',
+        CountdownSec = 10,
+        BoatRange = 6,
+        Radius = 5,
+        Slack = 0.5,
+        BubbleHeight = 6,
+        Destination = { x = 100, y = 6, z = 100 }, -- 虾池落点（占位平台，随场景摆位校准）
+        Zone = 'shrimpPond',
+    },
+    Return = {
+        AnchorName = 'FerryReturn',
+        Price = 20,
+        Radius = 5,
+        Slack = 0.5,
+        BubbleHeight = 6,
+        Destination = { x = 6.26, y = 5.01, z = 39.29 }, -- 第一钓鱼区出生点旁
+        Zone = 'fishPond1',
+    },
+}
+
 -- 抛竿选鱼（钓鱼表）。Zones 每行：Id=鱼种，Bait=需要的鱼饵（0 = 不挂饵也可），RodLevel=鱼竿等级下限
 -- （鱼竿 Definitions.Level ≥ RodLevel 才可钓，第一区全为 1），DrawWeight=钓鱼表的「抽签权重」。
 -- DrawWeight 与基础重量 BaseWeight（kg）、个体重量 FishCatch.Weight 无关，别拿它乘倍率（#49 从 Weight 改名）

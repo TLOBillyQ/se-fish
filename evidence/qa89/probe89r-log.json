@@ -1,0 +1,174 @@
+{
+  "schema_version": "1.0",
+  "command": "log grep",
+  "success": true,
+  "schemaVersion": "1.0",
+  "tool": "eggy-logtail",
+  "logPath": "C:\\FeverApps\\party_pc\\logs\\editor_31212.log",
+  "logPathSource": "status",
+  "offsetBefore": 0,
+  "effectiveOffset": 0,
+  "offsetAfter": 135016,
+  "bytesRead": 135016,
+  "truncatedOrRotated": false,
+  "truncated": false,
+  "totalMatchesKnown": true,
+  "windowComplete": true,
+  "runWindowComplete": false,
+  "windowBoundaryAdjusted": false,
+  "partialLine": false,
+  "cursor": {
+    "fileIdentity": "win:ac6d2653:017c0000000022af",
+    "offset": 135016
+  },
+  "omittedCount": 0,
+  "window": {
+    "offsetStart": 0,
+    "offsetEnd": 135016
+  },
+  "freshness": {
+    "status": "NO_PLAY_SESSION_PROVIDED",
+    "hasRunBegin": false,
+    "hasRunEnd": false
+  },
+  "summary": {
+    "matchCount": 4,
+    "errorCount": 0,
+    "warningCount": 0,
+    "uniqueErrorCount": 0,
+    "rawErrorCount": 0,
+    "uniqueRuleErrorCount": 0,
+    "rawWarningCount": 0,
+    "uniqueRuleWarningCount": 0,
+    "noiseCount": 0,
+    "topErrorTypes": []
+  },
+  "errors": [],
+  "matches": [
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 1621,
+      "byteOffset": 134366,
+      "text": "[00:25:39.131] [info/server] \"PROBE89R board ok=true ticket=0\"",
+      "before": [
+        "[00:25:39.119] [info/server] \"[REUtil] CreateRemoteEvent\"\t\"FerryState\"",
+        "[00:25:39.121] [info/server] \"[REUtil] CreateRemoteEvent\"\t\"FerryResult\""
+      ],
+      "after": [
+        "[00:25:49.127] [info/server] \"[MgrFerry] 送达\"\t\"aU5A95JB9rit0DUl\"\t\"shrimpPond\"",
+        "[00:25:50.617] [info/server] \"PROBE89R outbound hit=true zone=shrimpPond\""
+      ]
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 1623,
+      "byteOffset": 134510,
+      "text": "[00:25:50.617] [info/server] \"PROBE89R outbound hit=true zone=shrimpPond\"",
+      "before": [
+        "[00:25:39.131] [info/server] \"PROBE89R board ok=true ticket=0\"",
+        "[00:25:49.127] [info/server] \"[MgrFerry] 送达\"\t\"aU5A95JB9rit0DUl\"\t\"shrimpPond\""
+      ],
+      "after": [
+        "[00:25:50.627] [info/server] \"[PlayerData] 金币收入\"\t\"aU5A95JB9rit0DUl\"\t\"probe\"\t\"+20\"\t\"FishCoin=20\"",
+        "[00:25:50.634] [info/server] \"[PlayerData] 金币支出\"\t\"aU5A95JB9rit0DUl\"\t\"ferry:return\"\t\"-20\"\t\"FishCoin=0\""
+      ]
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 1627,
+      "byteOffset": 134885,
+      "text": "[00:25:50.641] [info/server] \"PROBE89R return ok=true coin=0 hit=true zone=fishPond1\"",
+      "before": [
+        "[00:25:50.634] [info/server] \"[PlayerData] 金币支出\"\t\"aU5A95JB9rit0DUl\"\t\"ferry:return\"\t\"-20\"\t\"FishCoin=0\"",
+        "[00:25:50.634] [info/server] \"[MgrFerry] 返程\"\t\"aU5A95JB9rit0DUl\"\t\"-20\"\t\"FishCoin=0\""
+      ],
+      "after": [
+        "[00:25:50.642] [info/server] \"PROBE89R DONE\""
+      ]
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 1628,
+      "byteOffset": 134971,
+      "text": "[00:25:50.642] [info/server] \"PROBE89R DONE\"",
+      "before": [
+        "[00:25:50.634] [info/server] \"[MgrFerry] 返程\"\t\"aU5A95JB9rit0DUl\"\t\"-20\"\t\"FishCoin=0\"",
+        "[00:25:50.641] [info/server] \"PROBE89R return ok=true coin=0 hit=true zone=fishPond1\""
+      ],
+      "after": []
+    }
+  ],
+  "contextLines": [
+    {
+      "matchIndex": 0,
+      "relation": "before",
+      "text": "[00:25:39.119] [info/server] \"[REUtil] CreateRemoteEvent\"\t\"FerryState\""
+    },
+    {
+      "matchIndex": 0,
+      "relation": "before",
+      "text": "[00:25:39.121] [info/server] \"[REUtil] CreateRemoteEvent\"\t\"FerryResult\""
+    },
+    {
+      "matchIndex": 0,
+      "relation": "after",
+      "text": "[00:25:49.127] [info/server] \"[MgrFerry] 送达\"\t\"aU5A95JB9rit0DUl\"\t\"shrimpPond\""
+    },
+    {
+      "matchIndex": 0,
+      "relation": "after",
+      "text": "[00:25:50.617] [info/server] \"PROBE89R outbound hit=true zone=shrimpPond\""
+    },
+    {
+      "matchIndex": 1,
+      "relation": "before",
+      "text": "[00:25:39.131] [info/server] \"PROBE89R board ok=true ticket=0\""
+    },
+    {
+      "matchIndex": 1,
+      "relation": "before",
+      "text": "[00:25:49.127] [info/server] \"[MgrFerry] 送达\"\t\"aU5A95JB9rit0DUl\"\t\"shrimpPond\""
+    },
+    {
+      "matchIndex": 1,
+      "relation": "after",
+      "text": "[00:25:50.627] [info/server] \"[PlayerData] 金币收入\"\t\"aU5A95JB9rit0DUl\"\t\"probe\"\t\"+20\"\t\"FishCoin=20\""
+    },
+    {
+      "matchIndex": 1,
+      "relation": "after",
+      "text": "[00:25:50.634] [info/server] \"[PlayerData] 金币支出\"\t\"aU5A95JB9rit0DUl\"\t\"ferry:return\"\t\"-20\"\t\"FishCoin=0\""
+    },
+    {
+      "matchIndex": 2,
+      "relation": "before",
+      "text": "[00:25:50.634] [info/server] \"[PlayerData] 金币支出\"\t\"aU5A95JB9rit0DUl\"\t\"ferry:return\"\t\"-20\"\t\"FishCoin=0\""
+    },
+    {
+      "matchIndex": 2,
+      "relation": "before",
+      "text": "[00:25:50.634] [info/server] \"[MgrFerry] 返程\"\t\"aU5A95JB9rit0DUl\"\t\"-20\"\t\"FishCoin=0\""
+    },
+    {
+      "matchIndex": 2,
+      "relation": "after",
+      "text": "[00:25:50.642] [info/server] \"PROBE89R DONE\""
+    },
+    {
+      "matchIndex": 3,
+      "relation": "before",
+      "text": "[00:25:50.634] [info/server] \"[MgrFerry] 返程\"\t\"aU5A95JB9rit0DUl\"\t\"-20\"\t\"FishCoin=0\""
+    },
+    {
+      "matchIndex": 3,
+      "relation": "before",
+      "text": "[00:25:50.641] [info/server] \"PROBE89R return ok=true coin=0 hit=true zone=fishPond1\""
+    }
+  ],
+  "warnings": [],
+  "noiseSummary": []
+}

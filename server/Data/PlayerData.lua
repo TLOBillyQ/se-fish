@@ -34,6 +34,8 @@ function PlayerData:Init()
         SelectedSlot = nil,
         SelectedBait = nil,
         Progress = {},
+        -- 当前区域（#89 摆渡写入，#92 存档用）：开局在 HomeZone（第一钓鱼区）
+        Zone = GameCfg.Ferry.HomeZone,
     }
     self.Inited = true
     self:Sync()
@@ -106,6 +108,13 @@ end
 local function hasBait(data, itemId)
     local count = data.Bait[itemId]
     return type(count) == 'number' and count >= 1
+end
+
+-- 写入当前区域（#89 摆渡，#92 存档读取）；只接受非空字符串
+function PlayerData:SetZone(zone)
+    if not self.Inited or type(zone) ~= 'string' or zone == '' then return false end
+    self.Data.Zone = zone
+    return true
 end
 
 -- 道具栏 + 背包里某物品的总件数（每格一件，不堆叠）
