@@ -1,5 +1,6 @@
 local World = game:GetService('World')
 local GameCfg = require('common.GameCfg')
+local LocalAttackButton = require('client.LocalAttackButton')
 
 local ScreenHandler = { UINodes = {}, UINodeMap = {} }
 
@@ -403,6 +404,7 @@ end
 
 function ScreenHandler:Cleanup()
     self:CloseScreen()
+    LocalAttackButton:Destroy()
     for _, connection in ipairs(self.Connections or {}) do connection:Disconnect() end
     for _, node in ipairs(self.Overlays or {}) do node:Destroy() end
     for _, slot in ipairs(self.Slots or {}) do slot.Background:Destroy() end
@@ -643,6 +645,7 @@ function ScreenHandler:Init()
             listenPlayerAttributes(self, player)
         end)
     end
+    LocalAttackButton:Start(root, resolution)
     self.BoundRootNode = root
     self.Inited = true
     self.IsOpen = false
@@ -651,6 +654,7 @@ end
 
 function ScreenHandler:OpenScreen()
     self.IsOpen = true
+    LocalAttackButton:SetOpen(true)
     _G.LocalReelIn:Resume()
     self:ShowCast()
     self:ShowCoin()
@@ -664,6 +668,7 @@ end
 
 function ScreenHandler:CloseScreen()
     self.IsOpen = false
+    LocalAttackButton:SetOpen(false)
     if _G.LocalReelIn then
         _G.LocalReelIn:Suspend(self.CastState and self.CastState.reelSession)
     end

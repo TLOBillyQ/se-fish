@@ -20,7 +20,10 @@ end
 
 function TestItemBarUI:setUp()
     self.previous = { game = _G.game, Vector2 = _G.Vector2, Color = _G.Color,
-        REUtil = _G.REUtil, GameUI = _G.GameUI }
+        REUtil = _G.REUtil, GameUI = _G.GameUI, MgrGameUI = _G.MgrGameUI }
+    self.previousAttack = package.loaded['client.LocalAttackButton']
+    package.loaded['client.LocalAttackButton'] = nil
+    _G.MgrGameUI = { SetCustomControlUI = function() end }
     self.nodes = {}
     self.created = {}
     local testCase = self
@@ -68,7 +71,9 @@ function TestItemBarUI:setUp()
 end
 
 function TestItemBarUI:tearDown()
-    for _, key in ipairs({ 'game', 'Vector2', 'Color', 'REUtil', 'GameUI' }) do
+    require('client.LocalAttackButton'):Destroy()
+    package.loaded['client.LocalAttackButton'] = self.previousAttack
+    for _, key in ipairs({ 'game', 'Vector2', 'Color', 'REUtil', 'GameUI', 'MgrGameUI' }) do
         _G[key] = self.previous[key]
     end
 end
@@ -104,7 +109,9 @@ function TestItemBarUI:test_fixed_slots_bait_and_action_placement()
     lu.assertNotNil(self.nodes.BaitNone)
     lu.assertNotNil(self.nodes.ItemDiscard)
     lu.assertFalse(self.nodes.ItemAction2.TouchEnabled)
-    lu.assertNil(self.nodes.BtnAttack)
+    lu.assertIs(self.nodes.AttackControl.Parent, self.handler.RootNode)
+    lu.assertIs(self.nodes.BtnAttack.Parent, self.nodes.AttackControl)
+    lu.assertFalse(self.nodes.BtnAttack.TouchEnabled)
     self.states:Fire({ slots = { [1] = { itemId = 'starterRod', count = 1 } },
         bait = { worm = 10 }, selectedSlot = 1 })
     lu.assertTrue(self.nodes.ItemBarIcon1.Visible)
