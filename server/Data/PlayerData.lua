@@ -245,6 +245,26 @@ function PlayerData:SpendCoin(amount, apply, reason)
     return self:ChangeCoin(-amount, apply, reason)
 end
 
+-- 信物兑换（#87，GameSpec §8.1）：把道具栏 slot 格的信物换成 product x1。空格不够（被换的这格不算空格，
+-- 与「背包与道具栏全满时拒绝」一致）就拒绝、不消耗；扣除与发放一次落地，发放失败回滚被扣的格。
+function PlayerData:ExchangeSlot(slot, product)
+    local items = self.Inited and self.Data.Containers[GameCfg.Items.ContainerId.ItemBar]
+    local kept = type(slot) == 'number' and items and items[slot]
+    if not kept or kept.count <= 0 or type(product) ~= 'string' then return false, 'bad' end
+    if not self:CanGrant(product, 1) then return false, 'full' end
+    self:UpdateData(function(d)
+        d.Containers[GameCfg.Items.ContainerId.ItemBar][slot] = nil
+    end, false)
+    if not self:AddItem(product) then
+        self:UpdateData(function(d)
+            d.Containers[GameCfg.Items.ContainerId.ItemBar][slot] = kept
+        end, true)
+        print('[PlayerData] 兑换发放失败，已退回原物品', self.Player and self.Player.UserId, kept.itemId, product)
+        return false, 'full'
+    end
+    return true
+end
+
 function PlayerData:MoveToItemBar(index)
     if not self.Inited or type(index) ~= 'number' or index ~= math.floor(index)
         or index < 1 or index > self:BackpackCapacity() then return false end

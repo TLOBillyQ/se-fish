@@ -290,6 +290,9 @@ GameCfg.Interact = {
         BubbleHeight = 9.5,
         DialogText = '我好饿啊，什么都吃！',
         BaitPrice = { worm = 1 },
+        -- 信物兑换（#87，GameSpec §8.1 已确认）：选中格是信物时走 1:1 兑换、不给金币；
+        -- 精英信物 → 首领饵，首领信物 → 船票；道具栏 + 背包全满时拒绝且不消耗信物
+        Exchange = { eelHead = 'duck', garHead = 'shrimpTicket' },
     },
 }
 

@@ -98,10 +98,21 @@ function LocalInteract:Start()
     REUtil:GetRE('InteractResult').OnClientEvent:Connect(function(result)
         if type(result) ~= 'table' then return end
         if result.ok then
-            notice('钓鱼佬吃得很香，金币 +' .. tostring(result.coins))
+            if type(result.exchange) == 'table' then
+                -- 信物兑换（#87）：回包带兑换双方 id，按物品表名字拼提示；吃动作脉冲与金币喂食相同
+                local defs = GameCfg.Items.Definitions
+                local from = defs[result.exchange.from]
+                local to = defs[result.exchange.to]
+                notice('用' .. (from and from.Name or tostring(result.exchange.from))
+                    .. '换得' .. (to and to.Name or tostring(result.exchange.to)) .. ' x1')
+            else
+                notice('钓鱼佬吃得很香，金币 +' .. tostring(result.coins))
+            end
             if self.Model then self.PulseLeft = PulseFrames end
         elseif result.reason == 'nothing' then
             notice('先选中要喂的鱼获或鱼饵')
+        elseif result.reason == 'full' then
+            notice('格子满了，钓鱼佬不肯换')
         end
     end)
     local cfg = GameCfg.Interact.Fisherman

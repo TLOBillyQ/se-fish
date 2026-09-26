@@ -1,0 +1,301 @@
+{
+  "schema_version": "1.0",
+  "command": "log grep",
+  "success": true,
+  "schemaVersion": "1.0",
+  "tool": "eggy-logtail",
+  "logPath": "C:\\FeverApps\\party_pc\\logs\\editor_31212.log",
+  "logPathSource": "status",
+  "offsetBefore": 0,
+  "effectiveOffset": 88891,
+  "offsetAfter": 93924,
+  "bytesRead": 5033,
+  "truncatedOrRotated": false,
+  "truncated": false,
+  "totalMatchesKnown": true,
+  "windowComplete": true,
+  "runWindowComplete": true,
+  "windowBoundaryAdjusted": false,
+  "partialLine": false,
+  "cursor": {
+    "fileIdentity": "win:ac6d2653:017c0000000022af",
+    "offset": 93924
+  },
+  "omittedCount": 0,
+  "playSession": "96855e9",
+  "window": {
+    "offsetStart": 88891,
+    "offsetEnd": 93924
+  },
+  "freshness": {
+    "status": "FRESH_INCOMPLETE",
+    "playSession": "96855e9",
+    "hasRunBegin": true,
+    "hasRunEnd": false,
+    "runBeginOffset": 88891
+  },
+  "summary": {
+    "matchCount": 7,
+    "errorCount": 0,
+    "warningCount": 0,
+    "uniqueErrorCount": 0,
+    "rawErrorCount": 0,
+    "uniqueRuleErrorCount": 0,
+    "rawWarningCount": 0,
+    "uniqueRuleWarningCount": 0,
+    "noiseCount": 0,
+    "topErrorTypes": []
+  },
+  "errors": [],
+  "matches": [
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 53,
+      "byteOffset": 93051,
+      "text": "[23:16:29.303] [info/server] \"PROBE87 s1 ok=true eelHead=0 duck=1 coin=0(before=0)\"",
+      "before": [
+        "[23:16:29.286] [info/server] \"[MgrInteract] 信物兑换\"\t\"aU5A95JB9rit0DUl\"\t\"eelHead\"\t\"->\"\t\"duck\"",
+        "[23:16:29.292] [info/server] \"[REUtil] CreateRemoteEvent\"\t\"InteractResult\""
+      ],
+      "after": [
+        "[23:16:29.316] [info/server] \"[MgrInteract] 信物兑换\"\t\"aU5A95JB9rit0DUl\"\t\"garHead\"\t\"->\"\t\"shrimpTicket\"",
+        "[23:16:29.325] [info/server] \"PROBE87 s2 ok=true garHead=0 ticket=1 coin=0\""
+      ]
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 55,
+      "byteOffset": 93242,
+      "text": "[23:16:29.325] [info/server] \"PROBE87 s2 ok=true garHead=0 ticket=1 coin=0\"",
+      "before": [
+        "[23:16:29.303] [info/server] \"PROBE87 s1 ok=true eelHead=0 duck=1 coin=0(before=0)\"",
+        "[23:16:29.316] [info/server] \"[MgrInteract] 信物兑换\"\t\"aU5A95JB9rit0DUl\"\t\"garHead\"\t\"->\"\t\"shrimpTicket\""
+      ],
+      "after": [
+        "[23:16:29.361] [info/server] \"PROBE87 s3 ok=false eelHead=1 duck=0 reason=full\"",
+        "[23:16:29.362] [info/server] \"PROBE87 reply1 ok=true coins=nil reason=nil exchange=eelHead->duck\""
+      ]
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 56,
+      "byteOffset": 93318,
+      "text": "[23:16:29.361] [info/server] \"PROBE87 s3 ok=false eelHead=1 duck=0 reason=full\"",
+      "before": [
+        "[23:16:29.316] [info/server] \"[MgrInteract] 信物兑换\"\t\"aU5A95JB9rit0DUl\"\t\"garHead\"\t\"->\"\t\"shrimpTicket\"",
+        "[23:16:29.325] [info/server] \"PROBE87 s2 ok=true garHead=0 ticket=1 coin=0\""
+      ],
+      "after": [
+        "[23:16:29.362] [info/server] \"PROBE87 reply1 ok=true coins=nil reason=nil exchange=eelHead->duck\"",
+        "[23:16:29.364] [info/server] \"PROBE87 reply2 ok=true coins=nil reason=nil exchange=garHead->shrimpTicket\""
+      ]
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 57,
+      "byteOffset": 93398,
+      "text": "[23:16:29.362] [info/server] \"PROBE87 reply1 ok=true coins=nil reason=nil exchange=eelHead->duck\"",
+      "before": [
+        "[23:16:29.325] [info/server] \"PROBE87 s2 ok=true garHead=0 ticket=1 coin=0\"",
+        "[23:16:29.361] [info/server] \"PROBE87 s3 ok=false eelHead=1 duck=0 reason=full\""
+      ],
+      "after": [
+        "[23:16:29.364] [info/server] \"PROBE87 reply2 ok=true coins=nil reason=nil exchange=garHead->shrimpTicket\"",
+        "[23:16:29.364] [info/server] \"PROBE87 reply3 ok=false coins=nil reason=full exchange=nil\""
+      ]
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 58,
+      "byteOffset": 93496,
+      "text": "[23:16:29.364] [info/server] \"PROBE87 reply2 ok=true coins=nil reason=nil exchange=garHead->shrimpTicket\"",
+      "before": [
+        "[23:16:29.361] [info/server] \"PROBE87 s3 ok=false eelHead=1 duck=0 reason=full\"",
+        "[23:16:29.362] [info/server] \"PROBE87 reply1 ok=true coins=nil reason=nil exchange=eelHead->duck\""
+      ],
+      "after": [
+        "[23:16:29.364] [info/server] \"PROBE87 reply3 ok=false coins=nil reason=full exchange=nil\"",
+        "[23:16:29.365] [info/server] \"PROBE87 DONE\""
+      ]
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 59,
+      "byteOffset": 93602,
+      "text": "[23:16:29.364] [info/server] \"PROBE87 reply3 ok=false coins=nil reason=full exchange=nil\"",
+      "before": [
+        "[23:16:29.362] [info/server] \"PROBE87 reply1 ok=true coins=nil reason=nil exchange=eelHead->duck\"",
+        "[23:16:29.364] [info/server] \"PROBE87 reply2 ok=true coins=nil reason=nil exchange=garHead->shrimpTicket\""
+      ],
+      "after": [
+        "[23:16:29.365] [info/server] \"PROBE87 DONE\"",
+        "[23:16:30.713] [info/server] \"[MgrVitals] 死亡\"\t\"aU5A95JB9rit0DUl\"\t\"hunger=244\""
+      ]
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 60,
+      "byteOffset": 93692,
+      "text": "[23:16:29.365] [info/server] \"PROBE87 DONE\"",
+      "before": [
+        "[23:16:29.364] [info/server] \"PROBE87 reply2 ok=true coins=nil reason=nil exchange=garHead->shrimpTicket\"",
+        "[23:16:29.364] [info/server] \"PROBE87 reply3 ok=false coins=nil reason=full exchange=nil\""
+      ],
+      "after": [
+        "[23:16:30.713] [info/server] \"[MgrVitals] 死亡\"\t\"aU5A95JB9rit0DUl\"\t\"hunger=244\"",
+        "[23:16:35.698] [info/server] \"[MgrVitals] 复活\"\t\"aU5A95JB9rit0DUl\"\t\"OnReborn\"\t\"health=300\"\t\"hunger=300\""
+      ]
+    }
+  ],
+  "contextLines": [
+    {
+      "matchIndex": 0,
+      "relation": "before",
+      "text": "[23:16:29.286] [info/server] \"[MgrInteract] 信物兑换\"\t\"aU5A95JB9rit0DUl\"\t\"eelHead\"\t\"->\"\t\"duck\""
+    },
+    {
+      "matchIndex": 0,
+      "relation": "before",
+      "text": "[23:16:29.292] [info/server] \"[REUtil] CreateRemoteEvent\"\t\"InteractResult\""
+    },
+    {
+      "matchIndex": 0,
+      "relation": "after",
+      "text": "[23:16:29.316] [info/server] \"[MgrInteract] 信物兑换\"\t\"aU5A95JB9rit0DUl\"\t\"garHead\"\t\"->\"\t\"shrimpTicket\""
+    },
+    {
+      "matchIndex": 0,
+      "relation": "after",
+      "text": "[23:16:29.325] [info/server] \"PROBE87 s2 ok=true garHead=0 ticket=1 coin=0\""
+    },
+    {
+      "matchIndex": 1,
+      "relation": "before",
+      "text": "[23:16:29.303] [info/server] \"PROBE87 s1 ok=true eelHead=0 duck=1 coin=0(before=0)\""
+    },
+    {
+      "matchIndex": 1,
+      "relation": "before",
+      "text": "[23:16:29.316] [info/server] \"[MgrInteract] 信物兑换\"\t\"aU5A95JB9rit0DUl\"\t\"garHead\"\t\"->\"\t\"shrimpTicket\""
+    },
+    {
+      "matchIndex": 1,
+      "relation": "after",
+      "text": "[23:16:29.361] [info/server] \"PROBE87 s3 ok=false eelHead=1 duck=0 reason=full\""
+    },
+    {
+      "matchIndex": 1,
+      "relation": "after",
+      "text": "[23:16:29.362] [info/server] \"PROBE87 reply1 ok=true coins=nil reason=nil exchange=eelHead->duck\""
+    },
+    {
+      "matchIndex": 2,
+      "relation": "before",
+      "text": "[23:16:29.316] [info/server] \"[MgrInteract] 信物兑换\"\t\"aU5A95JB9rit0DUl\"\t\"garHead\"\t\"->\"\t\"shrimpTicket\""
+    },
+    {
+      "matchIndex": 2,
+      "relation": "before",
+      "text": "[23:16:29.325] [info/server] \"PROBE87 s2 ok=true garHead=0 ticket=1 coin=0\""
+    },
+    {
+      "matchIndex": 2,
+      "relation": "after",
+      "text": "[23:16:29.362] [info/server] \"PROBE87 reply1 ok=true coins=nil reason=nil exchange=eelHead->duck\""
+    },
+    {
+      "matchIndex": 2,
+      "relation": "after",
+      "text": "[23:16:29.364] [info/server] \"PROBE87 reply2 ok=true coins=nil reason=nil exchange=garHead->shrimpTicket\""
+    },
+    {
+      "matchIndex": 3,
+      "relation": "before",
+      "text": "[23:16:29.325] [info/server] \"PROBE87 s2 ok=true garHead=0 ticket=1 coin=0\""
+    },
+    {
+      "matchIndex": 3,
+      "relation": "before",
+      "text": "[23:16:29.361] [info/server] \"PROBE87 s3 ok=false eelHead=1 duck=0 reason=full\""
+    },
+    {
+      "matchIndex": 3,
+      "relation": "after",
+      "text": "[23:16:29.364] [info/server] \"PROBE87 reply2 ok=true coins=nil reason=nil exchange=garHead->shrimpTicket\""
+    },
+    {
+      "matchIndex": 3,
+      "relation": "after",
+      "text": "[23:16:29.364] [info/server] \"PROBE87 reply3 ok=false coins=nil reason=full exchange=nil\""
+    },
+    {
+      "matchIndex": 4,
+      "relation": "before",
+      "text": "[23:16:29.361] [info/server] \"PROBE87 s3 ok=false eelHead=1 duck=0 reason=full\""
+    },
+    {
+      "matchIndex": 4,
+      "relation": "before",
+      "text": "[23:16:29.362] [info/server] \"PROBE87 reply1 ok=true coins=nil reason=nil exchange=eelHead->duck\""
+    },
+    {
+      "matchIndex": 4,
+      "relation": "after",
+      "text": "[23:16:29.364] [info/server] \"PROBE87 reply3 ok=false coins=nil reason=full exchange=nil\""
+    },
+    {
+      "matchIndex": 4,
+      "relation": "after",
+      "text": "[23:16:29.365] [info/server] \"PROBE87 DONE\""
+    },
+    {
+      "matchIndex": 5,
+      "relation": "before",
+      "text": "[23:16:29.362] [info/server] \"PROBE87 reply1 ok=true coins=nil reason=nil exchange=eelHead->duck\""
+    },
+    {
+      "matchIndex": 5,
+      "relation": "before",
+      "text": "[23:16:29.364] [info/server] \"PROBE87 reply2 ok=true coins=nil reason=nil exchange=garHead->shrimpTicket\""
+    },
+    {
+      "matchIndex": 5,
+      "relation": "after",
+      "text": "[23:16:29.365] [info/server] \"PROBE87 DONE\""
+    },
+    {
+      "matchIndex": 5,
+      "relation": "after",
+      "text": "[23:16:30.713] [info/server] \"[MgrVitals] 死亡\"\t\"aU5A95JB9rit0DUl\"\t\"hunger=244\""
+    },
+    {
+      "matchIndex": 6,
+      "relation": "before",
+      "text": "[23:16:29.364] [info/server] \"PROBE87 reply2 ok=true coins=nil reason=nil exchange=garHead->shrimpTicket\""
+    },
+    {
+      "matchIndex": 6,
+      "relation": "before",
+      "text": "[23:16:29.364] [info/server] \"PROBE87 reply3 ok=false coins=nil reason=full exchange=nil\""
+    },
+    {
+      "matchIndex": 6,
+      "relation": "after",
+      "text": "[23:16:30.713] [info/server] \"[MgrVitals] 死亡\"\t\"aU5A95JB9rit0DUl\"\t\"hunger=244\""
+    },
+    {
+      "matchIndex": 6,
+      "relation": "after",
+      "text": "[23:16:35.698] [info/server] \"[MgrVitals] 复活\"\t\"aU5A95JB9rit0DUl\"\t\"OnReborn\"\t\"health=300\"\t\"hunger=300\""
+    }
+  ],
+  "warnings": [],
+  "noiseSummary": []
+}

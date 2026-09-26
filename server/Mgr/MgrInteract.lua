@@ -2,6 +2,7 @@
 -- 客户端发 InteractAction{target, action, seq}；服务端复验身份、目标、距离（只看 x/z）与选中态，
 -- 序号必须递增，重放与旧序号不结算。喂食即出售：选中格是鱼获就扣该格按 floor(基础售价 × mult) 入账，
 -- 否则扣 1 只选中的鱼饵按 BaitPrice 入账；扣除与入账走 PlayerData:AddCoin 一次落地。
+-- 选中格是信物（Exchange 表）时优先走 1:1 兑换（#87）：不给金币，满格拒绝且不消耗信物。
 -- 吃动作是表现层，失败只记日志、不影响裁决。「对话」是纯客户端台词，不经服务端。
 local GameCfg = require('common.GameCfg')
 local FishCatch = require('common.FishCatch')
@@ -72,7 +73,37 @@ function Mgr:PlayEat(anchor, point)
     if not ok then print('[MgrInteract] 吃动作播放失败', tostring(err)) end
 end
 
+-- 选中的信物（#87，GameSpec §8.1）：选中格是 Exchange 表里的信物时返回 { slot, tokenId, product }
+local function exchangeable(data, point)
+    local slot = data.Data.SelectedSlot
+    local entry = slot and data.Data.Containers[GameCfg.Items.ContainerId.ItemBar][slot]
+    local product = entry and entry.count > 0 and point.Exchange and point.Exchange[entry.itemId]
+    if not product then return end
+    return { slot = slot, tokenId = entry.itemId, product = product }
+end
+
+-- 信物兑换：扣除与发放由 PlayerData:ExchangeSlot 一次落地；满格拒绝且不消耗信物，
+-- 不给金币、不报任务事实。'bad' 只会是配置错误（产物 id 不在物品表），记错误日志
+function Mgr:Exchange(player, data, anchor, point, exchange)
+    local ok, reason = data:ExchangeSlot(exchange.slot, exchange.product)
+    if not ok then
+        if reason ~= 'full' then
+            print('[MgrInteract] 兑换配置错误', player.UserId, exchange.tokenId, exchange.product, reason)
+        end
+        self:Reply(player, { ok = false, reason = reason })
+        return false
+    end
+    print('[MgrInteract] 信物兑换', player.UserId, exchange.tokenId, '->', exchange.product)
+    self.PlayerData:SendItemBar(player)
+    self:Reply(player, { ok = true, action = 'Feed',
+        exchange = { from = exchange.tokenId, to = exchange.product } })
+    self:PlayEat(anchor, point)
+    return true
+end
+
 function Mgr:Feed(player, data, anchor, point, seq)
+    local exchange = exchangeable(data, point)
+    if exchange then return self:Exchange(player, data, anchor, point, exchange) end
     local coins, spend, what, itemId, category = feedable(data, point)
     if not coins then
         self:Reply(player, { ok = false, reason = 'nothing' })
