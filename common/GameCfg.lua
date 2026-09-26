@@ -268,14 +268,14 @@ GameCfg.HookAlert = {
 -- 服务端复验多给 Slack 米容差。喂食即出售：鱼获 floor(BasePrice × mult)，鱼饵每只 BaitPrice 金币。
 -- 钓鱼佬的可见模型是官方「咸鱼」（official://preset/102179，场景单位名见 ModelName）；
 -- 模型无 Eat 动画（EatAnimation 留空，服务端播动画自动跳过），喂食吃动作为客户端缩放脉冲
--- （LocalInteract 播，仅喂食者本机可见）。文字泡高度 BubbleHeight 沿用触发器实测值。
+-- （LocalInteract 播，仅喂食者本机可见）。文字泡相对触发器中心（y=-1）抬高 9.5 米，露出高岸地面（y≈8.03）。
 GameCfg.Interact = {
     Fisherman = {
         AnchorName = 'TGUnitFish',
         ModelName = 'FishermanModel',
         Radius = 5,
         Slack = 0.5,
-        BubbleHeight = 3.5,
+        BubbleHeight = 9.5,
         DialogText = '我好饿啊，什么都吃！',
         BaitPrice = { worm = 1 },
     },
