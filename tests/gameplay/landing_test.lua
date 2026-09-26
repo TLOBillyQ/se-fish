@@ -270,7 +270,8 @@ function TestLandingRetired:test_every_catchable_fish_has_species_values()
         for _, row in ipairs(rows) do
             local species = cfg.Fish[row.Id]
             lu.assertNotNil(species, zone .. ' 的 ' .. row.Id .. ' 没有鱼种配置')
-            lu.assertTrue(species.BaseWeight > 0 and species.BasePrice > 0 and species.Health > 0, row.Id)
+            lu.assertTrue(species.BaseWeight > 0 and species.Health > 0, row.Id)
+            lu.assertTrue(species.BasePrice > 0 or species.Drops ~= nil, row.Id)
             lu.assertNotNil(cfg.FishCarrier.Models[species.Model], row.Id .. ' 的模型号不在鱼载体表里')
         end
     end

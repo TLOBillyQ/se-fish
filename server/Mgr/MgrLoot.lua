@@ -50,10 +50,25 @@ function Mgr:OnCarrierDied(carrier)
     local fish = self.FishUnit and self.FishUnit:FindByCarrier(carrier)
     local killed = fish and self.FishUnit:TakeKilled(fish)
     if not killed or not killed.position then return end
-    self:Spawn(killed.fishId, killed.mult, killed.position)
+    local species = GameCfg.Fish[killed.fishId]
+    if species.Drops then
+        local total = 0
+        for _, drop in ipairs(species.Drops) do total = total + drop.Count end
+        local index = 0
+        for _, drop in ipairs(species.Drops) do
+            for _ = 1, drop.Count do
+                index = index + 1
+                local p = killed.position
+                local pos = Vector3.New(p.x + (index - (total + 1) / 2) * cfg().DropSpacing, p.y, p.z)
+                self:Spawn(killed.fishId, killed.mult, pos, drop.ItemId)
+            end
+        end
+    else
+        self:Spawn(killed.fishId, killed.mult, killed.position)
+    end
 end
 
-function Mgr:Spawn(fishId, mult, pos)
+function Mgr:Spawn(fishId, mult, pos, itemId)
     local species = GameCfg.Fish[fishId]
     if not species then return nil end
     local position = Vector3.New(pos.x, self:Ground(pos) + cfg().Height, pos.z)
@@ -74,9 +89,9 @@ function Mgr:Spawn(fishId, mult, pos)
         print('[MgrLoot] 鱼获实体创建失败', fishId, tostring(unit))
         return nil
     end
-    local loot = { Id = id, Kind = 'fish', ItemId = fishId, FishId = fishId, Mult = mult, Position = position, Unit = unit }
+    local loot = { Id = id, Kind = 'fish', ItemId = itemId or fishId, FishId = fishId, Mult = mult, Position = position, Unit = unit }
     self.Loots[id] = loot
-    print('[MgrLoot] 生成鱼获', fishId, mult, 'loot=' .. tostring(id))
+    print('[MgrLoot] 生成鱼获', loot.ItemId, mult, 'loot=' .. tostring(id))
     self:Broadcast()
     return loot
 end
@@ -97,14 +112,14 @@ function Mgr:Pickup(player, id)
     if distance(pos, loot.Position) > cfg().PickupRadius + cfg().PickupSlack then return false end
     self.Loots[id] = nil
     if loot.Kind == 'bait' then return self:GiveBait(player, data, loot) end
-    if not data:AddItem(loot.FishId, loot.Mult) then
+    if not data:AddItem(loot.ItemId, loot.Mult) then
         self.Loots[id] = loot
         self:Reply(player, { ok = false, reason = 'full', id = id })
         print('[MgrLoot] 背包已满，拒绝拾取', player.UserId, 'loot=' .. tostring(id))
         return false
     end
     pcall(function() loot.Unit:Destroy() end)
-    print('[MgrLoot] 拾取', player.UserId, loot.FishId, loot.Mult, 'loot=' .. tostring(id))
+    print('[MgrLoot] 拾取', player.UserId, loot.ItemId, loot.Mult, 'loot=' .. tostring(id))
     self.PlayerData:SendItemBar(player)
     self:Reply(player, { ok = true, id = id })
     self:Broadcast()

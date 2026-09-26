@@ -11,7 +11,8 @@ local MgrFishCarrier = require('server.Mgr.MgrFishCarrier')
 
 local Mgr = { Fish = {}, NextId = 0, Held = {}, Links = {} }
 
-Mgr.State = { AwaitLift = 'awaitLift', Held = 'held', Escaping = 'escaping' }
+Mgr.State = { AwaitLift = 'awaitLift', Held = 'held', Escaping = 'escaping',
+    Combat = 'combat', Attacking = 'attacking', Sleeping = 'sleeping' }
 
 local function cfg()
     return GameCfg.FishUnit
@@ -245,7 +246,17 @@ function Mgr:Release(fish, reason)
     fish.TurnAt = now + cfg().TurnSec
     fish.RayAt = now
     local pos = readPosition(body) or origin
-    if pos then self:SetHeading(fish, towardWater(pos)) end
+    local species = GameCfg.Fish[fish.FishId]
+    if species.Combat then
+        fish.State = Mgr.State.Combat
+        fish.FleeAt = now + species.EscapeSec
+        fish.CombatPosition = pos
+        fish.CombatRotation = body.Rotation
+        body.LinearVelocity = Vector3.New(0, 0, 0)
+        if self.Ability then self.Ability:EquipFish(fish) end
+    elseif pos then
+        self:SetHeading(fish, towardWater(pos))
+    end
     print('[MgrFishUnit] 放下', holder and holder.UserId, reason, fish.FishId, 'fish=' .. tostring(fish.Id))
     -- 新手任务「丢在岸上」事实（#52）：只认持有者主动放下且落点不在水区；抓举结束 / 死亡松手、水里放下都不算
     if reason == 'drop' and holder and self.Quest and not (pos and inWater(pos)) then
@@ -261,7 +272,7 @@ end
 function Mgr:Escaping()
     local list = {}
     for _, fish in pairs(self.Fish) do
-        if fish.State == Mgr.State.Escaping then list[#list + 1] = fish end
+        if fish.EscapeAt then list[#list + 1] = fish end
     end
     table.sort(list, function(a, b)
         if a.EscapeAt ~= b.EscapeAt then return a.EscapeAt < b.EscapeAt end
@@ -356,6 +367,8 @@ function Mgr:UpdateEscaping(fish, now)
         self:Remove(fish)
         return
     end
+    -- 精英逃跑时锁定直线；不走普通鱼的转向与避墙。
+    if fish.StraightEscape then return end
     if now >= fish.TurnAt then
         fish.TurnAt = now + cfg().TurnSec
         self:SetHeading(fish, towardWater(pos))
@@ -366,6 +379,51 @@ function Mgr:UpdateEscaping(fish, now)
             local h = fish.Heading
             self:SetHeading(fish, -h.z, h.x)
         end
+    end
+end
+
+-- 战斗只在首次放下后计时；逃跑时限优先于攻击和睡眠。
+function Mgr:UpdateCombat(fish, now)
+    local body = fish.Carrier.Body
+    local pos = readPosition(body)
+    if not pos then
+        print('[MgrFishUnit] 战斗鱼坐标异常，移除', fish.Id)
+        self:Remove(fish)
+        return
+    end
+    if now >= fish.FleeAt or inWater(pos) then
+        if self.Ability then self.Ability:RemoveFish(fish) end
+        fish.State = Mgr.State.Escaping
+        fish.StraightEscape = true
+        if fish.CombatRotation then body.Rotation = fish.CombatRotation end
+        self:SetHeading(fish, towardWater(pos))
+        print('[MgrFishUnit] 精英开始逃脱', fish.FishId, 'fish=' .. tostring(fish.Id))
+        self:UpdateEscaping(fish, now)
+        return
+    end
+    local entry = GameCfg.Ability.FishAbilities[GameCfg.Fish[fish.FishId].Combat]
+    body.Position = fish.CombatPosition
+    body.LinearVelocity = Vector3.New(0, 0, 0)
+    if fish.State == Mgr.State.Attacking then
+        if now < fish.AttackEndsAt then
+            if fish.CombatRotation and Quaternion then
+                body.Rotation = fish.CombatRotation * Quaternion.FromEulerAngles(0,
+                    math.sin((now - fish.AttackAt) * math.pi * 2 * entry.FlailHz) * entry.FlailRadians, 0)
+            end
+            return
+        end
+        if fish.CombatRotation then body.Rotation = fish.CombatRotation end
+        fish.State = Mgr.State.Sleeping
+        fish.WakeAt = now + entry.SleepSec
+        print('[MgrFishUnit] 电鳗睡眠', 'fish=' .. tostring(fish.Id), 'wakeAt=' .. tostring(fish.WakeAt))
+    end
+    if fish.State == Mgr.State.Sleeping and now < fish.WakeAt then return end
+    fish.State = Mgr.State.Combat
+    if self.Ability and self.Ability:CastFish(fish) then
+        fish.State = Mgr.State.Attacking
+        fish.AttackAt = now
+        fish.AttackEndsAt = now + entry.CastSec
+        print('[MgrFishUnit] 电鳗放电', 'fish=' .. tostring(fish.Id))
     end
 end
 
@@ -414,6 +472,7 @@ end
 function Mgr:Remove(fish)
     if not fish or self.Fish[fish.Id] ~= fish then return end
     self.Fish[fish.Id] = nil
+    if self.Ability then self.Ability:RemoveFish(fish) end
     for _, conn in ipairs(fish.Conns or {}) do conn:Disconnect() end
     fish.Conns = nil
     if fish.Holder and self.Held[fish.Holder.UserId] == fish then self.Held[fish.Holder.UserId] = nil end
@@ -511,6 +570,8 @@ function Mgr:Update()
             end
         elseif fish.State == Mgr.State.Escaping then
             self:UpdateEscaping(fish, now)
+        elseif fish.FleeAt then
+            self:UpdateCombat(fish, now)
         end
     end
     self:EnforceEscapeCap(nil)

@@ -119,7 +119,7 @@ GameCfg.Debug = {
 -- 个体重量 = BaseWeight × 倍率、售价 = BasePrice × 倍率，由 common/FishCatch.lua 派生，不存快照。
 -- Grade 品级（CONTEXT.md）：normal=普通鱼 / rare=极品鱼 / elite=精英鱼 / boss=首领。
 -- 精英/首领另配 Attack=攻击力、EscapeSec=逃跑时限（秒）、Drops=击杀掉落——它们不掉自身鱼获，
--- 所以没有同名物品定义，BasePrice 记 0（行为在 #86/#88 落地，暂不进入 GameCfg.Casting 抽签表）；
+-- 所以没有同名物品定义，BasePrice 记 0（电鳗在 #86 入表，首领随 #88 接入）；
 -- 普通/极品没有 Drops，鱼获即自身（物品定义同名）。
 -- M1（#84）：鱼塘加精英电鳗、首领鳄雀鳝；虾池 6 普通 + 6 极品（GameSpec §5.2），
 -- 极品数值与普通版相同（规格「同上」），虾池模型先用鱼塘鱼占位（已知差异不算 bug，正式模型随 #90）。
@@ -134,6 +134,7 @@ GameCfg.Fish = {
     -- 鱼塘精英/首领（GameSpec §5.1 第 7/8 行；模型占位：电鳗用 7000545「旗鱼」（与刀鱼同模型）、
     -- 鳄雀鳝用 7000546「鲨鱼」，正式模型随 #86/#88；鱼饵/权重是抽签表行字段，随 #86/#88 一并入表）
     eel = { Name = '电鳗', Grade = 'elite', Health = 300, Attack = 10, BaseWeight = 5, BasePrice = 0, Model = '7000545', Speed = 6, EscapeSec = 180,
+        Combat = 'eel',
         Drops = { { ItemId = 'eelMeat', Count = 2 }, { ItemId = 'eelHead', Count = 1 } } },
     alligatorGar = { Name = '鳄雀鳝', Grade = 'boss', Health = 600, Attack = 30, BaseWeight = 5, BasePrice = 0, Model = '7000546', Speed = 6, EscapeSec = 300,
         Drops = { { ItemId = 'garMeat', Count = 2 }, { ItemId = 'garHead', Count = 1 } } },
@@ -191,6 +192,7 @@ GameCfg.Loot = {
     GroundRayDown = 20,
     Height = 0.2,
     BubbleHeight = 1.2,
+    DropSpacing = 1, -- 多份部位鱼获横向间距，避免模型与拾取泡完全重叠
 }
 
 -- 固定点位鱼饵（#45，#27 规格）：每个点位同时最多一份，复用鱼获的 2 米拾取与服务端复验，
@@ -333,6 +335,7 @@ GameCfg.Casting = {
             { Id = 'bass', Bait = 'worm', RodLevel = 1, DrawWeight = 32 },
             { Id = 'catfish', Bait = 'worm', RodLevel = 1, DrawWeight = 24 },
             { Id = 'goldfish', Bait = 'worm', RodLevel = 1, DrawWeight = 16 },
+            { Id = 'eel', Bait = 'worm', RodLevel = 1, DrawWeight = 10 },
         },
     },
 }
@@ -352,6 +355,21 @@ GameCfg.Casting = {
 GameCfg.Ability = {
     -- 角色进图时实例化到角色下的技能背包预设
     ManagerPreset = "map://preset/ubdb4a7e737d4eddb87729e9055ba375",
+    -- #86 原型：复用挥砍预设的 0.5 秒施法窗口，半径取现有近战命中盒宽度 3 米；
+    -- 范围、乱甩角度为可调表现参数，睡眠 10 秒来自钓鱼表原案。
+    FishAbilities = {
+        eel = {
+            AssetId = "map://preset/ucc31d1999a543a7ab329eff1fd3c00d",
+            Index = 0,
+            Anchor = "map://preset/u471a1004c1f43f1ae6ebe4ee2bcd080",
+            AnchorBehavior = "eel_discharge",
+            Radius = 3,
+            CastSec = 0.5,
+            SleepSec = 10,
+            FlailRadians = 0.45,
+            FlailHz = 8,
+        },
+    },
     -- 进图后装的初始技能：AssetId=技能预设，Index=槽位（0 基），
     -- Anchor=锚点预设，AnchorBehavior=锚点行为模块名（anchors/ 下的文件名），
     -- AnchorAttributes=挂接前覆盖到锚点实例的属性（{x,y,z} 表会转成 Vector3）

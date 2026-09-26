@@ -23,8 +23,9 @@ function AbilityAPI.AttachAnchor(anchorScript, behaviorModule)
 
 	if behaviorModule and behaviorModule ~= "" then
 		-- 本图挥砍受击体使用 BaseController；官方行为多传 owner 会触发类型告警。
-		local modulePath = behaviorModule == "melee_hit"
-			and "server.AbilityBehaviors.melee_hit"
+        local localBehavior = behaviorModule == "melee_hit" or behaviorModule == "eel_discharge"
+		local modulePath = localBehavior
+			and "server.AbilityBehaviors." .. behaviorModule
 			or "server.packages.ability_system.anchors." .. behaviorModule
 		local behavior = require(modulePath)
 		if type(behavior) ~= "table" or type(behavior.Attach) ~= "function" then

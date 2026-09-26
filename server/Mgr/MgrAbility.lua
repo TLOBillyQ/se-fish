@@ -62,8 +62,11 @@ local function createAnchor(abilityScript, entry)
 	anchor.Parent = abilityScript
 	applyAnchorAttributes(anchor, entry.AnchorAttributes, entry.Anchor)
 	local ok, err = pcall(AbilityAPI.AttachAnchor, anchor, entry.AnchorBehavior)
-	if not ok then
+	if not ok or err ~= true then
 		print("[MgrAbility] 锚点挂接失败: " .. tostring(err))
+        local removed, removeError = pcall(function() anchor:Destroy() end)
+        if not removed then print('[MgrAbility] 回收失败锚点', tostring(removeError)) end
+        return nil
 	end
 	return anchor
 end
@@ -117,6 +120,64 @@ local function setUpPlayer(mgr, player, character)
 			equip(character, entry)
 		end
 	end
+end
+
+-- 鱼技能的记录跟随鱼持有，取消标记使尚未就绪的异步装配失效。
+function Mgr:RemoveFish(fish)
+    local record = fish.AbilityRecord
+    if not record then return end
+    fish.AbilityRecord = nil
+    record.Cancelled = true
+    if record.Ready then
+        local ok, err = pcall(AbilityAPI.StopAbility, record.Receiver, record.Entry.Index)
+        if not ok then print('[MgrAbility] 停止鱼技能失败', fish.Id, tostring(err)) end
+    end
+    local ok, err = pcall(function() record.Manager:Destroy() end)
+    if not ok then print('[MgrAbility] 回收鱼技能管理器失败', fish.Id, tostring(err)) end
+end
+
+function Mgr:EquipFish(fish)
+    if fish.AbilityRecord then return true end
+    local species = GameCfg.Fish[fish.FishId]
+    local entry = GameCfg.Ability.FishAbilities[species.Combat]
+    local receiver = fish.Carrier.Receiver
+    if not entry or not receiver then return false end
+    local manager = createManager(receiver, GameCfg.Ability.ManagerPreset)
+    if not manager then return false end
+    local record = { Manager = manager, Receiver = receiver, Entry = entry }
+    fish.AbilityRecord = record
+    Task:Spawn(function()
+        for _ = 1, EQUIP_RETRY_COUNT do
+            if record.Cancelled or fish.Carrier.Dead then return end
+            local ability = AbilityAPI.AddAbility(receiver, entry.AssetId, entry.Index)
+            if ability then
+                ability:SetAttribute('CastTime', entry.CastSec)
+                ability:SetAttribute('CdTime', 0)
+                local anchor = createAnchor(ability, {
+                    Anchor = entry.Anchor,
+                    AnchorBehavior = entry.AnchorBehavior,
+                    AnchorAttributes = { Duration = 0, DischargeRadius = entry.Radius,
+                        DischargeDamage = species.Attack },
+                })
+                if not anchor then self:RemoveFish(fish) return end
+                record.Ready = true
+                print('[MgrAbility] 电鳗技能就绪', fish.Id)
+                return
+            end
+            Task:Wait(EQUIP_RETRY_INTERVAL)
+        end
+        if not record.Cancelled then
+            print('[MgrAbility] 电鳗技能装配超时', fish.Id)
+            self:RemoveFish(fish)
+        end
+    end)
+    return true
+end
+
+function Mgr:CastFish(fish)
+    local record = fish.AbilityRecord
+    if not record or not record.Ready or record.Cancelled or fish.Carrier.Dead then return false end
+    return AbilityAPI.CastAbility(record.Receiver, record.Entry.Index)
 end
 
 function Mgr:Start()

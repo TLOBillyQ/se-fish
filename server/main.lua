@@ -30,6 +30,7 @@ MgrMap.MgrCast.ReelIn = MgrMap.MgrReelIn
 MgrMap.MgrReelIn.Cast = MgrMap.MgrCast
 MgrMap.MgrCast.FishUnit = MgrMap.MgrFishUnit
 MgrMap.MgrFishUnit.Cast = MgrMap.MgrCast
+MgrMap.MgrFishUnit.Ability = MgrMap.MgrAbility
 MgrMap.MgrLoot.FishUnit = MgrMap.MgrFishUnit
 MgrMap.MgrLoot.PlayerData = MgrMap.MgrPlayerData
 MgrMap.MgrPlayerData.Loot = MgrMap.MgrLoot
