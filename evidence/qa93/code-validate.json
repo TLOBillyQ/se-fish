@@ -1,0 +1,11 @@
+{
+  "ok": true,
+  "data": {
+    "valid": true,
+    "is_se_map": true,
+    "issues": []
+  },
+  "meta": {
+    "warnings": []
+  }
+}
