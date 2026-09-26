@@ -107,7 +107,7 @@ function Mgr:OnPlayerRemoving(player)
 end
 
 local function validActionValue(action, value, data)
-    if action == 'SelectSlot' or action == 'DiscardSlot' then
+    if action == 'SelectSlot' or action == 'DiscardSlot' or action == 'EatSlot' then
         return type(value) == 'number' and value == math.floor(value)
             and value >= 1 and value <= data:ItemBarCapacity()
     end
@@ -122,6 +122,17 @@ end
 local function eatBait(mgr, player, data, value)
     if mgr.Vitals and not mgr.Vitals:CanEat(player, value) then return end
     if data:EatBait(value) and mgr.Vitals then mgr.Vitals:Eat(player, value) end
+end
+
+-- 吃选中的鱼获（#53）：只吃选中格；先问 Vitals 能不能吃（死亡期间不能），再扣格、再恢复。
+-- EatSlot 成功后 PlayerData 内部已同步并推送，无需再 SendItemBar。
+local function eatSlot(mgr, player, data, value)
+    if not mgr.Vitals then return end
+    local slot = data.Data.SelectedSlot
+    local entry = value == slot and data.Data.Containers[GameCfg.Items.ContainerId.ItemBar][slot]
+    if not entry or entry.count <= 0 or not mgr.Vitals:CanEat(player, entry.itemId) then return end
+    local itemId = data:EatSlot(slot)
+    if itemId then mgr.Vitals:Eat(player, itemId) end
 end
 
 local function notifyEquippedBait(mgr, player, method, value)
@@ -139,6 +150,7 @@ function Mgr:Start()
         SelectSlot = 'SelectSlot',
         SelectBait = 'SelectBait',
         EatBait = 'EatBait',
+        EatSlot = 'EatSlot',
         DiscardSlot = 'DiscardSlot',
         MoveToItemBar = 'MoveToItemBar',
     }
@@ -160,6 +172,10 @@ function Mgr:Start()
         if _G.REUtil:CheckRECD(player, 'ItemBarAction', GameCfg.Items.ActionCooldownSec) then return end
         if method == 'EatBait' then
             eatBait(self, player, data, value)
+            return
+        end
+        if method == 'EatSlot' then
+            eatSlot(self, player, data, value)
             return
         end
         if data[method](data, value) then

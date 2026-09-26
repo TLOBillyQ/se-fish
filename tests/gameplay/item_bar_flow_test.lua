@@ -170,6 +170,55 @@ function TestItemBarFlow:test_action_rate_limit_is_per_player()
     Mgr:OnPlayerRemoving(other)
 end
 
+-- EatSlot 动作通道（#53 吃鱼获；#85 验收「转入道具栏后可吃」依赖它）。失败方式（先列后写）：
+--   1. EatSlot 不在 actions 表里，动作在 method 查找处被静默丢弃，选中鱼获点「吃」没反应
+--      （#53 的特例分支排在 method 判空之后，从来没接通；ba6a78c 重构时按死代码删掉了）；
+--   2. 吃的不是选中格（value 与 SelectedSlot 不符也生效），或鱼竿等没配 EatPercent 的物品也能吃；
+--   3. Vitals 拒绝（死亡期间）仍扣格，或只扣格不走 Vitals:Eat 恢复血量饥饿；
+--   4. 吃完不推送 ItemBarState，客户端残留旧格子与选中态。
+function TestItemBarFlow:test_eat_slot_action_consumes_selected_food_and_heals()
+    local data = Mgr:GetDataInst(self.player)
+    local bar = GameCfg.Items.ContainerId.ItemBar
+    local function putFish()
+        data:UpdateData(function(state)
+            state.Containers[bar][2] = { itemId = 'carp', count = 1, containerId = bar }
+        end, true)
+    end
+    local healed = {}
+    local canEat = true
+    Mgr.Vitals = {
+        CanEat = function() return canEat end,
+        Eat = function(_, _, itemId) healed[#healed + 1] = itemId end,
+    }
+    local ok, err = pcall(function()
+        local action = self.events.ItemBarAction.OnServerEvent
+        putFish()
+        action:Fire(self.player, { action = 'EatSlot', value = 2 }) -- 未选中任何格：不吃
+        lu.assertNotNil(data.Data.Containers[bar][2])
+        action:Fire(self.player, { action = 'SelectSlot', value = 2 })
+        action:Fire(self.player, { action = 'EatSlot', value = 1 }) -- 与选中格不符：不吃
+        lu.assertNotNil(data.Data.Containers[bar][2])
+        canEat = false -- Vitals 拒绝（如死亡期间）：不扣格、不恢复
+        action:Fire(self.player, { action = 'EatSlot', value = 2 })
+        lu.assertNotNil(data.Data.Containers[bar][2])
+        lu.assertEquals(healed, {})
+        canEat = true
+        local sent = self.player.stateCount
+        action:Fire(self.player, { action = 'EatSlot', value = 2 })
+        lu.assertNil(data.Data.Containers[bar][2])
+        lu.assertEquals(healed, { 'carp' })
+        lu.assertTrue(self.player.stateCount > sent) -- 吃完推送了新状态
+        lu.assertNil(self.player.lastState.slots[2])
+        lu.assertNil(self.player.lastState.selectedSlot)
+        action:Fire(self.player, { action = 'SelectSlot', value = 1 }) -- 鱼竿没配 EatPercent：不能吃
+        action:Fire(self.player, { action = 'EatSlot', value = 1 })
+        lu.assertNotNil(data.Data.Containers[bar][1])
+        lu.assertEquals(healed, { 'carp' })
+    end)
+    Mgr.Vitals = nil
+    if not ok then error(err, 0) end
+end
+
 -- #52 新手任务「挂饵」事实（失败方式：取消挂饵 / 挂不存在或已用完的饵也报挂饵；
 --   每次挂饵不带唯一 eventId；别的动作也报挂饵）
 function TestItemBarFlow:test_select_bait_success_notifies_equip_with_distinct_ids()
