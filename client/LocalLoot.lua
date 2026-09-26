@@ -5,7 +5,7 @@ local REUtil = require('common.REUtil')
 
 local LocalLoot = { Nodes = {} }
 
-local World = game:GetService('World')
+local Bubble = require('client.InteractionBubble')
 local Players = game:GetService('Players')
 
 function LocalLoot:EuiManager()
@@ -28,22 +28,13 @@ function LocalLoot:Create(loot)
         print('[LocalLoot] 拾取文字泡创建失败', loot.id, tostring(node))
         return
     end
-    local okBtn, btn = pcall(World.CreateUnit, World, 'EUIButton', {
-        Parent = node,
-        Name = 'BtnPickup_' .. tostring(loot.id),
-        Position = Vector2.New(0, 0),
-        Size = Vector2.New(160, 64),
-    })
-    if not okBtn or not btn then
-        pcall(function() node:Destroy() end)
-        print('[LocalLoot] 拾取按钮创建失败', loot.id, tostring(btn))
-        return
-    end
-    btn.ButtonText = '拾取'
-    btn.TouchEnabled = true
-    btn.OnClicked:Connect(function()
+    local btn = Bubble.CreateButton(node, 'BtnPickup_' .. tostring(loot.id), '拾取', 0, function()
         REUtil:GetRE('ItemBarAction'):FireServer({ action = 'Pickup', value = loot.id })
     end)
+    if not btn then
+        pcall(function() node:Destroy() end)
+        return
+    end
     node.Visible = false
     self.Nodes[loot.id] = { Node = node, Position = loot }
 end

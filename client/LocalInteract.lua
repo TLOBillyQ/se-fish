@@ -7,6 +7,7 @@ local GameCfg = require('common.GameCfg')
 local REUtil = require('common.REUtil')
 local Util = require('common.Util')
 
+local Bubble = require('client.InteractionBubble')
 local LocalInteract = { Seq = 0 }
 
 -- 缩放脉冲参数：PulseFrames 帧内按 sin 曲线放大到 1+PulseAmp 再还原（帧率相关，表现层可接受）
@@ -21,20 +22,7 @@ local function notice(msg)
 end
 
 function LocalInteract:Button(node, name, text, x, onClick)
-    local ok, btn = pcall(World.CreateUnit, World, 'EUIButton', {
-        Parent = node,
-        Name = name,
-        Position = Vector2.New(x, 0),
-        Size = Vector2.New(160, 64),
-    })
-    if not ok or not btn then
-        print('[LocalInteract] 按钮创建失败', name, tostring(btn))
-        return nil
-    end
-    btn.ButtonText = text
-    btn.TouchEnabled = true
-    btn.OnClicked:Connect(onClick)
-    return btn
+    return Bubble.CreateButton(node, name, text, x, onClick)
 end
 
 function LocalInteract:Feed()
@@ -54,8 +42,9 @@ function LocalInteract:Create(anchor)
         print('[LocalInteract] 钓鱼佬文字泡创建失败', tostring(node))
         return
     end
-    self:Button(node, 'BtnFishermanTalk', '对话', -90, function() notice(cfg.DialogText) end)
-    self:Button(node, 'BtnFishermanFeed', '喂食', 90, function() self:Feed() end)
+    local offset = (GameCfg.InteractionBubble.Width + GameCfg.InteractionBubble.Gap) / 2
+    self:Button(node, 'BtnFishermanTalk', '对话', -offset, function() notice(cfg.DialogText) end)
+    self:Button(node, 'BtnFishermanFeed', '喂食', offset, function() self:Feed() end)
     node.Visible = false
     self.Node = node
     self.Center = center
