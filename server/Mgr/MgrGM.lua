@@ -34,10 +34,15 @@ end
 
 function Mgr:Item(data, payload)
     local count = payload.count
-    if not GameCfg.Items.Definitions[payload.itemId] or not isInt(count) or count < 1 or count > MaxItemCount then
-        return false
+    if type(payload.itemId) ~= 'string' or not GameCfg.Items.Definitions[payload.itemId] then
+        return false, '物品 ID 不在白名单中'
     end
-    return (data:GrantItem(payload.itemId, count))
+    if not isInt(count) or count < 1 or count > MaxItemCount then
+        return false, '数量须为 1—99 的整数'
+    end
+    local ok, reason = data:GrantItem(payload.itemId, count)
+    if not ok then return false, reason == 'full' and '空格不足，整批未发放' or '物品状态无效' end
+    return true
 end
 
 -- 设血量 / 饥饿度（#53）：走 MgrVitals 的同名入口（调低血量经 ApplyDamage 单点），越界值拒绝
@@ -63,11 +68,13 @@ function Mgr:Handle(player, payload)
     local method = Actions[payload.action]
     local target = method and self:ResolveTarget(player, payload.target)
     local data = target and self.PlayerData and self.PlayerData:GetDataInst(target)
-    local ok = data and self[method](self, data, payload, target) or false
+    local ok, reason = false, '请求或目标无效'
+    if data then ok, reason = self[method](self, data, payload, target) end
     print('[MgrGM]', ok and '发放' or '拒绝', player and player.UserId, '->', target and target.UserId,
         tostring(payload.action), tostring(payload.amount or payload.itemId or payload.value), tostring(payload.count or ''))
     if ok then self.PlayerData:SendItemBar(target) end
-    self:Reply(player, { ok = ok, action = payload.action, target = target and target.UserId })
+    self:Reply(player, { ok = ok, action = payload.action, target = target and target.UserId,
+        reason = not ok and (reason or '请求未通过') or nil })
     return ok
 end
 

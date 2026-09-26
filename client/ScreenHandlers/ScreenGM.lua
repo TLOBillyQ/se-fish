@@ -14,6 +14,10 @@ local Groups = {
         { label = '+100 金币', payload = { action = 'Coin', amount = 100 } },
         { label = '+6300 金币', payload = { action = 'Coin', amount = 6300 } },
     } },
+    { title = '物品', actions = {
+        { label = '罗非鱼 ×1', payload = { action = 'Item', itemId = GameCfg.Items.Id.Tilapia, count = 1 } },
+        { label = '罗非鱼 ×5', payload = { action = 'Item', itemId = GameCfg.Items.Id.Tilapia, count = 5 } },
+    } },
 }
 
 local function listen(self, signal, callback)
@@ -26,8 +30,10 @@ local function create(self, kind, parent, name, x, y, width, height, props)
     props = props or {}
     props.Parent = parent
     props.Name = name
+    local scale = self.Scale or 1
     props.Position = Vector2.New(x, y)
-    props.Size = Vector2.New(width, height)
+    props.Size = Vector2.New(width * scale, height * scale)
+    if props.FontSize then props.FontSize = math.max(12, math.floor(props.FontSize * scale)) end
     local node = game:GetService('World'):CreateUnit(kind, props)
     if not node then error('GM 界面节点创建失败：' .. name) end
     self.Nodes[#self.Nodes + 1] = node
@@ -59,11 +65,33 @@ local function button(self, parent, name, x, y, width, height, callback)
     return node
 end
 
-function Panel:ShowCoin()
-    if not self.CoinLabel then return end
-    local player = game:GetService('Players').LocalPlayer
-    local coin = player and player:GetAttribute('FishCoin')
-    self.CoinLabel.Text = '当前金币：' .. (type(coin) == 'number' and tostring(math.floor(coin)) or '等待同步')
+local function occupied(slots, capacity)
+    local count = 0
+    for index = 1, capacity do
+        local entry = slots[index]
+        if type(entry) == 'table' and type(entry.count) == 'number' and entry.count > 0 then
+            count = count + 1
+        end
+    end
+    return count
+end
+
+local function boundedInt(value, maximum)
+    return type(value) == 'number' and value >= 0 and value <= maximum and value == math.floor(value)
+end
+
+function Panel:ShowState(snapshot)
+    if type(snapshot) ~= 'table' or type(snapshot.slots) ~= 'table'
+        or type(snapshot.backpack) ~= 'table'
+        or not boundedInt(snapshot.slotCount, GameCfg.Items.ItemBarSlots)
+        or not boundedInt(snapshot.backpackCount, GameCfg.Items.MaxBackpackSlots)
+        or not boundedInt(snapshot.upgradeLevel, #GameCfg.Items.UpgradePrices)
+        or not boundedInt(snapshot.coin, math.maxinteger) then return end
+    self.CoinLabel.Text = '当前金币：' .. tostring(snapshot.coin)
+    self.StorageLabel.Text = '扩容等级：' .. tostring(snapshot.upgradeLevel)
+    self.CapacityLabel.Text = string.format('道具栏 %d/%d　背包 %d/%d',
+        occupied(snapshot.slots, snapshot.slotCount), snapshot.slotCount,
+        occupied(snapshot.backpack, snapshot.backpackCount), snapshot.backpackCount)
 end
 
 function Panel:Toggle()
@@ -71,7 +99,7 @@ function Panel:Toggle()
     self.Background.Visible = self.IsOpen
     for _, node in ipairs(self.PanelNodes) do node.Visible = self.IsOpen end
     self.EntryLabel.Text = self.IsOpen and '收起 GM' or 'GM'
-    if self.IsOpen then self:ShowCoin() end
+    if self.IsOpen then REUtil:GetRE('RequestItemBar'):FireServer() end
     print('[GMPanel]', self.IsOpen and '展开' or '收起')
 end
 
@@ -103,14 +131,18 @@ function Panel:Build(root, resolution, player)
     -- 右对齐：面板中心距右边缘 16px，最小不小于半宽+16
     local right = math.max(width / 2 + 16, resolution.x - width / 2 - 16)
     local top = resolution.y - 105
-    -- 底高 = 标题 56 + 金币状态 48 + 反馈 56 + 区间留白；每组再加 分组标题 62 + 行数 × 96
-    local height = 240
+    -- 标题、三行状态与反馈；每组增加分组标题和按钮行。
+    local height = 336
     for _, group in ipairs(Groups) do
         height = height + 62 + math.ceil(#group.actions / 2) * 96
     end
+    local scale = math.min(1, resolution.y / (height + 210), resolution.x / (width + 32))
+    self.Scale = scale
+    right = resolution.x - (width / 2 + 16) * scale
+    top = resolution.y - 105 * scale
     self.Entry = button(self, root, 'GM入口', right, top, 220, 84, function() self:Toggle() end)
     self.EntryLabel = label(self, root, 'GM入口文字', 'GM', right, top, 220, 84, 32)
-    local centerY = top - 82 - height / 2
+    local centerY = top - (82 + height / 2) * scale
     self.Background = create(self, 'EUIImage', root, 'GM面板', right, centerY, width, height, {
         Image = ColorBlockImage,
         -- 深色半透明底，白字可读；纯色块叠色，不用默认椭圆图避免黑色异形遮挡
@@ -120,14 +152,20 @@ function Panel:Build(root, resolution, player)
     self.Background.SwallowTouchEnabled = false
     self.PanelNodes[#self.PanelNodes + 1] = self.Background
     -- 面板内元素：relX/relY 是相对面板中心的偏移，换算成屏幕坐标后挂 root
-    local function relY(value) return centerY + value end
+    local function relY(value) return centerY + value * scale end
     local topRow = height / 2 - 52
     local title = label(self, root, 'GM标题', '调试操作', right, relY(topRow), width - 24, 56, 44)
     self.PanelNodes[#self.PanelNodes + 1] = title
     self.CoinLabel = label(self, root, 'GM金币状态', '当前金币：等待同步', right, relY(topRow - 62),
         width - 24, 48, 36)
     self.PanelNodes[#self.PanelNodes + 1] = self.CoinLabel
-    local y = topRow - 118
+    self.StorageLabel = label(self, root, 'GM扩容状态', '扩容等级：等待同步', right,
+        relY(topRow - 110), width - 24, 48, 32)
+    self.CapacityLabel = label(self, root, 'GM占格状态', '道具栏 / 背包：等待同步', right,
+        relY(topRow - 158), width - 24, 48, 30)
+    self.PanelNodes[#self.PanelNodes + 1] = self.StorageLabel
+    self.PanelNodes[#self.PanelNodes + 1] = self.CapacityLabel
+    local y = topRow - 214
     for _, group in ipairs(Groups) do
         local groupLabel = label(self, root, 'GM分组_' .. group.title, group.title, right, relY(y),
             width - 24, 44, 34)
@@ -136,12 +174,14 @@ function Panel:Build(root, resolution, player)
         for index, action in ipairs(group.actions) do
             local item = action
             local column = (index - 1) % 2
-            local x = right + (column - 0.5) * 266
+            local x = right + (column - 0.5) * 266 * scale
             local rowY = relY(y - math.floor((index - 1) / 2) * 96)
             local btn = button(self, root, 'GM操作_' .. group.title .. index, x, rowY, 250, 76, function()
-                REUtil:GetRE('GMAction'):FireServer({ action = item.payload.action, amount = item.payload.amount })
+                REUtil:GetRE('GMAction'):FireServer({ action = item.payload.action, amount = item.payload.amount,
+                    itemId = item.payload.itemId, count = item.payload.count })
                 self.Feedback.Text = '等待服务端确认…'
-                print('[GMPanel] 请求', item.payload.action, item.payload.amount)
+                print('[GMPanel] 请求', item.payload.action, item.payload.amount or item.payload.itemId,
+                    item.payload.count or '')
             end)
             local btnLabel = label(self, root, 'GM操作文字_' .. group.title .. index, item.label,
                 x, rowY, 250, 76, 32)
@@ -155,15 +195,14 @@ function Panel:Build(root, resolution, player)
     -- 默认收起，避免遮挡游戏画面；IsOpen 在 Build 里显式初始化
     self.IsOpen = false
     for _, node in ipairs(self.PanelNodes) do node.Visible = false end
-    self:ShowCoin()
-    listen(self, player:GetAttributeChangedSignal('FishCoin'), function() self:ShowCoin() end)
+    listen(self, REUtil:GetRE('ItemBarState').OnClientEvent, function(snapshot) self:ShowState(snapshot) end)
     listen(self, REUtil:GetRE('GMResult').OnClientEvent, function(result)
-        if type(result) ~= 'table' or result.action ~= 'Coin' then return end
-        self.Feedback.Text = result.ok and '服务端确认：金币发放成功'
+        if type(result) ~= 'table' or (result.action ~= 'Coin' and result.action ~= 'Item') then return end
+        self.Feedback.Text = result.ok and ('服务端确认：' .. (result.action == 'Coin' and '金币' or '物品') .. '发放成功')
             or ('服务端拒绝：' .. tostring(result.reason or '请求未通过'))
-        self:ShowCoin()
         print('[GMPanel] 结果', result.ok and '成功' or '拒绝', tostring(result.reason or ''))
     end)
+    REUtil:GetRE('RequestItemBar'):FireServer()
 end
 
 function Panel:Destroy()
@@ -179,6 +218,8 @@ function Panel:Destroy()
     self.EntryLabel = nil
     self.Background = nil
     self.CoinLabel = nil
+    self.StorageLabel = nil
+    self.CapacityLabel = nil
     self.Feedback = nil
 end
 
