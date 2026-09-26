@@ -11,7 +11,7 @@
 -- 三处都含等号：正好贴在半宽线上、正好落在水面高度上都算「在水里」。
 --
 -- 只读 pos 的 x/y/z，不调用任何引擎 API：Vector3 与普通 table 都能直接传，
--- 所以这组纯函数能在宿主机 lua 单测里跑（tests/water_judge_test.lua）。
+-- 所以这组纯函数能在宿主机 lua 单测里跑（tests/gameplay/water_judge_test.lua）。
 --
 -- 配置见 GameCfg.Water.Zones。HalfXZ 直接写运行时该水区的半边尺寸：运行时读到的 Size 已含
 -- Scale，配置时再乘缩放会翻倍（#12 W-4）。取值与溯源见 issue #25 的 M0 模块线台账（评论 9862）。

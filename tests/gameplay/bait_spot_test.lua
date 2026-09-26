@@ -1,4 +1,4 @@
--- #45 固定点位拾饵与十五秒刷新（沿用 tests/fish_loot_test.lua 的假引擎与真 PlayerData）。
+-- #45 固定点位拾饵与十五秒刷新（沿用 tests/gameplay/fish_loot_test.lua 的假引擎与真 PlayerData）。
 -- 失败方式（先列后写）：
 --   1. 点位不生成，或同一点位同时出现多份（开局 / 刷新叠加）；点位不走配置，多个点位共用一个计时；
 --   2. 拾取不复用 2 米复验：越距、坏 id 也能领；
@@ -7,7 +7,7 @@
 --   5. 同一轮多人争抢或请求重放发出多份；
 --   6. 刷新计时误用到鱼获：鱼获被刷新、到时消失。
 local lu = require('luaunit')
-require('tests.fish_loot_test')
+require('tests.gameplay.fish_loot_test')
 
 TestBaitSpot = {}
 

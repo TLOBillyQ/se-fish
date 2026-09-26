@@ -3,9 +3,10 @@ set -euo pipefail
 cd "$(dirname "$0")/../.."
 bash tools/quality/deps.sh
 lua tools/quality/bootstrap.lua mutate4lua
-mkdir -p build/quality/mutation/project/common build/quality/mutation/project/tests/lib
+mkdir -p build/quality/mutation/project/common build/quality/mutation/project/tests/gameplay build/quality/mutation/project/tests/lib
 cp common/RateLimit.lua common/GameCfg.lua build/quality/mutation/project/common/
-cp tests/rate_limit_test.lua tests/run.lua build/quality/mutation/project/tests/
+cp tests/gameplay/rate_limit_test.lua build/quality/mutation/project/tests/gameplay/
+cp tests/run.lua build/quality/mutation/project/tests/
 cp tests/lib/luaunit.lua build/quality/mutation/project/tests/lib/
 before="$(sha256sum common/RateLimit.lua | cut -d ' ' -f1)"
 ROOT="$(pwd -W | tr '\\' '/')"
@@ -15,7 +16,7 @@ export SE_FISH_ROOT="$ROOT"
 export SE_FISH_BASH="$(cygpath -m "$(command -v bash)")"
 cd build/quality/mutation/project
 set +e
-lua ../../../../tools/quality/mutate.lua common/RateLimit.lua --max-workers 1 --test-command 'lua tests/run.lua' > ../mutate.txt 2>&1
+lua ../../../../tools/quality/mutate.lua common/RateLimit.lua --max-workers 1 --test-command 'lua tests/run.lua gameplay' > ../mutate.txt 2>&1
 code=$?
 set -e
 if [ "$before" != "$(sha256sum "$ROOT/common/RateLimit.lua" | cut -d ' ' -f1)" ]; then
