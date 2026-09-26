@@ -196,8 +196,8 @@ GameCfg.Loot = {
 -- 固定点位鱼饵（#45，#27 规格）：每个点位同时最多一份，复用鱼获的 2 米拾取与服务端复验，
 -- 拾取成功后 RespawnSec 秒在原位刷新；鱼饵进 Bait 计数库存，不占道具栏格。鱼获不刷新、不消失。
 -- Spots 的 Position 只用 x/z，y 由向下探地决定（Position.y 是探地起点参考）。
--- 正式新手点位（#51，策划案「拾取岛周围刷新的蚯蚓」）：绕鱼塘（WaterCircle2 中心 (-11.75, 27.75)、半宽 6）
--- 2026-09-24 场景水平扩建两倍，五个点位随岸线外移，距水圈中心约 10 米；
+-- 正式新手点位（#51）：分布在空气墙围住的玩家可行走陆地上；
+-- 2026-09-26 试玩寻路抵达五处候选点，向下射线均命中 y=5、法线向上。
 -- 新手任务第 1 步「拾取 5 只蚯蚓」不必等刷新，改坐标只改这里。
 -- Mesh 取官方资产「飘逸尾鳍」（软体蠕虫状，official://mesh/7000571），没有官方蚯蚓模型 [未查证：观感待 #55 截图]
 GameCfg.BaitSpots = {
@@ -205,11 +205,11 @@ GameCfg.BaitSpots = {
     Mesh = 'official://mesh/7000571',
     Scale = 0.3,
     Spots = {
-        { Id = 'worm-1', ItemId = 'worm', Count = 1, Position = { x = -1.75, y = 4, z = 27.75 } },
-        { Id = 'worm-2', ItemId = 'worm', Count = 1, Position = { x = -11.75, y = 4, z = 37.75 } },
-        { Id = 'worm-3', ItemId = 'worm', Count = 1, Position = { x = -2.75, y = 6, z = 27.75 } },  -- 原 (-21.75) y=2.0 在水下；改到海岛山体3 x∈[-2.75,-0.75] y=5.0（#94 射线取证待补）
-        { Id = 'worm-4', ItemId = 'worm', Count = 1, Position = { x = -2.75, y = 6, z = 17.75 } },  -- 原 (-11.75) y=2.0 在水下；改到山体同 x 柱 z=17.75（#94 射线取证待补）
-        { Id = 'worm-5', ItemId = 'worm', Count = 1, Position = { x = -4.75, y = 4, z = 34.75 } },
+        { Id = 'worm-1', ItemId = 'worm', Count = 1, Position = { x = 5, y = 6, z = 31 } },
+        { Id = 'worm-2', ItemId = 'worm', Count = 1, Position = { x = 5, y = 6, z = 40 } },
+        { Id = 'worm-3', ItemId = 'worm', Count = 1, Position = { x = 10, y = 6, z = 28 } },
+        { Id = 'worm-4', ItemId = 'worm', Count = 1, Position = { x = 15, y = 6, z = 34 } },
+        { Id = 'worm-5', ItemId = 'worm', Count = 1, Position = { x = 10, y = 6, z = 45 } },
     },
 }
 
