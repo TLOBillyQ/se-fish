@@ -141,5 +141,12 @@ function MgrGameUI:SetControlUI(visible)
     end
 end
 
+function MgrGameUI:StartGM()
+    local GameCfg = require('common.GameCfg')
+    if not (GameCfg.Debug and GameCfg.Debug.Enabled) then return end
+    local handler = require('client.ScreenHandlers.ScreenGM')
+    if handler then handler:Start() end
+end
+
 _G.MgrGameUI = MgrGameUI
 return MgrGameUI

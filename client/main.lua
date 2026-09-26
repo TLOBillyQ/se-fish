@@ -30,6 +30,7 @@ Task:Spawn(function()
     LocalAttackButton:Start()
     LocalLoot:Start()
     LocalGM:Start()
+    _G.MgrGameUI:StartGM()
 end)
 -- 等钓鱼佬单位要轮询，单独起协程免得拖住上面的启动
 Task:Spawn(function() LocalInteract:Start() end)

@@ -42,7 +42,8 @@ function TestGMCoin:setUp()
         end,
         SendItemBar = function(_, p) env.synced[#env.synced + 1] = p end,
     }
-    self.gm.Reply = function() end
+    self.replies = {}
+    self.gm.Reply = function(_, player, result) env.replies[#env.replies + 1] = { player = player, result = result } end
 end
 
 function TestGMCoin:tearDown()
@@ -81,6 +82,10 @@ function TestGMCoin:test_gm_is_off_by_default()
     lu.assertFalse(self.gm:Handle(self.me, { action = 'Coin', amount = 10 }))
     lu.assertFalse(self.gm:Handle(self.me, { action = 'Item', itemId = 'starterRod', count = 1 }))
     lu.assertEquals(self.myData.Data.FishCoin, 0)
+    lu.assertEquals(#self.replies, 2)
+    lu.assertEquals(self.replies[1].player, self.me)
+    lu.assertEquals(self.replies[1].result, { ok = false, action = 'Coin', reason = '调试开关已关闭' })
+    lu.assertEquals(#self.synced, 0)
 end
 
 function TestGMCoin:test_gm_coin_targets_self_by_default_or_given_player()

@@ -55,6 +55,8 @@ local Actions = { Coin = 'Coin', Item = 'Item', SetHealth = 'SetHealth', SetHung
 function Mgr:Handle(player, payload)
     if not (GameCfg.Debug and GameCfg.Debug.Enabled) then
         print('[MgrGM] 调试开关关闭，拒绝', player and player.UserId)
+        self:Reply(player, { ok = false, action = type(payload) == 'table' and payload.action or nil,
+            reason = '调试开关已关闭' })
         return false
     end
     if type(payload) ~= 'table' then return false end
@@ -71,7 +73,11 @@ end
 
 function Mgr:Start()
     _G.REUtil:GetRE('GMAction').OnServerEvent:Connect(function(player, payload)
-        if _G.REUtil:CheckRECD(player, 'GMAction', GameCfg.Items.ActionCooldownSec) then return end
+        if _G.REUtil:CheckRECD(player, 'GMAction', GameCfg.Items.ActionCooldownSec) then
+            self:Reply(player, { ok = false, action = type(payload) == 'table' and payload.action or nil,
+                reason = '操作过于频繁' })
+            return
+        end
         self:Handle(player, payload)
     end)
 end
