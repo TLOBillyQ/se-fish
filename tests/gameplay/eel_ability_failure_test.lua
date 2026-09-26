@@ -13,7 +13,10 @@ function TestEelAbilityFailure:setUp()
     self.world = { CreateAsset = function() return { env.manager } end }
     game = { GetService = function(_, name)
         if name == 'World' then return env.world end
-        if name == 'Task' then return { Spawn = function(_, fn) env.jobs[#env.jobs + 1] = fn end, Wait = function() end } end
+        if name == 'Task' then return {
+            Spawn = function(_, fn) env.jobs[#env.jobs + 1] = fn end,
+            Wait = function(_, seconds) return coroutine.yield(seconds) end,
+        } end
     end }
     self.api = { AddAbility = function() error('add-failed') end }
     package.loaded['server.AbilityAPI'] = self.api
@@ -48,4 +51,53 @@ function TestEelAbilityFailure:test_failed_destroy_is_retried_by_update()
     lu.assertEquals(self.destroyed, 1)
     self.jobs[1]()
     lu.assertEquals(self.destroyed, 1)
+end
+
+function TestEelAbilityFailure:test_cancel_during_wait_does_not_resume_equipping()
+    local attempts = 0
+    self.api.AddAbility = function()
+        attempts = attempts + 1
+        return nil, 'manager-not-ready'
+    end
+    self.mgr:EquipFish(self.fish)
+    local job = coroutine.create(self.jobs[1])
+    local ok, delay = coroutine.resume(job)
+    lu.assertTrue(ok)
+    lu.assertEquals(delay, 0.1)
+    lu.assertEquals(coroutine.status(job), 'suspended')
+    lu.assertEquals(attempts, 1)
+    self.mgr:RemoveFish(self.fish)
+    lu.assertNil(self.fish.AbilityRecord)
+    lu.assertEquals(self.destroyed, 1)
+    lu.assertTrue(coroutine.resume(job))
+    lu.assertEquals(coroutine.status(job), 'dead')
+    lu.assertEquals(attempts, 1)
+    lu.assertEquals(self.destroyed, 1)
+end
+
+function TestEelAbilityFailure:test_anchor_creation_failure_cleans_partial_manager()
+    self.api.AddAbility = function() return { SetAttribute = function() end } end
+    self.mgr:EquipFish(self.fish)
+    self.world.CreateAsset = function() error('anchor-create-failed') end
+    lu.assertTrue(pcall(self.jobs[1]))
+    lu.assertNil(self.fish.AbilityRecord)
+    lu.assertEquals(self.destroyed, 1)
+    lu.assertNil(next(self.mgr.PendingFishCleanup))
+end
+
+function TestEelAbilityFailure:test_anchor_attach_failure_cleans_anchor_then_manager()
+    local cleaned = {}
+    local anchor = {
+        SetAttribute = function() end,
+        Destroy = function() cleaned[#cleaned + 1] = 'anchor' end,
+    }
+    self.api.AddAbility = function() return { SetAttribute = function() end } end
+    self.api.AttachAnchor = function() error('anchor-attach-failed') end
+    self.manager.Destroy = function() cleaned[#cleaned + 1] = 'manager' end
+    self.mgr:EquipFish(self.fish)
+    self.world.CreateAsset = function() return { anchor } end
+    lu.assertTrue(pcall(self.jobs[1]))
+    lu.assertNil(self.fish.AbilityRecord)
+    lu.assertEquals(cleaned, { 'anchor', 'manager' })
+    lu.assertNil(next(self.mgr.PendingFishCleanup))
 end
