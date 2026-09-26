@@ -54,7 +54,50 @@ function Mgr:SetHunger(_, payload, target)
     return self.Vitals ~= nil and self.Vitals:SetHunger(target, payload.value)
 end
 
-local Actions = { Coin = 'Coin', Item = 'Item', SetHealth = 'SetHealth', SetHunger = 'SetHunger' }
+-- 验收准备只补齐条件，扩容、转入、食用与拾取仍由原玩法入口处理。
+function Mgr:PrepareStorage(data, payload)
+    local snapshot = data:GetItemBarSnapshot()
+    if not snapshot then return false, '玩家状态尚未就绪' end
+    local scene = payload.scene
+    if scene == 'first' or scene == 'six' or scene == 'poor' or scene == 'purchase' then
+        if (scene == 'first' or scene == 'poor') and snapshot.upgradeLevel ~= 0 then
+            return false, '首级验收需要等级 0，请重新试玩'
+        end
+        local targetCoin = 0
+        if scene == 'first' then targetCoin = GameCfg.Items.UpgradePrices[1]
+        elseif scene == 'purchase' then targetCoin = 100
+        elseif scene == 'six' then
+            for level = snapshot.upgradeLevel + 1, #GameCfg.Items.UpgradePrices do
+                targetCoin = targetCoin + GameCfg.Items.UpgradePrices[level]
+            end
+            if targetCoin == 0 then return false, '已经升满，请到钓场商店确认不能继续扣金币' end
+        end
+        local delta = targetCoin - snapshot.coin
+        if delta > 0 then return data:AddCoin(delta, nil, 'gm-storage-prepare') end
+        if delta < 0 and scene == 'poor' then return data:SpendCoin(-delta, nil, 'gm-storage-prepare') end
+        return true
+    end
+    if scene ~= 'transfer' and scene ~= 'full' then return false, '未知验收场景' end
+    local function freeSlots(slots, capacity)
+        local free = 0
+        for index = 1, capacity do
+            if not slots[index] or slots[index].count <= 0 then free = free + 1 end
+        end
+        return free
+    end
+    local freeBar = freeSlots(snapshot.slots, snapshot.slotCount)
+    local freeBackpack = freeSlots(snapshot.backpack, snapshot.backpackCount)
+    local count = freeBar + freeBackpack
+    if scene == 'transfer' then
+        if freeBackpack == 0 then return false, '背包已满，请先腾出一格再准备转入' end
+        count = freeBar + 1
+    end
+    if count == 0 then return false, '道具栏与背包已经满格，无需重复发放' end
+    return self:Item(data, { itemId = GameCfg.Items.Id.Tilapia, count = count })
+end
+
+local Actions = { Coin = 'Coin', Item = 'Item', SetHealth = 'SetHealth', SetHunger = 'SetHunger',
+    PrepareStorage = 'PrepareStorage' }
 
 -- 处理一次 GM 请求；发放成功返回 true
 function Mgr:Handle(player, payload)
@@ -71,7 +114,7 @@ function Mgr:Handle(player, payload)
     local ok, reason = false, '请求或目标无效'
     if data then ok, reason = self[method](self, data, payload, target) end
     print('[MgrGM]', ok and '发放' or '拒绝', player and player.UserId, '->', target and target.UserId,
-        tostring(payload.action), tostring(payload.amount or payload.itemId or payload.value), tostring(payload.count or ''))
+        tostring(payload.action), tostring(payload.amount or payload.itemId or payload.value or payload.scene), tostring(payload.count or ''))
     if ok then self.PlayerData:SendItemBar(target) end
     self:Reply(player, { ok = ok, action = payload.action, target = target and target.UserId,
         reason = not ok and (reason or '请求未通过') or nil })

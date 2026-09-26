@@ -18,6 +18,14 @@ local Groups = {
         { label = '罗非鱼 ×1', payload = { action = 'Item', itemId = GameCfg.Items.Id.Tilapia, count = 1 } },
         { label = '罗非鱼 ×5', payload = { action = 'Item', itemId = GameCfg.Items.Id.Tilapia, count = 5 } },
     } },
+    { title = '#85 验收', actions = {
+        { label = '首级：备金币', payload = { action = 'PrepareStorage', scene = 'first' } },
+        { label = '首级：清金币', payload = { action = 'PrepareStorage', scene = 'poor' } },
+        { label = '转入：备鱼获', payload = { action = 'PrepareStorage', scene = 'transfer' } },
+        { label = '满格：填空格', payload = { action = 'PrepareStorage', scene = 'full' } },
+        { label = '六级：备金币', payload = { action = 'PrepareStorage', scene = 'six' } },
+        { label = '购买：备金币', payload = { action = 'PrepareStorage', scene = 'purchase' } },
+    } },
 }
 
 local function listen(self, signal, callback)
@@ -92,6 +100,20 @@ function Panel:ShowState(snapshot)
     self.CapacityLabel.Text = string.format('道具栏 %d/%d　背包 %d/%d',
         occupied(snapshot.slots, snapshot.slotCount), snapshot.slotCount,
         occupied(snapshot.backpack, snapshot.backpackCount), snapshot.backpackCount)
+    local nextPrice = GameCfg.Items.UpgradePrices[snapshot.upgradeLevel + 1]
+    local upgrade = nextPrice and ('下级 ' .. nextPrice .. ' 金币；' .. (snapshot.coin >= nextPrice and '金币足够' or '金币不足'))
+        or '已升满：再次扩容不得扣金币'
+    local barFull = occupied(snapshot.slots, snapshot.slotCount) == snapshot.slotCount
+    local allFull = barFull and occupied(snapshot.backpack, snapshot.backpackCount) == snapshot.backpackCount
+    self.Guide.Text = upgrade .. '\n收起 GM → 钓场商店亲自扩容\n'
+        .. (snapshot.upgradeLevel == 0 and '首级扣100：道具栏2→3，背包5→10\n不足时不扣币、不升级\n' or '')
+        .. '背包鱼获不能直接用，须先转入\n'
+        .. (barFull and '道具栏满：转入拒绝，鱼获仍在背包' or '道具栏有空格：转入后选中食用')
+        .. '\n可食用或丢弃腾格；GM 不代替转入'
+        .. '\n' .. (allFull and '拾取提示背包已满：库存与地面鱼获不变' or '先击杀鱼留地面鱼获，再填满空格')
+        .. '\n备购买金币 → 钓场商店买鱼竿拒绝且不扣币'
+        .. '\n六级价格：100/200/400/800/1600/3200'
+        .. '\n背包每级 +5，末级 +10；最终 8/40 格'
 end
 
 function Panel:Toggle()
@@ -132,7 +154,7 @@ function Panel:Build(root, resolution, player)
     local right = math.max(width / 2 + 16, resolution.x - width / 2 - 16)
     local top = resolution.y - 105
     -- 标题、三行状态与反馈；每组增加分组标题和按钮行。
-    local height = 336
+    local height = 736
     for _, group in ipairs(Groups) do
         height = height + 62 + math.ceil(#group.actions / 2) * 96
     end
@@ -178,9 +200,9 @@ function Panel:Build(root, resolution, player)
             local rowY = relY(y - math.floor((index - 1) / 2) * 96)
             local btn = button(self, root, 'GM操作_' .. group.title .. index, x, rowY, 250, 76, function()
                 REUtil:GetRE('GMAction'):FireServer({ action = item.payload.action, amount = item.payload.amount,
-                    itemId = item.payload.itemId, count = item.payload.count })
+                    itemId = item.payload.itemId, count = item.payload.count, scene = item.payload.scene })
                 self.Feedback.Text = '等待服务端确认…'
-                print('[GMPanel] 请求', item.payload.action, item.payload.amount or item.payload.itemId,
+                print('[GMPanel] 请求', item.payload.action, item.payload.amount or item.payload.itemId or item.payload.scene,
                     item.payload.count or '')
             end)
             local btnLabel = label(self, root, 'GM操作文字_' .. group.title .. index, item.label,
@@ -192,13 +214,18 @@ function Panel:Build(root, resolution, player)
     end
     self.Feedback = label(self, root, 'GM反馈', '等待操作', right, relY(y), width - 24, 56, 30)
     self.PanelNodes[#self.PanelNodes + 1] = self.Feedback
+    self.Guide = label(self, root, 'GM验收引导', '等待服务端同步验收状态', right,
+        relY(y - 220), width - 24, 372, 25)
+    self.PanelNodes[#self.PanelNodes + 1] = self.Guide
     -- 默认收起，避免遮挡游戏画面；IsOpen 在 Build 里显式初始化
     self.IsOpen = false
     for _, node in ipairs(self.PanelNodes) do node.Visible = false end
     listen(self, REUtil:GetRE('ItemBarState').OnClientEvent, function(snapshot) self:ShowState(snapshot) end)
     listen(self, REUtil:GetRE('GMResult').OnClientEvent, function(result)
-        if type(result) ~= 'table' or (result.action ~= 'Coin' and result.action ~= 'Item') then return end
-        self.Feedback.Text = result.ok and ('服务端确认：' .. (result.action == 'Coin' and '金币' or '物品') .. '发放成功')
+        if type(result) ~= 'table' or (result.action ~= 'Coin' and result.action ~= 'Item'
+            and result.action ~= 'PrepareStorage') then return end
+        self.Feedback.Text = result.ok and (result.action == 'PrepareStorage' and '条件已准备，请按提示操作原界面'
+            or ('服务端确认：' .. (result.action == 'Coin' and '金币' or '物品') .. '发放成功'))
             or ('服务端拒绝：' .. tostring(result.reason or '请求未通过'))
         print('[GMPanel] 结果', result.ok and '成功' or '拒绝', tostring(result.reason or ''))
     end)
@@ -221,6 +248,7 @@ function Panel:Destroy()
     self.StorageLabel = nil
     self.CapacityLabel = nil
     self.Feedback = nil
+    self.Guide = nil
 end
 
 return Panel
