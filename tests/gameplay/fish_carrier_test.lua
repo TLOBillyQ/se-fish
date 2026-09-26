@@ -8,7 +8,7 @@
 --      有这一层就不用靠试玩才发现；
 --   3. 接缝守卫（源码文本校对）：伤害能落地只靠一个事实——受击体创建时带 EnableController = true
 --      （引擎里只有 EggyUnit/HumanUnit 认这个开关，WorldUnit 认不了）。它没有运行期报错可依赖，
---      所以用源码校对把它钉住：接缝一改，这里先红——同 tests/ability_api_test.lua 的思路。
+--      所以用源码校对把它钉住：接缝一改，这里先红——同 tests/gameplay/ability_api_test.lua 的思路。
 local lu = require("luaunit")
 
 local MgrFishCarrier = require("server.Mgr.MgrFishCarrier")

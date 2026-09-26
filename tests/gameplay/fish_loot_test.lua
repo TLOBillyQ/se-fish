@@ -1,4 +1,4 @@
--- #43 挥砍杀鱼并拾取鱼获（沿用 tests/fish_lift_test.lua 的假引擎，另接真 PlayerData）。
+-- #43 挥砍杀鱼并拾取鱼获（沿用 tests/gameplay/fish_lift_test.lua 的假引擎，另接真 PlayerData）。
 -- 失败方式（先列后写）：
 --   1. 鱼死亡生成 0 份或多份鱼获（Died 与 HealthChanged 双路都来），鱼获丢了鱼种 / 个体倍率；
 --   2. 举着时被杀不先释放（挂点残留、持有者仍算持鱼），鱼获悬空在头顶而不是持有者脚下地面；
@@ -8,7 +8,7 @@
 --   6. 请求重放或两人争抢发出两份；成功后不销毁地面实体、不同步库存与鱼获列表；
 --   7. 鱼种表没收敛：极品鱼仍能被钓到或留在鱼种表里。
 local lu = require('luaunit')
-require('tests.fish_lift_test')
+require('tests.gameplay.fish_lift_test')
 
 TestFishLoot = {}
 
@@ -61,7 +61,7 @@ function TestFishLoot:setUp()
     self.loot.Broadcast = function() env.broadcasts = env.broadcasts + 1 end
     self.loot.Reply = function(_, player, payload) env.replies[#env.replies + 1] = { player = player, payload = payload } end
     self.loot.Listen = function() end
-    -- 固定点位鱼饵（#45）另有 tests/bait_spot_test.lua，这里不生成，免得混进鱼获断言
+    -- 固定点位鱼饵（#45）另有 tests/gameplay/bait_spot_test.lua，这里不生成，免得混进鱼获断言
     if not self.keepSpots then self.loot.StartSpots = function() end end
     self.loot:Start()
 end

@@ -1,5 +1,5 @@
 -- 纯模块单测：回同步计划（回灌哪些文件、行尾归一、data/ 的 stale 集合）。
--- 不碰文件系统、不起子进程；真实文件系统行为由 tests/sync_transport_test.lua
+-- 不碰文件系统、不起子进程；真实文件系统行为由 tests/tooling/slow/sync_transport_test.lua
 -- 从 CLI 那一侧覆盖。
 local lu = require("luaunit")
 local plan = require("tools.sync_plan")

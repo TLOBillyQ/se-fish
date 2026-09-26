@@ -43,7 +43,7 @@ Mgr.Carriers = {}
 -- 死亡订阅者：fn(carrier) → 是否已处理（M2 在这里生成鱼获，I-13）
 Mgr.Subscribers = {}
 
--- ===== 纯函数：配置解析（单测覆盖 tests/fish_carrier_test.lua）=====
+-- ===== 纯函数：配置解析（单测覆盖 tests/gameplay/fish_carrier_test.lua）=====
 
 local function isPositiveNumber(v)
 	if type(v) ~= "number" then

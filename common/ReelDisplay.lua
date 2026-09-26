@@ -1,4 +1,4 @@
--- 收线进度的本地显示（#38）：纯函数，时间由调用方注入（World:GetServerTime()），单测见 tests/reel_display_test.lua。
+-- 收线进度的本地显示（#38）：纯函数，时间由调用方注入（World:GetServerTime()），单测见 tests/gameplay/reel_display_test.lua。
 -- 点击先在本地 +ClickGain；每次收到权威进度，把「权威值 + 还没被服务端算进去的点击」当目标：
 -- 与当前显示差距 ≤ Tolerance 不调整，超过就在 ChaseSec 内从当前显示线性追到目标，不瞬跳、不回跳。
 -- 两次报告之间显示值与服务端一样按 DecayPerSec 衰减；最终上岸或脱钩只看服务端结果。

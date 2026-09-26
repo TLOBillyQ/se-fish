@@ -1,4 +1,4 @@
--- #42 放下逃脱与在逃数量上限（沿用 tests/fish_lift_test.lua 的假引擎）。
+-- #42 放下逃脱与在逃数量上限（沿用 tests/gameplay/fish_lift_test.lua 的假引擎）。
 -- 失败方式（先列后写）：
 --   1. 放下调用 Throw，或不离开挂点 / 不回世界 / 不切 Kinematic / 起步没有速度；
 --   2. 主动放下、OnLiftedEnd、死亡重复触发时释放多次或重排逃跑；
@@ -8,7 +8,7 @@
 --   6. 每玩家在逃超过 1 条、全局超过在线人数 × 2，或清的不是最旧的（每人 1 条已保证优先清触发者自己的）；
 --   7. 死亡不放鱼、不断线；别人能放下我的鱼。
 local lu = require('luaunit')
-require('tests.fish_lift_test')
+require('tests.gameplay.fish_lift_test')
 
 TestFishEscape = {}
 for _, name in ipairs({ 'setUp', 'tearDown', 'newPlayer', 'land', 'mounts' }) do

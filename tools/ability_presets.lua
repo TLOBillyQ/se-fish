@@ -68,7 +68,7 @@
 --
 -- 纯函数部分（parse_gamecfg / plan / json_string / argv_quote / extract_new_id /
 -- replace_key / parse_probe / plan_name_fixes / extract_unit_ids / parse_unit_get /
--- roots_of / lua_quote / sync_script）单独导出，由 tests/ability_presets_test.lua
+-- roots_of / lua_quote / sync_script）单独导出，由 tests/tooling/ability_presets_test.lua
 -- 脱离编辑器测；真编辑器行为只能人工验（编辑器开着本图、编辑态）。
 
 package.path = "./?.lua;./?/init.lua;" .. package.path

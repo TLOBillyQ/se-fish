@@ -380,7 +380,7 @@ GameCfg.Ability = {
 
 -- 水判定（M0-V1）：每个钓鱼区一条。Center 只用到 x/z（y 留作场景溯源），HalfXZ 是水平半宽（米），
 -- SurfaceY 是水面高度（米）；判定语义与配置校验见 common/MathWaterJudge.lua，
--- 边界用例见 tests/water_judge_test.lua，取值溯源见 issue #25 的 M0 模块线台账（评论 9862）。
+-- 边界用例见 tests/gameplay/water_judge_test.lua，取值溯源见 issue #25 的 M0 模块线台账（评论 9862）。
 -- 2026-09-24 在 #12 的场景基础上水平扩建两倍，中心与高度不变；编辑器回读：
 --   WaterCircle1  Position(-11.75, 1.05, 27.75) Size(6, 1, 6) Scale(2, 1, 2)
 --   WaterCircle2  Position(-11.75, 1.05, 27.75) Size(12, 1, 12) Scale(4, 1, 4)
@@ -436,7 +436,7 @@ GameCfg.ReelIn = {
 -- Models = 官方鱼模型库 20 条（模型号 7000544–7000563 ↔ 官方预设 9000092–9000121），
 --   Mesh 是建议直接写进 RenderMeshId 的值，Preset 只作溯源与编辑器侧对照。
 -- 鱼种用哪个模型见 GameCfg.Fish 的 Model（#37 起旧 FishMap 已退役）。
--- 谁消费：M2「打鱼变现」按上面的写法建鱼；改本表时 tests/water_judge_test.lua 的
+-- 谁消费：M2「打鱼变现」按上面的写法建鱼；改本表时 tests/gameplay/water_judge_test.lua 的
 -- TestFishCarrierConfig 会先红（它钉住写法与 20 条的号段）。
 GameCfg.FishCarrier = {
     Models = {

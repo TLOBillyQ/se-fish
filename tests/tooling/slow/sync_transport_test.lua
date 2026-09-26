@@ -53,7 +53,7 @@ local function lua_bin()
 end
 
 -- 真 CLI 子进程：cd 进假仓库再跑 sync，拿回 stdout+stderr 与退出码。
--- 重定向前缀的写法与 tests/deploy_transport_test.lua 相同（cmd 引号解析规则 2）。
+-- 重定向前缀遵循 tools/win_shell.lua 的 cmd 引号解析规则 2。
 local function run_sync(args, cwd)
   local parts = {
     "cd .",
