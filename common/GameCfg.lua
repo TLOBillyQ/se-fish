@@ -201,8 +201,8 @@ GameCfg.BaitSpots = {
     Spots = {
         { Id = 'worm-1', ItemId = 'worm', Count = 1, Position = { x = -1.75, y = 4, z = 27.75 } },
         { Id = 'worm-2', ItemId = 'worm', Count = 1, Position = { x = -11.75, y = 4, z = 37.75 } },
-        { Id = 'worm-3', ItemId = 'worm', Count = 1, Position = { x = -21.75, y = 4, z = 27.75 } },
-        { Id = 'worm-4', ItemId = 'worm', Count = 1, Position = { x = -11.75, y = 4, z = 17.75 } },
+        { Id = 'worm-3', ItemId = 'worm', Count = 1, Position = { x = -2.75, y = 6, z = 27.75 } },  -- 原 (-21.75) y=2.0 在水下；改到海岛山体3 x∈[-2.75,-0.75] y=5.0（#94 射线取证待补）
+        { Id = 'worm-4', ItemId = 'worm', Count = 1, Position = { x = -2.75, y = 6, z = 17.75 } },  -- 原 (-11.75) y=2.0 在水下；改到山体同 x 柱 z=17.75（#94 射线取证待补）
         { Id = 'worm-5', ItemId = 'worm', Count = 1, Position = { x = -4.75, y = 4, z = 34.75 } },
     },
 }
