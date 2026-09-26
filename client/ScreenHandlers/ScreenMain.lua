@@ -39,6 +39,13 @@ function ScreenHandler:Show(state)
     self.BtnDuck.ButtonNormalColor = state.selectedBait == duckId
         and Color.New(36, 130, 94, 255) or Color.New(54, 100, 140, 255)
     self.BtnDuck.TouchEnabled = duckCount > 0
+    -- 香肠（#90）：虾池鱼饵，与蚯蚓同走 Bait 计数库存
+    local sausageId = GameCfg.Items.Id.Sausage
+    local sausageCount = state.bait and state.bait[sausageId] or 0
+    self.BtnSausageLabel.Text = '香肠 ×' .. tostring(sausageCount)
+    self.BtnSausage.ButtonNormalColor = state.selectedBait == sausageId
+        and Color.New(36, 130, 94, 255) or Color.New(54, 100, 140, 255)
+    self.BtnSausage.TouchEnabled = sausageCount > 0
     -- 吃（#53）：选中格是能吃的鱼获时吃它，否则吃蚯蚓
     local food = self:SelectedFood()
     self.BtnEat.TouchEnabled = food ~= nil or count > 0
@@ -433,6 +440,7 @@ function ScreenHandler:Cleanup()
     self.BtnEat = nil
     self.BtnDiscard = nil
     self.BtnDuck = nil
+    self.BtnSausage = nil
     self.BtnItemAction = nil
     self.BtnReelClose = nil
     self.BtnReelCloseLabel = nil
@@ -441,6 +449,7 @@ function ScreenHandler:Cleanup()
     self.BtnEatLabel = nil
     self.BtnDiscardLabel = nil
     self.BtnDuckLabel = nil
+    self.BtnSausageLabel = nil
     self.BtnItemActionLabel = nil
     self.HookHint = nil
     self.QuestLabel = nil
@@ -520,9 +529,11 @@ function ScreenHandler:Init()
     self.BtnDiscard = button(root, 'ItemDiscard', firstX + 650, 540, 170)
     -- 首领饵挂饵键（#88）：蚯蚓键正上方，数量为零时不可点
     self.BtnDuck = button(root, 'BaitDuck', firstX + 80, 650, 170)
+    -- 香肠挂饵键（#90）：鸭子键右侧，虾池鱼饵
+    self.BtnSausage = button(root, 'BaitSausage', firstX + 270, 650, 170)
     self.BtnItemAction = button(root, 'ItemAction2', resolution.x - 220, 690, 180)
     self.BtnReelClose = button(root, 'ReelClose', resolution.x - 220, 570, 180)
-    for _, node in ipairs({ self.BtnBait, self.BtnNone, self.BtnEat, self.BtnDiscard, self.BtnDuck, self.BtnItemAction, self.BtnReelClose }) do
+    for _, node in ipairs({ self.BtnBait, self.BtnNone, self.BtnEat, self.BtnDiscard, self.BtnDuck, self.BtnSausage, self.BtnItemAction, self.BtnReelClose }) do
         self.Buttons[#self.Buttons + 1] = node
     end
     local labels = {
@@ -532,6 +543,7 @@ function ScreenHandler:Init()
         { 'BtnEatLabel', self.BtnEat, '吃蚯蚓' },
         { 'BtnDiscardLabel', self.BtnDiscard, '丢弃选中物' },
         { 'BtnDuckLabel', self.BtnDuck, '鸭子' },
+        { 'BtnSausageLabel', self.BtnSausage, '香肠' },
         { 'BtnItemActionLabel', self.BtnItemAction, '抛竿' },
     }
     for _, entry in ipairs(labels) do
@@ -602,6 +614,7 @@ function ScreenHandler:Init()
     end)
     self:Listen(self.BtnBait.OnClicked, function() self:Action('SelectBait', GameCfg.Items.Id.Worm) end)
     self:Listen(self.BtnDuck.OnClicked, function() self:Action('SelectBait', GameCfg.Items.Id.Duck) end)
+    self:Listen(self.BtnSausage.OnClicked, function() self:Action('SelectBait', GameCfg.Items.Id.Sausage) end)
     self:Listen(self.BtnNone.OnClicked, function() self:Action('SelectBait') end)
     self:Listen(self.BtnEat.OnClicked, function()
         local _, slot = self:SelectedFood()

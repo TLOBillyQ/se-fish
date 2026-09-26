@@ -141,9 +141,11 @@ end
 
 function TestWaterJudgeConfig:test_center_and_surface_come_from_measured_values()
   for _, zone in ipairs(zones()) do
-    lu.assertEquals(zone.Center.x, CENTER_X)
-    lu.assertEquals(zone.Center.z, CENTER_Z)
-    lu.assertEquals(zone.SurfaceY, SURFACE_Y)
+    if zone.Id == "WaterCircle1" or zone.Id == "WaterCircle2" then
+      lu.assertEquals(zone.Center.x, CENTER_X)
+      lu.assertEquals(zone.Center.z, CENTER_Z)
+      lu.assertEquals(zone.SurfaceY, SURFACE_Y)
+    end
   end
 end
 

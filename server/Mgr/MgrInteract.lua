@@ -49,15 +49,19 @@ local function feedable(data, point)
     end
 end
 
--- 角色是否在交互点 point（带 AnchorName / Radius / Slack）的水平范围内；在就返回锚点单位。
--- 商店（#48）复用同一套复验
+-- 角色是否在交互点 point 的水平范围内（只看 x/z）；在就返回命中的锚点单位。
+-- point 带 AnchorName（单锚点，商店/摆渡复用同一套复验）或 AnchorNames（多锚点，#90 钓鱼佬一区 + 虾池）
 function Mgr:InRange(player, point)
     local character = player and player.Character
     local pos = character and character.Position
-    local anchor = pos and self:FindAnchor(point.AnchorName)
-    local center = anchor and anchor.Position
-    if not center or flatDistance(pos, center) > point.Radius + point.Slack then return nil end
-    return anchor
+    if not pos then return nil end
+    local names = point.AnchorNames or { point.AnchorName }
+    for _, name in ipairs(names) do
+        local anchor = self:FindAnchor(name)
+        local center = anchor and anchor.Position
+        if center and flatDistance(pos, center) <= point.Radius + point.Slack then return anchor end
+    end
+    return nil
 end
 
 function Mgr:PlayEat(anchor, point)

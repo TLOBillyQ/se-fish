@@ -1,0 +1,1 @@
+[02:21:57.082] [info/server] "[MgrLoot] 拾取"	"aU5A95JB9rit0DUl"	"riverShrimp"	1.14	"loot=6"

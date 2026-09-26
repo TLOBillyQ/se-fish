@@ -1,8 +1,11 @@
--- 钓场商店界面（#48）：复用场景里既有的 ScreenShop 节点，旧等级节点已在编辑器侧改造成两行商品
+-- 钓场商店界面（#48；#90 多摊位）：复用场景里既有的 ScreenShop 节点，旧等级节点已在编辑器侧改造成两行商品
 -- （ShopItemIcon/Name<i>、BtnShopBuy<i> 内的 LabelShopPrice<i>），外加 LabelCurCoin 与 BtnShopClose。
--- 商品行按 GameCfg.Shop.Goods 的顺序填名称、图标、价格；点购买只发 ShopAction{action='Buy', itemId, seq}，
+-- 商品按当前摊位等级（LocalShop.Stand.Level）从 GameCfg.Shop.Goods 过滤上架；编辑器侧只有两行商品节点，
+-- 虾池摊（2 级）上架 4 件，超出两行的用代码建的文本按钮补位（叠在扩容按钮上方，占位样式）。
+-- 商品行按 Goods 顺序填名称、图标、价格；点购买只发 ShopAction{action='Buy', itemId, seq}，
 -- 结果以服务端 ShopResult 为准（提示由 client/LocalShop.lua 统一处理）。
 local GameCfg = require('common.GameCfg')
+local LocalShop = require('client.LocalShop')
 
 local RowCount = 2
 
@@ -47,9 +50,11 @@ end
 
 function ScreenHandler:ShowGoods()
     local shop = GameCfg.Shop
+    -- 站在哪个摊位旁开的商店就用哪个摊位的等级；兜底取第一个摊位（等级最低）
+    local level = (LocalShop.Stand and LocalShop.Stand.Level) or shop.Stands[1].Level
     self.Goods = {}
     for _, goods in ipairs(shop.Goods) do
-        if goods.MinShopLevel <= shop.Level then self.Goods[#self.Goods + 1] = goods end
+        if goods.MinShopLevel <= level then self.Goods[#self.Goods + 1] = goods end
     end
     for index = 1, RowCount do
         local goods = self.Goods[index]
@@ -65,6 +70,15 @@ function ScreenHandler:ShowGoods()
             if nodes['LabelShopPrice' .. index] then nodes['LabelShopPrice' .. index].Text = tostring(goods.Price) end
         end
     end
+    -- 超出编辑器两行的商品走运行时补位行（Init 里按 Goods 表长度建满，这里只按上架结果显隐）
+    for index, btn in pairs(self.ExtraButtons or {}) do
+        local goods = self.Goods[index]
+        local definition = goods and GameCfg.Items.Definitions[goods.ItemId]
+        btn.Visible = definition ~= nil
+        if definition then
+            btn.ButtonText = definition.Name .. '  ' .. tostring(goods.Price) .. ' 金币'
+        end
+    end
 end
 
 function ScreenHandler:Init()
@@ -72,6 +86,8 @@ function ScreenHandler:Init()
     for _, connection in ipairs(self.Connections or {}) do connection:Disconnect() end
     if self.UpgradeButton then self.UpgradeButton:Destroy() end
     if self.UpgradeLabel then self.UpgradeLabel:Destroy() end
+    for _, btn in pairs(self.ExtraButtons or {}) do btn:Destroy() end
+    self.ExtraButtons = {}
     self.UpgradeButton = nil
     self.UpgradeLabel = nil
     self.Connections = {}
@@ -104,6 +120,18 @@ function ScreenHandler:Init()
     })
     self.UpgradeLabel.TouchEnabled = false
     self.UpgradeLabel.SwallowTouchEnabled = false
+    -- 运行时商品补位行（#90）：编辑器侧只有两行商品节点，Goods 表更长时按行建文本按钮，
+    -- 叠在扩容按钮上方；显隐与文案由 ShowGoods 按当前摊位上架结果刷
+    for index = RowCount + 1, #GameCfg.Shop.Goods do
+        local btn = world:CreateUnit('EUIButton', {
+            Parent = root, Name = 'BtnShopBuyExtra' .. index,
+            Position = Vector2.New(x, y - 100 * (index - RowCount)), Size = Vector2.New(590, 85),
+        })
+        btn.TouchEnabled = true
+        btn.Visible = false
+        self.ExtraButtons[index] = btn
+        listen(btn.OnClicked, function() self:Buy(index) end)
+    end
     self:ShowUpgrade()
     listen(_G.REUtil:GetRE('ItemBarState').OnClientEvent, function(state)
         self:ShowUpgrade(state)

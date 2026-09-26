@@ -1,0 +1,1 @@
+[02:21:32.433] [info/server] "[MgrLoot] 生成鱼获"	"riverShrimp"	1.14	"loot=6"

@@ -55,8 +55,8 @@ end
 function TestShop:test_prices_come_from_shop_table()
     local prices = {}
     for _, goods in ipairs(self.cfg.Shop.Goods) do prices[goods.ItemId] = goods.Price end
-    -- #84 七级鱼竿统一进商店表；钓虾竿起的六级竿要求商店等级 ≥ 竿级，第一区买不到
-    lu.assertEquals(prices, { starterRod = 5, worm = 1, shrimpRod = 12, crabRod = 24, normalRod = 50,
+    -- #84 七级鱼竿统一进商店表；钓虾竿起的六级竿要求商店等级 ≥ 竿级；#90 香肠 2 金 2 级起售
+    lu.assertEquals(prices, { starterRod = 5, worm = 1, sausage = 2, shrimpRod = 12, crabRod = 24, normalRod = 50,
         proRod = 100, airforceRod = 200, unscientificRod = 500 })
 end
 
@@ -74,9 +74,9 @@ function TestShop:test_rod_table_unified_seven_levels()
         lu.assertEquals(goods.Price, prices[level], id)
         lu.assertEquals(goods.MinShopLevel, level, id) -- 第 N 钓鱼区起售竿级 N（GameSpec §4.5）
     end
-    -- 当前商店等级 1：只有新手鱼竿可购（钓虾竿上架随 #90 虾池商店）
-    lu.assertNotNil(self.shop:FindGoods('starterRod'))
-    for level = 2, 7 do lu.assertNil(self.shop:FindGoods(rods[level]), rods[level]) end
+    -- 一区摊等级 1：只有新手鱼竿可购（虾池摊等级 2 的购买路径见 shrimp_pond_test）
+    lu.assertNotNil(self.shop:FindGoods('starterRod', 1))
+    for level = 2, 7 do lu.assertNil(self.shop:FindGoods(rods[level], 1), rods[level]) end
 end
 
 function TestShop:test_buy_rod_and_worm_into_their_containers()
@@ -130,8 +130,8 @@ function TestShop:test_whitelist_level_and_client_price_are_ignored()
     -- 客户端带的价格不采用
     lu.assertTrue(self:buy('starterRod', { price = 0 }))
     lu.assertEquals(self.data.Data.FishCoin, 0)
-    -- 商店等级不够的商品不上架
-    self.cfg.Shop = setmetatable({ Level = 1, Goods = {
+    -- 摊位等级不够的商品不上架
+    self.cfg.Shop = setmetatable({ Stands = { { AnchorName = 'TGUnitShop', Level = 1 } }, Goods = {
         { ItemId = 'worm', Price = 1, Page = '钓具', MinShopLevel = 2, PurchaseLimit = 0 },
     } }, { __index = self.savedShop })
     self.data:AddCoin(1, nil, 'test')

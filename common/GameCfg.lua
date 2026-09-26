@@ -26,7 +26,7 @@ GameCfg.Items = {
     -- 六次各 +5 从 5 只能到 35；#85 同时要求终值 40，最后一级补至 40。
     MaxBackpackSlots = 40,
     UpgradePrices = { 100, 200, 400, 800, 1600, 3200 },
-    Id = { Tilapia = 'tilapia', Carp = 'carp', KnifeFish = 'knifeFish', Bass = 'bass', Catfish = 'catfish', Goldfish = 'goldfish', Worm = 'worm', StarterRod = 'starterRod',
+    Id = { Tilapia = 'tilapia', Carp = 'carp', KnifeFish = 'knifeFish', Bass = 'bass', Catfish = 'catfish', Goldfish = 'goldfish', Worm = 'worm', Sausage = 'sausage', StarterRod = 'starterRod',
         Shrimp = 'shrimp', RiverShrimp = 'riverShrimp', Crayfish = 'crayfish', BostonLobster = 'bostonLobster', AussieLobster = 'aussieLobster', MilkLobster = 'milkLobster',
         RareShrimp = 'rareShrimp', RareRiverShrimp = 'rareRiverShrimp', RareCrayfish = 'rareCrayfish',
         RareBostonLobster = 'rareBostonLobster', RareAussieLobster = 'rareAussieLobster', RareMilkLobster = 'rareMilkLobster',
@@ -48,6 +48,8 @@ GameCfg.Items = {
         catfish = { Name = '鲶鱼', EatPercent = 25, Icon = 'official://image/11164' },
         goldfish = { Name = '金鱼', EatPercent = 30, Icon = 'official://image/11164' },
         worm = { Name = '蚯蚓', EatPercent = 5, Icon = 'official://image/14066', Container = 'bait', BasePrice = 1 },
+        -- 香肠（#90，虾池鱼饵）：进 Bait 计数不占格，虾池商店 2 金上架
+        sausage = { Name = '香肠', Icon = 'official://image/14066', Container = 'bait', BasePrice = 2 }, -- [未查证：图标占位，待 #55 校准]
         starterRod = { Name = '新手鱼竿', Icon = 'official://image/12024', Level = 1, BasePrice = 3 },
         -- 虾池鱼获（#84，GameSpec §5.2 / 物品表 17-28；售价在 GameCfg.Fish 对应鱼种行）
         shrimp = { Name = '虾米', EatPercent = 15, Icon = 'official://image/11164' },
@@ -277,15 +279,17 @@ GameCfg.HookAlert = {
     Volume = 100,
 }
 
--- 交互点（#44，#27 规格）：场景既有触发器单位登记为可交互目标，当前只有钓鱼佬（TGUnitFish，
--- 退役入口 LocalFishEnter 用它做靠近判定）。Radius 米内（只看 x/z：触发器中心在高处）显示「对话」「喂食」，
+-- 交互点（#44，#27 规格）：场景既有触发器单位登记为可交互目标，当前只有钓鱼佬（一区 TGUnitFish、
+-- 虾池 TGUnitFishShrimp，#90 多锚点；退役入口 LocalFishEnter 用 TGUnitFish 做靠近判定）。Radius 米内（只看 x/z：触发器中心在高处）显示「对话」「喂食」，
 -- 服务端复验多给 Slack 米容差。喂食即出售：鱼获 floor(BasePrice × mult)，鱼饵每只 BaitPrice 金币。
 -- 钓鱼佬的可见模型是官方「咸鱼」（official://preset/102179，场景单位名见 ModelName）；
 -- 模型无 Eat 动画（EatAnimation 留空，服务端播动画自动跳过），喂食吃动作为客户端缩放脉冲
 -- （LocalInteract 播，仅喂食者本机可见）。文字泡相对触发器中心（y=-1）抬高 9.5 米，露出高岸地面（y≈8.03）。
 GameCfg.Interact = {
     Fisherman = {
-        AnchorName = 'TGUnitFish',
+        -- 多锚点（#90）：第一钓鱼区 TGUnitFish + 虾池 TGUnitFishShrimp，范围内任一即命中；
+        -- 配置、台词、回收价全共享（虾池钓鱼佬同样什么都吃、信物兑换一样走 Exchange）
+        AnchorNames = { 'TGUnitFish', 'TGUnitFishShrimp' },
         ModelName = 'FishermanModel',
         Radius = 5,
         Slack = 0.5,
@@ -300,25 +304,27 @@ GameCfg.Interact = {
 
 -- 钓场商店（#48，#28 规格）：价格真源是 design 商店表（渔力全开--商店表.xlsx）的「商店售价」列，
 -- Goods 每行照抄表列：物品、商店售价 Price、所属分页 Page、最低商店等级 MinShopLevel、每人购买次数上限 PurchaseLimit。
--- MVP 白名单上架「钓具」分页的新手鱼竿（表编号 14）与蚯蚓（表编号 13）；
+-- MVP 白名单上架「钓具」分页的新手鱼竿（表编号 14）与蚯蚓（表编号 13）；#90 虾池起售香肠（2 金）。
 -- M1（#84）鱼竿表按七级统一：竿级 = 商店表七支竿的顺序，第 N 钓鱼区起售竿级 N 的竿（MinShopLevel = 竿级）。
--- 商店等级 Level 取当前钓鱼区序号（第一区 = 1，规格推断，替换点在此一处），
--- 所以 Level=1 时只有新手鱼竿可购，其余六级是落盘配置——钓虾竿上架随 #90 虾池商店生效。
--- 表里其余钓具（假饵等）、「武器」「升级」分页均未实现，不进白名单；
--- PurchaseLimit 都是 0（不限），MVP 只读不实现。入口复用场景触发器 TGUnitShop 与旧入口用过的文字泡预设；
+-- 摊位 Stands（#90）：每个钓鱼区一个摊位，Level = 钓鱼区序号；商品按 MinShopLevel <= 摊位 Level 上架，
+-- 所以虾池摊（2 级）比一区摊（1 级）多香肠与钓虾竿。玩家站在哪个摊位旁就按哪个摊位的等级结算，
+-- 范围复验用共享的 Radius / Slack。入口复用场景触发器与旧入口用过的文字泡预设；
 -- Radius 米内（只看 x/z）显示提示，出了 Radius 自动关商店，服务端复验多给 Slack 米
 -- [未查证] Radius 与触发器实际尺寸是否一致、文字泡高度，待 #55 实测
 GameCfg.Shop = {
-    AnchorName = 'TGUnitShop',
+    Stands = {
+        { AnchorName = 'TGUnitShop', Level = 1 },
+        { AnchorName = 'TGUnitShopShrimp', Level = 2 },
+    },
     BubblePreset = 'map://preset/uf5ad80a4c6a40d59b7f6e0eb99a58c0',
     BubbleHeight = 7,
     HintText = '看看有什么可买的',
     Radius = 5,
     Slack = 0.5,
-    Level = 1,
     Goods = {
         { ItemId = 'starterRod', Price = 5, Page = '钓具', MinShopLevel = 1, PurchaseLimit = 0 },
         { ItemId = 'worm', Price = 1, Page = '钓具', MinShopLevel = 1, PurchaseLimit = 0 },
+        { ItemId = 'sausage', Price = 2, Page = '钓具', MinShopLevel = 2, PurchaseLimit = 0 },
         { ItemId = 'shrimpRod', Price = 12, Page = '钓具', MinShopLevel = 2, PurchaseLimit = 0 },
         { ItemId = 'crabRod', Price = 24, Page = '钓具', MinShopLevel = 3, PurchaseLimit = 0 },
         { ItemId = 'normalRod', Price = 50, Page = '钓具', MinShopLevel = 4, PurchaseLimit = 0 },
@@ -379,6 +385,22 @@ GameCfg.Casting = {
             { Id = 'catfish', Bait = 'worm', RodLevel = 1, DrawWeight = 24 },
             { Id = 'goldfish', Bait = 'worm', RodLevel = 1, DrawWeight = 16 },
             { Id = 'eel', Bait = 'worm', RodLevel = 1, DrawWeight = 10 },
+        },
+        -- 虾池（#90，钓鱼表第二区）：虾米任意饵保底；沼虾/小龙虾起用香肠；波龙及以上竿级 2。
+        -- 极品权重另列（普通 8/8/8/32/24/16，极品 2/2/2/8/6/4）
+        ShrimpPool = {
+            { Id = 'shrimp', Bait = 0, RodLevel = 1, DrawWeight = 8 },
+            { Id = 'riverShrimp', Bait = 'sausage', RodLevel = 1, DrawWeight = 8 },
+            { Id = 'crayfish', Bait = 'sausage', RodLevel = 1, DrawWeight = 8 },
+            { Id = 'bostonLobster', Bait = 'sausage', RodLevel = 2, DrawWeight = 32 },
+            { Id = 'aussieLobster', Bait = 'sausage', RodLevel = 2, DrawWeight = 24 },
+            { Id = 'milkLobster', Bait = 'sausage', RodLevel = 2, DrawWeight = 16 },
+            { Id = 'rareShrimp', Bait = 0, RodLevel = 1, DrawWeight = 2 },
+            { Id = 'rareRiverShrimp', Bait = 'sausage', RodLevel = 1, DrawWeight = 2 },
+            { Id = 'rareCrayfish', Bait = 'sausage', RodLevel = 1, DrawWeight = 2 },
+            { Id = 'rareBostonLobster', Bait = 'sausage', RodLevel = 2, DrawWeight = 8 },
+            { Id = 'rareAussieLobster', Bait = 'sausage', RodLevel = 2, DrawWeight = 6 },
+            { Id = 'rareMilkLobster', Bait = 'sausage', RodLevel = 2, DrawWeight = 4 },
         },
     },
     -- 首领饵（#88，GameSpec §12 已确认）：首领饵物品 id → 必出首领鱼种。挂首领饵在任意水区抛竿
@@ -477,6 +499,10 @@ GameCfg.Water = {
     Zones = {
         { Id = "WaterCircle2", Center = { x = -11.75, y = 1.05, z = 27.75 }, HalfXZ = 6.0, SurfaceY = 2.183 },
         { Id = "WaterCircle1", Center = { x = -11.75, y = 1.05, z = 27.75 }, HalfXZ = 3.0, SurfaceY = 2.183 },
+        -- 虾池水面（#90）：第二钓鱼区占位平台（星光地板，已扩到 x 90..110 / z 91..109，顶面 y=5.0）
+        -- 东北角水区，抛竿落点命中后按 Casting.Zones.ShrimpPool 选鱼。SurfaceY 取水面单位
+        -- （深水预设，pos.y=4.2，顶面约 5.2~5.35 批次漂移；取高点再加鱼获落地余量，与既有水区同口径）
+        { Id = "ShrimpPool", Center = { x = 105, y = 4.2, z = 106 }, HalfXZ = 3.0, SurfaceY = 5.6 },
     },
 }
 
