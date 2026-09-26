@@ -80,6 +80,7 @@ function Mgr:OnPlayerAdded(player)
     end)
     DataMap[player.UserId] = data
     data:Init()
+    if self.Save then self.Save:LoadInto(player, data) end
     CharacterLinks[player.UserId] = {
         Added = player.CharacterAdded:Connect(function(character)
             if self:GetDataInst(player) then self:RefreshHeldRod(player, character) end
@@ -102,6 +103,7 @@ function Mgr:OnPlayerRemoving(player)
         end
         self:ClearHeldRod(player)
         DataMap[player.UserId] = nil
+        if self.Save then self.Save:SaveLeaving(player, data) end
         data:Destroy()
     end
 end

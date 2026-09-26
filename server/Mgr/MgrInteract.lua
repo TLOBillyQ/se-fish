@@ -98,6 +98,8 @@ function Mgr:Exchange(player, data, anchor, point, exchange)
         return false
     end
     print('[MgrInteract] 信物兑换', player.UserId, exchange.tokenId, '->', exchange.product)
+    -- 关键状态转换立即 UpdateAsync 记账（#92）：断线重连不双份发奖
+    if self.Save then self.Save:Commit(player.UserId, data:Serialize(), 'exchange:' .. exchange.tokenId) end
     self.PlayerData:SendItemBar(player)
     self:Reply(player, { ok = true, action = 'Feed',
         exchange = { from = exchange.tokenId, to = exchange.product } })

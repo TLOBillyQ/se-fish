@@ -55,6 +55,8 @@ function Mgr:Board(player, data)
     self.DepartAt = self.World:GetServerTime() + point.CountdownSec
     self.Payer = player.UserId
     print('[MgrFerry] 收船票开船倒计时', player.UserId, point.CountdownSec .. 's')
+    -- 船票消耗立即 UpdateAsync 记账（#92）：断线重连不双份扣票/退票
+    if self.Save then self.Save:Commit(player.UserId, data:Serialize(), 'ferry:ticket') end
     self.PlayerData:SendItemBar(player)
     self:Broadcast({ phase = 'countdown', seconds = point.CountdownSec })
     self:Reply(player, { ok = true, action = 'Board', seconds = point.CountdownSec })

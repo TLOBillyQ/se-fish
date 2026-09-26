@@ -213,6 +213,17 @@ GameCfg.Loot = {
     FlashBeforeRecycleSec = 30,
 }
 
+-- 存档（#92）：DataStore 集合名与键前缀、限流重试策略。写失败只记日志不动内存态（内存比存档新），
+-- 读写失败按 RetryDelaySec 退避重试 MaxRetries 次；AutosaveSec 周期自动存档，兑换/收船票即时记账，
+-- 同一人写入合并排队只留最新快照（技术难点 §5）；体积与写频台账在 MgrSave.Ledger（验收③）。
+GameCfg.Save = {
+    Store = 'sefish_save_v1',
+    KeyPrefix = 'u',
+    MaxRetries = 3,
+    RetryDelaySec = 1,
+    AutosaveSec = 60,
+}
+
 -- 固定点位鱼饵（#45，#27 规格）：每个点位同时最多一份，复用鱼获的 2 米拾取与服务端复验，
 -- 拾取成功后 RespawnSec 秒在原位刷新；鱼饵进 Bait 计数库存，不占道具栏格。鱼获不刷新、不消失。
 -- Spots 的 Position 只用 x/z，y 由向下探地决定（Position.y 是探地起点参考）。

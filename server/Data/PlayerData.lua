@@ -41,6 +41,96 @@ function PlayerData:Init()
     self:Sync()
 end
 
+-- 存档序列化（#92）：最小集——金币、道具栏/背包物品（含格子位置与个体倍率）、鱼饵计数、
+-- 升级等级、当前区域；v 版本号预留扩展（图鉴/强化/药水随各自系统进存档）。
+-- 键名缩写为体积考量：bar/bp=道具栏/背包格位表（i=格号 id=物品 n=件数 m=倍率）、up=升级等级。
+function PlayerData:Serialize()
+    if not self.Inited then return nil end
+    local function pack(containerId)
+        local out = {}
+        for index, entry in pairs(self.Data.Containers[containerId]) do
+            if entry and entry.count > 0 then
+                out[#out + 1] = { i = index, id = entry.itemId, n = entry.count, m = entry.mult }
+            end
+        end
+        table.sort(out, function(a, b) return a.i < b.i end)
+        return out
+    end
+    local bait = {}
+    for itemId, count in pairs(self.Data.Bait) do bait[itemId] = count end
+    return {
+        v = 1,
+        coin = self.Data.FishCoin,
+        bar = pack(GameCfg.Items.ContainerId.ItemBar),
+        bp = pack(GameCfg.Items.ContainerId.Backpack),
+        bait = bait,
+        up = self.Data.UpgradeLevel,
+        zone = self.Data.Zone,
+    }
+end
+
+-- 读档灌入（#92）：逐项校验——未知物品/坏计数/越界格位丢弃并记日志，金币负数钳 0、
+-- 升级等级钳到升满，区域只收非空字符串；任一字段脏不影响其余字段恢复。
+function PlayerData:ApplySave(snapshot)
+    if not self.Inited or type(snapshot) ~= 'table' then return false end
+    local function positiveInt(n)
+        return type(n) == 'number' and n >= 1 and n == math.floor(n)
+    end
+    local defs = GameCfg.Items.Definitions
+    local userId = self.Player and self.Player.UserId
+    if snapshot.v ~= 1 then
+        print('[PlayerData] 存档版本未知，按 v1 尽力恢复', userId, tostring(snapshot.v))
+    end
+    local coin = snapshot.coin
+    if type(coin) == 'number' then
+        self.Data.FishCoin = math.max(0, math.floor(coin))
+    end
+    local up = snapshot.up
+    if type(up) == 'number' and up == math.floor(up) then
+        self.Data.UpgradeLevel = math.min(math.max(0, up), #GameCfg.Items.UpgradePrices)
+    end
+    if type(snapshot.zone) == 'string' and snapshot.zone ~= '' then
+        self.Data.Zone = snapshot.zone
+    end
+    local bait = {}
+    if type(snapshot.bait) == 'table' then
+        for itemId, count in pairs(snapshot.bait) do
+            local def = defs[itemId]
+            if def and def.Container == GameCfg.Items.ContainerId.Bait and positiveInt(count) then
+                bait[itemId] = count
+            else
+                print('[PlayerData] 存档鱼饵无效，丢弃', userId, itemId, count)
+            end
+        end
+    end
+    self.Data.Bait = bait
+    local function unpack(packed, containerId, capacity)
+        local items = {}
+        if type(packed) ~= 'table' then return items end
+        for _, slot in ipairs(packed) do
+            local index = type(slot) == 'table' and slot.i or nil
+            local itemId = type(slot) == 'table' and slot.id or nil
+            local count = type(slot) == 'table' and slot.n or nil
+            if type(index) == 'number' and index == math.floor(index) and index >= 1 and index <= capacity
+                and defs[itemId] and positiveInt(count) then
+                items[index] = { itemId = itemId, count = count, containerId = containerId,
+                    mult = type(slot.m) == 'number' and slot.m or nil }
+            else
+                print('[PlayerData] 存档格位无效，丢弃', userId, tostring(index), tostring(itemId))
+            end
+        end
+        return items
+    end
+    self.Data.Containers[GameCfg.Items.ContainerId.ItemBar] =
+        unpack(snapshot.bar, GameCfg.Items.ContainerId.ItemBar, self:ItemBarCapacity())
+    self.Data.Containers[GameCfg.Items.ContainerId.Backpack] =
+        unpack(snapshot.bp, GameCfg.Items.ContainerId.Backpack, self:BackpackCapacity())
+    self.Data.SelectedSlot = nil
+    self.Data.SelectedBait = nil
+    self:Sync()
+    return true
+end
+
 function PlayerData:ItemBarCapacity()
     return GameCfg.Items.InitialItemBarSlots + self.Data.UpgradeLevel
 end
@@ -113,6 +203,7 @@ end
 -- 写入当前区域（#89 摆渡，#92 存档读取）；只接受非空字符串
 function PlayerData:SetZone(zone)
     if not self.Inited or type(zone) ~= 'string' or zone == '' then return false end
+    self.Touched = true
     self.Data.Zone = zone
     return true
 end
@@ -362,6 +453,7 @@ function PlayerData:DiscardSlot(index)
         or index < 1 or index > self:ItemBarCapacity() then return false end
     local items = self.Data.Containers[GameCfg.Items.ContainerId.ItemBar]
     if not items[index] then return false end
+    self.Touched = true
     items[index] = nil
     if self.Data.SelectedSlot == index then self.Data.SelectedSlot = nil end
     return true
@@ -375,6 +467,7 @@ end
 
 function PlayerData:UpdateData(updateCallBack, doSync)
     if not self.Inited or not updateCallBack then return end
+    self.Touched = true -- 进图后已有操作（#92 读档竞态会话锁：MgrSave 据此跳过旧档覆盖）
     updateCallBack(self.Data)
     local selected = self.Data.SelectedSlot
     local entry = selected and self.Data.Containers[GameCfg.Items.ContainerId.ItemBar][selected]
