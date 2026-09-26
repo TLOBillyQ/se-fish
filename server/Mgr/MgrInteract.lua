@@ -60,6 +60,8 @@ function Mgr:InRange(player, point)
 end
 
 function Mgr:PlayEat(anchor, point)
+    -- 模型无动画时 EatAnimation 留空，直接跳过（吃动作改由客户端缩放脉冲表现）
+    if not point.EatAnimation then return end
     -- 引擎单位读不存在的成员可能直接报错，所以连读取也包进 pcall
     local okRead, play = pcall(function() return anchor.PlayAnimation end)
     if not okRead or not play then
