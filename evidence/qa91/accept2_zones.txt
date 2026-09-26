@@ -1,0 +1,1 @@
+[02:53:58.322] [info/server] "P91S1"	"ShrimpPool=4 WaterCircle2=200"	"recycling=0"	"poolIds=7,8,9"

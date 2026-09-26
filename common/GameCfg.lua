@@ -207,6 +207,10 @@ GameCfg.Loot = {
     Height = 0.2,
     BubbleHeight = 1.2,
     DropSpacing = 1, -- 多份部位鱼获横向间距，避免模型与拾取泡完全重叠
+    -- 分区上限回收（#91，GameSpec §6.5）：每个钓鱼区场上鱼获总量上限，超限最旧的先闪烁
+    -- FlashBeforeRecycleSec 秒再销毁；待回收期间仍可拾取，拾取即取消回收。上限进配置供压测校准。
+    PerZoneCap = 200,
+    FlashBeforeRecycleSec = 30,
 }
 
 -- 固定点位鱼饵（#45，#27 规格）：每个点位同时最多一份，复用鱼获的 2 米拾取与服务端复验，
