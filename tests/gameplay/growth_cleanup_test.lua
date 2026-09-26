@@ -1,6 +1,6 @@
 -- #49 退役旧成长系统并收口获取路径。
 -- 失败方式（先列后写）：
---   1. 调试开关关闭（默认）时进图仍白送鱼竿 / 蚯蚓，与拾饵、喂食、购买并存成两套正式获取路径；
+--   1. 调试开关关闭时进图仍白送鱼竿 / 蚯蚓，与拾饵、喂食、购买并存成两套正式获取路径；
 --   2. 白送配置仍挂在物品表下、与 GM 不是同一个开关；开关打开后白送不生效或发错容器；
 --   3. 清理时把合法的鱼竿等级筛选一起删了：要求等级高于鱼竿的鱼也能钓上，或等级够的鱼钓不上。
 local lu = require('luaunit')
@@ -23,10 +23,10 @@ function TestGrowthCleanup:init()
     return data
 end
 
-function TestGrowthCleanup:test_no_free_grant_by_default()
+function TestGrowthCleanup:test_no_free_grant_when_debug_is_disabled()
     local fresh = assert(loadfile('common/GameCfg.lua'))()
-    lu.assertFalse(fresh.Debug.Enabled)
     lu.assertNil(fresh.Items.InitialGrants)
+    fresh.Debug.Enabled = false
     self.cfg.Debug = fresh.Debug
     local data = self:init()
     lu.assertEquals(data:GetItemBarSnapshot().slots, {})

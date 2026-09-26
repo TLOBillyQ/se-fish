@@ -2,7 +2,7 @@
 -- 失败方式（先列后写）：
 --   1. 扣币能把余额扣成负数、余额不足时部分扣除，或加 / 扣非正整数也生效；
 --   2. 扣币失败时仍执行了附带的发货 / 扣物品回调（钱没扣货发了）；
---   3. GM 在调试开关关闭时仍能发放（默认必须关闭）；
+--   3. GM 在调试开关关闭时仍能发放；
 --   4. GM 目标解析错：默认不是自己、指定的 UserId 不存在时落到别人或自己身上；
 --   5. GM 发的鱼竿进了鱼饵库存、蚯蚓占了道具栏格；未知物品 / 非法数量也能发；道具栏空格不够时发了一半；
 --   6. GM 扣币不走同一入口（能扣成负数）；发放后不推送库存；
@@ -75,9 +75,7 @@ function TestGMCoin:test_failed_spend_does_not_run_its_callback()
     lu.assertTrue(ran)
 end
 
-function TestGMCoin:test_gm_is_off_by_default()
-    local fresh = assert(loadfile('common/GameCfg.lua'))()
-    lu.assertFalse(fresh.Debug.Enabled)
+function TestGMCoin:test_gm_rejects_when_debug_is_disabled()
     self.cfg.Debug = { Enabled = false }
     lu.assertFalse(self.gm:Handle(self.me, { action = 'Coin', amount = 10 }))
     lu.assertFalse(self.gm:Handle(self.me, { action = 'Item', itemId = 'starterRod', count = 1 }))

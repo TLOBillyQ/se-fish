@@ -5,6 +5,10 @@ local REUtil = require('common.REUtil')
 
 local Panel = { Connections = {}, Nodes = {} }
 
+-- 官方正方形纯色块（120×120），配合 Color 叠色成任意底色；不设 Image 时 EUIImage/EUIButton
+-- 会渲染默认椭圆贴图，被深色染色后成为遮挡面板的黑色异形块（本面板曾因此不可读）。
+local ColorBlockImage = 'official://image/11017'
+
 local Groups = {
     { title = '金币', actions = {
         { label = '+100 金币', payload = { action = 'Coin', amount = 100 } },
@@ -37,10 +41,14 @@ local function label(self, parent, name, text, x, y, width, height, fontSize)
     return node
 end
 
-local function button(self, parent, name, text, x, y, width, height, callback)
+local function button(self, parent, name, text, x, y, width, height, fontSize, callback)
     local node = create(self, 'EUIButton', parent, name, x, y, width, height, {
-        ButtonText = text, ButtonTextFontSize = 23,
-        ButtonNormalColor = Color.New(42, 89, 126, 255),
+        ButtonText = text, ButtonTextFontSize = fontSize,
+        -- 显式正方形纯色块，避免默认椭圆贴图；暖橙色系，与 Gameplay 蓝系区分，明示"这是开发工具"
+        NormalImage = ColorBlockImage,
+        PressImage = ColorBlockImage,
+        DisableImage = ColorBlockImage,
+        ButtonNormalColor = Color.New(175, 80, 18, 255),
         ButtonTextColor = Color.New(255, 255, 255, 255),
     })
     node.TouchEnabled = true
@@ -86,46 +94,50 @@ function Panel:Start()
 end
 
 function Panel:Build(root, resolution, player)
-    local width = 420
-    local right = math.max(width / 2 + 16, resolution.x - 560)
+    local width = 560
+    -- 右对齐：面板中心距右边缘 16px，最小不小于半宽+16
+    local right = math.max(width / 2 + 16, resolution.x - width / 2 - 16)
     local top = resolution.y - 105
-    local height = 194
+    -- 底高 = 标题 56 + 金币状态 48 + 反馈 56 + 区间留白；每组再加 分组标题 62 + 行数 × 96
+    local height = 240
     for _, group in ipairs(Groups) do
-        height = height + 53 + math.ceil(#group.actions / 2) * 78
+        height = height + 62 + math.ceil(#group.actions / 2) * 96
     end
-    self.Entry = button(self, root, 'GM入口', 'GM', right, top, 170, 64,
+    self.Entry = button(self, root, 'GM入口', 'GM', right, top, 220, 84, 32,
         function() self:Toggle() end)
-    self.Background = create(self, 'EUIImage', root, 'GM面板', right, top - height / 2 - 75, width, height, {
-        Color = Color.New(20, 34, 49, 235),
+    self.Background = create(self, 'EUIImage', root, 'GM面板', right, top - height / 2 - 82, width, height, {
+        Image = ColorBlockImage,
+        -- 深色半透明底，白字可读；纯色块叠色，不用默认椭圆图避免黑色异形遮挡
+        Color = Color.New(49, 20, 16, 240),
     })
     local panel = self.Background
     local center = 0
-    local topRow = height / 2 - 44
-    label(self, panel, 'GM标题', '调试操作', center, topRow, width - 24, 45, 29)
-    self.CoinLabel = label(self, panel, 'GM金币状态', '当前金币：等待同步', center, topRow - 49,
-        width - 24, 40, 24)
-    local y = topRow - 94
+    local topRow = height / 2 - 52
+    label(self, panel, 'GM标题', '调试操作', center, topRow, width - 24, 56, 44)
+    self.CoinLabel = label(self, panel, 'GM金币状态', '当前金币：等待同步', center, topRow - 62,
+        width - 24, 48, 36)
+    local y = topRow - 118
     for _, group in ipairs(Groups) do
-        label(self, panel, 'GM分组_' .. group.title, group.title, center, y, width - 24, 34, 24)
-        y = y - 53
+        label(self, panel, 'GM分组_' .. group.title, group.title, center, y, width - 24, 44, 34)
+        y = y - 62
         for index, action in ipairs(group.actions) do
             local item = action
             local column = (index - 1) % 2
-            local x = center + (column - 0.5) * 196
-            local rowY = y - math.floor((index - 1) / 2) * 78
-            button(self, panel, 'GM操作_' .. group.title .. index, item.label, x, rowY, 182, 55, function()
+            local x = center + (column - 0.5) * 266
+            local rowY = y - math.floor((index - 1) / 2) * 96
+            button(self, panel, 'GM操作_' .. group.title .. index, item.label, x, rowY, 250, 76, 32, function()
                 REUtil:GetRE('GMAction'):FireServer({ action = item.payload.action, amount = item.payload.amount })
                 self.Feedback.Text = '等待服务端确认…'
                 print('[GMPanel] 请求', item.payload.action, item.payload.amount)
             end)
         end
-        y = y - math.ceil(#group.actions / 2) * 78
+        y = y - math.ceil(#group.actions / 2) * 96
     end
-    self.Feedback = label(self, panel, 'GM反馈', '等待操作', center, y, width - 24, 50, 22)
-    panel.Image = 'official://image/10000'
-    panel.Color = Color.New(20, 34, 49, 235)
+    self.Feedback = label(self, panel, 'GM反馈', '等待操作', center, y, width - 24, 56, 30)
     self.Background.TouchEnabled = false
     self.Background.SwallowTouchEnabled = false
+    -- 默认收起，避免遮挡游戏画面；IsOpen 在 Build 里显式初始化
+    self.IsOpen = false
     self.Background.Visible = false
     self:ShowCoin()
     listen(self, player:GetAttributeChangedSignal('FishCoin'), function() self:ShowCoin() end)

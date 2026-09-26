@@ -103,11 +103,11 @@ GameCfg.Vitals = {
     FlashThickness = 40,
 }
 
--- 调试开关（#47 / #49，#28 规格）：唯一的调试入口，默认关闭。开启后服务端接受 GM 发放
+-- 调试开关（#47 / #49，#28 规格）：开发阶段默认开启，发布或开放地图前关闭。开启后服务端接受 GM 发放
 -- （server/Mgr/MgrGM.lua，客户端控制台 _G.GM.Coin / _G.GM.Item / _G.GM.SetHealth / _G.GM.SetHunger），进图时按 InitialGrants 白送（M1 的进图白送降级至此）。
 -- 关闭时正式获取路径只有拾饵、喂食换金币与商店购买。
 GameCfg.Debug = {
-    Enabled = false,
+    Enabled = true,
     InitialGrants = {
         { itemId = GameCfg.Items.Id.StarterRod, count = 1, containerId = GameCfg.Items.ContainerId.ItemBar },
         { itemId = GameCfg.Items.Id.Worm, count = 10, containerId = GameCfg.Items.ContainerId.Bait },
