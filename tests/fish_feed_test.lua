@@ -76,6 +76,7 @@ end
 
 function TestFishFeed:test_feed_selected_fish_takes_that_slot_and_pays_once()
     self:give('carp', 1.1)
+    lu.assertTrue(self.data:DiscardSlot(1))
     local slot = self:give('bass', 1.99)
     lu.assertTrue(self.data:SelectSlot(slot))
     lu.assertTrue(self:feed())

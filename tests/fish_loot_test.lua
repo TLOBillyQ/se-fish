@@ -190,12 +190,16 @@ end
 
 function TestFishLoot:test_each_loot_takes_own_slot_and_full_bar_refuses_with_notice()
     local data = self.data[self.player.UserId]
-    local mults = { 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7 }
+    local mults = { 1.1, 1.2, 1.3, 1.4, 1.5, 1.6 }
     for _, mult in ipairs(mults) do lu.assertTrue(data:AddItem('carp', mult)) end
     local slots = self:bar(self.player)
-    for index = 2, 8 do
+    for index = 2, 2 do
         lu.assertEquals(slots[index].count, 1)
         lu.assertEquals(slots[index].mult, mults[index - 1])
+    end
+    local backpack = data:GetItemBarSnapshot().backpack
+    for index = 1, 5 do
+        lu.assertEquals(backpack[index].mult, mults[index + 1])
     end
     local fish = self:land(self.player, 'bass', 1.3)
     self:kill(fish)
@@ -255,7 +259,7 @@ function TestFishLoot:test_fish_table_matches_m1_spec()
     lu.assertEquals(defs.eelHead.Name, '电鳗头')     -- 精英信物
     lu.assertEquals(defs.garHead.Name, '鳄雀鳝鱼头') -- 首领信物
     lu.assertEquals(defs.duck.Name, '鸭子')
-    lu.assertEquals(defs.duck.Container, 'bait')
+    lu.assertNil(defs.duck.Container) -- #85：首领饵占道具栏或背包格
     lu.assertEquals(defs.shrimpTicket.Name, '虾池船票')
     lu.assertNil(defs.shrimpTicket.EatPercent) -- 过关道具不能吃
     -- 抽签表不变：电鳗/鳄雀鳝的入表与虾池水区随 #86/#88/#90 落地

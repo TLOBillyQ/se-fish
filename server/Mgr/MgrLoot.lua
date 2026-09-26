@@ -100,7 +100,7 @@ function Mgr:Pickup(player, id)
     if not data:AddItem(loot.FishId, loot.Mult) then
         self.Loots[id] = loot
         self:Reply(player, { ok = false, reason = 'full', id = id })
-        print('[MgrLoot] 道具栏已满，拒绝拾取', player.UserId, 'loot=' .. tostring(id))
+        print('[MgrLoot] 背包已满，拒绝拾取', player.UserId, 'loot=' .. tostring(id))
         return false
     end
     pcall(function() loot.Unit:Destroy() end)

@@ -7,6 +7,25 @@ local GameCfg = require('common.GameCfg')
 local RowCount = 2
 
 local ScreenHandler = { UINodes = { 'BtnShopClose', 'LabelCurCoin' }, UINodeMap = {}, Seq = 0 }
+
+function ScreenHandler:Upgrade()
+    if not self.IsOpen then return end
+    self.Seq = self.Seq + 1
+    _G.REUtil:GetRE('ShopAction'):FireServer({ action = 'UpgradeStorage', seq = self.Seq })
+end
+
+function ScreenHandler:ShowUpgrade(state)
+    if not self.UpgradeButton then return end
+    local level = state and state.upgradeLevel or self.UpgradeLevel or 0
+    self.UpgradeLevel = level
+    local price = GameCfg.Items.UpgradePrices[level + 1]
+    local gain = level + 1 == #GameCfg.Items.UpgradePrices
+        and GameCfg.Items.MaxBackpackSlots - GameCfg.Items.InitialBackpackSlots
+            - level * GameCfg.Items.BackpackSlotsPerUpgrade
+        or GameCfg.Items.BackpackSlotsPerUpgrade
+    self.UpgradeLabel.Text = price and ('扩容 ' .. tostring(price) .. ' 金币（道具栏 +1 / 背包 +' .. tostring(gain) .. '）') or '已升至上限'
+    self.UpgradeButton.TouchEnabled = price ~= nil
+end
 for index = 1, RowCount do
     for _, prefix in ipairs({ 'ShopItemIcon', 'ShopItemName', 'BtnShopBuy', 'LabelShopPrice' }) do
         ScreenHandler.UINodes[#ScreenHandler.UINodes + 1] = prefix .. index
@@ -51,6 +70,10 @@ end
 function ScreenHandler:Init()
     if self.Inited and self.BoundRootNode == self.RootNode then return end
     for _, connection in ipairs(self.Connections or {}) do connection:Disconnect() end
+    if self.UpgradeButton then self.UpgradeButton:Destroy() end
+    if self.UpgradeLabel then self.UpgradeLabel:Destroy() end
+    self.UpgradeButton = nil
+    self.UpgradeLabel = nil
     self.Connections = {}
     local function listen(signal, callback)
         if signal then self.Connections[#self.Connections + 1] = signal:Connect(callback) end
@@ -64,7 +87,28 @@ function ScreenHandler:Init()
     end
     local close = self.UINodeMap.BtnShopClose
     if close then listen(close.OnClicked, function() _G.MgrGameUI:CloseScreen('ScreenShop') end) end
-    listen(_G.REUtil:GetRE('ItemBarState').OnClientEvent, function() if self.IsOpen then self:ShowCoin() end end)
+    local root = self.RootNode
+    local world = game:GetService('World')
+    local resolution = _G.GameUI:GetEuiManager():GetDeviceResolution()
+    local x, y = resolution.x / 2, resolution.y / 2 - 110
+    self.UpgradeButton = world:CreateUnit('EUIButton', {
+        Parent = root, Name = 'BtnStorageUpgrade',
+        Position = Vector2.New(x, y), Size = Vector2.New(590, 85),
+    })
+    self.UpgradeButton.TouchEnabled = true
+    listen(self.UpgradeButton.OnClicked, function() self:Upgrade() end)
+    self.UpgradeLabel = world:CreateUnit('EUITextLabel', {
+        Parent = root, Name = 'LabelStorageUpgrade',
+        Position = Vector2.New(x, y), Size = Vector2.New(590, 85),
+        Text = '', FontSize = 26, TextColor = Color.New(255, 255, 255, 255),
+    })
+    self.UpgradeLabel.TouchEnabled = false
+    self.UpgradeLabel.SwallowTouchEnabled = false
+    self:ShowUpgrade()
+    listen(_G.REUtil:GetRE('ItemBarState').OnClientEvent, function(state)
+        self:ShowUpgrade(state)
+        if self.IsOpen then self:ShowCoin() end
+    end)
     self:ShowGoods()
     self.BoundRootNode = self.RootNode
     self.Inited = true

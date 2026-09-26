@@ -109,7 +109,11 @@ end
 local function validActionValue(action, value, data)
     if action == 'SelectSlot' or action == 'DiscardSlot' then
         return type(value) == 'number' and value == math.floor(value)
-            and value >= 1 and value <= GameCfg.Items.ItemBarSlots
+            and value >= 1 and value <= data:ItemBarCapacity()
+    end
+    if action == 'MoveToItemBar' then
+        return type(value) == 'number' and value == math.floor(value)
+            and value >= 1 and value <= data:BackpackCapacity()
     end
     if action == 'SelectBait' and value == nil then return true end
     return type(value) == 'string' and data.Data.Bait[value] ~= nil
@@ -136,6 +140,7 @@ function Mgr:Start()
         SelectBait = 'SelectBait',
         EatBait = 'EatBait',
         DiscardSlot = 'DiscardSlot',
+        MoveToItemBar = 'MoveToItemBar',
     }
     _G.REUtil:GetRE('ItemBarAction').OnServerEvent:Connect(function(player, payload)
         local data = self:GetDataInst(player)

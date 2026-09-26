@@ -81,7 +81,7 @@ function LocalLoot:Start()
     REUtil:GetRE('LootState').OnClientEvent:Connect(function(list) self:Show(list) end)
     REUtil:GetRE('LootResult').OnClientEvent:Connect(function(result)
         if type(result) == 'table' and result.reason == 'full' and _G.LocalMsgNotice then
-            _G.LocalMsgNotice('道具栏已满，无法拾取')
+            _G.LocalMsgNotice('背包已满')
         end
     end)
     game:GetService('RunService').Heartbeat:Connect(function() self:Update() end)

@@ -8,8 +8,14 @@ local GameCfg = {}
 -- BasePrice = 物品表「基础出售价格（喂钓鱼佬）」：鱼获的 BasePrice 在 GameCfg.Fish 里（随个体倍率派生），
 -- 这里只给不挂在鱼种表上的物品（掉落部位、鱼饵、鱼竿、船票）；信物喂食走兑换不走金币（#87 落地）。
 GameCfg.Items = {
-    ContainerId = { ItemBar = 'itemBar', Bait = 'bait' },
+    ContainerId = { ItemBar = 'itemBar', Backpack = 'backpack', Bait = 'bait' },
     ItemBarSlots = 8,
+    InitialItemBarSlots = 2,
+    InitialBackpackSlots = 5,
+    BackpackSlotsPerUpgrade = 5,
+    -- 六次各 +5 从 5 只能到 35；#85 同时要求终值 40，最后一级补至 40。
+    MaxBackpackSlots = 40,
+    UpgradePrices = { 100, 200, 400, 800, 1600, 3200 },
     Id = { Tilapia = 'tilapia', Carp = 'carp', KnifeFish = 'knifeFish', Bass = 'bass', Catfish = 'catfish', Goldfish = 'goldfish', Worm = 'worm', StarterRod = 'starterRod',
         Shrimp = 'shrimp', RiverShrimp = 'riverShrimp', Crayfish = 'crayfish', BostonLobster = 'bostonLobster', AussieLobster = 'aussieLobster', MilkLobster = 'milkLobster',
         RareShrimp = 'rareShrimp', RareRiverShrimp = 'rareRiverShrimp', RareCrayfish = 'rareCrayfish',
@@ -52,8 +58,8 @@ GameCfg.Items = {
         eelHead = { Name = '电鳗头', EatPercent = 50, Icon = 'official://image/11164', BasePrice = 10 },
         garMeat = { Name = '鳄雀鳝鱼肉', EatPercent = 100, Icon = 'official://image/13008', BasePrice = 15 },
         garHead = { Name = '鳄雀鳝鱼头', EatPercent = 100, Icon = 'official://image/11164', BasePrice = 20 },
-        -- 首领饵「鸭子」（物品表 120）：只能由精英信物换得，挂它在任意水域抛竿必出鳄雀鳝（#88 落地）
-        duck = { Name = '鸭子', EatPercent = 10, Icon = 'official://image/11154', Container = 'bait', BasePrice = 10 },
+        -- 首领饵「鸭子」（物品表 120）：按 #85 占道具栏/背包格；挂饵与首领抽签随 #88 落地
+        duck = { Name = '鸭子', EatPercent = 10, Icon = 'official://image/11154', BasePrice = 10 },
         -- 船票（过关道具，不能吃）：交给摆渡 NPC 去虾池（#89 落地）；物品表原名「虾池车票」，
         -- 按 CONTEXT.md 术语定名「虾池船票」，后续钓鱼区各有一张
         shrimpTicket = { Name = '虾池船票', Icon = 'official://image/14105', BasePrice = 1 },

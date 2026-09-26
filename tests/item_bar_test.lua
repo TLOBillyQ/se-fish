@@ -42,9 +42,11 @@ function TestItemBar:test_injected_item_bar_notification_without_global_manager(
     lu.assertTrue(ok, tostring(err))
 end
 
-function TestItemBar:test_initial_snapshot_has_eight_slots_and_separate_bait()
+function TestItemBar:test_initial_snapshot_has_two_slots_and_separate_bait()
     local state = self.data:GetItemBarSnapshot()
-    lu.assertEquals(state.slotCount, 8)
+    lu.assertEquals(state.slotCount, 2)
+    lu.assertEquals(state.backpackCount, 5)
+    lu.assertEquals(state.upgradeLevel, 0)
     lu.assertEquals(state.slots[1].itemId, 'starterRod')
     lu.assertNil(state.slots[2])
     lu.assertEquals(state.bait.worm, 10)
@@ -57,9 +59,9 @@ function TestItemBar:test_slot_selection_and_empty_or_same_slot_cancels()
     lu.assertTrue(self.data:SelectSlot(1))
     lu.assertNil(self.data:GetItemBarSnapshot().selectedSlot)
     lu.assertTrue(self.data:SelectSlot(1))
-    lu.assertTrue(self.data:SelectSlot(8))
+    lu.assertTrue(self.data:SelectSlot(2))
     lu.assertNil(self.data:GetItemBarSnapshot().selectedSlot)
-    lu.assertFalse(self.data:SelectSlot(9))
+    lu.assertFalse(self.data:SelectSlot(3))
     lu.assertFalse(self.data:SelectSlot(1.5))
 end
 
@@ -159,4 +161,65 @@ function TestItemBar:test_depletion_and_discard_clear_selection()
     lu.assertNil(self.data:GetItemBarSnapshot().selectedBait)
     lu.assertFalse(self.data:EatBait('worm'))
     lu.assertTrue(self.data:SelectBait(nil))
+end
+
+function TestItemBar:test_backpack_requires_transfer_before_use()
+    lu.assertTrue(self.data:AddItem('carp', 1.2))
+    lu.assertTrue(self.data:AddItem('bass', 1.5))
+    local snapshot = self.data:GetItemBarSnapshot()
+    lu.assertEquals(snapshot.backpack[1].itemId, 'bass')
+    lu.assertEquals(snapshot.backpack[1].mult, 1.5)
+    lu.assertFalse(self.data:SelectSlot(3))
+    lu.assertNil(self.data:EatSlot(1))
+    lu.assertFalse(self.data:MoveToItemBar(1))
+    lu.assertTrue(self.data:DiscardSlot(2))
+    lu.assertFalse(self.data:MoveToItemBar(6))
+    lu.assertTrue(self.data:MoveToItemBar(1))
+    snapshot = self.data:GetItemBarSnapshot()
+    lu.assertNil(snapshot.backpack[1])
+    lu.assertEquals(snapshot.slots[2].mult, 1.5)
+    lu.assertEquals(snapshot.slots[2].containerId, GameCfg.Items.ContainerId.ItemBar)
+    lu.assertTrue(self.data:SelectSlot(2))
+    lu.assertEquals(self.data:EatSlot(2), 'bass')
+end
+
+function TestItemBar:test_upgrade_prices_capacity_and_full_grant()
+    lu.assertTrue(self.data:AddCoin(6300, nil, 'test'))
+    for level, price in ipairs(GameCfg.Items.UpgradePrices) do
+        local ok, paid = self.data:UpgradeStorage()
+        lu.assertTrue(ok)
+        lu.assertEquals(paid, price)
+        local snapshot = self.data:GetItemBarSnapshot()
+        lu.assertEquals(snapshot.slotCount, 2 + level)
+        lu.assertEquals(snapshot.backpackCount, level == 6 and 40 or 5 + 5 * level)
+    end
+    lu.assertEquals(self.data.Data.FishCoin, 0)
+    lu.assertFalse(self.data:UpgradeStorage())
+    for _ = 1, 47 do lu.assertTrue(self.data:AddItem('carp', 1)) end
+    lu.assertFalse(self.data:AddItem('carp', 1))
+    lu.assertFalse(self.data:CanGrant('carp', 1))
+end
+
+function TestItemBar:test_chief_bait_occupies_storage_and_debug_grants_overflow_to_backpack()
+    local cfg = GameCfg.Debug
+    GameCfg.Debug = { Enabled = true, InitialGrants = {
+        { itemId = 'starterRod', count = 1, containerId = GameCfg.Items.ContainerId.ItemBar },
+        { itemId = 'carp', count = 1, containerId = GameCfg.Items.ContainerId.ItemBar },
+        { itemId = 'bass', count = 1, containerId = GameCfg.Items.ContainerId.ItemBar },
+    } }
+    local other = PlayerData.New(player())
+    other:Init()
+    GameCfg.Debug = cfg
+    lu.assertEquals(other:GetItemBarSnapshot().backpack[1].itemId, 'bass')
+    lu.assertTrue(other:AddItem('duck'))
+    lu.assertEquals(other:GetItemBarSnapshot().backpack[2].itemId, 'duck')
+    lu.assertNil(other:GetItemBarSnapshot().bait.duck)
+end
+
+function TestItemBar:test_failed_upgrade_does_not_change_capacity_or_coin()
+    local ok, reason = self.data:UpgradeStorage()
+    lu.assertFalse(ok)
+    lu.assertEquals(reason, 'coin')
+    lu.assertEquals(self.data:GetItemBarSnapshot().slotCount, 2)
+    lu.assertEquals(self.data.Data.FishCoin, 0)
 end

@@ -64,7 +64,7 @@ function TestItemBarFlow:test_client_commands_are_authoritative_and_state_replie
     lu.assertEquals(self.player.lastState.bait.worm, 10)
     action:Fire(self.player, { action = 'EatBait', value = 'worm' })
     lu.assertEquals(self.player.lastState.bait.worm, 9)
-    action:Fire(self.player, { action = 'SelectSlot', value = 8 })
+    action:Fire(self.player, { action = 'SelectSlot', value = 2 })
     lu.assertNil(self.player.lastState.selectedSlot)
     self.events.RequestItemBar.OnServerEvent:Fire(self.player)
     lu.assertEquals(self.player.lastState.selectedBait, 'worm')

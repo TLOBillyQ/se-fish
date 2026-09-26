@@ -93,13 +93,14 @@ end
 
 function TestBaitSpot:test_pickup_goes_to_bait_count_not_item_bar_even_when_full()
     local data = self.data[self.player.UserId]
-    for i = 1, 7 do lu.assertTrue(data:AddItem('carp', 1 + i / 10)) end
+    for i = 1, 6 do lu.assertTrue(data:AddItem('carp', 1 + i / 10)) end
     local before = self:worms(self.player)
     local b = self:spot('b')
     self.player.Character.Position = vec3(b.Position.x + 1.5, b.Position.y, b.Position.z)
     lu.assertTrue(self.loot:Pickup(self.player, b.Id))
     lu.assertEquals(self:worms(self.player), before + 2)
-    lu.assertEquals(self:bar(self.player)[8].itemId, 'carp')
+    lu.assertEquals(self:bar(self.player)[2].itemId, 'carp')
+    lu.assertEquals(data:GetItemBarSnapshot().backpack[5].itemId, 'carp')
     lu.assertEquals(self.synced, { self.player })
     lu.assertEquals(self:spotCount('b'), 0)
     lu.assertEquals(#self:baitUnits(), 1)

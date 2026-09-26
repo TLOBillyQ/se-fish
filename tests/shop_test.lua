@@ -153,7 +153,35 @@ function TestShop:test_replay_settles_once_and_new_request_buys_again()
     for _, slot in pairs(self.data:GetItemBarSnapshot().slots) do
         if slot.itemId == 'starterRod' then rods = rods + 1 end
     end
+    for _, slot in pairs(self.data:GetItemBarSnapshot().backpack) do
+        if slot.itemId == 'starterRod' then rods = rods + 1 end
+    end
     lu.assertEquals(rods, 3)
+end
+
+function TestShop:test_upgrade_is_authoritative_and_replay_does_not_charge_again()
+    self.data:AddCoin(100, nil, 'test')
+    self.seq = self.seq + 1
+    local request = { action = 'UpgradeStorage', seq = self.seq, price = 0 }
+    lu.assertTrue(self.shop:Handle(self.me, request))
+    lu.assertEquals(self.data.Data.FishCoin, 0)
+    lu.assertEquals(self.data:GetItemBarSnapshot().slotCount, 3)
+    lu.assertEquals(self.data:GetItemBarSnapshot().backpackCount, 10)
+    lu.assertFalse(self.shop:Handle(self.me, request))
+    lu.assertEquals(self.data:GetItemBarSnapshot().slotCount, 3)
+    lu.assertEquals(self.data.Data.FishCoin, 0)
+end
+
+function TestShop:test_upgrade_rejects_insufficient_coin_and_range()
+    self.inRange = false
+    self.seq = self.seq + 1
+    lu.assertFalse(self.shop:Handle(self.me, { action = 'UpgradeStorage', seq = self.seq }))
+    lu.assertEquals(self:lastReason(), 'range')
+    self.inRange = true
+    self.seq = self.seq + 1
+    lu.assertFalse(self.shop:Handle(self.me, { action = 'UpgradeStorage', seq = self.seq }))
+    lu.assertEquals(self:lastReason(), 'coin')
+    lu.assertEquals(self.data:GetItemBarSnapshot().slotCount, 2)
 end
 
 function TestShop:test_malformed_requests_are_rejected()

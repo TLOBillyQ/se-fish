@@ -132,6 +132,24 @@ function TestItemBarUI:test_fixed_slots_bait_and_action_placement()
     lu.assertNil(self.commands[3].value)
 end
 
+function TestItemBarUI:test_backpack_transfer_controls_and_slot_visibility()
+    self.states:Fire({ slots = { [1] = { itemId = 'starterRod', count = 1 } }, slotCount = 2,
+        backpack = { [1] = { itemId = 'bass', count = 1 } }, backpackCount = 5, bait = {} })
+    lu.assertTrue(self.nodes.ItemBarSlot2.Visible)
+    lu.assertFalse(self.nodes.ItemBarSlot3.Visible)
+    self.nodes.BtnBackpack.OnClicked:Fire()
+    lu.assertTrue(self.nodes.BackpackSlot1.Visible)
+    lu.assertFalse(self.nodes.BackpackSlot6.Visible)
+    self.nodes.BackpackSlot1.OnClicked:Fire()
+    lu.assertTrue(self.nodes.BtnMoveToItemBar.TouchEnabled)
+    self.nodes.BtnMoveToItemBar.OnClicked:Fire()
+    lu.assertEquals(self.commands[#self.commands], { action = 'MoveToItemBar', value = 1 })
+    self.states:Fire({ slots = { [1] = { itemId = 'starterRod', count = 1 },
+        [2] = { itemId = 'carp', count = 1 } }, slotCount = 2,
+        backpack = { [1] = { itemId = 'bass', count = 1 } }, backpackCount = 5, bait = {} })
+    lu.assertFalse(self.nodes.BtnMoveToItemBar.TouchEnabled)
+end
+
 function TestItemBarUI:test_screen_main_is_opened_on_start()
     local clientFile = assert(io.open('client/main.lua', 'r'))
     local client = clientFile:read('*a')

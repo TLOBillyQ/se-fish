@@ -10,15 +10,18 @@ end
 function ScreenHandler:Show(state)
     if type(state) ~= 'table' or type(state.slots) ~= 'table' then return end
     self.Snapshot = state
+    local capacity = state.slotCount or GameCfg.Items.ItemBarSlots
     for index, slot in ipairs(self.Slots or {}) do
         local entry = state.slots[index]
         local definition = entry and GameCfg.Items.Definitions[entry.itemId]
-        slot.Icon.Visible = definition ~= nil
+        slot.Background.Visible = index <= capacity
+        slot.Background.TouchEnabled = index <= capacity
+        slot.Icon.Visible = index <= capacity and definition ~= nil
         if definition then slot.Icon.Image = definition.Icon end
         slot.Label.Text = definition and definition.Name or ''
-        slot.Label.Visible = definition ~= nil
+        slot.Label.Visible = index <= capacity and definition ~= nil
         slot.Count.Text = definition and tostring(entry.count) or ''
-        slot.Count.Visible = definition ~= nil
+        slot.Count.Visible = index <= capacity and definition ~= nil
         slot.Background.ButtonNormalColor = index == state.selectedSlot
             and Color.New(36, 130, 94, 255) or Color.New(54, 100, 140, 255)
     end
@@ -39,6 +42,7 @@ function ScreenHandler:Show(state)
     local selected = state.selectedSlot and state.slots[state.selectedSlot]
     self.BtnDiscard.Visible = selected ~= nil
     self.BtnDiscardLabel.Visible = selected ~= nil
+    self:ShowBackpack()
 end
 
 -- 上钩提示（#54）：同一收线会话只触发一次；提示音缺失或播放失败时只保留文字与高亮
@@ -297,6 +301,102 @@ function ScreenHandler:BuildVitals(root, resolution)
     end
 end
 
+function ScreenHandler:ShowBackpack()
+    if not self.BackpackButton or not self.Snapshot then return end
+    local state = self.Snapshot
+    if type(state.backpackCount) ~= 'number' then return end
+    self.BackpackLabel.Text = '背包 ' .. tostring(state.backpackCount) .. ' 格'
+    self.BackpackPanel.Visible = self.BackpackOpen == true
+    self.BackpackTitle.Visible = self.BackpackOpen == true
+    for index, slot in ipairs(self.Slots or {}) do
+        slot.Background.Visible = not self.BackpackOpen and index <= state.slotCount
+        slot.Background.TouchEnabled = slot.Background.Visible
+        slot.Icon.Visible = slot.Icon.Visible and not self.BackpackOpen
+        slot.Label.Visible = slot.Label.Visible and not self.BackpackOpen
+        slot.Count.Visible = slot.Count.Visible and not self.BackpackOpen
+    end
+    for index, slot in ipairs(self.BackpackSlots) do
+        local visible = self.BackpackOpen == true and index <= state.backpackCount
+        local entry = state.backpack and state.backpack[index]
+        local definition = entry and GameCfg.Items.Definitions[entry.itemId]
+        slot.Button.Visible = visible
+        slot.Button.TouchEnabled = visible and definition ~= nil
+        slot.Label.Visible = visible
+        slot.Label.Text = definition and definition.Name or '空'
+        slot.Button.ButtonNormalColor = index == self.SelectedBackpackSlot
+            and Color.New(36, 130, 94, 255) or Color.New(54, 100, 140, 255)
+    end
+    local entry = state.backpack and state.backpack[self.SelectedBackpackSlot]
+    self.MoveButton.Visible = self.BackpackOpen == true and entry ~= nil
+    self.MoveLabel.Visible = self.MoveButton.Visible
+    self.MoveButton.TouchEnabled = self.MoveButton.Visible
+    local free = false
+    for index = 1, state.slotCount do
+        if not state.slots[index] then free = true break end
+    end
+    if self.BackpackOpen and entry and not free then
+        self.MoveLabel.Text = '道具栏已满'
+        self.MoveButton.TouchEnabled = false
+    else
+        self.MoveLabel.Text = '转入道具栏'
+    end
+end
+
+function ScreenHandler:BuildBackpack(root, resolution)
+    local center = resolution.x / 2
+    local top = resolution.y - 100
+    self.BackpackOpen = false
+    self.BackpackSlots = {}
+    self.BackpackButton = button(root, 'BtnBackpack', center, top, 220)
+    self.BackpackLabel = overlay(root, 'LabelBackpack', center, top, 220, 70,
+        '背包', 26, Color.New(255, 255, 255, 255))
+    self.BackpackPanel = button(root, 'BackpackPanel', center, top - 360, 850)
+    self.BackpackPanel.Size = Vector2.New(850, 690)
+    self.BackpackPanel.TouchEnabled = false
+    self.BackpackTitle = overlay(root, 'BackpackTitle', center, top - 70, 700, 48,
+        '选择背包物品，再转入道具栏', 28, Color.New(255, 255, 255, 255))
+    for index = 1, GameCfg.Items.MaxBackpackSlots do
+        local col, row = (index - 1) % 8, math.floor((index - 1) / 8)
+        local x, y = center - 350 + col * 100, top - 160 - row * 100
+        local btn = button(root, 'BackpackSlot' .. index, x, y, 95)
+        btn.Size = Vector2.New(95, 90)
+        local label = overlay(root, 'BackpackLabel' .. index, x, y, 95, 80,
+            '', 19, Color.New(255, 255, 255, 255))
+        self.BackpackSlots[index] = { Button = btn, Label = label }
+        self.Buttons[#self.Buttons + 1] = btn
+        self.Overlays[#self.Overlays + 1] = label
+        self:Listen(btn.OnClicked, function()
+            self.SelectedBackpackSlot = index
+            self:ShowBackpack()
+        end)
+    end
+    self.MoveButton = button(root, 'BtnMoveToItemBar', center, top - 670, 330)
+    self.MoveLabel = overlay(root, 'LabelMoveToItemBar', center, top - 670, 330, 70,
+        '转入道具栏', 26, Color.New(255, 255, 255, 255))
+    self.Buttons[#self.Buttons + 1] = self.BackpackButton
+    self.Buttons[#self.Buttons + 1] = self.BackpackPanel
+    self.Buttons[#self.Buttons + 1] = self.MoveButton
+    self.Overlays[#self.Overlays + 1] = self.BackpackLabel
+    self.Overlays[#self.Overlays + 1] = self.BackpackTitle
+    self.Overlays[#self.Overlays + 1] = self.MoveLabel
+    self:Listen(self.BackpackButton.OnClicked, function()
+        self.BackpackOpen = not self.BackpackOpen
+        self.SelectedBackpackSlot = nil
+        if self.Snapshot then self:Show(self.Snapshot) end
+    end)
+    self:Listen(self.MoveButton.OnClicked, function()
+        if self.SelectedBackpackSlot then self:Action('MoveToItemBar', self.SelectedBackpackSlot) end
+    end)
+    self.BackpackPanel.Visible = false
+    self.BackpackTitle.Visible = false
+    self.MoveButton.Visible = false
+    self.MoveLabel.Visible = false
+    for _, slot in ipairs(self.BackpackSlots) do
+        slot.Button.Visible = false
+        slot.Label.Visible = false
+    end
+end
+
 function ScreenHandler:Listen(source, callback)
     self.Connections[#self.Connections + 1] = source:Connect(callback)
 end
@@ -310,6 +410,14 @@ function ScreenHandler:Cleanup()
     self.Connections = nil
     self.Overlays = nil
     self.Slots = nil
+    self.BackpackSlots = nil
+    self.BackpackButton = nil
+    self.BackpackPanel = nil
+    self.BackpackLabel = nil
+    self.BackpackTitle = nil
+    self.MoveButton = nil
+    self.MoveLabel = nil
+    self.SelectedBackpackSlot = nil
     self.Buttons = nil
     self.BtnBait = nil
     self.BtnNone = nil
@@ -364,6 +472,7 @@ function ScreenHandler:Init()
     if self.LabelCoin then self.LabelCoin.Visible = true else print('[ScreenMain] 找不到 LabelCoin 节点') end
     if imageCoin then imageCoin.Visible = true end
     self.Slots = {}
+    self.Buttons = {}
     self.Connections = {}
     self.Overlays = {}
     local count = GameCfg.Items.ItemBarSlots
@@ -393,13 +502,16 @@ function ScreenHandler:Init()
         self.Slots[index] = { Background = background, Icon = icon, Label = label, Count = amount }
         self:Listen(background.OnClicked, function() self:Action('SelectSlot', index) end)
     end
+    self:BuildBackpack(root, resolution)
     self.BtnBait = button(root, 'BaitWorm', firstX + 80, 540, 170)
     self.BtnNone = button(root, 'BaitNone', firstX + 270, 540, 170)
     self.BtnEat = button(root, 'BaitEat', firstX + 460, 540, 170)
     self.BtnDiscard = button(root, 'ItemDiscard', firstX + 650, 540, 170)
     self.BtnItemAction = button(root, 'ItemAction2', resolution.x - 220, 690, 180)
     self.BtnReelClose = button(root, 'ReelClose', resolution.x - 220, 570, 180)
-    self.Buttons = { self.BtnBait, self.BtnNone, self.BtnEat, self.BtnDiscard, self.BtnItemAction, self.BtnReelClose }
+    for _, node in ipairs({ self.BtnBait, self.BtnNone, self.BtnEat, self.BtnDiscard, self.BtnItemAction, self.BtnReelClose }) do
+        self.Buttons[#self.Buttons + 1] = node
+    end
     local labels = {
         { 'BtnReelCloseLabel', self.BtnReelClose, '结束收线' },
         { 'BtnBaitLabel', self.BtnBait, '蚯蚓' },

@@ -111,7 +111,7 @@ function TestGMCoin:test_gm_items_go_to_their_own_containers()
     lu.assertTrue(self.gm:Handle(self.me, { action = 'Item', itemId = 'starterRod', count = 2 }))
     local slots = self.myData:GetItemBarSnapshot().slots
     lu.assertEquals(slots[2].itemId, 'starterRod')
-    lu.assertEquals(slots[3].itemId, 'starterRod')
+    lu.assertEquals(self.myData:GetItemBarSnapshot().backpack[1].itemId, 'starterRod')
     lu.assertEquals(slots[2].count, 1)
     lu.assertEquals(self.myData.Data.Bait.starterRod, nil)
     for _, bad in ipairs({ { itemId = 'gold', count = 1 }, { itemId = 'worm', count = 0 },
@@ -122,12 +122,12 @@ function TestGMCoin:test_gm_items_go_to_their_own_containers()
 end
 
 function TestGMCoin:test_item_bar_grant_is_all_or_nothing()
-    for _ = 1, 5 do self.myData:AddItem('carp', 1) end -- 已占 6 格，剩 2 格
-    lu.assertFalse(self.gm:Handle(self.me, { action = 'Item', itemId = 'starterRod', count = 3 }))
+    for _ = 1, 5 do self.myData:AddItem('carp', 1) end -- 已占 6 格，剩 1 格
+    lu.assertFalse(self.gm:Handle(self.me, { action = 'Item', itemId = 'starterRod', count = 2 }))
     local used = 0
     for _ in pairs(self.myData:GetItemBarSnapshot().slots) do used = used + 1 end
-    lu.assertEquals(used, 6)
-    lu.assertTrue(self.gm:Handle(self.me, { action = 'Item', itemId = 'starterRod', count = 2 }))
+    lu.assertEquals(used, 2)
+    lu.assertTrue(self.gm:Handle(self.me, { action = 'Item', itemId = 'starterRod', count = 1 }))
 end
 
 function TestGMCoin:test_snapshot_carries_coin_for_hud()

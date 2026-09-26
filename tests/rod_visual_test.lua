@@ -84,7 +84,7 @@ end
 function TestRodVisual:test_empty_slot_discard_and_external_depletion_cleanup()
     self:select(1)
     local mount, model = self.created[1], self.created[2]
-    self:select(8)
+    self:select(2)
     lu.assertTrue(mount.Destroyed)
     lu.assertTrue(model.Destroyed)
     self:select(1)

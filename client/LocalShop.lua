@@ -12,7 +12,8 @@ local Players = game:GetService('Players')
 
 local FailText = {
     coin = '金币不足',
-    full = '道具栏已满，无法购买鱼竿',
+    full = '背包已满',
+    max = '道具栏和背包已升至上限',
     range = '离钓场老板太远了',
     item = '这件商品暂不出售',
 }
@@ -81,7 +82,11 @@ function LocalShop:Start()
     REUtil:GetRE('ShopResult').OnClientEvent:Connect(function(result)
         if type(result) ~= 'table' then return end
         local definition = GameCfg.Items.Definitions[result.itemId]
-        if result.ok then
+        if result.ok and result.action == 'UpgradeStorage' then
+            notice('扩容成功：道具栏 ' .. tostring(GameCfg.Items.InitialItemBarSlots + result.level)
+                .. ' 格，背包 ' .. tostring((result.level == #GameCfg.Items.UpgradePrices and GameCfg.Items.MaxBackpackSlots
+                    or GameCfg.Items.InitialBackpackSlots + result.level * GameCfg.Items.BackpackSlotsPerUpgrade)) .. ' 格')
+        elseif result.ok then
             notice('购买成功：' .. (definition and definition.Name or tostring(result.itemId))
                 .. '，花费 ' .. tostring(result.price) .. ' 金币')
         else

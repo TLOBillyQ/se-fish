@@ -11,14 +11,16 @@ end
 function PlayerData:Init()
     if not self.Player or self.Inited then return end
     local items = {}
+    local backpack = {}
     local bait = {}
     local debug = GameCfg.Debug
     for _, grant in ipairs(debug and debug.Enabled and debug.InitialGrants or {}) do
         if grant.containerId == GameCfg.Items.ContainerId.ItemBar then
-            items[#items + 1] = {
+            local target = #items < GameCfg.Items.InitialItemBarSlots and items or backpack
+            target[#target + 1] = {
                 itemId = grant.itemId,
                 count = grant.count,
-                containerId = grant.containerId,
+                containerId = target == items and GameCfg.Items.ContainerId.ItemBar or GameCfg.Items.ContainerId.Backpack,
             }
         elseif grant.containerId == GameCfg.Items.ContainerId.Bait then
             bait[grant.itemId] = (bait[grant.itemId] or 0) + grant.count
@@ -26,7 +28,8 @@ function PlayerData:Init()
     end
     self.Data = {
         FishCoin = 0,
-        Containers = { [GameCfg.Items.ContainerId.ItemBar] = items },
+        Containers = { [GameCfg.Items.ContainerId.ItemBar] = items, [GameCfg.Items.ContainerId.Backpack] = backpack },
+        UpgradeLevel = 0,
         Bait = bait,
         SelectedSlot = nil,
         SelectedBait = nil,
@@ -36,28 +39,41 @@ function PlayerData:Init()
     self:Sync()
 end
 
-function PlayerData:GetItemBarSnapshot()
-    if not self.Inited then return nil end
+function PlayerData:ItemBarCapacity()
+    return GameCfg.Items.InitialItemBarSlots + self.Data.UpgradeLevel
+end
+
+function PlayerData:BackpackCapacity()
+    local level = self.Data.UpgradeLevel
+    local capacity = GameCfg.Items.InitialBackpackSlots + level * GameCfg.Items.BackpackSlotsPerUpgrade
+    if level == #GameCfg.Items.UpgradePrices then capacity = GameCfg.Items.MaxBackpackSlots end
+    return capacity
+end
+
+local function copySlots(items, capacity)
     local slots = {}
-    local items = self.Data.Containers[GameCfg.Items.ContainerId.ItemBar]
-    for index = 1, GameCfg.Items.ItemBarSlots do
+    for index = 1, capacity do
         local entry = items[index]
         if entry and entry.count > 0 then
-            slots[index] = {
-                itemId = entry.itemId,
-                count = entry.count,
-                containerId = entry.containerId,
-                mult = entry.mult,
-            }
+            slots[index] = { itemId = entry.itemId, count = entry.count,
+                containerId = entry.containerId, mult = entry.mult }
         end
     end
+    return slots
+end
+
+function PlayerData:GetItemBarSnapshot()
+    if not self.Inited then return nil end
     local bait = {}
     for itemId, count in pairs(self.Data.Bait) do
         bait[itemId] = count
     end
     return {
-        slots = slots,
-        slotCount = GameCfg.Items.ItemBarSlots,
+        slots = copySlots(self.Data.Containers[GameCfg.Items.ContainerId.ItemBar], self:ItemBarCapacity()),
+        slotCount = self:ItemBarCapacity(),
+        backpack = copySlots(self.Data.Containers[GameCfg.Items.ContainerId.Backpack], self:BackpackCapacity()),
+        backpackCount = self:BackpackCapacity(),
+        upgradeLevel = self.Data.UpgradeLevel,
         bait = bait,
         coin = self.Data.FishCoin,
         selectedSlot = self.Data.SelectedSlot,
@@ -67,7 +83,7 @@ end
 
 function PlayerData:SelectSlot(index)
     if not self.Inited or type(index) ~= 'number' or index ~= math.floor(index)
-        or index < 1 or index > GameCfg.Items.ItemBarSlots then return false end
+        or index < 1 or index > self:ItemBarCapacity() then return false end
     local entry = self.Data.Containers[GameCfg.Items.ContainerId.ItemBar][index]
     self.Data.SelectedSlot = self.Data.SelectedSlot ~= index and entry and entry.count > 0 and index or nil
     return true
@@ -134,17 +150,22 @@ function PlayerData:ConsumeSelectedBait()
     return true, itemId
 end
 
--- 放进道具栏第一个空格（#43）：每件占一格、不叠加，mult 是鱼获的个体倍率；满格返回 false
+-- 优先填道具栏，再填背包；满格时不改动库存。
 function PlayerData:AddItem(itemId, mult)
     if not self.Inited or type(itemId) ~= 'string' then return false end
-    local items = self.Data.Containers[GameCfg.Items.ContainerId.ItemBar]
-    for index = 1, GameCfg.Items.ItemBarSlots do
-        local entry = items[index]
-        if not entry or entry.count <= 0 then
-            self:UpdateData(function()
-                items[index] = { itemId = itemId, count = 1, containerId = GameCfg.Items.ContainerId.ItemBar, mult = mult }
-            end, true)
-            return true
+    for _, container in ipairs({
+        { GameCfg.Items.ContainerId.ItemBar, self:ItemBarCapacity() },
+        { GameCfg.Items.ContainerId.Backpack, self:BackpackCapacity() },
+    }) do
+        local items = self.Data.Containers[container[1]]
+        for index = 1, container[2] do
+            local entry = items[index]
+            if not entry or entry.count <= 0 then
+                self:UpdateData(function()
+                    items[index] = { itemId = itemId, count = 1, containerId = container[1], mult = mult }
+                end, true)
+                return true
+            end
         end
     end
     return false
@@ -167,10 +188,15 @@ function PlayerData:CanGrant(itemId, count)
     if not self.Inited or not definition or type(count) ~= 'number' or count < 1
         or count ~= math.floor(count) then return false, 'bad' end
     if definition.Container == GameCfg.Items.ContainerId.Bait then return true end
-    local items = self.Data.Containers[GameCfg.Items.ContainerId.ItemBar]
     local free = 0
-    for index = 1, GameCfg.Items.ItemBarSlots do
-        if not items[index] or items[index].count <= 0 then free = free + 1 end
+    for _, container in ipairs({
+        { GameCfg.Items.ContainerId.ItemBar, self:ItemBarCapacity() },
+        { GameCfg.Items.ContainerId.Backpack, self:BackpackCapacity() },
+    }) do
+        local items = self.Data.Containers[container[1]]
+        for index = 1, container[2] do
+            if not items[index] or items[index].count <= 0 then free = free + 1 end
+        end
     end
     if free < count then return false, 'full' end
     return true
@@ -219,9 +245,38 @@ function PlayerData:SpendCoin(amount, apply, reason)
     return self:ChangeCoin(-amount, apply, reason)
 end
 
+function PlayerData:MoveToItemBar(index)
+    if not self.Inited or type(index) ~= 'number' or index ~= math.floor(index)
+        or index < 1 or index > self:BackpackCapacity() then return false end
+    local backpack = self.Data.Containers[GameCfg.Items.ContainerId.Backpack]
+    local entry = backpack[index]
+    if not entry then return false end
+    local bar = self.Data.Containers[GameCfg.Items.ContainerId.ItemBar]
+    for slot = 1, self:ItemBarCapacity() do
+        if not bar[slot] or bar[slot].count <= 0 then
+            self:UpdateData(function()
+                backpack[index] = nil
+                bar[slot] = entry
+                entry.containerId = GameCfg.Items.ContainerId.ItemBar
+            end, true)
+            return true
+        end
+    end
+    return false
+end
+
+function PlayerData:UpgradeStorage()
+    local price = GameCfg.Items.UpgradePrices[self.Data.UpgradeLevel + 1]
+    if not self.Inited or not price then return false, 'max' end
+    if not self:SpendCoin(price, function(data)
+        data.UpgradeLevel = data.UpgradeLevel + 1
+    end, 'storage-upgrade') then return false, 'coin' end
+    return true, price
+end
+
 function PlayerData:DiscardSlot(index)
     if not self.Inited or type(index) ~= 'number' or index ~= math.floor(index)
-        or index < 1 or index > GameCfg.Items.ItemBarSlots then return false end
+        or index < 1 or index > self:ItemBarCapacity() then return false end
     local items = self.Data.Containers[GameCfg.Items.ContainerId.ItemBar]
     if not items[index] then return false end
     items[index] = nil

@@ -44,9 +44,20 @@ function Mgr:Buy(player, data, itemId, seq)
     return true
 end
 
+function Mgr:Upgrade(player, data)
+    if not self.Interact:InRange(player, GameCfg.Shop) then return self:Fail(player, nil, 'range') end
+    local ok, price = data:UpgradeStorage()
+    if not ok then return self:Fail(player, nil, price) end
+    print('[MgrShop] 扩容', player.UserId, 'level=' .. tostring(data.Data.UpgradeLevel), '-' .. tostring(price))
+    self.PlayerData:SendItemBar(player)
+    self:Reply(player, { ok = true, action = 'UpgradeStorage', price = price,
+        level = data.Data.UpgradeLevel })
+    return true
+end
+
 -- 处理一次商店请求；结算成功返回 true
 function Mgr:Handle(player, payload)
-    if type(payload) ~= 'table' or payload.action ~= 'Buy' then return false end
+    if type(payload) ~= 'table' or (payload.action ~= 'Buy' and payload.action ~= 'UpgradeStorage') then return false end
     local seq = payload.seq
     if type(seq) ~= 'number' or seq ~= math.floor(seq) then return false end
     local data = self.PlayerData and self.PlayerData:GetDataInst(player)
@@ -54,6 +65,7 @@ function Mgr:Handle(player, payload)
     local last = self.LastSeq[player.UserId]
     if last and seq <= last then return false end
     self.LastSeq[player.UserId] = seq
+    if payload.action == 'UpgradeStorage' then return self:Upgrade(player, data) end
     return self:Buy(player, data, payload.itemId, seq)
 end
 
