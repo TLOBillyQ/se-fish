@@ -1,0 +1,1052 @@
+{
+  "schema_version": "1.0",
+  "command": "log grep",
+  "success": true,
+  "schemaVersion": "1.0",
+  "tool": "eggy-logtail",
+  "logPath": "C:\\FeverApps\\party_pc\\logs\\editor_31212.log",
+  "logPathSource": "status",
+  "offsetBefore": 0,
+  "effectiveOffset": 93979,
+  "offsetAfter": 101527,
+  "bytesRead": 7548,
+  "truncatedOrRotated": false,
+  "truncated": false,
+  "totalMatchesKnown": true,
+  "windowComplete": true,
+  "runWindowComplete": true,
+  "windowBoundaryAdjusted": false,
+  "partialLine": false,
+  "cursor": {
+    "fileIdentity": "win:ac6d2653:017c0000000022af",
+    "offset": 101527
+  },
+  "omittedCount": 0,
+  "playSession": "84ae0d1",
+  "window": {
+    "offsetStart": 93979,
+    "offsetEnd": 101527
+  },
+  "freshness": {
+    "status": "FRESH_INCOMPLETE",
+    "playSession": "84ae0d1",
+    "hasRunBegin": true,
+    "hasRunEnd": false,
+    "runBeginOffset": 93979
+  },
+  "summary": {
+    "matchCount": 29,
+    "errorCount": 0,
+    "warningCount": 0,
+    "uniqueErrorCount": 0,
+    "rawErrorCount": 0,
+    "uniqueRuleErrorCount": 0,
+    "rawWarningCount": 0,
+    "uniqueRuleWarningCount": 0,
+    "noiseCount": 0,
+    "topErrorTypes": []
+  },
+  "errors": [],
+  "matches": [
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 51,
+      "byteOffset": 97965,
+      "text": "[23:41:38.391] [info/server] \"[MgrCast] 抛竿\"\t\"aU5A95JB9rit0DUl\"\t\"WaterCircle2\"\t\"duck\"",
+      "before": [
+        "[23:41:03.079] [info/server] \"[AbilityItemLogic] Attach complete: <技能模板><Script>(Script)\"",
+        "[23:41:03.081] [info/server] \"[AnchorLogic] 锚点已挂载: 技能锚点模板 phase=2 startTime=0.0 duration=0.3 gid=77\""
+      ],
+      "after": [
+        "[23:41:38.392] [info/server] \"PROBE88 cast duck=0 session=true\"",
+        "[23:41:41.361] [info/client] \"[ScreenMain] 上钩提示\"\t\"1:aU5A95JB9rit0DUl\"\t\"音效 official://audio/10001\""
+      ]
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 52,
+      "byteOffset": 98054,
+      "text": "[23:41:38.392] [info/server] \"PROBE88 cast duck=0 session=true\"",
+      "before": [
+        "[23:41:03.081] [info/server] \"[AnchorLogic] 锚点已挂载: 技能锚点模板 phase=2 startTime=0.0 duration=0.3 gid=77\"",
+        "[23:41:38.391] [info/server] \"[MgrCast] 抛竿\"\t\"aU5A95JB9rit0DUl\"\t\"WaterCircle2\"\t\"duck\""
+      ],
+      "after": [
+        "[23:41:41.361] [info/client] \"[ScreenMain] 上钩提示\"\t\"1:aU5A95JB9rit0DUl\"\t\"音效 official://audio/10001\"",
+        "[23:41:41.364] [info/server] \"[MgrCast] 上钩\"\t\"aU5A95JB9rit0DUl\"\t\"alligatorGar\"\t1.17"
+      ]
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 54,
+      "byteOffset": 98228,
+      "text": "[23:41:41.364] [info/server] \"[MgrCast] 上钩\"\t\"aU5A95JB9rit0DUl\"\t\"alligatorGar\"\t1.17",
+      "before": [
+        "[23:41:38.392] [info/server] \"PROBE88 cast duck=0 session=true\"",
+        "[23:41:41.361] [info/client] \"[ScreenMain] 上钩提示\"\t\"1:aU5A95JB9rit0DUl\"\t\"音效 official://audio/10001\""
+      ],
+      "after": [
+        "[23:41:42.348] [info/server] \"PROBE88 hook phase=hooked fishId=alligatorGar duck=0\"",
+        "[23:41:42.349] [info/server] \"PROBE88 afterEscape duck=0\""
+      ]
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 55,
+      "byteOffset": 98315,
+      "text": "[23:41:42.348] [info/server] \"PROBE88 hook phase=hooked fishId=alligatorGar duck=0\"",
+      "before": [
+        "[23:41:41.361] [info/client] \"[ScreenMain] 上钩提示\"\t\"1:aU5A95JB9rit0DUl\"\t\"音效 official://audio/10001\"",
+        "[23:41:41.364] [info/server] \"[MgrCast] 上钩\"\t\"aU5A95JB9rit0DUl\"\t\"alligatorGar\"\t1.17"
+      ],
+      "after": [
+        "[23:41:42.349] [info/server] \"PROBE88 afterEscape duck=0\"",
+        "[23:41:42.352] [info/server] \"PROBE88 spawned fish=1\""
+      ]
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 56,
+      "byteOffset": 98399,
+      "text": "[23:41:42.349] [info/server] \"PROBE88 afterEscape duck=0\"",
+      "before": [
+        "[23:41:41.364] [info/server] \"[MgrCast] 上钩\"\t\"aU5A95JB9rit0DUl\"\t\"alligatorGar\"\t1.17",
+        "[23:41:42.348] [info/server] \"PROBE88 hook phase=hooked fishId=alligatorGar duck=0\""
+      ],
+      "after": [
+        "[23:41:42.352] [info/server] \"PROBE88 spawned fish=1\"",
+        "[23:41:42.424] [info/server] \"[MgrFishUnit] 举起\"\t\"aU5A95JB9rit0DUl\"\t\"alligatorGar\"\t1\t\"fish=1\""
+      ]
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 57,
+      "byteOffset": 98457,
+      "text": "[23:41:42.352] [info/server] \"PROBE88 spawned fish=1\"",
+      "before": [
+        "[23:41:42.348] [info/server] \"PROBE88 hook phase=hooked fishId=alligatorGar duck=0\"",
+        "[23:41:42.349] [info/server] \"PROBE88 afterEscape duck=0\""
+      ],
+      "after": [
+        "[23:41:42.424] [info/server] \"[MgrFishUnit] 举起\"\t\"aU5A95JB9rit0DUl\"\t\"alligatorGar\"\t1\t\"fish=1\"",
+        "[23:41:46.371] [info/server] \"PROBE88 beforeDrop state=held\""
+      ]
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 59,
+      "byteOffset": 98608,
+      "text": "[23:41:46.371] [info/server] \"PROBE88 beforeDrop state=held\"",
+      "before": [
+        "[23:41:42.352] [info/server] \"PROBE88 spawned fish=1\"",
+        "[23:41:42.424] [info/server] \"[MgrFishUnit] 举起\"\t\"aU5A95JB9rit0DUl\"\t\"alligatorGar\"\t1\t\"fish=1\""
+      ],
+      "after": [
+        "[23:41:46.374] [info/server] \"[MgrFishUnit] 放下\"\t\"aU5A95JB9rit0DUl\"\t\"drop\"\t\"alligatorGar\"\t\"fish=1\"",
+        "[23:41:46.375] [info/server] \"PROBE88 dropped state=combat fleeAt=1790437606.2763\""
+      ]
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 61,
+      "byteOffset": 98771,
+      "text": "[23:41:46.375] [info/server] \"PROBE88 dropped state=combat fleeAt=1790437606.2763\"",
+      "before": [
+        "[23:41:46.371] [info/server] \"PROBE88 beforeDrop state=held\"",
+        "[23:41:46.374] [info/server] \"[MgrFishUnit] 放下\"\t\"aU5A95JB9rit0DUl\"\t\"drop\"\t\"alligatorGar\"\t\"fish=1\""
+      ],
+      "after": [
+        "[23:41:46.378] [info/server] \"[MgrFishUnit] 精英开始逃脱\"\t\"alligatorGar\"\t\"fish=1\"",
+        "[23:41:46.380] [info/server] \"[MgrFishUnit] 逃回水里\"\t\"WaterCircle2\"\t\"alligatorGar\"\t\"fish=1\""
+      ]
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 64,
+      "byteOffset": 99039,
+      "text": "[23:41:51.424] [info/server] \"PROBE88 bite health 300->300 state=escaping\"",
+      "before": [
+        "[23:41:46.378] [info/server] \"[MgrFishUnit] 精英开始逃脱\"\t\"alligatorGar\"\t\"fish=1\"",
+        "[23:41:46.380] [info/server] \"[MgrFishUnit] 逃回水里\"\t\"WaterCircle2\"\t\"alligatorGar\"\t\"fish=1\""
+      ],
+      "after": [
+        "[23:41:52.947] [info/server] \"PROBE88 loot garMeat=0 garHead=0\"",
+        "[23:41:52.947] [info/server] \"PROBE88 DONE\""
+      ]
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 65,
+      "byteOffset": 99114,
+      "text": "[23:41:52.947] [info/server] \"PROBE88 loot garMeat=0 garHead=0\"",
+      "before": [
+        "[23:41:46.380] [info/server] \"[MgrFishUnit] 逃回水里\"\t\"WaterCircle2\"\t\"alligatorGar\"\t\"fish=1\"",
+        "[23:41:51.424] [info/server] \"PROBE88 bite health 300->300 state=escaping\""
+      ],
+      "after": [
+        "[23:41:52.947] [info/server] \"PROBE88 DONE\"",
+        "[23:43:57.068] [info/server] \"PROBE88B spawned fish=2\""
+      ]
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 66,
+      "byteOffset": 99178,
+      "text": "[23:41:52.947] [info/server] \"PROBE88 DONE\"",
+      "before": [
+        "[23:41:51.424] [info/server] \"PROBE88 bite health 300->300 state=escaping\"",
+        "[23:41:52.947] [info/server] \"PROBE88 loot garMeat=0 garHead=0\""
+      ],
+      "after": [
+        "[23:43:57.068] [info/server] \"PROBE88B spawned fish=2\"",
+        "[23:43:57.171] [info/server] \"[MgrFishUnit] 举起\"\t\"aU5A95JB9rit0DUl\"\t\"alligatorGar\"\t1\t\"fish=2\""
+      ]
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 67,
+      "byteOffset": 99222,
+      "text": "[23:43:57.068] [info/server] \"PROBE88B spawned fish=2\"",
+      "before": [
+        "[23:41:52.947] [info/server] \"PROBE88 loot garMeat=0 garHead=0\"",
+        "[23:41:52.947] [info/server] \"PROBE88 DONE\""
+      ],
+      "after": [
+        "[23:43:57.171] [info/server] \"[MgrFishUnit] 举起\"\t\"aU5A95JB9rit0DUl\"\t\"alligatorGar\"\t1\t\"fish=2\"",
+        "[23:43:58.637] [info/server] \"[MgrFishUnit] 放下\"\t\"aU5A95JB9rit0DUl\"\t\"died\"\t\"alligatorGar\"\t\"fish=2\""
+      ]
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 71,
+      "byteOffset": 99558,
+      "text": "[23:43:58.686] [info/server] \"[MgrFishUnit] 被打死\"\t\"alligatorGar\"\t1\t\"combat\"\t\"fish=2\"",
+      "before": [
+        "[23:43:58.637] [info/server] \"[MgrFishUnit] 放下\"\t\"aU5A95JB9rit0DUl\"\t\"died\"\t\"alligatorGar\"\t\"fish=2\"",
+        "[23:43:58.640] [info/server] \"[MgrVitals] 死亡\"\t\"aU5A95JB9rit0DUl\"\t\"hunger=123\""
+      ],
+      "after": [
+        "[23:43:58.690] [info/server] \"[MgrLoot] 生成鱼获\"\t\"garMeat\"\t1\t\"loot=6\"",
+        "[23:43:58.698] [info/server] \"[MgrLoot] 生成鱼获\"\t\"garMeat\"\t1\t\"loot=7\""
+      ]
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 75,
+      "byteOffset": 99873,
+      "text": "[23:44:01.042] [info/server] \"PROBE88B beforeDrop state=combat\"",
+      "before": [
+        "[23:43:58.698] [info/server] \"[MgrLoot] 生成鱼获\"\t\"garMeat\"\t1\t\"loot=7\"",
+        "[23:43:58.704] [info/server] \"[MgrLoot] 生成鱼获\"\t\"garHead\"\t1\t\"loot=8\""
+      ],
+      "after": [
+        "[23:44:01.043] [info/server] \"PROBE88B dropped state=combat\"",
+        "[23:44:03.653] [info/server] \"[MgrVitals] 复活\"\t\"aU5A95JB9rit0DUl\"\t\"OnReborn\"\t\"health=300\"\t\"hunger=300\""
+      ]
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 76,
+      "byteOffset": 99937,
+      "text": "[23:44:01.043] [info/server] \"PROBE88B dropped state=combat\"",
+      "before": [
+        "[23:43:58.704] [info/server] \"[MgrLoot] 生成鱼获\"\t\"garHead\"\t1\t\"loot=8\"",
+        "[23:44:01.042] [info/server] \"PROBE88B beforeDrop state=combat\""
+      ],
+      "after": [
+        "[23:44:03.653] [info/server] \"[MgrVitals] 复活\"\t\"aU5A95JB9rit0DUl\"\t\"OnReborn\"\t\"health=300\"\t\"hunger=300\"",
+        "[23:44:07.081] [info/server] \"PROBE88B bite health 0.0->300 state=combat\""
+      ]
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 78,
+      "byteOffset": 100104,
+      "text": "[23:44:07.081] [info/server] \"PROBE88B bite health 0.0->300 state=combat\"",
+      "before": [
+        "[23:44:01.043] [info/server] \"PROBE88B dropped state=combat\"",
+        "[23:44:03.653] [info/server] \"[MgrVitals] 复活\"\t\"aU5A95JB9rit0DUl\"\t\"OnReborn\"\t\"health=300\"\t\"hunger=300\""
+      ],
+      "after": [
+        "[23:44:08.602] [info/server] \"PROBE88B loot garMeat=2 garHead=1\"",
+        "[23:44:08.604] [info/server] \"PROBE88B DONE\""
+      ]
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 79,
+      "byteOffset": 100178,
+      "text": "[23:44:08.602] [info/server] \"PROBE88B loot garMeat=2 garHead=1\"",
+      "before": [
+        "[23:44:03.653] [info/server] \"[MgrVitals] 复活\"\t\"aU5A95JB9rit0DUl\"\t\"OnReborn\"\t\"health=300\"\t\"hunger=300\"",
+        "[23:44:07.081] [info/server] \"PROBE88B bite health 0.0->300 state=combat\""
+      ],
+      "after": [
+        "[23:44:08.604] [info/server] \"PROBE88B DONE\"",
+        "[23:46:59.585] [info/server] \"PROBE88C player health=300 pos=Vector3(6.270000,4.989991, 39.290001)\""
+      ]
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 80,
+      "byteOffset": 100243,
+      "text": "[23:44:08.604] [info/server] \"PROBE88B DONE\"",
+      "before": [
+        "[23:44:07.081] [info/server] \"PROBE88B bite health 0.0->300 state=combat\"",
+        "[23:44:08.602] [info/server] \"PROBE88B loot garMeat=2 garHead=1\""
+      ],
+      "after": [
+        "[23:46:59.585] [info/server] \"PROBE88C player health=300 pos=Vector3(6.270000,4.989991, 39.290001)\"",
+        "[23:46:59.591] [info/server] \"PROBE88C spawned fish=3\""
+      ]
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 81,
+      "byteOffset": 100288,
+      "text": "[23:46:59.585] [info/server] \"PROBE88C player health=300 pos=Vector3(6.270000,4.989991, 39.290001)\"",
+      "before": [
+        "[23:44:08.602] [info/server] \"PROBE88B loot garMeat=2 garHead=1\"",
+        "[23:44:08.604] [info/server] \"PROBE88B DONE\""
+      ],
+      "after": [
+        "[23:46:59.591] [info/server] \"PROBE88C spawned fish=3\"",
+        "[23:46:59.671] [info/server] \"[MgrFishUnit] 举起\"\t\"aU5A95JB9rit0DUl\"\t\"alligatorGar\"\t1\t\"fish=3\""
+      ]
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 82,
+      "byteOffset": 100388,
+      "text": "[23:46:59.591] [info/server] \"PROBE88C spawned fish=3\"",
+      "before": [
+        "[23:44:08.604] [info/server] \"PROBE88B DONE\"",
+        "[23:46:59.585] [info/server] \"PROBE88C player health=300 pos=Vector3(6.270000,4.989991, 39.290001)\""
+      ],
+      "after": [
+        "[23:46:59.671] [info/server] \"[MgrFishUnit] 举起\"\t\"aU5A95JB9rit0DUl\"\t\"alligatorGar\"\t1\t\"fish=3\"",
+        "[23:47:03.575] [info/server] \"PROBE88C beforeDrop state=held\""
+      ]
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 84,
+      "byteOffset": 100540,
+      "text": "[23:47:03.575] [info/server] \"PROBE88C beforeDrop state=held\"",
+      "before": [
+        "[23:46:59.591] [info/server] \"PROBE88C spawned fish=3\"",
+        "[23:46:59.671] [info/server] \"[MgrFishUnit] 举起\"\t\"aU5A95JB9rit0DUl\"\t\"alligatorGar\"\t1\t\"fish=3\""
+      ],
+      "after": [
+        "[23:47:03.578] [info/server] \"[MgrFishUnit] 放下\"\t\"aU5A95JB9rit0DUl\"\t\"drop\"\t\"alligatorGar\"\t\"fish=3\"",
+        "[23:47:03.578] [info/server] \"PROBE88C dropped state=combat\""
+      ]
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 86,
+      "byteOffset": 100704,
+      "text": "[23:47:03.578] [info/server] \"PROBE88C dropped state=combat\"",
+      "before": [
+        "[23:47:03.575] [info/server] \"PROBE88C beforeDrop state=held\"",
+        "[23:47:03.578] [info/server] \"[MgrFishUnit] 放下\"\t\"aU5A95JB9rit0DUl\"\t\"drop\"\t\"alligatorGar\"\t\"fish=3\""
+      ],
+      "after": [
+        "[23:47:05.082] [info/server] \"[MgrFishUnit] 首领追咬\"\t\"alligatorGar\"\t30\t\"fish=3\"",
+        "[23:47:06.604] [info/server] \"[MgrFishUnit] 首领追咬\"\t\"alligatorGar\"\t30\t\"fish=3\""
+      ]
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 87,
+      "byteOffset": 100765,
+      "text": "[23:47:05.082] [info/server] \"[MgrFishUnit] 首领追咬\"\t\"alligatorGar\"\t30\t\"fish=3\"",
+      "before": [
+        "[23:47:03.578] [info/server] \"[MgrFishUnit] 放下\"\t\"aU5A95JB9rit0DUl\"\t\"drop\"\t\"alligatorGar\"\t\"fish=3\"",
+        "[23:47:03.578] [info/server] \"PROBE88C dropped state=combat\""
+      ],
+      "after": [
+        "[23:47:06.604] [info/server] \"[MgrFishUnit] 首领追咬\"\t\"alligatorGar\"\t30\t\"fish=3\"",
+        "[23:47:08.131] [info/server] \"[MgrFishUnit] 首领追咬\"\t\"alligatorGar\"\t30\t\"fish=3\""
+      ]
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 88,
+      "byteOffset": 100850,
+      "text": "[23:47:06.604] [info/server] \"[MgrFishUnit] 首领追咬\"\t\"alligatorGar\"\t30\t\"fish=3\"",
+      "before": [
+        "[23:47:03.578] [info/server] \"PROBE88C dropped state=combat\"",
+        "[23:47:05.082] [info/server] \"[MgrFishUnit] 首领追咬\"\t\"alligatorGar\"\t30\t\"fish=3\""
+      ],
+      "after": [
+        "[23:47:08.131] [info/server] \"[MgrFishUnit] 首领追咬\"\t\"alligatorGar\"\t30\t\"fish=3\"",
+        "[23:47:09.586] [info/server] \"PROBE88C bite health 300->210 state=combat\""
+      ]
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 89,
+      "byteOffset": 100935,
+      "text": "[23:47:08.131] [info/server] \"[MgrFishUnit] 首领追咬\"\t\"alligatorGar\"\t30\t\"fish=3\"",
+      "before": [
+        "[23:47:05.082] [info/server] \"[MgrFishUnit] 首领追咬\"\t\"alligatorGar\"\t30\t\"fish=3\"",
+        "[23:47:06.604] [info/server] \"[MgrFishUnit] 首领追咬\"\t\"alligatorGar\"\t30\t\"fish=3\""
+      ],
+      "after": [
+        "[23:47:09.586] [info/server] \"PROBE88C bite health 300->210 state=combat\"",
+        "[23:47:09.588] [info/server] \"[MgrFishUnit] 被打死\"\t\"alligatorGar\"\t1\t\"combat\"\t\"fish=3\""
+      ]
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 90,
+      "byteOffset": 101020,
+      "text": "[23:47:09.586] [info/server] \"PROBE88C bite health 300->210 state=combat\"",
+      "before": [
+        "[23:47:06.604] [info/server] \"[MgrFishUnit] 首领追咬\"\t\"alligatorGar\"\t30\t\"fish=3\"",
+        "[23:47:08.131] [info/server] \"[MgrFishUnit] 首领追咬\"\t\"alligatorGar\"\t30\t\"fish=3\""
+      ],
+      "after": [
+        "[23:47:09.588] [info/server] \"[MgrFishUnit] 被打死\"\t\"alligatorGar\"\t1\t\"combat\"\t\"fish=3\"",
+        "[23:47:09.592] [info/server] \"[MgrLoot] 生成鱼获\"\t\"garMeat\"\t1\t\"loot=9\""
+      ]
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 91,
+      "byteOffset": 101094,
+      "text": "[23:47:09.588] [info/server] \"[MgrFishUnit] 被打死\"\t\"alligatorGar\"\t1\t\"combat\"\t\"fish=3\"",
+      "before": [
+        "[23:47:08.131] [info/server] \"[MgrFishUnit] 首领追咬\"\t\"alligatorGar\"\t30\t\"fish=3\"",
+        "[23:47:09.586] [info/server] \"PROBE88C bite health 300->210 state=combat\""
+      ],
+      "after": [
+        "[23:47:09.592] [info/server] \"[MgrLoot] 生成鱼获\"\t\"garMeat\"\t1\t\"loot=9\"",
+        "[23:47:09.598] [info/server] \"[MgrLoot] 生成鱼获\"\t\"garMeat\"\t1\t\"loot=10\""
+      ]
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 95,
+      "byteOffset": 101411,
+      "text": "[23:47:11.101] [info/server] \"PROBE88C loot delta garMeat=2 garHead=1\"",
+      "before": [
+        "[23:47:09.598] [info/server] \"[MgrLoot] 生成鱼获\"\t\"garMeat\"\t1\t\"loot=10\"",
+        "[23:47:09.602] [info/server] \"[MgrLoot] 生成鱼获\"\t\"garHead\"\t1\t\"loot=11\""
+      ],
+      "after": [
+        "[23:47:11.101] [info/server] \"PROBE88C DONE\""
+      ]
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 96,
+      "byteOffset": 101482,
+      "text": "[23:47:11.101] [info/server] \"PROBE88C DONE\"",
+      "before": [
+        "[23:47:09.602] [info/server] \"[MgrLoot] 生成鱼获\"\t\"garHead\"\t1\t\"loot=11\"",
+        "[23:47:11.101] [info/server] \"PROBE88C loot delta garMeat=2 garHead=1\""
+      ],
+      "after": []
+    }
+  ],
+  "contextLines": [
+    {
+      "matchIndex": 0,
+      "relation": "before",
+      "text": "[23:41:03.079] [info/server] \"[AbilityItemLogic] Attach complete: <技能模板><Script>(Script)\""
+    },
+    {
+      "matchIndex": 0,
+      "relation": "before",
+      "text": "[23:41:03.081] [info/server] \"[AnchorLogic] 锚点已挂载: 技能锚点模板 phase=2 startTime=0.0 duration=0.3 gid=77\""
+    },
+    {
+      "matchIndex": 0,
+      "relation": "after",
+      "text": "[23:41:38.392] [info/server] \"PROBE88 cast duck=0 session=true\""
+    },
+    {
+      "matchIndex": 0,
+      "relation": "after",
+      "text": "[23:41:41.361] [info/client] \"[ScreenMain] 上钩提示\"\t\"1:aU5A95JB9rit0DUl\"\t\"音效 official://audio/10001\""
+    },
+    {
+      "matchIndex": 1,
+      "relation": "before",
+      "text": "[23:41:03.081] [info/server] \"[AnchorLogic] 锚点已挂载: 技能锚点模板 phase=2 startTime=0.0 duration=0.3 gid=77\""
+    },
+    {
+      "matchIndex": 1,
+      "relation": "before",
+      "text": "[23:41:38.391] [info/server] \"[MgrCast] 抛竿\"\t\"aU5A95JB9rit0DUl\"\t\"WaterCircle2\"\t\"duck\""
+    },
+    {
+      "matchIndex": 1,
+      "relation": "after",
+      "text": "[23:41:41.361] [info/client] \"[ScreenMain] 上钩提示\"\t\"1:aU5A95JB9rit0DUl\"\t\"音效 official://audio/10001\""
+    },
+    {
+      "matchIndex": 1,
+      "relation": "after",
+      "text": "[23:41:41.364] [info/server] \"[MgrCast] 上钩\"\t\"aU5A95JB9rit0DUl\"\t\"alligatorGar\"\t1.17"
+    },
+    {
+      "matchIndex": 2,
+      "relation": "before",
+      "text": "[23:41:38.392] [info/server] \"PROBE88 cast duck=0 session=true\""
+    },
+    {
+      "matchIndex": 2,
+      "relation": "before",
+      "text": "[23:41:41.361] [info/client] \"[ScreenMain] 上钩提示\"\t\"1:aU5A95JB9rit0DUl\"\t\"音效 official://audio/10001\""
+    },
+    {
+      "matchIndex": 2,
+      "relation": "after",
+      "text": "[23:41:42.348] [info/server] \"PROBE88 hook phase=hooked fishId=alligatorGar duck=0\""
+    },
+    {
+      "matchIndex": 2,
+      "relation": "after",
+      "text": "[23:41:42.349] [info/server] \"PROBE88 afterEscape duck=0\""
+    },
+    {
+      "matchIndex": 3,
+      "relation": "before",
+      "text": "[23:41:41.361] [info/client] \"[ScreenMain] 上钩提示\"\t\"1:aU5A95JB9rit0DUl\"\t\"音效 official://audio/10001\""
+    },
+    {
+      "matchIndex": 3,
+      "relation": "before",
+      "text": "[23:41:41.364] [info/server] \"[MgrCast] 上钩\"\t\"aU5A95JB9rit0DUl\"\t\"alligatorGar\"\t1.17"
+    },
+    {
+      "matchIndex": 3,
+      "relation": "after",
+      "text": "[23:41:42.349] [info/server] \"PROBE88 afterEscape duck=0\""
+    },
+    {
+      "matchIndex": 3,
+      "relation": "after",
+      "text": "[23:41:42.352] [info/server] \"PROBE88 spawned fish=1\""
+    },
+    {
+      "matchIndex": 4,
+      "relation": "before",
+      "text": "[23:41:41.364] [info/server] \"[MgrCast] 上钩\"\t\"aU5A95JB9rit0DUl\"\t\"alligatorGar\"\t1.17"
+    },
+    {
+      "matchIndex": 4,
+      "relation": "before",
+      "text": "[23:41:42.348] [info/server] \"PROBE88 hook phase=hooked fishId=alligatorGar duck=0\""
+    },
+    {
+      "matchIndex": 4,
+      "relation": "after",
+      "text": "[23:41:42.352] [info/server] \"PROBE88 spawned fish=1\""
+    },
+    {
+      "matchIndex": 4,
+      "relation": "after",
+      "text": "[23:41:42.424] [info/server] \"[MgrFishUnit] 举起\"\t\"aU5A95JB9rit0DUl\"\t\"alligatorGar\"\t1\t\"fish=1\""
+    },
+    {
+      "matchIndex": 5,
+      "relation": "before",
+      "text": "[23:41:42.348] [info/server] \"PROBE88 hook phase=hooked fishId=alligatorGar duck=0\""
+    },
+    {
+      "matchIndex": 5,
+      "relation": "before",
+      "text": "[23:41:42.349] [info/server] \"PROBE88 afterEscape duck=0\""
+    },
+    {
+      "matchIndex": 5,
+      "relation": "after",
+      "text": "[23:41:42.424] [info/server] \"[MgrFishUnit] 举起\"\t\"aU5A95JB9rit0DUl\"\t\"alligatorGar\"\t1\t\"fish=1\""
+    },
+    {
+      "matchIndex": 5,
+      "relation": "after",
+      "text": "[23:41:46.371] [info/server] \"PROBE88 beforeDrop state=held\""
+    },
+    {
+      "matchIndex": 6,
+      "relation": "before",
+      "text": "[23:41:42.352] [info/server] \"PROBE88 spawned fish=1\""
+    },
+    {
+      "matchIndex": 6,
+      "relation": "before",
+      "text": "[23:41:42.424] [info/server] \"[MgrFishUnit] 举起\"\t\"aU5A95JB9rit0DUl\"\t\"alligatorGar\"\t1\t\"fish=1\""
+    },
+    {
+      "matchIndex": 6,
+      "relation": "after",
+      "text": "[23:41:46.374] [info/server] \"[MgrFishUnit] 放下\"\t\"aU5A95JB9rit0DUl\"\t\"drop\"\t\"alligatorGar\"\t\"fish=1\""
+    },
+    {
+      "matchIndex": 6,
+      "relation": "after",
+      "text": "[23:41:46.375] [info/server] \"PROBE88 dropped state=combat fleeAt=1790437606.2763\""
+    },
+    {
+      "matchIndex": 7,
+      "relation": "before",
+      "text": "[23:41:46.371] [info/server] \"PROBE88 beforeDrop state=held\""
+    },
+    {
+      "matchIndex": 7,
+      "relation": "before",
+      "text": "[23:41:46.374] [info/server] \"[MgrFishUnit] 放下\"\t\"aU5A95JB9rit0DUl\"\t\"drop\"\t\"alligatorGar\"\t\"fish=1\""
+    },
+    {
+      "matchIndex": 7,
+      "relation": "after",
+      "text": "[23:41:46.378] [info/server] \"[MgrFishUnit] 精英开始逃脱\"\t\"alligatorGar\"\t\"fish=1\""
+    },
+    {
+      "matchIndex": 7,
+      "relation": "after",
+      "text": "[23:41:46.380] [info/server] \"[MgrFishUnit] 逃回水里\"\t\"WaterCircle2\"\t\"alligatorGar\"\t\"fish=1\""
+    },
+    {
+      "matchIndex": 8,
+      "relation": "before",
+      "text": "[23:41:46.378] [info/server] \"[MgrFishUnit] 精英开始逃脱\"\t\"alligatorGar\"\t\"fish=1\""
+    },
+    {
+      "matchIndex": 8,
+      "relation": "before",
+      "text": "[23:41:46.380] [info/server] \"[MgrFishUnit] 逃回水里\"\t\"WaterCircle2\"\t\"alligatorGar\"\t\"fish=1\""
+    },
+    {
+      "matchIndex": 8,
+      "relation": "after",
+      "text": "[23:41:52.947] [info/server] \"PROBE88 loot garMeat=0 garHead=0\""
+    },
+    {
+      "matchIndex": 8,
+      "relation": "after",
+      "text": "[23:41:52.947] [info/server] \"PROBE88 DONE\""
+    },
+    {
+      "matchIndex": 9,
+      "relation": "before",
+      "text": "[23:41:46.380] [info/server] \"[MgrFishUnit] 逃回水里\"\t\"WaterCircle2\"\t\"alligatorGar\"\t\"fish=1\""
+    },
+    {
+      "matchIndex": 9,
+      "relation": "before",
+      "text": "[23:41:51.424] [info/server] \"PROBE88 bite health 300->300 state=escaping\""
+    },
+    {
+      "matchIndex": 9,
+      "relation": "after",
+      "text": "[23:41:52.947] [info/server] \"PROBE88 DONE\""
+    },
+    {
+      "matchIndex": 9,
+      "relation": "after",
+      "text": "[23:43:57.068] [info/server] \"PROBE88B spawned fish=2\""
+    },
+    {
+      "matchIndex": 10,
+      "relation": "before",
+      "text": "[23:41:51.424] [info/server] \"PROBE88 bite health 300->300 state=escaping\""
+    },
+    {
+      "matchIndex": 10,
+      "relation": "before",
+      "text": "[23:41:52.947] [info/server] \"PROBE88 loot garMeat=0 garHead=0\""
+    },
+    {
+      "matchIndex": 10,
+      "relation": "after",
+      "text": "[23:43:57.068] [info/server] \"PROBE88B spawned fish=2\""
+    },
+    {
+      "matchIndex": 10,
+      "relation": "after",
+      "text": "[23:43:57.171] [info/server] \"[MgrFishUnit] 举起\"\t\"aU5A95JB9rit0DUl\"\t\"alligatorGar\"\t1\t\"fish=2\""
+    },
+    {
+      "matchIndex": 11,
+      "relation": "before",
+      "text": "[23:41:52.947] [info/server] \"PROBE88 loot garMeat=0 garHead=0\""
+    },
+    {
+      "matchIndex": 11,
+      "relation": "before",
+      "text": "[23:41:52.947] [info/server] \"PROBE88 DONE\""
+    },
+    {
+      "matchIndex": 11,
+      "relation": "after",
+      "text": "[23:43:57.171] [info/server] \"[MgrFishUnit] 举起\"\t\"aU5A95JB9rit0DUl\"\t\"alligatorGar\"\t1\t\"fish=2\""
+    },
+    {
+      "matchIndex": 11,
+      "relation": "after",
+      "text": "[23:43:58.637] [info/server] \"[MgrFishUnit] 放下\"\t\"aU5A95JB9rit0DUl\"\t\"died\"\t\"alligatorGar\"\t\"fish=2\""
+    },
+    {
+      "matchIndex": 12,
+      "relation": "before",
+      "text": "[23:43:58.637] [info/server] \"[MgrFishUnit] 放下\"\t\"aU5A95JB9rit0DUl\"\t\"died\"\t\"alligatorGar\"\t\"fish=2\""
+    },
+    {
+      "matchIndex": 12,
+      "relation": "before",
+      "text": "[23:43:58.640] [info/server] \"[MgrVitals] 死亡\"\t\"aU5A95JB9rit0DUl\"\t\"hunger=123\""
+    },
+    {
+      "matchIndex": 12,
+      "relation": "after",
+      "text": "[23:43:58.690] [info/server] \"[MgrLoot] 生成鱼获\"\t\"garMeat\"\t1\t\"loot=6\""
+    },
+    {
+      "matchIndex": 12,
+      "relation": "after",
+      "text": "[23:43:58.698] [info/server] \"[MgrLoot] 生成鱼获\"\t\"garMeat\"\t1\t\"loot=7\""
+    },
+    {
+      "matchIndex": 13,
+      "relation": "before",
+      "text": "[23:43:58.698] [info/server] \"[MgrLoot] 生成鱼获\"\t\"garMeat\"\t1\t\"loot=7\""
+    },
+    {
+      "matchIndex": 13,
+      "relation": "before",
+      "text": "[23:43:58.704] [info/server] \"[MgrLoot] 生成鱼获\"\t\"garHead\"\t1\t\"loot=8\""
+    },
+    {
+      "matchIndex": 13,
+      "relation": "after",
+      "text": "[23:44:01.043] [info/server] \"PROBE88B dropped state=combat\""
+    },
+    {
+      "matchIndex": 13,
+      "relation": "after",
+      "text": "[23:44:03.653] [info/server] \"[MgrVitals] 复活\"\t\"aU5A95JB9rit0DUl\"\t\"OnReborn\"\t\"health=300\"\t\"hunger=300\""
+    },
+    {
+      "matchIndex": 14,
+      "relation": "before",
+      "text": "[23:43:58.704] [info/server] \"[MgrLoot] 生成鱼获\"\t\"garHead\"\t1\t\"loot=8\""
+    },
+    {
+      "matchIndex": 14,
+      "relation": "before",
+      "text": "[23:44:01.042] [info/server] \"PROBE88B beforeDrop state=combat\""
+    },
+    {
+      "matchIndex": 14,
+      "relation": "after",
+      "text": "[23:44:03.653] [info/server] \"[MgrVitals] 复活\"\t\"aU5A95JB9rit0DUl\"\t\"OnReborn\"\t\"health=300\"\t\"hunger=300\""
+    },
+    {
+      "matchIndex": 14,
+      "relation": "after",
+      "text": "[23:44:07.081] [info/server] \"PROBE88B bite health 0.0->300 state=combat\""
+    },
+    {
+      "matchIndex": 15,
+      "relation": "before",
+      "text": "[23:44:01.043] [info/server] \"PROBE88B dropped state=combat\""
+    },
+    {
+      "matchIndex": 15,
+      "relation": "before",
+      "text": "[23:44:03.653] [info/server] \"[MgrVitals] 复活\"\t\"aU5A95JB9rit0DUl\"\t\"OnReborn\"\t\"health=300\"\t\"hunger=300\""
+    },
+    {
+      "matchIndex": 15,
+      "relation": "after",
+      "text": "[23:44:08.602] [info/server] \"PROBE88B loot garMeat=2 garHead=1\""
+    },
+    {
+      "matchIndex": 15,
+      "relation": "after",
+      "text": "[23:44:08.604] [info/server] \"PROBE88B DONE\""
+    },
+    {
+      "matchIndex": 16,
+      "relation": "before",
+      "text": "[23:44:03.653] [info/server] \"[MgrVitals] 复活\"\t\"aU5A95JB9rit0DUl\"\t\"OnReborn\"\t\"health=300\"\t\"hunger=300\""
+    },
+    {
+      "matchIndex": 16,
+      "relation": "before",
+      "text": "[23:44:07.081] [info/server] \"PROBE88B bite health 0.0->300 state=combat\""
+    },
+    {
+      "matchIndex": 16,
+      "relation": "after",
+      "text": "[23:44:08.604] [info/server] \"PROBE88B DONE\""
+    },
+    {
+      "matchIndex": 16,
+      "relation": "after",
+      "text": "[23:46:59.585] [info/server] \"PROBE88C player health=300 pos=Vector3(6.270000,4.989991, 39.290001)\""
+    },
+    {
+      "matchIndex": 17,
+      "relation": "before",
+      "text": "[23:44:07.081] [info/server] \"PROBE88B bite health 0.0->300 state=combat\""
+    },
+    {
+      "matchIndex": 17,
+      "relation": "before",
+      "text": "[23:44:08.602] [info/server] \"PROBE88B loot garMeat=2 garHead=1\""
+    },
+    {
+      "matchIndex": 17,
+      "relation": "after",
+      "text": "[23:46:59.585] [info/server] \"PROBE88C player health=300 pos=Vector3(6.270000,4.989991, 39.290001)\""
+    },
+    {
+      "matchIndex": 17,
+      "relation": "after",
+      "text": "[23:46:59.591] [info/server] \"PROBE88C spawned fish=3\""
+    },
+    {
+      "matchIndex": 18,
+      "relation": "before",
+      "text": "[23:44:08.602] [info/server] \"PROBE88B loot garMeat=2 garHead=1\""
+    },
+    {
+      "matchIndex": 18,
+      "relation": "before",
+      "text": "[23:44:08.604] [info/server] \"PROBE88B DONE\""
+    },
+    {
+      "matchIndex": 18,
+      "relation": "after",
+      "text": "[23:46:59.591] [info/server] \"PROBE88C spawned fish=3\""
+    },
+    {
+      "matchIndex": 18,
+      "relation": "after",
+      "text": "[23:46:59.671] [info/server] \"[MgrFishUnit] 举起\"\t\"aU5A95JB9rit0DUl\"\t\"alligatorGar\"\t1\t\"fish=3\""
+    },
+    {
+      "matchIndex": 19,
+      "relation": "before",
+      "text": "[23:44:08.604] [info/server] \"PROBE88B DONE\""
+    },
+    {
+      "matchIndex": 19,
+      "relation": "before",
+      "text": "[23:46:59.585] [info/server] \"PROBE88C player health=300 pos=Vector3(6.270000,4.989991, 39.290001)\""
+    },
+    {
+      "matchIndex": 19,
+      "relation": "after",
+      "text": "[23:46:59.671] [info/server] \"[MgrFishUnit] 举起\"\t\"aU5A95JB9rit0DUl\"\t\"alligatorGar\"\t1\t\"fish=3\""
+    },
+    {
+      "matchIndex": 19,
+      "relation": "after",
+      "text": "[23:47:03.575] [info/server] \"PROBE88C beforeDrop state=held\""
+    },
+    {
+      "matchIndex": 20,
+      "relation": "before",
+      "text": "[23:46:59.591] [info/server] \"PROBE88C spawned fish=3\""
+    },
+    {
+      "matchIndex": 20,
+      "relation": "before",
+      "text": "[23:46:59.671] [info/server] \"[MgrFishUnit] 举起\"\t\"aU5A95JB9rit0DUl\"\t\"alligatorGar\"\t1\t\"fish=3\""
+    },
+    {
+      "matchIndex": 20,
+      "relation": "after",
+      "text": "[23:47:03.578] [info/server] \"[MgrFishUnit] 放下\"\t\"aU5A95JB9rit0DUl\"\t\"drop\"\t\"alligatorGar\"\t\"fish=3\""
+    },
+    {
+      "matchIndex": 20,
+      "relation": "after",
+      "text": "[23:47:03.578] [info/server] \"PROBE88C dropped state=combat\""
+    },
+    {
+      "matchIndex": 21,
+      "relation": "before",
+      "text": "[23:47:03.575] [info/server] \"PROBE88C beforeDrop state=held\""
+    },
+    {
+      "matchIndex": 21,
+      "relation": "before",
+      "text": "[23:47:03.578] [info/server] \"[MgrFishUnit] 放下\"\t\"aU5A95JB9rit0DUl\"\t\"drop\"\t\"alligatorGar\"\t\"fish=3\""
+    },
+    {
+      "matchIndex": 21,
+      "relation": "after",
+      "text": "[23:47:05.082] [info/server] \"[MgrFishUnit] 首领追咬\"\t\"alligatorGar\"\t30\t\"fish=3\""
+    },
+    {
+      "matchIndex": 21,
+      "relation": "after",
+      "text": "[23:47:06.604] [info/server] \"[MgrFishUnit] 首领追咬\"\t\"alligatorGar\"\t30\t\"fish=3\""
+    },
+    {
+      "matchIndex": 22,
+      "relation": "before",
+      "text": "[23:47:03.578] [info/server] \"[MgrFishUnit] 放下\"\t\"aU5A95JB9rit0DUl\"\t\"drop\"\t\"alligatorGar\"\t\"fish=3\""
+    },
+    {
+      "matchIndex": 22,
+      "relation": "before",
+      "text": "[23:47:03.578] [info/server] \"PROBE88C dropped state=combat\""
+    },
+    {
+      "matchIndex": 22,
+      "relation": "after",
+      "text": "[23:47:06.604] [info/server] \"[MgrFishUnit] 首领追咬\"\t\"alligatorGar\"\t30\t\"fish=3\""
+    },
+    {
+      "matchIndex": 22,
+      "relation": "after",
+      "text": "[23:47:08.131] [info/server] \"[MgrFishUnit] 首领追咬\"\t\"alligatorGar\"\t30\t\"fish=3\""
+    },
+    {
+      "matchIndex": 23,
+      "relation": "before",
+      "text": "[23:47:03.578] [info/server] \"PROBE88C dropped state=combat\""
+    },
+    {
+      "matchIndex": 23,
+      "relation": "before",
+      "text": "[23:47:05.082] [info/server] \"[MgrFishUnit] 首领追咬\"\t\"alligatorGar\"\t30\t\"fish=3\""
+    },
+    {
+      "matchIndex": 23,
+      "relation": "after",
+      "text": "[23:47:08.131] [info/server] \"[MgrFishUnit] 首领追咬\"\t\"alligatorGar\"\t30\t\"fish=3\""
+    },
+    {
+      "matchIndex": 23,
+      "relation": "after",
+      "text": "[23:47:09.586] [info/server] \"PROBE88C bite health 300->210 state=combat\""
+    },
+    {
+      "matchIndex": 24,
+      "relation": "before",
+      "text": "[23:47:05.082] [info/server] \"[MgrFishUnit] 首领追咬\"\t\"alligatorGar\"\t30\t\"fish=3\""
+    },
+    {
+      "matchIndex": 24,
+      "relation": "before",
+      "text": "[23:47:06.604] [info/server] \"[MgrFishUnit] 首领追咬\"\t\"alligatorGar\"\t30\t\"fish=3\""
+    },
+    {
+      "matchIndex": 24,
+      "relation": "after",
+      "text": "[23:47:09.586] [info/server] \"PROBE88C bite health 300->210 state=combat\""
+    },
+    {
+      "matchIndex": 24,
+      "relation": "after",
+      "text": "[23:47:09.588] [info/server] \"[MgrFishUnit] 被打死\"\t\"alligatorGar\"\t1\t\"combat\"\t\"fish=3\""
+    },
+    {
+      "matchIndex": 25,
+      "relation": "before",
+      "text": "[23:47:06.604] [info/server] \"[MgrFishUnit] 首领追咬\"\t\"alligatorGar\"\t30\t\"fish=3\""
+    },
+    {
+      "matchIndex": 25,
+      "relation": "before",
+      "text": "[23:47:08.131] [info/server] \"[MgrFishUnit] 首领追咬\"\t\"alligatorGar\"\t30\t\"fish=3\""
+    },
+    {
+      "matchIndex": 25,
+      "relation": "after",
+      "text": "[23:47:09.588] [info/server] \"[MgrFishUnit] 被打死\"\t\"alligatorGar\"\t1\t\"combat\"\t\"fish=3\""
+    },
+    {
+      "matchIndex": 25,
+      "relation": "after",
+      "text": "[23:47:09.592] [info/server] \"[MgrLoot] 生成鱼获\"\t\"garMeat\"\t1\t\"loot=9\""
+    },
+    {
+      "matchIndex": 26,
+      "relation": "before",
+      "text": "[23:47:08.131] [info/server] \"[MgrFishUnit] 首领追咬\"\t\"alligatorGar\"\t30\t\"fish=3\""
+    },
+    {
+      "matchIndex": 26,
+      "relation": "before",
+      "text": "[23:47:09.586] [info/server] \"PROBE88C bite health 300->210 state=combat\""
+    },
+    {
+      "matchIndex": 26,
+      "relation": "after",
+      "text": "[23:47:09.592] [info/server] \"[MgrLoot] 生成鱼获\"\t\"garMeat\"\t1\t\"loot=9\""
+    },
+    {
+      "matchIndex": 26,
+      "relation": "after",
+      "text": "[23:47:09.598] [info/server] \"[MgrLoot] 生成鱼获\"\t\"garMeat\"\t1\t\"loot=10\""
+    },
+    {
+      "matchIndex": 27,
+      "relation": "before",
+      "text": "[23:47:09.598] [info/server] \"[MgrLoot] 生成鱼获\"\t\"garMeat\"\t1\t\"loot=10\""
+    },
+    {
+      "matchIndex": 27,
+      "relation": "before",
+      "text": "[23:47:09.602] [info/server] \"[MgrLoot] 生成鱼获\"\t\"garHead\"\t1\t\"loot=11\""
+    },
+    {
+      "matchIndex": 27,
+      "relation": "after",
+      "text": "[23:47:11.101] [info/server] \"PROBE88C DONE\""
+    },
+    {
+      "matchIndex": 28,
+      "relation": "before",
+      "text": "[23:47:09.602] [info/server] \"[MgrLoot] 生成鱼获\"\t\"garHead\"\t1\t\"loot=11\""
+    },
+    {
+      "matchIndex": 28,
+      "relation": "before",
+      "text": "[23:47:11.101] [info/server] \"PROBE88C loot delta garMeat=2 garHead=1\""
+    }
+  ],
+  "warnings": [],
+  "noiseSummary": []
+}

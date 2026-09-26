@@ -68,7 +68,8 @@ GameCfg.Items = {
         eelHead = { Name = '电鳗头', EatPercent = 50, Icon = 'official://image/11164', BasePrice = 10 },
         garMeat = { Name = '鳄雀鳝鱼肉', EatPercent = 100, Icon = 'official://image/13008', BasePrice = 15 },
         garHead = { Name = '鳄雀鳝鱼头', EatPercent = 100, Icon = 'official://image/11164', BasePrice = 20 },
-        -- 首领饵「鸭子」（物品表 120）：按 #85 占道具栏/背包格；挂饵与首领抽签随 #88 落地
+        -- 首领饵「鸭子」（物品表 120）：按 #85 占道具栏/背包格；挂饵走 SelectBait 通道、
+        -- 抛竿必出鳄雀鳝（#88，映射见 GameCfg.Casting.BossBait）
         duck = { Name = '鸭子', EatPercent = 10, Icon = 'official://image/11154', BasePrice = 10 },
         -- 船票（过关道具，不能吃）：交给摆渡 NPC 去虾池（#89 落地）；物品表原名「虾池车票」，
         -- 按 CONTEXT.md 术语定名「虾池船票」，后续钓鱼区各有一张
@@ -147,6 +148,7 @@ GameCfg.Fish = {
         Combat = 'eel',
         Drops = { { ItemId = 'eelMeat', Count = 2 }, { ItemId = 'eelHead', Count = 1 } } },
     alligatorGar = { Name = '鳄雀鳝', Grade = 'boss', Health = 600, Attack = 30, BaseWeight = 5, BasePrice = 0, Model = '7000546', Speed = 6, EscapeSec = 300,
+        Combat = 'gar',
         Drops = { { ItemId = 'garMeat', Count = 2 }, { ItemId = 'garHead', Count = 1 } } },
     -- 虾池（第二钓鱼区）普通鱼（#84，GameSpec §5.2；模型按鱼塘六鱼顺次占位）
     shrimp = { Name = '虾米', Grade = 'normal', Health = 20, BaseWeight = 0.02, BasePrice = 4, Model = '7000557', Speed = 3 },
@@ -351,6 +353,17 @@ GameCfg.Casting = {
             { Id = 'eel', Bait = 'worm', RodLevel = 1, DrawWeight = 10 },
         },
     },
+    -- 首领饵（#88，GameSpec §12 已确认）：首领饵物品 id → 必出首领鱼种。挂首领饵在任意水区抛竿
+    -- 必出对应首领，无视抽签权重、鱼饵-鱼种匹配与竿级；首领饵占道具栏/背包格、不进 Bait 计数，
+    -- 抛竿一刻从道具栏（优先）或背包扣 1 只，钓出首领后消耗，脱钩 / 逃脱不返还。
+    BossBait = { duck = 'alligatorGar' },
+}
+
+-- 首领近战（#88，占位）：Combat='gar' 的鱼上岸放下后 Kinematic 追最近的活着的玩家，
+-- BiteRange 米内按 BiteCooldownSec 冷却咬出鱼种 Attack 伤害；移速取鱼种 Speed，
+-- 逃跑时限取鱼种 EscapeSec（耗尽走精英直线逃脱）。头伤 / 身后弱点判定后补（任务说明占位即可）。
+GameCfg.FishCombat = {
+    gar = { BiteRange = 2.5, BiteCooldownSec = 1.5 },
 }
 
 -- 技能包（ability_system）在本图的接入配置。

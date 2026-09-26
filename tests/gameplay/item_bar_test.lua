@@ -213,7 +213,8 @@ function TestItemBar:test_chief_bait_occupies_storage_and_debug_grants_overflow_
     lu.assertEquals(other:GetItemBarSnapshot().backpack[1].itemId, 'bass')
     lu.assertTrue(other:AddItem('duck'))
     lu.assertEquals(other:GetItemBarSnapshot().backpack[2].itemId, 'duck')
-    lu.assertNil(other:GetItemBarSnapshot().bait.duck)
+    -- #88 起鸭子作为首领饵进快照 bait 表（件数），驱动挂饵按钮
+    lu.assertEquals(other:GetItemBarSnapshot().bait.duck, 1)
 end
 
 function TestItemBar:test_failed_upgrade_does_not_change_capacity_or_coin()

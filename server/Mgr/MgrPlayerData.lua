@@ -116,7 +116,7 @@ local function validActionValue(action, value, data)
             and value >= 1 and value <= data:BackpackCapacity()
     end
     if action == 'SelectBait' and value == nil then return true end
-    return type(value) == 'string' and data.Data.Bait[value] ~= nil
+    return type(value) == 'string' and data:HasBait(value)
 end
 
 local function eatBait(mgr, player, data, value)

@@ -253,7 +253,12 @@ function Mgr:Release(fish, reason)
         fish.CombatPosition = pos
         fish.CombatRotation = body.Rotation
         body.LinearVelocity = Vector3.New(0, 0, 0)
-        if self.Ability then self.Ability:EquipFish(fish) end
+        if GameCfg.FishCombat and GameCfg.FishCombat[species.Combat] then
+            -- 首领近战（#88）：首个冷却期是起手预警，不立刻咬
+            fish.NextBiteAt = now + GameCfg.FishCombat[species.Combat].BiteCooldownSec
+        elseif self.Ability then
+            self.Ability:EquipFish(fish)
+        end
     elseif pos then
         self:SetHeading(fish, towardWater(pos))
     end
@@ -382,6 +387,38 @@ function Mgr:UpdateEscaping(fish, now)
     end
 end
 
+-- 首领追咬（#88，占位）：Kinematic 追最近的活着的玩家，BiteRange 米内停下按冷却咬鱼种 Attack；
+-- 没有活目标就原地待命。头伤 / 身后弱点判定后补
+function Mgr:UpdateChase(fish, now, pos, params)
+    local species = GameCfg.Fish[fish.FishId]
+    local body = fish.Carrier.Body
+    local target, tpos, best
+    for _, player in ipairs(self:Players()) do
+        local character = player.Character
+        local controller = character and character.Controller
+        local cp = controller and controller.Health and controller.Health > 0 and readPosition(character)
+        if cp then
+            local d = (cp.x - pos.x) * (cp.x - pos.x) + (cp.z - pos.z) * (cp.z - pos.z)
+            if not best or d < best then best, target, tpos = d, controller, cp end
+        end
+    end
+    if not target then
+        pcall(function() body.LinearVelocity = Vector3.New(0, 0, 0) end)
+        return
+    end
+    if best > params.BiteRange * params.BiteRange then
+        local ux, uz = flatDirection(tpos.x - pos.x, tpos.z - pos.z)
+        local speed = self:Speed(fish)
+        pcall(function() body.LinearVelocity = Vector3.New((ux or 0) * speed, 0, (uz or 0) * speed) end)
+        return
+    end
+    pcall(function() body.LinearVelocity = Vector3.New(0, 0, 0) end)
+    if now < (fish.NextBiteAt or 0) then return end
+    fish.NextBiteAt = now + params.BiteCooldownSec
+    target:TakeDamage(species.Attack)
+    print('[MgrFishUnit] 首领追咬', fish.FishId, species.Attack, 'fish=' .. tostring(fish.Id))
+end
+
 -- 战斗只在首次放下后计时；逃跑时限优先于攻击和睡眠。
 function Mgr:UpdateCombat(fish, now)
     local body = fish.Carrier.Body
@@ -401,7 +438,14 @@ function Mgr:UpdateCombat(fish, now)
         self:UpdateEscaping(fish, now)
         return
     end
-    local entry = GameCfg.Ability.FishAbilities[GameCfg.Fish[fish.FishId].Combat]
+    -- 首领近战（#88）不走技能装配与睡眠，追咬由 UpdateChase 驱动
+    local combat = GameCfg.Fish[fish.FishId].Combat
+    local chase = GameCfg.FishCombat and GameCfg.FishCombat[combat]
+    if chase then
+        self:UpdateChase(fish, now, pos, chase)
+        return
+    end
+    local entry = GameCfg.Ability.FishAbilities[combat]
     body.Position = fish.CombatPosition
     body.LinearVelocity = Vector3.New(0, 0, 0)
     if fish.State == Mgr.State.Attacking then

@@ -206,8 +206,14 @@ function Mgr:Update()
         if session.phase == 'landed' and session.idleAt and now >= session.idleAt then
             self:EndSession(current.player, current)
         elseif session.phase == 'cast' and session.hookAt and now >= session.hookAt then
-            local rows = GameCfg.Casting.Zones[session.zoneId]
-            local fishId = FishCatch.Select(rows, session.rodLevel, session.baitId, math.random)
+            -- 首领饵必出对应首领（#88，GameSpec §12）：无视权重、鱼饵-鱼种匹配与竿级，不限水域
+            local boss = session.baitId and GameCfg.Casting.BossBait
+                and GameCfg.Casting.BossBait[session.baitId]
+            local fishId = boss
+            if not fishId then
+                local rows = GameCfg.Casting.Zones[session.zoneId]
+                fishId = FishCatch.Select(rows, session.rodLevel, session.baitId, math.random)
+            end
             if fishId then
                 session.phase = 'hooked'
                 session.fishId = fishId

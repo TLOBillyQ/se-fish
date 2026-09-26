@@ -68,6 +68,11 @@ function PlayerData:GetItemBarSnapshot()
     for itemId, count in pairs(self.Data.Bait) do
         bait[itemId] = count
     end
+    -- 首领饵（#88）以件数挂进 bait 表，客户端挂饵按钮据此显示数量与可选态；没有就不列
+    for itemId in pairs(GameCfg.Casting.BossBait or {}) do
+        local count = self:ItemCount(itemId)
+        if count >= 1 then bait[itemId] = count end
+    end
     return {
         slots = copySlots(self.Data.Containers[GameCfg.Items.ContainerId.ItemBar], self:ItemBarCapacity()),
         slotCount = self:ItemBarCapacity(),
@@ -103,13 +108,54 @@ local function hasBait(data, itemId)
     return type(count) == 'number' and count >= 1
 end
 
+-- 道具栏 + 背包里某物品的总件数（每格一件，不堆叠）
+function PlayerData:ItemCount(itemId)
+    if not self.Inited then return 0 end
+    local total = 0
+    for _, container in pairs(self.Data.Containers) do
+        for _, entry in pairs(container) do
+            if entry.itemId == itemId and entry.count > 0 then total = total + entry.count end
+        end
+    end
+    return total
+end
+
+-- 从道具栏（优先）或背包扣 1 件某物品；用于首领饵这类占格鱼饵（#88）
+function PlayerData:ConsumeItem(itemId)
+    if not self.Inited then return false end
+    for _, container in ipairs({
+        { GameCfg.Items.ContainerId.ItemBar, self:ItemBarCapacity() },
+        { GameCfg.Items.ContainerId.Backpack, self:BackpackCapacity() },
+    }) do
+        local items = self.Data.Containers[container[1]]
+        for index = 1, container[2] do
+            local entry = items[index]
+            if entry and entry.itemId == itemId and entry.count > 0 then
+                self:UpdateData(function()
+                    items[index] = nil
+                end, true)
+                return true
+            end
+        end
+    end
+    return false
+end
+
+-- 可挂饵判定：Bait 计数 ≥1，或是首领饵（占格）且库存 ≥1（#88）
+function PlayerData:HasBait(itemId)
+    if not self.Inited or type(itemId) ~= 'string' then return false end
+    if hasBait(self.Data, itemId) then return true end
+    local bossBait = GameCfg.Casting.BossBait
+    return bossBait ~= nil and bossBait[itemId] ~= nil and self:ItemCount(itemId) >= 1
+end
+
 function PlayerData:SelectBait(itemId)
     if not self.Inited then return false end
     if itemId == nil then
         self.Data.SelectedBait = nil
         return true
     end
-    if type(itemId) ~= 'string' or not hasBait(self.Data, itemId) then return false end
+    if type(itemId) ~= 'string' or not self:HasBait(itemId) then return false end
     self.Data.SelectedBait = itemId
     return true
 end
@@ -139,6 +185,14 @@ function PlayerData:ConsumeSelectedBait()
     if not self.Inited then return false, nil end
     local itemId = self.Data.SelectedBait
     if not itemId then return true, nil end
+    -- 首领饵占道具栏/背包格（#88）：抛竿一刻扣 1 只，钓出首领后消耗，脱钩 / 逃脱不返还
+    local bossBait = GameCfg.Casting.BossBait
+    if bossBait and bossBait[itemId] then
+        if self:ConsumeItem(itemId) then return true, itemId end
+        self.Data.SelectedBait = nil
+        self:PublishItemBar()
+        return false, nil
+    end
     if not hasBait(self.Data, itemId) then
         self.Data.SelectedBait = nil
         self:PublishItemBar()
@@ -317,7 +371,7 @@ function PlayerData:UpdateData(updateCallBack, doSync)
     local entry = selected and self.Data.Containers[GameCfg.Items.ContainerId.ItemBar][selected]
     if selected and (not entry or entry.count <= 0) then self.Data.SelectedSlot = nil end
     local baitId = self.Data.SelectedBait
-    if baitId and not hasBait(self.Data, baitId) then self.Data.SelectedBait = nil end
+    if baitId and not self:HasBait(baitId) then self.Data.SelectedBait = nil end
     if doSync then
         self:Sync()
         self:PublishItemBar()
