@@ -9,7 +9,7 @@ local Task = game:GetService("Task")
 local GameCfg = require("common.GameCfg")
 local AbilityAPI = require("server.AbilityAPI")
 
-local Mgr = {}
+local Mgr = { PendingFishCleanup = {} }
 
 -- [userId] = 该玩家的技能管理器 ScriptUnit
 Mgr.Managers = {}
@@ -45,8 +45,10 @@ local function applyAnchorAttributes(anchor, attrs, presetKey)
 		local ok, err = pcall(anchor.SetAttribute, anchor, key, value)
 		if not ok then
 			print("[MgrAbility] 锚点属性覆盖失败: " .. tostring(presetKey) .. " " .. tostring(key) .. " " .. tostring(err))
+            return false
 		end
 	end
+    return true
 end
 
 -- 锚点：运行时装配（本图的锚点预设壳不挂接，只声明属性）。
@@ -60,7 +62,10 @@ local function createAnchor(abilityScript, entry)
 		return nil
 	end
 	anchor.Parent = abilityScript
-	applyAnchorAttributes(anchor, entry.AnchorAttributes, entry.Anchor)
+	if applyAnchorAttributes(anchor, entry.AnchorAttributes, entry.Anchor) == false then
+        anchor:Destroy()
+        return nil
+    end
 	local ok, err = pcall(AbilityAPI.AttachAnchor, anchor, entry.AnchorBehavior)
 	if not ok or err ~= true then
 		print("[MgrAbility] 锚点挂接失败: " .. tostring(err))
@@ -126,14 +131,21 @@ end
 function Mgr:RemoveFish(fish)
     local record = fish.AbilityRecord
     if not record then return end
-    fish.AbilityRecord = nil
     record.Cancelled = true
     if record.Ready then
         local ok, err = pcall(AbilityAPI.StopAbility, record.Receiver, record.Entry.Index)
         if not ok then print('[MgrAbility] 停止鱼技能失败', fish.Id, tostring(err)) end
     end
     local ok, err = pcall(function() record.Manager:Destroy() end)
-    if not ok then print('[MgrAbility] 回收鱼技能管理器失败', fish.Id, tostring(err)) end
+    if not ok then
+        if not self.PendingFishCleanup[fish] then
+            print('[MgrAbility] 回收鱼技能管理器失败，将重试', fish.Id, tostring(err))
+        end
+        self.PendingFishCleanup[fish] = true
+        return
+    end
+    self.PendingFishCleanup[fish] = nil
+    fish.AbilityRecord = nil
 end
 
 function Mgr:EquipFish(fish)
@@ -147,8 +159,10 @@ function Mgr:EquipFish(fish)
     local record = { Manager = manager, Receiver = receiver, Entry = entry }
     fish.AbilityRecord = record
     Task:Spawn(function()
+        local ok, err = pcall(function()
         for _ = 1, EQUIP_RETRY_COUNT do
-            if record.Cancelled or fish.Carrier.Dead then return end
+            if record.Cancelled then return end
+            if fish.Carrier.Dead then self:RemoveFish(fish) return end
             local ability = AbilityAPI.AddAbility(receiver, entry.AssetId, entry.Index)
             if ability then
                 ability:SetAttribute('CastTime', entry.CastSec)
@@ -168,6 +182,11 @@ function Mgr:EquipFish(fish)
         end
         if not record.Cancelled then
             print('[MgrAbility] 电鳗技能装配超时', fish.Id)
+            self:RemoveFish(fish)
+        end
+        end)
+        if not ok then
+            print('[MgrAbility] 电鳗技能装配失败', fish.Id, tostring(err))
             self:RemoveFish(fish)
         end
     end)
@@ -211,6 +230,7 @@ function Mgr:OnPlayerRemoving(player)
 end
 
 function Mgr:Update(deltaTime)
+    for fish in pairs(self.PendingFishCleanup) do self:RemoveFish(fish) end
 end
 
 return Mgr

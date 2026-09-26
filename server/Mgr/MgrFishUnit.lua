@@ -272,7 +272,7 @@ end
 function Mgr:Escaping()
     local list = {}
     for _, fish in pairs(self.Fish) do
-        if fish.EscapeAt then list[#list + 1] = fish end
+        if fish.State == Mgr.State.Escaping then list[#list + 1] = fish end
     end
     table.sort(list, function(a, b)
         if a.EscapeAt ~= b.EscapeAt then return a.EscapeAt < b.EscapeAt end
@@ -412,12 +412,15 @@ function Mgr:UpdateCombat(fish, now)
             end
             return
         end
-        if fish.CombatRotation then body.Rotation = fish.CombatRotation end
+        if fish.CombatRotation then
+            body.Rotation = fish.CombatRotation * Quaternion.FromEulerAngles(0, 0, entry.SleepRollRadians)
+        end
         fish.State = Mgr.State.Sleeping
         fish.WakeAt = now + entry.SleepSec
         print('[MgrFishUnit] 电鳗睡眠', 'fish=' .. tostring(fish.Id), 'wakeAt=' .. tostring(fish.WakeAt))
     end
     if fish.State == Mgr.State.Sleeping and now < fish.WakeAt then return end
+    if fish.CombatRotation then body.Rotation = fish.CombatRotation end
     fish.State = Mgr.State.Combat
     if self.Ability and self.Ability:CastFish(fish) then
         fish.State = Mgr.State.Attacking

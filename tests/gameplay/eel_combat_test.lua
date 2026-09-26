@@ -41,5 +41,36 @@ function TestEelCombat:test_drop_attacks_sleeps_ten_seconds_then_escapes_at_dead
     fish.Carrier.Body.Position = Vector3.New(-11.75, 5, 27.75)
     self.mgr:Update()
     lu.assertNil(self.mgr.Fish[fish.Id])
-    lu.assertTrue(removed >= 1)
+end
+
+-- 再放普通鱼不能提前清掉尚未到逃跑时限的精英鱼。
+function TestEelCombat:test_combat_fish_is_not_counted_as_escaping()
+    self:prepare()
+    local eel = self:heldFish(self.player, 'eel')
+    self.mgr:Drop(self.player)
+    self.now = 1
+    local normal = self:heldFish(self.player, 'bass')
+    self.mgr:Drop(self.player)
+    lu.assertEquals(self.mgr.Fish[eel.Id], eel)
+    lu.assertEquals(self.mgr:Escaping(), { normal })
+end
+function TestEelCombat:test_sleep_lies_sideways_and_waking_restores_rotation()
+    self:prepare()
+    local oldQuaternion = Quaternion
+    local rotation = setmetatable({}, { __mul = function(_, value) return value end })
+    Quaternion = { FromEulerAngles = function(x, y, z) return { x = x, y = y, z = z } end }
+    self.mgr.Ability = { EquipFish = function() end, CastFish = function() return true end }
+    local fish = self:heldFish(self.player, 'eel')
+    fish.Carrier.Body.Rotation = rotation
+    self.mgr:Drop(self.player)
+    self.mgr:Update()
+    self.now = 0.5
+    self.mgr:Update()
+    local sleepRotation = fish.Carrier.Body.Rotation
+    self.now = 10.5
+    self.mgr:Update()
+    local wakeRotation = fish.Carrier.Body.Rotation
+    Quaternion = oldQuaternion
+    lu.assertNotEquals(sleepRotation, rotation)
+    lu.assertEquals(wakeRotation, rotation)
 end

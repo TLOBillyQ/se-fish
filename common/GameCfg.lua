@@ -376,6 +376,7 @@ GameCfg.Ability = {
             Radius = 3,
             CastSec = 0.5,
             SleepSec = 10,
+            SleepRollRadians = math.pi / 2, -- 睡眠侧躺，醒来或逃脱时恢复初始朝向
             FlailRadians = 0.45,
             FlailHz = 8,
         },
