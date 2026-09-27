@@ -219,6 +219,10 @@ GameCfg.Loot = {
 GameCfg.Save = {
     Store = 'sefish_save_v1',
     KeyPrefix = 'u',
+    -- #93 验收专用：填入全新槽名（如 'qa93-first'）后，同一账号从空档开始，
+    -- 退出重进仍读此槽。复用槽名会读回上次进度；留空则读正式存档。
+    -- 必须在开始试玩前设好并部署，试玩过程中不要更换槽名。
+    AcceptanceSlot = '',
     MaxRetries = 3,
     RetryDelaySec = 1,
     AutosaveSec = 60,

@@ -18,6 +18,11 @@ local function task()
 end
 
 function Mgr:Key(userId)
+    local slot = cfg().AcceptanceSlot
+    if type(slot) == 'string' and slot ~= '' then
+        assert(slot:match('^[%w_-]+$'), '验收存档槽只能使用字母、数字、下划线或连字符')
+        return cfg().KeyPrefix .. tostring(userId) .. ':qa:' .. slot
+    end
     return cfg().KeyPrefix .. tostring(userId)
 end
 
