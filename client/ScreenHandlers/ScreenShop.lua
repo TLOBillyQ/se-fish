@@ -7,9 +7,31 @@
 local GameCfg = require('common.GameCfg')
 local LocalShop = require('client.LocalShop')
 
+local SquareButtonImage = 'official://image/11017'
 local RowCount = 2
 
 local ScreenHandler = { UINodes = { 'BtnShopClose', 'LabelCurCoin' }, UINodeMap = {}, Seq = 0 }
+
+local function styleButton(button)
+    if not button then return end
+    button.ButtonText = ''
+    button.NormalImage = SquareButtonImage
+    button.PressImage = SquareButtonImage
+    button.DisableImage = SquareButtonImage
+end
+
+local function createButtonLabel(parent, button, name, text, fontSize)
+    local label = game:GetService('World'):CreateUnit('EUITextLabel', {
+        Parent = parent, Name = name, Position = button.Position, Size = button.Size,
+        Text = text, FontSize = fontSize, TextColor = Color.New(255, 255, 255, 255),
+    })
+    if label then
+        label.TouchEnabled = false
+        label.SwallowTouchEnabled = false
+        label.LocalZOrder = 1
+    end
+    return label
+end
 
 function ScreenHandler:Upgrade()
     if not self.IsOpen then return end
@@ -28,6 +50,7 @@ function ScreenHandler:ShowUpgrade(state)
         or GameCfg.Items.BackpackSlotsPerUpgrade
     self.UpgradeLabel.Text = price and ('扩容 ' .. tostring(price) .. ' 金币（道具栏 +1 / 背包 +' .. tostring(gain) .. '）') or '已升至上限'
     self.UpgradeButton.TouchEnabled = price ~= nil
+    self.UpgradeButton.Disabled = price == nil
 end
 for index = 1, RowCount do
     for _, prefix in ipairs({ 'ShopItemIcon', 'ShopItemName', 'BtnShopBuy', 'LabelShopPrice' }) do
@@ -75,8 +98,8 @@ function ScreenHandler:ShowGoods()
         local goods = self.Goods[index]
         local definition = goods and GameCfg.Items.Definitions[goods.ItemId]
         btn.Visible = definition ~= nil
-        if definition then
-            btn.ButtonText = definition.Name .. '  ' .. tostring(goods.Price) .. ' 金币'
+        if definition and self.ExtraLabels[index] then
+            self.ExtraLabels[index].Text = definition.Name .. '  ' .. tostring(goods.Price) .. ' 金币'
         end
     end
 end
@@ -86,8 +109,12 @@ function ScreenHandler:Init()
     for _, connection in ipairs(self.Connections or {}) do connection:Disconnect() end
     if self.UpgradeButton then self.UpgradeButton:Destroy() end
     if self.UpgradeLabel then self.UpgradeLabel:Destroy() end
+    if self.CloseLabel then self.CloseLabel:Destroy() end
+    self.CloseLabel = nil
     for _, btn in pairs(self.ExtraButtons or {}) do btn:Destroy() end
+    for _, label in pairs(self.ExtraLabels or {}) do label:Destroy() end
     self.ExtraButtons = {}
+    self.ExtraLabels = {}
     self.UpgradeButton = nil
     self.UpgradeLabel = nil
     self.Connections = {}
@@ -97,12 +124,23 @@ function ScreenHandler:Init()
     for index = 1, RowCount do
         local btn = self.UINodeMap['BtnShopBuy' .. index]
         if btn then
+            styleButton(btn)
+            btn.ButtonNormalColor = Color.New(54, 100, 140, 255)
+            btn.ButtonPressColor = Color.New(36, 130, 94, 255)
+            btn.ButtonDisableColor = Color.New(120, 120, 120, 255)
             btn.TouchEnabled = true
             listen(btn.OnClicked, function() self:Buy(index) end)
         end
     end
     local close = self.UINodeMap.BtnShopClose
-    if close then listen(close.OnClicked, function() _G.MgrGameUI:CloseScreen('ScreenShop') end) end
+    if close then
+        styleButton(close)
+        close.ButtonNormalColor = Color.New(54, 100, 140, 255)
+        close.ButtonPressColor = Color.New(36, 130, 94, 255)
+        close.ButtonDisableColor = Color.New(120, 120, 120, 255)
+        self.CloseLabel = createButtonLabel(close.Parent, close, 'LabelShopCloseTheme', '关闭', 26)
+        listen(close.OnClicked, function() _G.MgrGameUI:CloseScreen('ScreenShop') end)
+    end
     local root = self.RootNode
     local world = game:GetService('World')
     local resolution = _G.GameUI:GetEuiManager():GetDeviceResolution()
@@ -111,6 +149,10 @@ function ScreenHandler:Init()
         Parent = root, Name = 'BtnStorageUpgrade',
         Position = Vector2.New(x, y), Size = Vector2.New(590, 85),
     })
+    styleButton(self.UpgradeButton)
+    self.UpgradeButton.ButtonNormalColor = Color.New(54, 100, 140, 255)
+    self.UpgradeButton.ButtonPressColor = Color.New(36, 130, 94, 255)
+    self.UpgradeButton.ButtonDisableColor = Color.New(120, 120, 120, 255)
     self.UpgradeButton.TouchEnabled = true
     listen(self.UpgradeButton.OnClicked, function() self:Upgrade() end)
     self.UpgradeLabel = world:CreateUnit('EUITextLabel', {
@@ -120,6 +162,7 @@ function ScreenHandler:Init()
     })
     self.UpgradeLabel.TouchEnabled = false
     self.UpgradeLabel.SwallowTouchEnabled = false
+    self.UpgradeLabel.LocalZOrder = 1
     -- 运行时商品补位行（#90）：编辑器侧只有两行商品节点，Goods 表更长时按行建文本按钮，
     -- 叠在扩容按钮上方；显隐与文案由 ShowGoods 按当前摊位上架结果刷
     for index = RowCount + 1, #GameCfg.Shop.Goods do
@@ -127,9 +170,14 @@ function ScreenHandler:Init()
             Parent = root, Name = 'BtnShopBuyExtra' .. index,
             Position = Vector2.New(x, y - 100 * (index - RowCount)), Size = Vector2.New(590, 85),
         })
+        styleButton(btn)
+        btn.ButtonNormalColor = Color.New(54, 100, 140, 255)
+        btn.ButtonPressColor = Color.New(36, 130, 94, 255)
+        btn.ButtonDisableColor = Color.New(120, 120, 120, 255)
         btn.TouchEnabled = true
         btn.Visible = false
         self.ExtraButtons[index] = btn
+        self.ExtraLabels[index] = createButtonLabel(root, btn, 'LabelShopBuyExtra' .. index, '', 26)
         listen(btn.OnClicked, function() self:Buy(index) end)
     end
     self:ShowUpgrade()
