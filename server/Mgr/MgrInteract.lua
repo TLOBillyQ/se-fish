@@ -2,6 +2,7 @@
 -- 客户端发 InteractAction{target, action, seq}；服务端复验身份、目标、距离（只看 x/z）与选中态，
 -- 序号必须递增，重放与旧序号不结算。喂食即出售：选中格是鱼获就扣该格按 floor(基础售价 × mult) 入账，
 -- 否则扣 1 只选中的鱼饵按 BaitPrice 入账；扣除与入账走 PlayerData:AddCoin 一次落地。
+-- 选中格是信物（Exchange 表）时优先走 1:1 兑换（#87）：不给金币，满格拒绝且不消耗信物。
 -- 吃动作是表现层，失败只记日志、不影响裁决。「对话」是纯客户端台词，不经服务端。
 local GameCfg = require('common.GameCfg')
 local FishCatch = require('common.FishCatch')
@@ -48,15 +49,19 @@ local function feedable(data, point)
     end
 end
 
--- 角色是否在交互点 point（带 AnchorName / Radius / Slack）的水平范围内；在就返回锚点单位。
--- 商店（#48）复用同一套复验
+-- 角色是否在交互点 point 的水平范围内（只看 x/z）；在就返回命中的锚点单位。
+-- point 带 AnchorName（单锚点，商店/摆渡复用同一套复验）或 AnchorNames（多锚点，#90 钓鱼佬一区 + 虾池）
 function Mgr:InRange(player, point)
     local character = player and player.Character
     local pos = character and character.Position
-    local anchor = pos and self:FindAnchor(point.AnchorName)
-    local center = anchor and anchor.Position
-    if not center or flatDistance(pos, center) > point.Radius + point.Slack then return nil end
-    return anchor
+    if not pos then return nil end
+    local names = point.AnchorNames or { point.AnchorName }
+    for _, name in ipairs(names) do
+        local anchor = self:FindAnchor(name)
+        local center = anchor and anchor.Position
+        if center and flatDistance(pos, center) <= point.Radius + point.Slack then return anchor end
+    end
+    return nil
 end
 
 function Mgr:PlayEat(anchor, point)
@@ -72,7 +77,39 @@ function Mgr:PlayEat(anchor, point)
     if not ok then print('[MgrInteract] 吃动作播放失败', tostring(err)) end
 end
 
+-- 选中的信物（#87，GameSpec §8.1）：选中格是 Exchange 表里的信物时返回 { slot, tokenId, product }
+local function exchangeable(data, point)
+    local slot = data.Data.SelectedSlot
+    local entry = slot and data.Data.Containers[GameCfg.Items.ContainerId.ItemBar][slot]
+    local product = entry and entry.count > 0 and point.Exchange and point.Exchange[entry.itemId]
+    if not product then return end
+    return { slot = slot, tokenId = entry.itemId, product = product }
+end
+
+-- 信物兑换：扣除与发放由 PlayerData:ExchangeSlot 一次落地；满格拒绝且不消耗信物，
+-- 不给金币、不报任务事实。'bad' 只会是配置错误（产物 id 不在物品表），记错误日志
+function Mgr:Exchange(player, data, anchor, point, exchange)
+    local ok, reason = data:ExchangeSlot(exchange.slot, exchange.product)
+    if not ok then
+        if reason ~= 'full' then
+            print('[MgrInteract] 兑换配置错误', player.UserId, exchange.tokenId, exchange.product, reason)
+        end
+        self:Reply(player, { ok = false, reason = reason })
+        return false
+    end
+    print('[MgrInteract] 信物兑换', player.UserId, exchange.tokenId, '->', exchange.product)
+    -- 关键状态转换立即 UpdateAsync 记账（#92）：断线重连不双份发奖
+    if self.Save then self.Save:Commit(player.UserId, data:Serialize(), 'exchange:' .. exchange.tokenId) end
+    self.PlayerData:SendItemBar(player)
+    self:Reply(player, { ok = true, action = 'Feed',
+        exchange = { from = exchange.tokenId, to = exchange.product } })
+    self:PlayEat(anchor, point)
+    return true
+end
+
 function Mgr:Feed(player, data, anchor, point, seq)
+    local exchange = exchangeable(data, point)
+    if exchange then return self:Exchange(player, data, anchor, point, exchange) end
     local coins, spend, what, itemId, category = feedable(data, point)
     if not coins then
         self:Reply(player, { ok = false, reason = 'nothing' })

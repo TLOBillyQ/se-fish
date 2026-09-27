@@ -4,11 +4,17 @@
 -- 先删记录再发放，重放与多人争抢都只发一份。鱼获列表经 LootState 广播给客户端画「拾取」文字泡。
 -- 固定点位鱼饵（#45）共用这套记录、广播与拾取复验：Kind='bait'，拾取进 Bait 计数库存（不占格），
 -- 成功后该点位 RespawnSec 秒刷新一份新的（新 id，旧 id 重放无效）；鱼获（Kind='fish'）不刷新、不消失。
+-- 分区上限回收（#91，GameSpec §6.5）：鱼获按落点归入最近的钓鱼区，每区 FIFO 计数，超 PerZoneCap
+-- 最旧的进入待回收：可见性来回闪烁 FlashBeforeRecycleSec 秒后销毁；待回收不计入区总量、仍可拾取，
+-- 拾取即取消回收。点位鱼饵不占区上限。
 local GameCfg = require('common.GameCfg')
 local MathWaterJudge = require('common.MathWaterJudge')
 local MgrFishCarrier = require('server.Mgr.MgrFishCarrier')
 
-local Mgr = { Loots = {}, NextId = 0, Spots = {} }
+local Mgr = { Loots = {}, NextId = 0, Spots = {}, ZoneQueues = {}, Recycling = {} }
+
+-- 待回收闪烁的可见性切换间隔（秒）
+local FLASH_INTERVAL = 0.5
 
 local function cfg()
     return GameCfg.Loot
@@ -68,6 +74,59 @@ function Mgr:OnCarrierDied(carrier)
     end
 end
 
+-- 落点归入水平距离最近的钓鱼区
+function Mgr:ZoneAt(pos)
+    local best, bestDist
+    for _, zone in ipairs(GameCfg.Water.Zones) do
+        local dx, dz = pos.x - zone.Center.x, pos.z - zone.Center.z
+        local dist = dx * dx + dz * dz
+        if not bestDist or dist < bestDist then best, bestDist = zone, dist end
+    end
+    return best and best.Id or nil
+end
+
+-- 鱼获计入所属区 FIFO 队列，并立刻执行上限检查
+function Mgr:Track(loot)
+    local zoneId = self:ZoneAt(loot.Position)
+    if not zoneId then return end
+    loot.ZoneId = zoneId
+    local queue = self.ZoneQueues[zoneId]
+    if not queue then
+        queue = {}
+        self.ZoneQueues[zoneId] = queue
+    end
+    queue[#queue + 1] = loot.Id
+    self:EnforceCap(zoneId)
+end
+
+-- 从区队列与待回收里摘除（拾取成功时调用）
+function Mgr:Untrack(loot)
+    self.Recycling[loot.Id] = nil
+    local queue = loot.ZoneId and self.ZoneQueues[loot.ZoneId]
+    if not queue then return end
+    for i, id in ipairs(queue) do
+        if id == loot.Id then
+            table.remove(queue, i)
+            return
+        end
+    end
+end
+
+-- 超上限时把最旧的鱼获移入待回收（不计入区总量，闪烁后销毁）
+function Mgr:EnforceCap(zoneId)
+    local queue = self.ZoneQueues[zoneId]
+    local cap = cfg().PerZoneCap
+    while queue and cap and #queue > cap do
+        local id = table.remove(queue, 1)
+        local loot = self.Loots[id]
+        if loot then
+            local now = self:Now()
+            self.Recycling[id] = { At = now + cfg().FlashBeforeRecycleSec, NextFlash = now, Visible = true }
+            print('[MgrLoot] 待回收', loot.ItemId, 'loot=' .. tostring(id), 'zone=' .. zoneId)
+        end
+    end
+end
+
 function Mgr:Spawn(fishId, mult, pos, itemId)
     local species = GameCfg.Fish[fishId]
     if not species then return nil end
@@ -91,6 +150,7 @@ function Mgr:Spawn(fishId, mult, pos, itemId)
     end
     local loot = { Id = id, Kind = 'fish', ItemId = itemId or fishId, FishId = fishId, Mult = mult, Position = position, Unit = unit }
     self.Loots[id] = loot
+    self:Track(loot)
     print('[MgrLoot] 生成鱼获', loot.ItemId, mult, 'loot=' .. tostring(id))
     self:Broadcast()
     return loot
@@ -118,6 +178,7 @@ function Mgr:Pickup(player, id)
         print('[MgrLoot] 背包已满，拒绝拾取', player.UserId, 'loot=' .. tostring(id))
         return false
     end
+    self:Untrack(loot)
     pcall(function() loot.Unit:Destroy() end)
     print('[MgrLoot] 拾取', player.UserId, loot.ItemId, loot.Mult, 'loot=' .. tostring(id))
     self.PlayerData:SendItemBar(player)
@@ -131,6 +192,7 @@ function Mgr:GiveBait(player, data, loot)
         self.Loots[loot.Id] = loot
         return false
     end
+    self:Untrack(loot)
     pcall(function() loot.Unit:Destroy() end)
     local spot = self.Spots[loot.SpotId]
     if spot then
@@ -227,6 +289,45 @@ function Mgr:Update()
             if now >= spot.RespawnAt then self:SpawnBait(spot.Cfg) end
         end
     end
+    local expired
+    for id, entry in pairs(self.Recycling) do
+        now = now or self:Now()
+        if now >= entry.At then
+            expired = expired or {}
+            expired[#expired + 1] = id
+        elseif now >= entry.NextFlash then
+            -- 服务端驱动闪烁：可见性按固定间隔来回切换（WorldUnit 的可见性是 ModelVisible）
+            local loot = self.Loots[id]
+            if loot then
+                entry.Visible = not entry.Visible
+                local visible = entry.Visible
+                local ok, err = pcall(function() loot.Unit.ModelVisible = visible end)
+                if not ok and not entry.FlashFailed then
+                    entry.FlashFailed = true
+                    print('[MgrLoot] 闪烁失败', id, tostring(err))
+                end
+            end
+            entry.NextFlash = now + FLASH_INTERVAL
+        end
+    end
+    for _, id in ipairs(expired or {}) do
+        local loot = self.Loots[id]
+        if loot then
+            local ok, err = pcall(function() loot.Unit:Destroy() end)
+            if not ok then
+                -- 销毁失败：记录与单位都保留，5 秒后重试，不报成功
+                print('[MgrLoot] 回收销毁失败', id, tostring(err))
+                self.Recycling[id].At = now + 5
+            else
+                self.Loots[id] = nil
+                self.Recycling[id] = nil
+                print('[MgrLoot] 回收', loot.ItemId, 'loot=' .. tostring(id), 'zone=' .. tostring(loot.ZoneId))
+            end
+        else
+            self.Recycling[id] = nil
+        end
+    end
+    if expired then self:Broadcast() end
 end
 
 return Mgr

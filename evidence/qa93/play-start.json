@@ -1,0 +1,9 @@
+{
+  "success": true,
+  "playtest_id": "87782a6",
+  "mode": "se",
+  "message": "playtest started",
+  "request_accepted": true,
+  "ready_confirmed": false,
+  "confirmation": "request_accepted"
+}

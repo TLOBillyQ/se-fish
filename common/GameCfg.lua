@@ -26,7 +26,7 @@ GameCfg.Items = {
     -- 六次各 +5 从 5 只能到 35；#85 同时要求终值 40，最后一级补至 40。
     MaxBackpackSlots = 40,
     UpgradePrices = { 100, 200, 400, 800, 1600, 3200 },
-    Id = { Tilapia = 'tilapia', Carp = 'carp', KnifeFish = 'knifeFish', Bass = 'bass', Catfish = 'catfish', Goldfish = 'goldfish', Worm = 'worm', StarterRod = 'starterRod',
+    Id = { Tilapia = 'tilapia', Carp = 'carp', KnifeFish = 'knifeFish', Bass = 'bass', Catfish = 'catfish', Goldfish = 'goldfish', Worm = 'worm', Sausage = 'sausage', StarterRod = 'starterRod',
         Shrimp = 'shrimp', RiverShrimp = 'riverShrimp', Crayfish = 'crayfish', BostonLobster = 'bostonLobster', AussieLobster = 'aussieLobster', MilkLobster = 'milkLobster',
         RareShrimp = 'rareShrimp', RareRiverShrimp = 'rareRiverShrimp', RareCrayfish = 'rareCrayfish',
         RareBostonLobster = 'rareBostonLobster', RareAussieLobster = 'rareAussieLobster', RareMilkLobster = 'rareMilkLobster',
@@ -48,6 +48,8 @@ GameCfg.Items = {
         catfish = { Name = '鲶鱼', EatPercent = 25, Icon = 'official://image/11164' },
         goldfish = { Name = '金鱼', EatPercent = 30, Icon = 'official://image/11164' },
         worm = { Name = '蚯蚓', EatPercent = 5, Icon = 'official://image/14066', Container = 'bait', BasePrice = 1 },
+        -- 香肠（#90，虾池鱼饵）：进 Bait 计数不占格，虾池商店 2 金上架
+        sausage = { Name = '香肠', Icon = 'official://image/14066', Container = 'bait', BasePrice = 2 }, -- [未查证：图标占位，待 #55 校准]
         starterRod = { Name = '新手鱼竿', Icon = 'official://image/12024', Level = 1, BasePrice = 3 },
         -- 虾池鱼获（#84，GameSpec §5.2 / 物品表 17-28；售价在 GameCfg.Fish 对应鱼种行）
         shrimp = { Name = '虾米', EatPercent = 15, Icon = 'official://image/11164' },
@@ -68,7 +70,8 @@ GameCfg.Items = {
         eelHead = { Name = '电鳗头', EatPercent = 50, Icon = 'official://image/11164', BasePrice = 10 },
         garMeat = { Name = '鳄雀鳝鱼肉', EatPercent = 100, Icon = 'official://image/13008', BasePrice = 15 },
         garHead = { Name = '鳄雀鳝鱼头', EatPercent = 100, Icon = 'official://image/11164', BasePrice = 20 },
-        -- 首领饵「鸭子」（物品表 120）：按 #85 占道具栏/背包格；挂饵与首领抽签随 #88 落地
+        -- 首领饵「鸭子」（物品表 120）：按 #85 占道具栏/背包格；挂饵走 SelectBait 通道、
+        -- 抛竿必出鳄雀鳝（#88，映射见 GameCfg.Casting.BossBait）
         duck = { Name = '鸭子', EatPercent = 10, Icon = 'official://image/11154', BasePrice = 10 },
         -- 船票（过关道具，不能吃）：交给摆渡 NPC 去虾池（#89 落地）；物品表原名「虾池车票」，
         -- 按 CONTEXT.md 术语定名「虾池船票」，后续钓鱼区各有一张
@@ -147,6 +150,7 @@ GameCfg.Fish = {
         Combat = 'eel',
         Drops = { { ItemId = 'eelMeat', Count = 2 }, { ItemId = 'eelHead', Count = 1 } } },
     alligatorGar = { Name = '鳄雀鳝', Grade = 'boss', Health = 600, Attack = 30, BaseWeight = 5, BasePrice = 0, Model = '7000546', Speed = 6, EscapeSec = 300,
+        Combat = 'gar',
         Drops = { { ItemId = 'garMeat', Count = 2 }, { ItemId = 'garHead', Count = 1 } } },
     -- 虾池（第二钓鱼区）普通鱼（#84，GameSpec §5.2；模型按鱼塘六鱼顺次占位）
     shrimp = { Name = '虾米', Grade = 'normal', Health = 20, BaseWeight = 0.02, BasePrice = 4, Model = '7000557', Speed = 3 },
@@ -203,6 +207,21 @@ GameCfg.Loot = {
     Height = 0.2,
     BubbleHeight = 1.2,
     DropSpacing = 1, -- 多份部位鱼获横向间距，避免模型与拾取泡完全重叠
+    -- 分区上限回收（#91，GameSpec §6.5）：每个钓鱼区场上鱼获总量上限，超限最旧的先闪烁
+    -- FlashBeforeRecycleSec 秒再销毁；待回收期间仍可拾取，拾取即取消回收。上限进配置供压测校准。
+    PerZoneCap = 200,
+    FlashBeforeRecycleSec = 30,
+}
+
+-- 存档（#92）：DataStore 集合名与键前缀、限流重试策略。写失败只记日志不动内存态（内存比存档新），
+-- 读写失败按 RetryDelaySec 退避重试 MaxRetries 次；AutosaveSec 周期自动存档，兑换/收船票即时记账，
+-- 同一人写入合并排队只留最新快照（技术难点 §5）；体积与写频台账在 MgrSave.Ledger（验收③）。
+GameCfg.Save = {
+    Store = 'sefish_save_v1',
+    KeyPrefix = 'u',
+    MaxRetries = 3,
+    RetryDelaySec = 1,
+    AutosaveSec = 60,
 }
 
 -- 固定点位鱼饵（#45，#27 规格）：每个点位同时最多一份，复用鱼获的 2 米拾取与服务端复验，
@@ -281,51 +300,86 @@ GameCfg.CastFeedback = {
     FloatColor = { 255, 225, 70, 255 },
 }
 
--- 交互点（#44，#27 规格）：场景既有触发器单位登记为可交互目标，当前只有钓鱼佬（TGUnitFish，
--- 退役入口 LocalFishEnter 用它做靠近判定）。Radius 米内（只看 x/z：触发器中心在高处）显示「对话」「喂食」，
+-- 交互点（#44，#27 规格）：场景既有触发器单位登记为可交互目标，当前只有钓鱼佬（一区 TGUnitFish、
+-- 虾池 TGUnitFishShrimp，#90 多锚点；退役入口 LocalFishEnter 用 TGUnitFish 做靠近判定）。Radius 米内（只看 x/z：触发器中心在高处）显示「对话」「喂食」，
 -- 服务端复验多给 Slack 米容差。喂食即出售：鱼获 floor(BasePrice × mult)，鱼饵每只 BaitPrice 金币。
 -- 钓鱼佬的可见模型是官方「咸鱼」（official://preset/102179，场景单位名见 ModelName）；
 -- 模型无 Eat 动画（EatAnimation 留空，服务端播动画自动跳过），喂食吃动作为客户端缩放脉冲
 -- （LocalInteract 播，仅喂食者本机可见）。文字泡相对触发器中心（y=-1）抬高 9.5 米，露出高岸地面（y≈8.03）。
 GameCfg.Interact = {
     Fisherman = {
-        AnchorName = 'TGUnitFish',
+        -- 多锚点（#90）：第一钓鱼区 TGUnitFish + 虾池 TGUnitFishShrimp，范围内任一即命中；
+        -- 配置、台词、回收价全共享（虾池钓鱼佬同样什么都吃、信物兑换一样走 Exchange）
+        AnchorNames = { 'TGUnitFish', 'TGUnitFishShrimp' },
         ModelName = 'FishermanModel',
         Radius = 5,
         Slack = 0.5,
         BubbleHeight = 9.5,
         DialogText = '我好饿啊，什么都吃！',
         BaitPrice = { worm = 1 },
+        -- 信物兑换（#87，GameSpec §8.1 已确认）：选中格是信物时走 1:1 兑换、不给金币；
+        -- 精英信物 → 首领饵，首领信物 → 船票；道具栏 + 背包全满时拒绝且不消耗信物
+        Exchange = { eelHead = 'duck', garHead = 'shrimpTicket' },
     },
 }
 
 -- 钓场商店（#48，#28 规格）：价格真源是 design 商店表（渔力全开--商店表.xlsx）的「商店售价」列，
 -- Goods 每行照抄表列：物品、商店售价 Price、所属分页 Page、最低商店等级 MinShopLevel、每人购买次数上限 PurchaseLimit。
--- MVP 白名单上架「钓具」分页的新手鱼竿（表编号 14）与蚯蚓（表编号 13）；
+-- MVP 白名单上架「钓具」分页的新手鱼竿（表编号 14）与蚯蚓（表编号 13）；#90 虾池起售香肠（2 金）。
 -- M1（#84）鱼竿表按七级统一：竿级 = 商店表七支竿的顺序，第 N 钓鱼区起售竿级 N 的竿（MinShopLevel = 竿级）。
--- 商店等级 Level 取当前钓鱼区序号（第一区 = 1，规格推断，替换点在此一处），
--- 所以 Level=1 时只有新手鱼竿可购，其余六级是落盘配置——钓虾竿上架随 #90 虾池商店生效。
--- 表里其余钓具（假饵等）、「武器」「升级」分页均未实现，不进白名单；
--- PurchaseLimit 都是 0（不限），MVP 只读不实现。入口复用场景触发器 TGUnitShop 与旧入口用过的文字泡预设；
+-- 摊位 Stands（#90）：每个钓鱼区一个摊位，Level = 钓鱼区序号；商品按 MinShopLevel <= 摊位 Level 上架，
+-- 所以虾池摊（2 级）比一区摊（1 级）多香肠与钓虾竿。玩家站在哪个摊位旁就按哪个摊位的等级结算，
+-- 范围复验用共享的 Radius / Slack。入口复用场景触发器与旧入口用过的文字泡预设；
 -- Radius 米内（只看 x/z）显示提示，出了 Radius 自动关商店，服务端复验多给 Slack 米
 -- [未查证] Radius 与触发器实际尺寸是否一致、文字泡高度，待 #55 实测
 GameCfg.Shop = {
-    AnchorName = 'TGUnitShop',
+    Stands = {
+        { AnchorName = 'TGUnitShop', Level = 1 },
+        { AnchorName = 'TGUnitShopShrimp', Level = 2 },
+    },
     BubblePreset = 'map://preset/uf5ad80a4c6a40d59b7f6e0eb99a58c0',
     BubbleHeight = 7,
     HintText = '看看有什么可买的',
     Radius = 5,
     Slack = 0.5,
-    Level = 1,
     Goods = {
         { ItemId = 'starterRod', Price = 5, Page = '钓具', MinShopLevel = 1, PurchaseLimit = 0 },
         { ItemId = 'worm', Price = 1, Page = '钓具', MinShopLevel = 1, PurchaseLimit = 0 },
+        { ItemId = 'sausage', Price = 2, Page = '钓具', MinShopLevel = 2, PurchaseLimit = 0 },
         { ItemId = 'shrimpRod', Price = 12, Page = '钓具', MinShopLevel = 2, PurchaseLimit = 0 },
         { ItemId = 'crabRod', Price = 24, Page = '钓具', MinShopLevel = 3, PurchaseLimit = 0 },
         { ItemId = 'normalRod', Price = 50, Page = '钓具', MinShopLevel = 4, PurchaseLimit = 0 },
         { ItemId = 'proRod', Price = 100, Page = '钓具', MinShopLevel = 5, PurchaseLimit = 0 },
         { ItemId = 'airforceRod', Price = 200, Page = '钓具', MinShopLevel = 6, PurchaseLimit = 0 },
         { ItemId = 'unscientificRod', Price = 500, Page = '钓具', MinShopLevel = 7, PurchaseLimit = 0 },
+    },
+}
+
+-- 摆渡（#89，GameSpec §8.3 已确认细则）：去程一人在船边交 1 张船票，倒计时 CountdownSec 秒后
+-- 带走 BoatRange 米内（只看 x/z）所有玩家到虾池落点，无票同行者搭便船合法；倒计时中再交票拒绝且不扣。
+-- 返程在虾池侧锚点按人付 Price 金币、立即传送回第一钓鱼区。船与虾池都是占位表现（#90 才铺虾池内容）；
+-- 区域名写入 PlayerData.Data.Zone（#92 存档用），HomeZone 是开局区域。返程票价为占位值，待策划校准。
+GameCfg.Ferry = {
+    HomeZone = 'fishPond1',
+    Outbound = {
+        AnchorName = 'FerryBoat',
+        Ticket = 'shrimpTicket',
+        CountdownSec = 10,
+        BoatRange = 6,
+        Radius = 5,
+        Slack = 0.5,
+        BubbleHeight = 6,
+        Destination = { x = 100, y = 6, z = 100 }, -- 虾池落点（占位平台，随场景摆位校准）
+        Zone = 'shrimpPond',
+    },
+    Return = {
+        AnchorName = 'FerryReturn',
+        Price = 20,
+        Radius = 5,
+        Slack = 0.5,
+        BubbleHeight = 6,
+        Destination = { x = 6.26, y = 5.01, z = 39.29 }, -- 第一钓鱼区出生点旁
+        Zone = 'fishPond1',
     },
 }
 
@@ -353,7 +407,34 @@ GameCfg.Casting = {
             { Id = 'goldfish', Bait = 'worm', RodLevel = 1, DrawWeight = 16 },
             { Id = 'eel', Bait = 'worm', RodLevel = 1, DrawWeight = 10 },
         },
+        -- 虾池（#90，钓鱼表第二区）：虾米任意饵保底；沼虾/小龙虾起用香肠；波龙及以上竿级 2。
+        -- 极品权重另列（普通 8/8/8/32/24/16，极品 2/2/2/8/6/4）
+        ShrimpPool = {
+            { Id = 'shrimp', Bait = 0, RodLevel = 1, DrawWeight = 8 },
+            { Id = 'riverShrimp', Bait = 'sausage', RodLevel = 1, DrawWeight = 8 },
+            { Id = 'crayfish', Bait = 'sausage', RodLevel = 1, DrawWeight = 8 },
+            { Id = 'bostonLobster', Bait = 'sausage', RodLevel = 2, DrawWeight = 32 },
+            { Id = 'aussieLobster', Bait = 'sausage', RodLevel = 2, DrawWeight = 24 },
+            { Id = 'milkLobster', Bait = 'sausage', RodLevel = 2, DrawWeight = 16 },
+            { Id = 'rareShrimp', Bait = 0, RodLevel = 1, DrawWeight = 2 },
+            { Id = 'rareRiverShrimp', Bait = 'sausage', RodLevel = 1, DrawWeight = 2 },
+            { Id = 'rareCrayfish', Bait = 'sausage', RodLevel = 1, DrawWeight = 2 },
+            { Id = 'rareBostonLobster', Bait = 'sausage', RodLevel = 2, DrawWeight = 8 },
+            { Id = 'rareAussieLobster', Bait = 'sausage', RodLevel = 2, DrawWeight = 6 },
+            { Id = 'rareMilkLobster', Bait = 'sausage', RodLevel = 2, DrawWeight = 4 },
+        },
     },
+    -- 首领饵（#88，GameSpec §12 已确认）：首领饵物品 id → 必出首领鱼种。挂首领饵在任意水区抛竿
+    -- 必出对应首领，无视抽签权重、鱼饵-鱼种匹配与竿级；首领饵占道具栏/背包格、不进 Bait 计数，
+    -- 抛竿一刻从道具栏（优先）或背包扣 1 只，钓出首领后消耗，脱钩 / 逃脱不返还。
+    BossBait = { duck = 'alligatorGar' },
+}
+
+-- 首领近战（#88，占位）：Combat='gar' 的鱼上岸放下后 Kinematic 追最近的活着的玩家，
+-- BiteRange 米内按 BiteCooldownSec 冷却咬出鱼种 Attack 伤害；移速取鱼种 Speed，
+-- 逃跑时限取鱼种 EscapeSec（耗尽走精英直线逃脱）。头伤 / 身后弱点判定后补（任务说明占位即可）。
+GameCfg.FishCombat = {
+    gar = { BiteRange = 2.5, BiteCooldownSec = 1.5 },
 }
 
 -- 技能包（ability_system）在本图的接入配置。
@@ -439,6 +520,10 @@ GameCfg.Water = {
     Zones = {
         { Id = "WaterCircle2", Center = { x = -11.75, y = 1.05, z = 27.75 }, HalfXZ = 6.0, SurfaceY = 2.183 },
         { Id = "WaterCircle1", Center = { x = -11.75, y = 1.05, z = 27.75 }, HalfXZ = 3.0, SurfaceY = 2.183 },
+        -- 虾池水面（#90）：第二钓鱼区占位平台（星光地板，已扩到 x 90..110 / z 91..109，顶面 y=5.0）
+        -- 东北角水区，抛竿落点命中后按 Casting.Zones.ShrimpPool 选鱼。SurfaceY 取水面单位
+        -- （深水预设，pos.y=4.2，顶面约 5.2~5.35 批次漂移；取高点再加鱼获落地余量，与既有水区同口径）
+        { Id = "ShrimpPool", Center = { x = 105, y = 4.2, z = 106 }, HalfXZ = 3.0, SurfaceY = 5.6 },
     },
 }
 

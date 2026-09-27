@@ -1,0 +1,8 @@
+[02:11:29.328] [info/client] "[ScreenMain] 上钩提示"	"2:aU5A95JB9rit0DUl"	"音效 official://audio/10001"
+[02:11:29.332] [info/server] "[MgrCast] 上钩"	"aU5A95JB9rit0DUl"	"shrimp"	1.61
+[02:17:46.456] [info/client] "[ScreenMain] 上钩提示"	"3:aU5A95JB9rit0DUl"	"音效 official://audio/10001"
+[02:17:46.457] [info/server] "[MgrCast] 上钩"	"aU5A95JB9rit0DUl"	"riverShrimp"	1.98
+[02:21:27.030] [info/client] "[ScreenMain] 上钩提示"	"4:aU5A95JB9rit0DUl"	"音效 official://audio/10001"
+[02:21:27.036] [info/server] "[MgrCast] 上钩"	"aU5A95JB9rit0DUl"	"riverShrimp"	1.14
+[02:29:45.499] [info/client] "[ScreenMain] 上钩提示"	"5:aU5A95JB9rit0DUl"	"音效 official://audio/10001"
+[02:29:45.503] [info/server] "[MgrCast] 上钩"	"aU5A95JB9rit0DUl"	"bostonLobster"	1.12

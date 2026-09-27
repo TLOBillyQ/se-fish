@@ -8,10 +8,12 @@ local MgrFishUnit = require('server.Mgr.MgrFishUnit')
 local Mgr = { Sessions = {}, FishUnit = MgrFishUnit }
 MathWaterJudge.Build(GameCfg.Water.Zones)
 
+-- 选中格是鱼竿（物品表带 Level 的竿种，#90 起不限新手竿）且与客户端声明一致才受理
 local function selectedRod(data, payload)
     local selected = data.Data.SelectedSlot
     local entry = selected and data.Data.Containers[GameCfg.Items.ContainerId.ItemBar][selected]
-    if not entry or entry.count < 1 or entry.itemId ~= GameCfg.Items.Id.StarterRod
+    local definition = entry and entry.count >= 1 and GameCfg.Items.Definitions[entry.itemId]
+    if not definition or type(definition.Level) ~= 'number'
         or payload.slot ~= selected or payload.itemId ~= entry.itemId then return end
     return selected, entry
 end
@@ -244,8 +246,14 @@ function Mgr:Update()
         if session.phase == 'landed' and session.idleAt and now >= session.idleAt then
             self:EndSession(current.player, current)
         elseif session.phase == 'cast' and session.hookAt and now >= session.hookAt then
-            local rows = GameCfg.Casting.Zones[session.zoneId]
-            local fishId = FishCatch.Select(rows, session.rodLevel, session.baitId, math.random)
+            -- 首领饵必出对应首领（#88，GameSpec §12）：无视权重、鱼饵-鱼种匹配与竿级，不限水域
+            local boss = session.baitId and GameCfg.Casting.BossBait
+                and GameCfg.Casting.BossBait[session.baitId]
+            local fishId = boss
+            if not fishId then
+                local rows = GameCfg.Casting.Zones[session.zoneId]
+                fishId = FishCatch.Select(rows, session.rodLevel, session.baitId, math.random)
+            end
             if fishId then
                 session.phase = 'hooked'
                 session.fishId = fishId

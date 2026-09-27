@@ -1,0 +1,4 @@
+[02:54:44.836] [info/server] "[MgrLoot] 待回收"	"shrimp"	"loot=6"	"zone=ShrimpPool"
+[02:56:46.108] [info/server] "[MgrLoot] 待回收"	"shrimp"	"loot=7"	"zone=ShrimpPool"
+[03:00:42.631] [info/server] "[MgrLoot] 待回收"	"shrimp"	"loot=6"	"zone=ShrimpPool"
+[03:03:24.341] [info/server] "[MgrLoot] 待回收"	"shrimp"	"loot=7"	"zone=ShrimpPool"

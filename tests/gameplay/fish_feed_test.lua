@@ -191,6 +191,6 @@ function TestFishFeed:test_fish_coin_has_single_write_entry()
         file:close()
         for _ in text:gmatch('[%.%s]FishCoin%s*=%s*[^=]') do writers = writers + 1 end
     end
-    -- PlayerData:Init 的初值 + AddCoin 里的唯一一处累加
-    lu.assertEquals(writers, 2)
+    -- PlayerData:Init 的初值 + AddCoin 里的唯一一处累加 + ApplySave 的读档恢复（#92，不是运行时收支）
+    lu.assertEquals(writers, 3)
 end

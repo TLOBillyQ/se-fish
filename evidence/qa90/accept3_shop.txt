@@ -1,0 +1,2 @@
+[02:03:55.194] [info/server] "[MgrShop] 购买"	"aU5A95JB9rit0DUl"	"sausage"	"-2"	"FishCoin=18"
+[02:03:55.986] [info/server] "[MgrShop] 购买"	"aU5A95JB9rit0DUl"	"shrimpRod"	"-12"	"FishCoin=6"

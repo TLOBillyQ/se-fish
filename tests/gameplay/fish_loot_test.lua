@@ -262,10 +262,12 @@ function TestFishLoot:test_fish_table_matches_m1_spec()
     lu.assertNil(defs.duck.Container) -- #85：首领饵占道具栏或背包格
     lu.assertEquals(defs.shrimpTicket.Name, '虾池船票')
     lu.assertNil(defs.shrimpTicket.EatPercent) -- 过关道具不能吃
-    -- #86：电鳗加入蚯蚓抽签表；鳄雀鳝与虾池水区随 #88/#90 接入。
-    for _, rows in pairs(cfg.Casting.Zones) do
+    -- #86：电鳗加入蚯蚓抽签表；#88 首领饵必出鳄雀鳝；#90 虾池鱼表 ShrimpPool 接入（行数与权重见 shrimp_pond_test）。
+    for zoneId, rows in pairs(cfg.Casting.Zones) do
         for _, row in ipairs(rows) do lu.assertNotNil(cfg.Fish[row.Id], row.Id) end
-        lu.assertEquals(#rows, 7)
-        lu.assertEquals(rows[7], { Id = 'eel', Bait = 'worm', RodLevel = 1, DrawWeight = 10 })
+        if zoneId == 'WaterCircle2' then
+            lu.assertEquals(#rows, 7)
+            lu.assertEquals(rows[7], { Id = 'eel', Bait = 'worm', RodLevel = 1, DrawWeight = 10 })
+        end
     end
 end

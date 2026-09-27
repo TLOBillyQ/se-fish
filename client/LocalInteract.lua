@@ -1,5 +1,6 @@
--- 钓鱼佬「对话」「喂食」文字泡（#44）：在交互点锚点单位上方建一个场景 UI，放两个按钮，
--- 本地角色在 Radius 米内（只看 x/z）才显示。「对话」本地弹固定台词；「喂食」只发请求
+-- 钓鱼佬「对话」「喂食」文字泡（#44；#90 多锚点）：每个钓鱼佬锚点（Fisherman.AnchorNames，
+-- 一区 TGUnitFish + 虾池 TGUnitFishShrimp）上方建一个场景 UI，放两个按钮，
+-- 本地角色在该锚点 Radius 米内（只看 x/z）才显示。「对话」本地弹固定台词；「喂食」只发请求
 -- （InteractAction{target, action, seq}，seq 递增防重放），结果以服务端回包为准。
 -- 喂食成功的吃动作是客户端缩放脉冲：对 ModelName 模型按 Heartbeat 帧数播 1→放大→还原，
 -- 仅喂食者本机可见；模型缺失或写 Scale 失败只记日志，不影响文字泡与结算。
@@ -8,7 +9,7 @@ local REUtil = require('common.REUtil')
 local Util = require('common.Util')
 
 local Bubble = require('client.InteractionBubble')
-local LocalInteract = { Seq = 0 }
+local LocalInteract = { Seq = 0, Bubbles = {} }
 
 -- 缩放脉冲参数：PulseFrames 帧内按 sin 曲线放大到 1+PulseAmp 再还原（帧率相关，表现层可接受）
 local PulseFrames = 20
@@ -46,8 +47,7 @@ function LocalInteract:Create(anchor)
     self:Button(node, 'BtnFishermanTalk', '对话', -offset, function() notice(cfg.DialogText) end)
     self:Button(node, 'BtnFishermanFeed', '喂食', offset, function() self:Feed() end)
     node.Visible = false
-    self.Node = node
-    self.Center = center
+    self.Bubbles[#self.Bubbles + 1] = { Node = node, Center = center, Visible = false }
 end
 
 function LocalInteract:UpdatePulse()
@@ -79,18 +79,20 @@ end
 
 function LocalInteract:Update()
     self:UpdatePulse()
-    if not self.Node then return end
     local character = Players.LocalPlayer and Players.LocalPlayer.Character
     local pos = character and character.Position
-    local visible = false
-    if pos then
-        local dx, dz = pos.x - self.Center.x, pos.z - self.Center.z
-        local radius = GameCfg.Interact.Fisherman.Radius
-        visible = dx * dx + dz * dz <= radius * radius
-    end
-    if self.Visible ~= visible then
-        self.Visible = visible
-        pcall(function() self.Node.Visible = visible end)
+    local radius = GameCfg.Interact.Fisherman.Radius
+    for _, bubble in ipairs(self.Bubbles) do
+        local visible = false
+        if pos then
+            local dx, dz = pos.x - bubble.Center.x, pos.z - bubble.Center.z
+            visible = dx * dx + dz * dz <= radius * radius
+        end
+        if bubble.Visible ~= visible then
+            bubble.Visible = visible
+            local ok, err = pcall(function() bubble.Node.Visible = visible end)
+            if not ok then print('[LocalInteract] 气泡显隐失败', tostring(err)) end
+        end
     end
 end
 
@@ -98,19 +100,32 @@ function LocalInteract:Start()
     REUtil:GetRE('InteractResult').OnClientEvent:Connect(function(result)
         if type(result) ~= 'table' then return end
         if result.ok then
-            notice('钓鱼佬吃得很香，金币 +' .. tostring(result.coins))
+            if type(result.exchange) == 'table' then
+                -- 信物兑换（#87）：回包带兑换双方 id，按物品表名字拼提示；吃动作脉冲与金币喂食相同
+                local defs = GameCfg.Items.Definitions
+                local from = defs[result.exchange.from]
+                local to = defs[result.exchange.to]
+                notice('用' .. (from and from.Name or tostring(result.exchange.from))
+                    .. '换得' .. (to and to.Name or tostring(result.exchange.to)) .. ' x1')
+            else
+                notice('钓鱼佬吃得很香，金币 +' .. tostring(result.coins))
+            end
             if self.Model then self.PulseLeft = PulseFrames end
         elseif result.reason == 'nothing' then
             notice('先选中要喂的鱼获或鱼饵')
+        elseif result.reason == 'full' then
+            notice('格子满了，钓鱼佬不肯换')
         end
     end)
     local cfg = GameCfg.Interact.Fisherman
-    local anchor = Util:WaitForChild(World, cfg.AnchorName)
-    if not anchor then
-        print('[LocalInteract] 找不到钓鱼佬单位', cfg.AnchorName)
-        return
+    for _, name in ipairs(cfg.AnchorNames) do
+        local anchor = Util:WaitForChild(World, name)
+        if anchor then
+            self:Create(anchor)
+        else
+            print('[LocalInteract] 找不到钓鱼佬单位', name)
+        end
     end
-    self:Create(anchor)
     local model = cfg.ModelName and Util:WaitForChild(World, cfg.ModelName)
     if model then
         local ok, scale = pcall(function() return model.Scale end)

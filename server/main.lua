@@ -24,6 +24,8 @@ local MgrMap = {
     MgrQuest = require("server.Mgr.MgrQuest"),
     MgrVitals = require("server.Mgr.MgrVitals"),
     MgrStory = require("server.Mgr.MgrStory"),
+    MgrFerry = require("server.Mgr.MgrFerry"),
+    MgrSave = require("server.Mgr.MgrSave"),
 }
 
 MgrMap.MgrCast.ReelIn = MgrMap.MgrReelIn
@@ -46,6 +48,12 @@ MgrMap.MgrCast.Quest = MgrMap.MgrQuest
 MgrMap.MgrFishUnit.Quest = MgrMap.MgrQuest
 MgrMap.MgrPlayerData.Vitals = MgrMap.MgrVitals
 MgrMap.MgrGM.Vitals = MgrMap.MgrVitals
+MgrMap.MgrFerry.PlayerData = MgrMap.MgrPlayerData
+MgrMap.MgrFerry.Interact = MgrMap.MgrInteract
+MgrMap.MgrPlayerData.Save = MgrMap.MgrSave
+MgrMap.MgrInteract.Save = MgrMap.MgrSave
+MgrMap.MgrFerry.Save = MgrMap.MgrSave
+MgrMap.MgrSave.PlayerData = MgrMap.MgrPlayerData
 
 local function HandlePlayerAdded(player)
     for k, mgr in pairs(MgrMap) do

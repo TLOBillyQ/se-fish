@@ -1,11 +1,11 @@
--- 钓场商店入口（#48）：在钓场老板触发器 TGUnitShop 上挂旧入口用过的文字泡预设，放一个「看看有什么可买的」按钮；
--- 本地角色在 Radius 米内（只看 x/z）才显示，点击打开 ScreenShop，走出范围自动关闭。
--- 购买结果 ShopResult 在这里统一转成消息条提示。
+-- 钓场商店入口（#48；#90 多摊位）：每个摊位（GameCfg.Shop.Stands）一个文字泡「看看有什么可买的」，
+-- 本地角色在该摊位 Radius 米内（只看 x/z）才显示，点击打开 ScreenShop；商店界面的商品按当前摊位
+-- 的等级（Stands.Level）上架。走出所有摊位范围自动关商店。购买结果 ShopResult 在这里统一转成消息条提示。
 local GameCfg = require('common.GameCfg')
 local REUtil = require('common.REUtil')
 local Util = require('common.Util')
 
-local LocalShop = {}
+local LocalShop = { Bubbles = {} }
 
 local World = game:GetService('World')
 local Players = game:GetService('Players')
@@ -52,29 +52,39 @@ function LocalShop:CreateBubble(anchor)
         print('[LocalShop] 入口按钮创建失败', tostring(btn))
     end
     node.Visible = false
-    self.Node = node
+    return node
 end
 
 function LocalShop:Open()
-    if not self.Near then return end
-    print('[LocalShop] 打开商店')
+    if not self.Stand then return end
+    print('[LocalShop] 打开商店', self.Stand.AnchorName, 'level=' .. tostring(self.Stand.Level))
     _G.MgrGameUI:OpenScreen('ScreenShop')
 end
 
 function LocalShop:Update()
     local character = Players.LocalPlayer and Players.LocalPlayer.Character
     local pos = character and character.Position
-    local near = false
-    if pos and self.Center then
-        local dx, dz = pos.x - self.Center.x, pos.z - self.Center.z
-        near = dx * dx + dz * dz <= GameCfg.Shop.Radius * GameCfg.Shop.Radius
+    local shop = GameCfg.Shop
+    local nearStand
+    for _, bubble in ipairs(self.Bubbles) do
+        local near = false
+        if pos then
+            local dx, dz = pos.x - bubble.Center.x, pos.z - bubble.Center.z
+            near = dx * dx + dz * dz <= shop.Radius * shop.Radius
+        end
+        if near then nearStand = bubble.Stand end
+        if bubble.Near ~= near then
+            bubble.Near = near
+            local ok, err = pcall(function() bubble.Node.Visible = near end)
+            if not ok then print('[LocalShop] 气泡显隐失败', tostring(err)) end
+        end
     end
-    if self.Near == near then return end
-    self.Near = near
-    if self.Node then pcall(function() self.Node.Visible = near end) end
-    if not near and _G.MgrGameUI:IsScreenOpen('ScreenShop') then
-        print('[LocalShop] 离开钓场老板，关闭商店')
-        _G.MgrGameUI:CloseScreen('ScreenShop')
+    if self.Stand ~= nearStand then
+        self.Stand = nearStand
+        if not nearStand and _G.MgrGameUI:IsScreenOpen('ScreenShop') then
+            print('[LocalShop] 离开钓场老板，关闭商店')
+            _G.MgrGameUI:CloseScreen('ScreenShop')
+        end
     end
 end
 
@@ -93,13 +103,17 @@ function LocalShop:Start()
             notice(FailText[result.reason] or '购买失败')
         end
     end)
-    local anchor = Util:WaitForChild(World, GameCfg.Shop.AnchorName)
-    if not anchor then
-        print('[LocalShop] 找不到钓场老板单位', GameCfg.Shop.AnchorName)
-        return
+    for _, stand in ipairs(GameCfg.Shop.Stands) do
+        local anchor = Util:WaitForChild(World, stand.AnchorName)
+        if anchor then
+            local node = self:CreateBubble(anchor)
+            if node then
+                self.Bubbles[#self.Bubbles + 1] = { Node = node, Center = anchor.Position, Stand = stand, Near = false }
+            end
+        else
+            print('[LocalShop] 找不到钓场老板单位', stand.AnchorName)
+        end
     end
-    self.Center = anchor.Position
-    self:CreateBubble(anchor)
     game:GetService('RunService').Heartbeat:Connect(function() self:Update() end)
 end
 
