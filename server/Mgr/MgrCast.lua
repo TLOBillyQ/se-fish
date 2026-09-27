@@ -5,7 +5,7 @@ local MgrPlayerData = require('server.Mgr.MgrPlayerData')
 local REUtil = require('common.REUtil')
 local MgrFishUnit = require('server.Mgr.MgrFishUnit')
 
-local Mgr = { Sessions = {}, FishUnit = MgrFishUnit }
+local Mgr = { Sessions = {}, NextFish = {}, NextFishSerial = 0, FishUnit = MgrFishUnit }
 MathWaterJudge.Build(GameCfg.Water.Zones)
 
 -- 选中格是鱼竿（物品表带 Level 的竿种，#90 起不限新手竿）且与客户端声明一致才受理
@@ -128,6 +128,18 @@ function Mgr:Cast(player, payload)
     end
 end
 
+function Mgr:SetNextFish(player, fishId)
+    self.NextFishSerial = self.NextFishSerial + 1
+    local entry = { fishId = fishId, serial = self.NextFishSerial }
+    self.NextFish[player.UserId] = entry
+    local current = self.Sessions[player.UserId]
+    if current and current.player == player and current.session.phase == 'hooked' then
+        current.session.fishId = fishId
+        current.session.forcedFishSerial = entry.serial
+        self:SendState(player, current.session)
+    end
+end
+
 -- 一次钓鱼结束（收竿 / 脱钩 / 上岸停留完）：清会话，归位到抛竿时选中的鱼竿
 function Mgr:EndSession(player, current, notify, reason)
     if self.Sessions[player.UserId] ~= current then return end
@@ -178,6 +190,11 @@ function Mgr:FinishReel(player, sessionId, outcome, notify)
         or current.session.phase ~= 'hooked' then return end
     if outcome == 'landed' then
         local session = current.session
+        if session.forcedFishSerial and not GameCfg.Debug.Enabled then
+            self.NextFish[player.UserId] = nil
+            self:EndSession(player, current, notify)
+            return
+        end
         session.phase = 'landed'
         session.idleAt = self.World:GetServerTime() + GameCfg.Casting.LandedHoldSec
         self:Land(player, session)
@@ -209,6 +226,8 @@ function Mgr:Land(player, session)
     local position = Vector3.New(origin.x + dx, origin.y + GameCfg.Casting.LandingHeight, origin.z + dz)
     local fish, err = self.FishUnit:SpawnLanded(player, { fishId = session.fishId, mult = session.mult }, position)
     if fish then
+        local forced = session.forcedFishSerial and self.NextFish[player.UserId]
+        if forced and forced.serial == session.forcedFishSerial then self.NextFish[player.UserId] = nil end
         print('[MgrCast] 上岸', player.UserId, session.fishId, session.mult, 'fish=' .. tostring(fish.Id))
     else
         print('[MgrCast] 上岸生成活鱼失败', player.UserId, session.fishId, tostring(err))
@@ -223,6 +242,7 @@ function Mgr:Stop()
     for _, connection in ipairs(self.Connections or {}) do connection:Disconnect() end
     self.Connections = nil
     self.Sessions = {}
+    self.NextFish = {}
 end
 
 function Mgr:Start()
@@ -243,10 +263,16 @@ end
 
 function Mgr:OnPlayerRemoving(player)
     local current = self.Sessions[player.UserId]
-    if current and current.player == player then self.Sessions[player.UserId] = nil end
+    if current and current.player == player then
+        self.Sessions[player.UserId] = nil
+        self.NextFish[player.UserId] = nil
+    elseif not current then
+        self.NextFish[player.UserId] = nil
+    end
 end
 
 function Mgr:Update()
+    if not GameCfg.Debug.Enabled then self.NextFish = {} end
     local now = self.World:GetServerTime()
     for _, current in pairs(self.Sessions) do
         local session = current.session
@@ -256,7 +282,9 @@ function Mgr:Update()
             -- 首领饵必出对应首领（#88，GameSpec §12）：无视权重、鱼饵-鱼种匹配与竿级，不限水域
             local boss = session.baitId and GameCfg.Casting.BossBait
                 and GameCfg.Casting.BossBait[session.baitId]
-            local fishId = boss
+            local forced = GameCfg.Debug.Enabled and self.NextFish[current.player.UserId]
+            -- GM 指定鱼种优先于首领饵和抽签；仅成功生成上岸活鱼后清除。
+            local fishId = forced and forced.fishId or boss
             if not fishId then
                 local rows = GameCfg.Casting.Zones[session.zoneId]
                 fishId = FishCatch.Select(rows, session.rodLevel, session.baitId, math.random)
@@ -264,6 +292,7 @@ function Mgr:Update()
             if fishId then
                 session.phase = 'hooked'
                 session.fishId = fishId
+                session.forcedFishSerial = forced and forced.serial
                 session.mult = FishCatch.Multiplier(math.random)
                 self.NextReelId = (self.NextReelId or 0) + 1
                 session.reelSession = tostring(self.NextReelId) .. ':' .. tostring(current.player.UserId)

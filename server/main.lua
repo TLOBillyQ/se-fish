@@ -38,6 +38,7 @@ MgrMap.MgrLoot.PlayerData = MgrMap.MgrPlayerData
 MgrMap.MgrPlayerData.Loot = MgrMap.MgrLoot
 MgrMap.MgrInteract.PlayerData = MgrMap.MgrPlayerData
 MgrMap.MgrGM.PlayerData = MgrMap.MgrPlayerData
+MgrMap.MgrGM.Cast = MgrMap.MgrCast
 MgrMap.MgrShop.PlayerData = MgrMap.MgrPlayerData
 MgrMap.MgrShop.Interact = MgrMap.MgrInteract
 MgrMap.MgrLoot.Quest = MgrMap.MgrQuest
