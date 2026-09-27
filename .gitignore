@@ -32,3 +32,8 @@ desktop.ini
 tmp/
 build/
 .toolcache/
+
+# BEGIN UML-VIEWER
+.uml-viewer/
+uml-viewer-log.txt
+# END UML-VIEWER
