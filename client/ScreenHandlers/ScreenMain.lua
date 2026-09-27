@@ -716,6 +716,13 @@ function ScreenHandler:Init()
     self:Listen(_G.REUtil:GetRE('CastState').OnClientEvent, function(state)
         if type(state) ~= 'table' then return end
         if state.result then
+            if state.castId and self.AlertedCastId and state.castId < self.AlertedCastId then return end
+            if state.phase == 'idle' then
+                self.SplashUntil = nil
+                _G.LocalReelIn:Clear(self.CastState and self.CastState.reelSession)
+                self.CastState = state
+                self:ShowCast()
+            end
             self:ShowCastFailure(state.result)
             return
         end

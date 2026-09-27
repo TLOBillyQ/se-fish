@@ -129,7 +129,7 @@ function Mgr:Cast(player, payload)
 end
 
 -- 一次钓鱼结束（收竿 / 脱钩 / 上岸停留完）：清会话，归位到抛竿时选中的鱼竿
-function Mgr:EndSession(player, current, notify)
+function Mgr:EndSession(player, current, notify, reason)
     if self.Sessions[player.UserId] ~= current then return end
     self.Sessions[player.UserId] = nil
     if notify == false then return end
@@ -139,7 +139,14 @@ function Mgr:EndSession(player, current, notify)
         and data:RestoreSlot(slot) then
         MgrPlayerData:SendItemBar(player)
     end
-    self:SendState(player)
+    if reason then
+        REUtil:GetRE('CastState'):FireClient(player, {
+            phase = 'idle', castId = current.session.castId, result = { reason = reason },
+            holding = self.FishUnit and self.FishUnit:HeldInfo(player) or nil,
+        })
+    else
+        self:SendState(player)
+    end
 end
 
 function Mgr:Reel(player)
@@ -266,9 +273,8 @@ function Mgr:Update()
                     print('[MgrCast] 上钩', current.player.UserId, fishId, session.mult)
                 end
             else
-                -- 空抽保留已消费的鱼饵；先发 idle 清会话，再发一次性结果。
-                self:EndSession(current.player, current)
-                self:SendFailure(current.player, 'noFish')
+                -- 空抽保留已消费的鱼饵；结束会话时一并发送结果，避免旧反馈与新抛竿交错。
+                self:EndSession(current.player, current, true, 'noFish')
                 print('[MgrCast] 空抽', current.player.UserId, session.zoneId)
             end
         end

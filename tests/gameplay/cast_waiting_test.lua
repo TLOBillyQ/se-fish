@@ -196,6 +196,7 @@ end
 
 function TestCastWaiting:test_empty_draw_ends_session_after_bait_consumed_then_reports_no_fish()
     self:castRod()
+    local castId = self:lastState().castId
     local remaining = self.data:GetItemBarSnapshot().bait.worm
     local original = GameCfg.Casting.Zones.WaterCircle2
     GameCfg.Casting.Zones.WaterCircle2 = {}
@@ -204,14 +205,18 @@ function TestCastWaiting:test_empty_draw_ends_session_after_bait_consumed_then_r
     GameCfg.Casting.Zones.WaterCircle2 = original
     if not ok then error(err) end
     lu.assertNil(self.cast.Sessions[self.player.UserId])
-    lu.assertEquals(self.states[#self.states - 1].value.phase, 'idle')
-    lu.assertNil(self.states[#self.states - 1].value.result)
-    lu.assertEquals(self:lastState().result.reason, 'noFish')
     lu.assertEquals(self:lastState().phase, 'idle')
+    lu.assertEquals(self:lastState().castId, castId)
+    lu.assertEquals(self:lastState().result.reason, 'noFish')
     lu.assertEquals(self.data:GetItemBarSnapshot().bait.worm, remaining)
     lu.assertEquals(self.consumeCount, 1)
     self.events.RequestCastState.OnServerEvent:Fire(self.player)
     lu.assertNil(self:lastState().result)
+    self:castRod()
+    lu.assertEquals(self:lastState().phase, 'cast')
+    lu.assertTrue(self:lastState().castId > castId)
+    lu.assertEquals(self.data:GetItemBarSnapshot().bait.worm, remaining - 1)
+    lu.assertEquals(#self.facts, 2)
 end
 
 function TestCastWaiting:test_hook_handoff_and_reel_clear_waiting()

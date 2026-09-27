@@ -323,6 +323,38 @@ function TestReelUI:test_stale_snapshot_and_cast_do_not_clear_new_invalid_landin
     lu.assertEquals(self.handler.CastState.phase, 'idle')
 end
 
+function TestReelUI:test_empty_draw_clears_waiting_and_recast_replaces_feedback()
+    self.events.ItemBarState.OnClientEvent:Fire({ slots = {
+        [1] = { itemId = 'starterRod', count = 1 },
+    }, bait = { worm = 2 }, selectedSlot = 1 })
+    local landing = { x = 12, y = 3, z = 27 }
+    self.events.CastState.OnClientEvent:Fire({ phase = 'cast', castId = 1,
+        zoneId = 'WaterCircle2', landing = landing })
+    lu.assertTrue(self.nodes.CastFloat.Visible)
+    self.events.CastState.OnClientEvent:Fire({ phase = 'idle', castId = 1,
+        result = { reason = 'noFish' } })
+    lu.assertEquals(self.nodes.CastFailureHint.Text, '本次没有鱼上钩，请重新抛竿')
+    lu.assertTrue(self.nodes.CastFailureHint.Visible)
+    lu.assertFalse(self.nodes.CastFloat.Visible)
+    lu.assertFalse(self.nodes.CastWaitHint.Visible)
+    lu.assertFalse(self.nodes.CastSplashHint.Visible)
+    lu.assertTrue(self.nodes.ItemAction2.TouchEnabled)
+    lu.assertEquals(self.nodes.BtnItemActionLabel.Text, '抛竿')
+    self.nodes.ItemAction2.OnClicked:Fire()
+    lu.assertEquals(self.sent[#self.sent].payload, {
+        action = 'Cast', slot = 1, itemId = 'starterRod',
+    })
+    self.events.CastState.OnClientEvent:Fire({ phase = 'cast', castId = 2,
+        zoneId = 'WaterCircle2', landing = landing })
+    lu.assertTrue(self.nodes.CastFloat.Visible)
+    lu.assertFalse(self.nodes.CastFailureHint.Visible)
+    self.events.CastState.OnClientEvent:Fire({ phase = 'idle', castId = 1,
+        result = { reason = 'noFish' } })
+    lu.assertEquals(self.handler.CastState.castId, 2)
+    lu.assertTrue(self.nodes.CastWaitHint.Visible)
+    lu.assertFalse(self.nodes.CastFailureHint.Visible)
+end
+
 function TestReelUI:test_failure_result_is_not_replayed_after_reopen()
     self.events.CastState.OnClientEvent:Fire({ result = { reason = 'noFish' } })
     lu.assertEquals(self.nodes.CastFailureHint.Text, '本次没有鱼上钩，请重新抛竿')
