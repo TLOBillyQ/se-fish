@@ -125,6 +125,31 @@ function TestCastWaiting:test_invalid_landing_rejects_before_bait_and_result_is_
     lu.assertNil(self:lastState().result)
 end
 
+function TestCastWaiting:test_water_edge_repeated_failures_then_success_keep_bait_and_quest_fact()
+    -- 虾池东侧边界 x=108，线内含边界，线外拒绝；不改水区判定。
+    local position = self.player.Character.Position
+    position.y, position.z = 5, 101
+    for _, x in ipairs({ 108.001, 108.002 }) do
+        position.x = x
+        self:castRod()
+        lu.assertEquals(self:lastState().phase, 'idle')
+        lu.assertEquals(self:lastState().result.reason, 'invalidLanding')
+        lu.assertEquals(self:lastState().result.landing, { x = x, y = 5, z = 106 })
+        lu.assertEquals(self.data:GetItemBarSnapshot().bait.worm, 10)
+        lu.assertEquals(#self.facts, 0)
+        self.events.RequestCastState.OnServerEvent:Fire(self.player)
+        lu.assertNil(self:lastState().result)
+    end
+    position.x = 108
+    self:castRod()
+    lu.assertEquals(self:lastState().phase, 'cast')
+    lu.assertEquals(self:lastState().zoneId, 'ShrimpPool')
+    lu.assertEquals(self:lastState().landing, { x = 108, y = 5.6, z = 106 })
+    lu.assertEquals(self.data:GetItemBarSnapshot().bait.worm, 9)
+    lu.assertEquals(#self.facts, 1)
+    lu.assertEquals(self.facts[1].kind, 'CastWater')
+end
+
 function TestCastWaiting:test_prerequisite_reasons_and_unavailable_are_distinct()
     local function expect(reason, act)
         local before = #self.states

@@ -726,9 +726,9 @@ function ScreenHandler:Init()
             return
         end
         if waitingCast(state) then
+            if self.AlertedCastId and state.castId < self.AlertedCastId then return end
             self.FailureUntil = nil
             self.FailureLanding = nil
-            if self.AlertedCastId and state.castId < self.AlertedCastId then return end
             if self.AlertedCastId ~= state.castId then
                 self.AlertedCastId = state.castId
                 self.SplashUntil = nil
@@ -739,6 +739,10 @@ function ScreenHandler:Init()
             end
         else
             self.SplashUntil = nil
+            if not state.snapshot or state.phase ~= 'idle' then
+                self.FailureUntil = nil
+                self.FailureLanding = nil
+            end
         end
         if state.phase == 'hooked' then
             _G.LocalReelIn:SetSession(state.reelSession)

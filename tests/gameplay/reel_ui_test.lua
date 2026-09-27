@@ -267,6 +267,62 @@ function TestReelUI:test_failure_result_marks_landing_and_does_not_replace_cast_
     lu.assertTrue(self.nodes.CastFloat.Visible)
 end
 
+function TestReelUI:test_invalid_landing_feedback_clears_on_interrupt_and_new_failure_survives()
+    self.events.ItemBarState.OnClientEvent:Fire({ slots = {
+        [1] = { itemId = 'starterRod', count = 1 },
+    }, bait = { worm = 2 }, selectedSlot = 1 })
+    local landing = { x = 12, y = 3, z = 27 }
+    self.events.CastState.OnClientEvent:Fire({ phase = 'idle', result = {
+        reason = 'invalidLanding', landing = landing,
+    } })
+    lu.assertTrue(self.nodes.CastFailureMark.Visible)
+    lu.assertEquals(self.nodes.CastFailureMark.Position, { x = 960, y = 540 })
+    lu.assertEquals(self.nodes.BtnItemActionLabel.Text, '抛竿')
+    lu.assertTrue(self.nodes.ItemAction2.TouchEnabled)
+    self.nodes.ItemAction2.OnClicked:Fire()
+    lu.assertEquals(self.sent[#self.sent], { name = 'CastAction', payload = {
+        action = 'Cast', slot = 1, itemId = 'starterRod',
+    } })
+    self.events.CastState.OnClientEvent:Fire({ phase = 'idle' })
+    lu.assertFalse(self.nodes.CastFailureMark.Visible)
+    lu.assertFalse(self.nodes.CastFailureHint.Visible)
+    self.events.CastState.OnClientEvent:Fire({ result = {
+        reason = 'invalidLanding', landing = landing,
+    } })
+    lu.assertTrue(self.nodes.CastFailureMark.Visible)
+    self.now = 1
+    self.heartbeat:Fire()
+    lu.assertTrue(self.nodes.CastFailureMark.Visible)
+    self.projected = { x = 900, y = 400, z = 4 }
+    self.heartbeat:Fire()
+    lu.assertEquals(self.nodes.CastFailureMark.Position, { x = 900, y = 680 })
+    self.ui:CloseScreen('ScreenMain')
+    lu.assertFalse(self.nodes.CastFailureMark.Visible)
+    self.ui:OpenScreen('ScreenMain')
+    lu.assertFalse(self.nodes.CastFailureHint.Visible)
+    self.handler:Destroy()
+    lu.assertTrue(self.nodes.CastFailureMark.Destroyed)
+end
+
+function TestReelUI:test_stale_snapshot_and_cast_do_not_clear_new_invalid_landing_feedback()
+    self.events.CastState.OnClientEvent:Fire({ phase = 'cast', castId = 1,
+        zoneId = 'WaterCircle2', landing = { x = 12, y = 3, z = 27 } })
+    self.events.CastState.OnClientEvent:Fire({ phase = 'idle' })
+    self.events.CastState.OnClientEvent:Fire({ phase = 'cast', castId = 2,
+        zoneId = 'WaterCircle2', landing = { x = 12, y = 3, z = 27 } })
+    self.events.CastState.OnClientEvent:Fire({ phase = 'idle' })
+    self.events.CastState.OnClientEvent:Fire({ result = {
+        reason = 'invalidLanding', landing = { x = 24, y = 3, z = 30 },
+    } })
+    self.events.CastState.OnClientEvent:Fire({ phase = 'idle', snapshot = true })
+    lu.assertTrue(self.nodes.CastFailureMark.Visible)
+    lu.assertTrue(self.nodes.CastFailureHint.Visible)
+    self.events.CastState.OnClientEvent:Fire({ phase = 'cast', castId = 1,
+        zoneId = 'WaterCircle2', landing = { x = 12, y = 3, z = 27 } })
+    lu.assertTrue(self.nodes.CastFailureMark.Visible)
+    lu.assertEquals(self.handler.CastState.phase, 'idle')
+end
+
 function TestReelUI:test_failure_result_is_not_replayed_after_reopen()
     self.events.CastState.OnClientEvent:Fire({ result = { reason = 'noFish' } })
     lu.assertEquals(self.nodes.CastFailureHint.Text, '本次没有鱼上钩，请重新抛竿')
