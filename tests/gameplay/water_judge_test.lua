@@ -75,7 +75,7 @@ end
 
 -- 4) 贴边 +0.1m：超出半宽 0.1m 不算在水里。
 function TestWaterJudgeBoundary:test_edge_outside_by_point_one_meter_is_not_in_water()
-  lu.assertFalse(inWater(at(CENTER_X + OUTER_HALF + 0.1, UNDER_WATER_Y, CENTER_Z)))
+  lu.assertFalse(MathWaterJudge.InZone(zoneById("WaterCircle2"), at(CENTER_X + OUTER_HALF + 0.1, UNDER_WATER_Y, CENTER_Z)))
 end
 
 -- 5) 贴边 −0.1m：还在半宽以内，算在水里。
@@ -99,7 +99,7 @@ end
 -- Z 轴与 X 轴对称（判定是「水平方框」不是圆）。
 function TestWaterJudgeSemantics:test_z_axis_edge_matches_x_axis()
   lu.assertTrue(inWater(at(CENTER_X, UNDER_WATER_Y, CENTER_Z + OUTER_HALF - 0.1)))
-  lu.assertFalse(inWater(at(CENTER_X, UNDER_WATER_Y, CENTER_Z + OUTER_HALF + 0.1)))
+  lu.assertFalse(MathWaterJudge.InZone(zoneById("WaterCircle2"), at(CENTER_X, UNDER_WATER_Y, CENTER_Z + OUTER_HALF + 0.1)))
 end
 
 -- 水面 y≈2.183 高于大地板表面 y=2.0（#31 改正：Position.y 是底面、Size.y 是包围盒半长）：
@@ -140,7 +140,7 @@ function TestWaterJudgeConfig:test_half_width_does_not_multiply_scale()
 end
 
 function TestWaterJudgeConfig:test_center_and_surface_come_from_measured_values()
-  for _, zone in ipairs(zones()) do
+  for _, zone in ipairs({ zoneById("WaterCircle2"), zoneById("WaterCircle1") }) do
     lu.assertEquals(zone.Center.x, CENTER_X)
     lu.assertEquals(zone.Center.z, CENTER_Z)
     lu.assertEquals(zone.SurfaceY, SURFACE_Y)
@@ -162,6 +162,37 @@ end
 
 function TestWaterJudgeConfig:test_build_rejects_empty_zones()
   lu.assertErrorMsgContains("水区配置为空", MathWaterJudge.Build, {})
+end
+
+TestWallWater = {}
+
+-- 失败方式：墙内误判、墙外漏判、凹角或拼接接缝漏判、新水区没有鱼表。
+function TestWallWater:test_land_and_bait_positions_stay_dry()
+  for _, p in ipairs({ {5,31}, {5,40}, {10,28}, {15,34}, {10,45}, {-15,45} }) do
+    lu.assertFalse(inWater(at(p[1], FLOOR_Y, p[2])))
+  end
+end
+
+function TestWallWater:test_outside_walls_and_notch_are_water()
+  for _, p in ipairs({ {-40,45}, {28,40}, {0,12}, {0,68}, {-15,30}, {-10,34} }) do
+    lu.assertTrue(inWater(at(p[1], FLOOR_Y, p[2])))
+  end
+end
+
+function TestWallWater:test_tiling_has_no_holes_or_land_overlap()
+  for x = -58, 31 do
+    for z = 11, 70 do
+      local outside = x < -24.25 or x > 21.75 or z < 16.25 or z > 61.25
+        or (x < -4.982 and z < 35.268)
+      lu.assertEquals(inWater(at(x, FLOOR_Y, z)), outside, 'x=' .. x .. ', z=' .. z)
+    end
+  end
+end
+
+function TestWallWater:test_every_added_zone_has_a_fish_pool()
+  for i = 3, #zones() do
+    lu.assertNotNil(GameCfg.Casting.Zones[zones()[i].Id])
+  end
 end
 
 TestFishCarrierConfig = {}

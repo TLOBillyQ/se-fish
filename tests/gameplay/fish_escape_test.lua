@@ -69,8 +69,8 @@ function TestFishEscape:test_drop_releases_in_front_and_starts_toward_water_with
     lu.assertTrue(body.Position.x > 10 and body.Position.x <= 12.5)
     lu.assertAlmostEquals(body.Position.z, 20, 1e-9)
     lu.assertAlmostEquals(speed(body.LinearVelocity), 3, 1e-6)
-    -- 水在 (-11.75, 27.75)：朝西偏北
-    lu.assertTrue(body.LinearVelocity.x < 0 and body.LinearVelocity.z > 0)
+    -- 墙外水区已覆盖南岸，这个落点朝南即可回水。
+    lu.assertTrue(body.LinearVelocity.z < 0)
     lu.assertNil(self.mgr:GetHeld(self.player))
     lu.assertEquals(fish.FishId, 'bass')
     lu.assertEquals(fish.Mult, 1.4)
@@ -190,7 +190,9 @@ end
 
 function TestFishEscape:test_global_cap_is_online_times_two_and_kicks_oldest()
     self:prepare()
-    local third = self:newPlayer(9, vec(50, 2, 20))
+    local third = self:newPlayer(9, vec(10, 2, 45))
+    -- 数量上限用例把三条鱼都留在墙内，避免先触发入水回收。
+    self.other.Character.Position = vec(10, 2, 35)
     local a = self:heldFish(self.player)
     self.mgr:Drop(self.player)
     self.now = 1

@@ -409,7 +409,7 @@ GameCfg.Ability = {
     },
 }
 
--- 水判定（M0-V1）：每个钓鱼区一条。Center 只用到 x/z（y 留作场景溯源），HalfXZ 是水平半宽（米），
+-- 水判定：同一钓鱼区可用多条正方形拼接。Center 只用到 x/z（y 留作场景溯源），HalfXZ 是水平半宽（米），
 -- SurfaceY 是水面高度（米）；判定语义与配置校验见 common/MathWaterJudge.lua，
 -- 边界用例见 tests/gameplay/water_judge_test.lua，取值溯源见 issue #25 的 M0 模块线台账（评论 9862）。
 -- 2026-09-24 在 #12 的场景基础上水平扩建两倍，中心与高度不变；编辑器回读：
@@ -435,6 +435,39 @@ GameCfg.Water = {
         { Id = "WaterCircle1", Center = { x = -11.75, y = 1.05, z = 27.75 }, HalfXZ = 3.0, SurfaceY = 2.183 },
     },
 }
+
+-- 2026-09-27 编辑器实测：六面空气墙围成带西南凹角的地块。
+-- 按墙体水平厚度 3 米的外沿留出陆地：外框 x[-24.25,21.75]、z[16.25,61.25]，
+-- 西南凹角 x<-4.982 且 z<35.268。墙体本身不作为水域，闭区间交界线沿用水判定约定。
+-- 本轮只覆盖大地板水平尺寸 90×60 的范围 x[-58.75,31.25]、z[10.75,70.75]。
+-- 各矩形用短边作正方形边长，最后一块向回贴齐；允许重叠，避免末端留缝或越界。
+local function addWaterStrip(name, minX, maxX, minZ, maxZ)
+    local side = math.min(maxX - minX, maxZ - minZ)
+    local countX = math.ceil((maxX - minX) / side)
+    local countZ = math.ceil((maxZ - minZ) / side)
+    for ix = 1, countX do
+        for iz = 1, countZ do
+            local id = name .. '_' .. ix .. '_' .. iz
+            GameCfg.Water.Zones[#GameCfg.Water.Zones + 1] = {
+                Id = id,
+                Center = {
+                    x = math.min(minX + (ix - 1) * side, maxX - side) + side / 2,
+                    y = 1.05,
+                    z = math.min(minZ + (iz - 1) * side, maxZ - side) + side / 2,
+                },
+                HalfXZ = side / 2,
+                SurfaceY = 2.183,
+            }
+            GameCfg.Casting.Zones[id] = GameCfg.Casting.Zones.WaterCircle2
+        end
+    end
+end
+
+addWaterStrip('PondWest', -58.75, -24.25, 10.75, 70.75)
+addWaterStrip('PondEast', 21.75, 31.25, 10.75, 70.75)
+addWaterStrip('PondSouth', -24.25, 21.75, 10.75, 16.25)
+addWaterStrip('PondNorth', -24.25, 21.75, 61.25, 70.75)
+addWaterStrip('PondNotch', -24.25, -4.982, 16.25, 35.268)
 
 -- 高频输入契约（M0-V5）：窗口与次数上限的常量，逻辑见 common/RateLimit.lua，
 -- 载荷字段固定 {s=会话 id, n=窗口内点击数, q=单调序号}（C-3）。
