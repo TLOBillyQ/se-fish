@@ -19,11 +19,10 @@ end
 
 function Mgr:Key(userId)
     local slot = cfg().AcceptanceSlot
-    if type(slot) == 'string' and slot ~= '' then
-        assert(slot:match('^[%w_-]+$'), '验收存档槽只能使用字母、数字、下划线或连字符')
-        return cfg().KeyPrefix .. tostring(userId) .. ':qa:' .. slot
-    end
-    return cfg().KeyPrefix .. tostring(userId)
+    if slot == '' or slot == nil then return cfg().KeyPrefix .. tostring(userId) end
+    assert(type(slot) == 'string' and #slot <= 40 and slot:match('^[%w_-]+$'),
+        '验收存档槽须为 1—40 位字母、数字、下划线或连字符')
+    return cfg().KeyPrefix .. tostring(userId) .. ':qa:' .. slot
 end
 
 -- 取 DataStore；服务都没有时不走重试（谈不上限流），缓存结论避免刷屏
