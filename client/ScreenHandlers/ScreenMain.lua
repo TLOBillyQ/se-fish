@@ -717,7 +717,9 @@ function ScreenHandler:Init()
         if type(state) ~= 'table' then return end
         if state.result then
             if state.castId and self.AlertedCastId and state.castId < self.AlertedCastId then return end
-            if state.phase == 'idle' then
+            if state.phase == 'idle' and not state.castId and waitingCast(self.CastState) then return end
+            if state.phase == 'idle' and state.castId
+                and self.CastState and self.CastState.castId == state.castId then
                 self.SplashUntil = nil
                 _G.LocalReelIn:Clear(self.CastState and self.CastState.reelSession)
                 self.CastState = state

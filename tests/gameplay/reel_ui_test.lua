@@ -331,6 +331,10 @@ function TestReelUI:test_empty_draw_clears_waiting_and_recast_replaces_feedback(
     self.events.CastState.OnClientEvent:Fire({ phase = 'cast', castId = 1,
         zoneId = 'WaterCircle2', landing = landing })
     lu.assertTrue(self.nodes.CastFloat.Visible)
+    self.events.CastState.OnClientEvent:Fire({ result = { reason = 'cooldown' } })
+    lu.assertEquals(self.handler.CastState.castId, 1)
+    self.events.CastState.OnClientEvent:Fire({ phase = 'idle', result = { reason = 'invalidLanding' } })
+    lu.assertEquals(self.handler.CastState.castId, 1)
     self.events.CastState.OnClientEvent:Fire({ phase = 'idle', castId = 1,
         result = { reason = 'noFish' } })
     lu.assertEquals(self.nodes.CastFailureHint.Text, '本次没有鱼上钩，请重新抛竿')
