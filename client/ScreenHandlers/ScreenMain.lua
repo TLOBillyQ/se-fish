@@ -197,6 +197,28 @@ local function showCastFeedback(self, phase, active, alerting, progress)
     end
 end
 
+local castFailureText = {
+    invalidLanding = '落点不在可钓水域，请重新抛竿',
+    noFish = '本次没有鱼上钩，请重新抛竿',
+    holding = '先放下鱼再抛竿',
+    invalidRod = '请重新选择鱼竿',
+    cooldown = '操作太快，请稍后重试',
+    baitUnavailable = '鱼饵不足，请重新挂饵',
+    unavailable = '暂时无法抛竿，请稍后重试',
+    alreadyCasting = '正在钓鱼，请先收竿',
+}
+
+function ScreenHandler:ShowCastFailure(result)
+    local text = type(result) == 'table' and castFailureText[result.reason]
+    if not text or not self.IsOpen then return end
+    self.SplashUntil = nil
+    self.FailureUntil = World:GetServerTime() + GameCfg.CastFeedback.SplashDurationSec
+    self.CastFailureHint.Text = text
+    self.FailureLanding = result.reason == 'invalidLanding' and result.landing or nil
+    self:UpdateCastFeedback()
+    print('[ScreenMain] 抛竿失败', result.reason, text)
+end
+
 local function waitingCast(state)
     local landing = state and state.landing
     return state and state.phase == 'cast' and state.zoneId ~= nil
@@ -207,30 +229,34 @@ end
 
 function ScreenHandler:UpdateCastFeedback()
     if not self.CastFloat then return end
+    local now = (self.FailureUntil or self.SplashUntil) and World:GetServerTime() or 0
     local waiting = self.IsOpen and waitingCast(self.CastState)
-    self.CastWaitHint.Visible = waiting == true
-    self.CastSplashHint.Visible = waiting == true and self.SplashUntil ~= nil
-        and World:GetServerTime() < self.SplashUntil
-    local visible = false
-    if waiting then
-        local landing = self.CastState.landing
-        local camera = game:GetService('CameraService')
-        if camera then
-            local screen, onScreen = camera:WorldToViewportPoint(Vector3.New(landing.x, landing.y, landing.z))
-            if screen and onScreen and screen.z > 0 then
-                self.CastFloat.Position = Vector2.New(screen.x, self.EuiResolution.y - screen.y)
-                visible = true
-            end
-        end
+    local failing = self.IsOpen and self.FailureUntil ~= nil and now < self.FailureUntil
+    self.CastFailureHint.Visible = failing == true
+    self.CastWaitHint.Visible = waiting == true and not failing
+    self.CastSplashHint.Visible = waiting == true and not failing and self.SplashUntil ~= nil
+        and now < self.SplashUntil
+    local camera = game:GetService('CameraService')
+    local function project(landing, marker)
+        if type(landing) ~= 'table' or type(landing.x) ~= 'number'
+            or type(landing.y) ~= 'number' or type(landing.z) ~= 'number' or not camera then return false end
+        local screen, onScreen = camera:WorldToViewportPoint(Vector3.New(landing.x, landing.y, landing.z))
+        if not screen or not onScreen or screen.z <= 0 then return false end
+        marker.Position = Vector2.New(screen.x, self.EuiResolution.y - screen.y)
+        return true
     end
-    self.CastFloat.Visible = visible
+    self.CastFloat.Visible = waiting == true and not failing
+        and project(self.CastState.landing, self.CastFloat) or false
+    self.CastFailureMark.Visible = failing == true and self.FailureLanding ~= nil
+        and project(self.FailureLanding, self.CastFailureMark) or false
 end
 
 function ScreenHandler:ShowCast()
     if not self.BtnItemAction then return end
     local state = self.Snapshot
     local selected = state and state.selectedSlot and state.slots[state.selectedSlot]
-    local rod = selected and selected.itemId == GameCfg.Items.Id.StarterRod
+    local rod = selected and GameCfg.Items.Definitions[selected.itemId]
+        and type(GameCfg.Items.Definitions[selected.itemId].Level) == 'number'
     local phase = self.CastState and self.CastState.phase or 'idle'
     local reel = _G.LocalReelIn
     local active = self.IsOpen and phase == 'hooked' and reel
@@ -465,6 +491,8 @@ function ScreenHandler:Cleanup()
     self.BtnItemActionLabel = nil
     self.HookHint = nil
     self.CastFloat = nil
+    self.CastFailureMark = nil
+    self.CastFailureHint = nil
     self.EuiResolution = nil
     self.CastWaitHint = nil
     self.CastSplashHint = nil
@@ -577,7 +605,12 @@ function ScreenHandler:Init()
         '等待上钩…', 32, Color.New(255, 255, 255, 255))
     self.CastSplashHint = overlay(root, 'CastSplashHint', resolution.x / 2, resolution.y - 430, 520, 72,
         '已入水，等待上钩', 32, Color.New(255, 225, 70, 255))
-    for _, node in ipairs({ self.CastFloat, self.CastWaitHint, self.CastSplashHint }) do
+    self.CastFailureHint = overlay(root, 'CastFailureHint', resolution.x / 2, resolution.y - 430, 740, 72,
+        '', 32, Color.New(255, 90, 90, 255))
+    self.CastFailureMark = overlay(root, 'CastFailureMark', 0, 0, feedback.FloatSize, feedback.FloatSize,
+        '●', 48, Color.New(255, 65, 65, 255))
+    for _, node in ipairs({ self.CastFloat, self.CastWaitHint, self.CastSplashHint,
+        self.CastFailureHint, self.CastFailureMark }) do
         node.Visible = false
         self.Overlays[#self.Overlays + 1] = node
     end
@@ -629,10 +662,16 @@ function ScreenHandler:Init()
         elseif phase == 'idle' and self.Snapshot then
             local slot = self.Snapshot.selectedSlot
             local entry = slot and self.Snapshot.slots[slot]
-            if entry and entry.itemId == GameCfg.Items.Id.StarterRod then
+            if entry and GameCfg.Items.Definitions[entry.itemId]
+                and type(GameCfg.Items.Definitions[entry.itemId].Level) == 'number' then
                 _G.REUtil:GetRE('CastAction'):FireServer({
                     action = 'Cast', slot = slot, itemId = entry.itemId,
                 })
+            else
+                self.FailureUntil = nil
+                self.FailureLanding = nil
+                self:ShowCast()
+                self:ShowCastFailure({ reason = 'invalidRod' })
             end
         end
     end)
@@ -649,14 +688,20 @@ function ScreenHandler:Init()
     end)
     self:Listen(_G.REUtil:GetRE('ItemBarState').OnClientEvent, function(state) self:Show(state) end)
     self:Listen(_G.REUtil:GetRE('CastState').OnClientEvent, function(state)
-        if type(state) ~= 'table'
-            or (state.phase ~= 'idle' and state.phase ~= 'cast'
-                and state.phase ~= 'hooked' and state.phase ~= 'landed') then return end
+        if type(state) ~= 'table' then return end
+        if state.result then
+            self:ShowCastFailure(state.result)
+            return
+        end
+        if state.phase ~= 'idle' and state.phase ~= 'cast'
+            and state.phase ~= 'hooked' and state.phase ~= 'landed' then return end
         if not self.IsOpen then
             if state.phase == 'hooked' then _G.LocalReelIn:Close(state.reelSession) end
             return
         end
         if waitingCast(state) then
+            self.FailureUntil = nil
+            self.FailureLanding = nil
             if self.AlertedCastId and state.castId < self.AlertedCastId then return end
             if self.AlertedCastId ~= state.castId then
                 self.AlertedCastId = state.castId
@@ -730,6 +775,8 @@ end
 
 function ScreenHandler:CloseScreen()
     self.IsOpen = false
+    self.FailureUntil = nil
+    self.FailureLanding = nil
     LocalAttackButton:SetOpen(false)
     if _G.LocalReelIn then
         _G.LocalReelIn:Suspend(self.CastState and self.CastState.reelSession)

@@ -246,6 +246,37 @@ function TestReelUI:test_waiting_feedback_tracks_landing_and_does_not_repeat_on_
     lu.assertTrue(self.nodes.CastFloat.Visible)
 end
 
+function TestReelUI:test_failure_result_marks_landing_and_does_not_replace_cast_state()
+    local landing = { x = 12, y = 3, z = 27 }
+    self.events.CastState.OnClientEvent:Fire({ result = { reason = 'invalidLanding', landing = landing } })
+    lu.assertEquals(self.nodes.CastFailureHint.Text, '落点不在可钓水域，请重新抛竿')
+    lu.assertTrue(self.nodes.CastFailureHint.Visible)
+    lu.assertTrue(self.nodes.CastFailureMark.Visible)
+    lu.assertEquals(self.lastProjected, landing)
+    lu.assertNil(self.handler.CastState)
+    self.now = 3
+    self.heartbeat:Fire()
+    lu.assertFalse(self.nodes.CastFailureHint.Visible)
+    lu.assertFalse(self.nodes.CastFailureMark.Visible)
+    self.events.CastState.OnClientEvent:Fire({ result = { reason = 'cooldown' } })
+    lu.assertTrue(self.nodes.CastFailureHint.Visible)
+    lu.assertFalse(self.nodes.CastFailureMark.Visible)
+    self.events.CastState.OnClientEvent:Fire({ phase = 'cast', castId = 1,
+        zoneId = 'WaterCircle2', landing = landing })
+    lu.assertFalse(self.nodes.CastFailureHint.Visible)
+    lu.assertTrue(self.nodes.CastFloat.Visible)
+end
+
+function TestReelUI:test_failure_result_is_not_replayed_after_reopen()
+    self.events.CastState.OnClientEvent:Fire({ result = { reason = 'noFish' } })
+    lu.assertEquals(self.nodes.CastFailureHint.Text, '本次没有鱼上钩，请重新抛竿')
+    self.ui:CloseScreen('ScreenMain')
+    lu.assertFalse(self.nodes.CastFailureHint.Visible)
+    self.ui:OpenScreen('ScreenMain')
+    self.events.CastState.OnClientEvent:Fire({ phase = 'idle', snapshot = true })
+    lu.assertFalse(self.nodes.CastFailureHint.Visible)
+end
+
 function TestReelUI:test_waiting_feedback_clears_on_hook_reel_death_and_recast()
     local function cast(id)
         self.events.CastState.OnClientEvent:Fire({ phase = 'cast', castId = id,
