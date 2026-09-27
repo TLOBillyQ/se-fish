@@ -197,6 +197,35 @@ local function showCastFeedback(self, phase, active, alerting, progress)
     end
 end
 
+local function waitingCast(state)
+    local landing = state and state.landing
+    return state and state.phase == 'cast' and state.zoneId ~= nil
+        and type(state.castId) == 'number' and type(landing) == 'table'
+        and type(landing.x) == 'number' and type(landing.y) == 'number'
+        and type(landing.z) == 'number'
+end
+
+function ScreenHandler:UpdateCastFeedback()
+    if not self.CastFloat then return end
+    local waiting = self.IsOpen and waitingCast(self.CastState)
+    self.CastWaitHint.Visible = waiting == true
+    self.CastSplashHint.Visible = waiting == true and self.SplashUntil ~= nil
+        and World:GetServerTime() < self.SplashUntil
+    local visible = false
+    if waiting then
+        local landing = self.CastState.landing
+        local camera = game:GetService('CameraService')
+        if camera then
+            local screen, onScreen = camera:WorldToViewportPoint(Vector3.New(landing.x, landing.y, landing.z))
+            if screen and onScreen and screen.z > 0 then
+                self.CastFloat.Position = Vector2.New(screen.x, self.EuiResolution.y - screen.y)
+                visible = true
+            end
+        end
+    end
+    self.CastFloat.Visible = visible
+end
+
 function ScreenHandler:ShowCast()
     if not self.BtnItemAction then return end
     local state = self.Snapshot
@@ -216,6 +245,7 @@ function ScreenHandler:ShowCast()
     if type(progress) ~= 'number' or progress ~= progress then progress = 50 end
     progress = math.max(0, math.min(100, progress))
     showCastFeedback(self, phase, active, alerting, progress)
+    self:UpdateCastFeedback()
 end
 
 local function button(parent, name, x, y, width)
@@ -434,6 +464,12 @@ function ScreenHandler:Cleanup()
     self.BtnDiscardLabel = nil
     self.BtnItemActionLabel = nil
     self.HookHint = nil
+    self.CastFloat = nil
+    self.EuiResolution = nil
+    self.CastWaitHint = nil
+    self.CastSplashHint = nil
+    self.SplashUntil = nil
+    self.AlertedCastId = nil
     self.QuestLabel = nil
     self.HealthRing = nil
     self.HungerRing = nil
@@ -468,6 +504,7 @@ function ScreenHandler:Init()
     local euiMgr = _G.GameUI:GetEuiManager()
     if not euiMgr then return end
     local resolution = euiMgr:GetDeviceResolution()
+    self.EuiResolution = resolution
     local root = self.RootNode
     self.LabelCoin = root:FindFirstChild('LabelCoin', true)
     local imageCoin = root:FindFirstChild('ImageCoin', true)
@@ -533,6 +570,17 @@ function ScreenHandler:Init()
         '', 32, Color.New(255, 220, 40, 255))
     self.HookHint.Visible = false
     self.Overlays[#self.Overlays + 1] = self.HookHint
+    local feedback = GameCfg.CastFeedback
+    self.CastFloat = overlay(root, 'CastFloat', 0, 0, feedback.FloatSize, feedback.FloatSize,
+        '●', 48, color(feedback.FloatColor))
+    self.CastWaitHint = overlay(root, 'CastWaitHint', resolution.x - 320, 800, 400, 80,
+        '等待上钩…', 32, Color.New(255, 255, 255, 255))
+    self.CastSplashHint = overlay(root, 'CastSplashHint', resolution.x / 2, resolution.y - 430, 520, 72,
+        '已入水，等待上钩', 32, Color.New(255, 225, 70, 255))
+    for _, node in ipairs({ self.CastFloat, self.CastWaitHint, self.CastSplashHint }) do
+        node.Visible = false
+        self.Overlays[#self.Overlays + 1] = node
+    end
     -- [未查证：任务条位置与 LabelCoin / 血球饥饿球（#53）是否重叠，待 #55 截图迭代]
     self.QuestLabel = overlay(root, 'QuestLabel', 500, resolution.y - 330, 900, 56,
         '', 30, Color.New(255, 255, 255, 255))
@@ -608,6 +656,19 @@ function ScreenHandler:Init()
             if state.phase == 'hooked' then _G.LocalReelIn:Close(state.reelSession) end
             return
         end
+        if waitingCast(state) then
+            if self.AlertedCastId and state.castId < self.AlertedCastId then return end
+            if self.AlertedCastId ~= state.castId then
+                self.AlertedCastId = state.castId
+                self.SplashUntil = nil
+                if not state.snapshot then
+                    self.SplashUntil = World:GetServerTime() + GameCfg.CastFeedback.SplashDurationSec
+                    print('[ScreenMain] 已入水，等待上钩', state.castId, state.zoneId)
+                end
+            end
+        else
+            self.SplashUntil = nil
+        end
         if state.phase == 'hooked' then
             _G.LocalReelIn:SetSession(state.reelSession)
             self:StartHookAlert(state.reelSession)
@@ -632,6 +693,7 @@ function ScreenHandler:Init()
     if runService and runService.Heartbeat then
         self:Listen(runService.Heartbeat, function()
             if self.ReelBar and self.ReelBar.Visible then self:ShowCast() end
+            if self.CastFloat and self.IsOpen then self:UpdateCastFeedback() end
             if self.Starving then self:UpdateStarveFx() end
         end)
     end
@@ -673,6 +735,7 @@ function ScreenHandler:CloseScreen()
         _G.LocalReelIn:Suspend(self.CastState and self.CastState.reelSession)
     end
     self.CastState = nil
+    self.SplashUntil = nil
     self:ShowCast()
 end
 

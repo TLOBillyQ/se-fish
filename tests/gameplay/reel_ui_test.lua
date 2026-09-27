@@ -13,7 +13,7 @@ local function signal()
 end
 
 function TestReelUI:setUp()
-    self.globals = { game = _G.game, Vector2 = _G.Vector2, Color = _G.Color,
+    self.globals = { game = _G.game, Vector2 = _G.Vector2, Vector3 = _G.Vector3, Color = _G.Color,
         REUtil = _G.REUtil, GameUI = _G.GameUI, LocalReelIn = _G.LocalReelIn,
         MgrGameUI = _G.MgrGameUI }
     self.modules = {}
@@ -26,6 +26,11 @@ function TestReelUI:setUp()
     self.heartbeat = signal()
     self.now = 0
     local world = { GetServerTime = function() return env.now end }
+    self.projected = { x = 960, y = 540, z = 4 }
+    self.camera = { WorldToViewportPoint = function(_, position)
+        env.lastProjected = position
+        return env.projected, true
+    end }
     function world:CreateUnit(kind, attrs)
         local node = { Kind = kind, OnClicked = signal() }
         for key, value in pairs(attrs) do node[key] = value end
@@ -36,9 +41,11 @@ function TestReelUI:setUp()
     _G.game = { GetService = function(_, name)
         if name == 'World' then return world end
         if name == 'RunService' then return { Heartbeat = env.heartbeat } end
+        if name == 'CameraService' then return env.camera end
         return {}
     end }
     _G.Vector2 = { New = function(x, y) return { x = x, y = y } end }
+    _G.Vector3 = { New = function(x, y, z) return { x = x, y = y, z = z } end }
     _G.Color = { New = function(...) return { ... } end }
     self.root = { Visible = false, Name = 'ScreenMain',
         FindFirstChild = function() return nil end }
@@ -76,7 +83,7 @@ function TestReelUI:tearDown()
         if not self.modules[name] then package.loaded[name] = nil end
     end
     for name, value in pairs(self.globals) do _G[name] = value end
-    for _, name in ipairs({ 'game', 'Vector2', 'Color', 'REUtil', 'GameUI',
+    for _, name in ipairs({ 'game', 'Vector2', 'Vector3', 'Color', 'REUtil', 'GameUI',
         'LocalReelIn', 'MgrGameUI' }) do
         if not self.globals[name] then _G[name] = nil end
     end
@@ -215,4 +222,81 @@ function TestReelUI:test_holding_fish_shows_drop_even_without_rod_selected()
     self.events.CastState.OnClientEvent:Fire({ phase = 'idle', holding = { fishId = 'carp', mult = 1 } })
     lu.assertTrue(self.nodes.ItemAction2.Visible)
     lu.assertEquals(self.nodes.BtnItemActionLabel.Text, '放下')
+end
+
+function TestReelUI:test_waiting_feedback_tracks_landing_and_does_not_repeat_on_snapshot()
+    local state = { phase = 'cast', castId = 1, zoneId = 'WaterCircle2',
+        landing = { x = 12, y = 3, z = 27 } }
+    self.events.CastState.OnClientEvent:Fire(state)
+    lu.assertTrue(self.nodes.CastFloat.Visible)
+    lu.assertEquals(self.nodes.CastFloat.Text, '●')
+    lu.assertEquals(self.nodes.CastWaitHint.Text, '等待上钩…')
+    lu.assertTrue(self.nodes.CastSplashHint.Visible)
+    lu.assertEquals(self.nodes.CastSplashHint.Text, '已入水，等待上钩')
+    lu.assertEquals(self.lastProjected, state.landing)
+    lu.assertEquals(self.nodes.CastFloat.Position, { x = 960, y = 540 })
+    self.projected = { x = 900, y = 400, z = 4 }
+    self.heartbeat:Fire()
+    lu.assertEquals(self.nodes.CastFloat.Position, { x = 900, y = 680 })
+    self.now = 4
+    self.heartbeat:Fire()
+    lu.assertFalse(self.nodes.CastSplashHint.Visible)
+    self.events.CastState.OnClientEvent:Fire(state)
+    lu.assertFalse(self.nodes.CastSplashHint.Visible)
+    lu.assertTrue(self.nodes.CastFloat.Visible)
+end
+
+function TestReelUI:test_waiting_feedback_clears_on_hook_reel_death_and_recast()
+    local function cast(id)
+        self.events.CastState.OnClientEvent:Fire({ phase = 'cast', castId = id,
+            zoneId = 'WaterCircle2', landing = { x = 12, y = 3, z = 27 } })
+    end
+    cast(1)
+    self.events.CastState.OnClientEvent:Fire({ phase = 'hooked', reelSession = 'hook1' })
+    lu.assertFalse(self.nodes.CastFloat.Visible)
+    lu.assertFalse(self.nodes.CastWaitHint.Visible)
+    lu.assertFalse(self.nodes.CastSplashHint.Visible)
+    self.events.CastState.OnClientEvent:Fire({ phase = 'idle' })
+    cast(2)
+    lu.assertTrue(self.nodes.CastSplashHint.Visible)
+    self.events.CastState.OnClientEvent:Fire({ phase = 'idle' })
+    lu.assertFalse(self.nodes.CastFloat.Visible)
+    cast(3)
+    self.events.CastState.OnClientEvent:Fire({ phase = 'idle' })
+    lu.assertFalse(self.nodes.CastWaitHint.Visible)
+    cast(4)
+    lu.assertTrue(self.nodes.CastFloat.Visible)
+    self.events.CastState.OnClientEvent:Fire({ phase = 'cast', castId = 5, snapshot = true,
+        zoneId = 'WaterCircle2', landing = { x = 0, y = 3, z = 0 } })
+    lu.assertFalse(self.nodes.CastSplashHint.Visible)
+    self.events.CastState.OnClientEvent:Fire({ phase = 'cast', castId = 1,
+        zoneId = 'WaterCircle2', landing = { x = 12, y = 3, z = 27 } })
+    lu.assertEquals(self.handler.CastState.castId, 5)
+    lu.assertFalse(self.nodes.CastSplashHint.Visible)
+end
+
+function TestReelUI:test_reopen_restores_waiting_without_splash_and_destroy_cleans_nodes()
+    local state = { phase = 'cast', castId = 9, zoneId = 'WaterCircle2',
+        landing = { x = 12, y = 3, z = 27 } }
+    self.events.CastState.OnClientEvent:Fire(state)
+    self.ui:CloseScreen('ScreenMain')
+    lu.assertFalse(self.nodes.CastFloat.Visible)
+    lu.assertFalse(self.nodes.CastWaitHint.Visible)
+    lu.assertFalse(self.nodes.CastSplashHint.Visible)
+    self.ui:OpenScreen('ScreenMain')
+    self.events.CastState.OnClientEvent:Fire({ phase = 'cast', castId = 9, snapshot = true,
+        zoneId = 'WaterCircle2', landing = state.landing })
+    lu.assertTrue(self.nodes.CastFloat.Visible)
+    lu.assertTrue(self.nodes.CastWaitHint.Visible)
+    lu.assertFalse(self.nodes.CastSplashHint.Visible)
+    self.events.CastState.OnClientEvent:Fire({ phase = 'idle' })
+    self.ui:CloseScreen('ScreenMain')
+    self.ui:OpenScreen('ScreenMain')
+    self.events.CastState.OnClientEvent:Fire({ phase = 'cast', castId = 10, snapshot = true,
+        zoneId = 'WaterCircle2', landing = state.landing })
+    lu.assertTrue(self.nodes.CastWaitHint.Visible)
+    lu.assertFalse(self.nodes.CastSplashHint.Visible)
+    local float = self.nodes.CastFloat
+    self.handler:Destroy()
+    lu.assertTrue(float.Destroyed)
 end

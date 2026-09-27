@@ -37,10 +37,12 @@ local function castLanding(character)
 end
 
 -- holding：头上顶着的活鱼 {fishId, mult}（#41），客户端 2 号位据此切到「放下」
-function Mgr:SendState(player, session)
+function Mgr:SendState(player, session, snapshot)
     local holding = self.FishUnit and self.FishUnit:HeldInfo(player) or nil
     REUtil:GetRE('CastState'):FireClient(player, session and {
         phase = session.phase,
+        snapshot = snapshot == true,
+        castId = session.castId,
         landing = session.landing,
         zoneId = session.zoneId,
         fishId = session.fishId,
@@ -53,7 +55,7 @@ end
 -- 状态有变（举起 / 放下）时按当前会话重发一次
 function Mgr:PushState(player)
     local current = self.Sessions[player.UserId]
-    self:SendState(player, current and current.player == player and current.session or nil)
+    self:SendState(player, current and current.player == player and current.session or nil, true)
 end
 
 function Mgr:Cast(player, payload)
@@ -68,7 +70,9 @@ function Mgr:Cast(player, payload)
     if REUtil:CheckRECD(player, 'CastAction', GameCfg.Casting.ActionCooldownSec) then return end
     local baitOk, baitId = data:ConsumeSelectedBait()
     if not baitOk then return end
+    self.NextCastId = (self.NextCastId or 0) + 1
     local session = {
+        castId = self.NextCastId,
         phase = 'cast',
         landing = landing,
         zoneId = zone and zone.Id or nil,
@@ -82,9 +86,8 @@ function Mgr:Cast(player, payload)
     print('[MgrCast] 抛竿', player.UserId, session.zoneId or 'land', baitId or 'none')
     -- 新手任务「水边抛竿」事实（#52）：只有落点判进水区才算，陆地抛竿不报
     if session.zoneId and self.Quest then
-        self.NextCastId = (self.NextCastId or 0) + 1
         self.Quest:Notify('CastWater', player, { itemId = baitId,
-            eventId = 'cast:' .. tostring(player.UserId) .. ':' .. tostring(self.NextCastId) })
+            eventId = 'cast:' .. tostring(player.UserId) .. ':' .. tostring(session.castId) })
     end
 end
 

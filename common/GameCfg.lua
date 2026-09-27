@@ -275,6 +275,12 @@ GameCfg.HookAlert = {
     Volume = 100,
 }
 
+GameCfg.CastFeedback = {
+    SplashDurationSec = 2.5,
+    FloatSize = 56,
+    FloatColor = { 255, 225, 70, 255 },
+}
+
 -- 交互点（#44，#27 规格）：场景既有触发器单位登记为可交互目标，当前只有钓鱼佬（TGUnitFish，
 -- 退役入口 LocalFishEnter 用它做靠近判定）。Radius 米内（只看 x/z：触发器中心在高处）显示「对话」「喂食」，
 -- 服务端复验多给 Slack 米容差。喂食即出售：鱼获 floor(BasePrice × mult)，鱼饵每只 BaitPrice 金币。
