@@ -1,5 +1,7 @@
 -- #110 失败方式：有效抛竿没有权威落点/水域、重复扣饵或重复事实；重发状态改变结果；
 -- 上钩/收竿/死亡后仍等待；离线后仍保留会话或给旧玩家发状态。
+-- 抛竿失败：无效落点误扣饵/建会话；前置失败无区别或重放；重复抛竿误清当前会话；
+-- 空抽保留会话/退还鱼饵，或失败反馈先于结束状态。
 local lu = require('luaunit')
 local GameCfg = require('common.GameCfg')
 local PlayerData = require('server.Data.PlayerData')
@@ -22,6 +24,7 @@ function TestCastWaiting:setUp()
     self.savedData = package.loaded['server.Mgr.MgrPlayerData']
     self.savedFish = package.loaded['server.Mgr.MgrFishUnit']
     self.now, self.events, self.states, self.facts = 0, {}, {}, {}
+    self.cooldown, self.canCast, self.consumeCount = false, true, 0
     local env = self
     _G.game = { GetService = function(_, name)
         if name == 'World' then return { GetServerTime = function() return env.now end } end
@@ -33,8 +36,10 @@ function TestCastWaiting:setUp()
             end }
         end
         return env.events[name]
-    end, CheckRECD = function() return false end }
-    package.loaded['server.Mgr.MgrFishUnit'] = { CanCast = function() return true end, HeldInfo = function() end }
+    end, CheckRECD = function() return env.cooldown end }
+    package.loaded['server.Mgr.MgrFishUnit'] = {
+        CanCast = function() return env.canCast end, HeldInfo = function() end,
+    }
     self.player = { UserId = 110, SetAttribute = function() end, Character = {
         Position = { x = -11.75, y = 2, z = 22.75 },
         Rotation = { GetForward = function() return { x = 0, y = 0, z = 1 } end },
@@ -43,6 +48,11 @@ function TestCastWaiting:setUp()
     self.data:Init()
     self.data:SelectSlot(1)
     self.data:SelectBait(GameCfg.Items.Id.Worm)
+    local consume = self.data.ConsumeSelectedBait
+    self.data.ConsumeSelectedBait = function(data)
+        env.consumeCount = env.consumeCount + 1
+        return consume(data)
+    end
     package.loaded['server.Mgr.MgrPlayerData'] = {
         GetDataInst = function(_, player) return player == env.player and env.data end,
         SendItemBar = function() end,
@@ -97,6 +107,86 @@ function TestCastWaiting:test_valid_cast_sends_waiting_landing_and_consumes_bait
     lu.assertEquals(self.data:GetItemBarSnapshot().bait.worm, 9)
     lu.assertEquals(#self.facts, 1)
     lu.assertEquals(self.facts[1].kind, 'CastWater')
+end
+
+function TestCastWaiting:test_invalid_landing_rejects_before_bait_and_result_is_not_replayed()
+    self.player.Character.Position = { x = 10, y = 2, z = 20 }
+    self:castRod()
+    local result = self:lastState()
+    lu.assertEquals(result.phase, 'idle')
+    lu.assertEquals(result.result.reason, 'invalidLanding')
+    lu.assertEquals(result.result.landing, { x = 10, y = 2, z = 25 })
+    lu.assertNil(self.cast.Sessions[self.player.UserId])
+    lu.assertEquals(self.consumeCount, 0)
+    lu.assertEquals(self.data:GetItemBarSnapshot().bait.worm, 10)
+    lu.assertEquals(#self.facts, 0)
+    self.events.RequestCastState.OnServerEvent:Fire(self.player)
+    lu.assertEquals(self:lastState().phase, 'idle')
+    lu.assertNil(self:lastState().result)
+end
+
+function TestCastWaiting:test_prerequisite_reasons_and_unavailable_are_distinct()
+    local function expect(reason, act)
+        local before = #self.states
+        act()
+        lu.assertEquals(#self.states, before + 1)
+        lu.assertEquals(self:lastState().result.reason, reason)
+        lu.assertNil(self.cast.Sessions[self.player.UserId])
+        self.events.RequestCastState.OnServerEvent:Fire(self.player)
+        lu.assertNil(self:lastState().result)
+    end
+    self.canCast = false
+    expect('holding', function() self:castRod() end)
+    self.canCast = true
+    expect('invalidRod', function()
+        self.events.CastAction.OnServerEvent:Fire(self.player, { action = 'Cast', slot = 2, itemId = 'wrong' })
+    end)
+    self.cooldown = true
+    expect('cooldown', function() self:castRod() end)
+    self.cooldown = false
+    self.data.Data.SelectedBait = 'worm'
+    self.data.Data.Bait.worm = 0
+    expect('baitUnavailable', function() self:castRod() end)
+    self.data.Data.Bait.worm = 10
+    self.data:SelectBait('worm')
+    self.player.Character = nil
+    expect('unavailable', function() self:castRod() end)
+    self.player.Character = { Position = { x = -11.75, y = 2, z = 22.75 },
+        Rotation = { GetForward = function() error('rotation-failed') end } }
+    expect('unavailable', function() self:castRod() end)
+    lu.assertEquals(self.consumeCount, 1)
+end
+
+function TestCastWaiting:test_repeated_cast_does_not_clear_existing_session()
+    self:castRod()
+    local session = self.cast.Sessions[self.player.UserId]
+    self:castRod()
+    lu.assertEquals(self:lastState().result.reason, 'alreadyCasting')
+    lu.assertEquals(self.cast.Sessions[self.player.UserId], session)
+    lu.assertEquals(self.consumeCount, 1)
+    self.events.RequestCastState.OnServerEvent:Fire(self.player)
+    lu.assertEquals(self:lastState().phase, 'cast')
+    lu.assertNil(self:lastState().result)
+end
+
+function TestCastWaiting:test_empty_draw_ends_session_after_bait_consumed_then_reports_no_fish()
+    self:castRod()
+    local remaining = self.data:GetItemBarSnapshot().bait.worm
+    local original = GameCfg.Casting.Zones.WaterCircle2
+    GameCfg.Casting.Zones.WaterCircle2 = {}
+    self.now = GameCfg.Casting.HookDelaySec
+    local ok, err = pcall(function() self.cast:Update() end)
+    GameCfg.Casting.Zones.WaterCircle2 = original
+    if not ok then error(err) end
+    lu.assertNil(self.cast.Sessions[self.player.UserId])
+    lu.assertEquals(self.states[#self.states - 1].value.phase, 'idle')
+    lu.assertNil(self.states[#self.states - 1].value.result)
+    lu.assertEquals(self:lastState().result.reason, 'noFish')
+    lu.assertEquals(self:lastState().phase, 'idle')
+    lu.assertEquals(self.data:GetItemBarSnapshot().bait.worm, remaining)
+    lu.assertEquals(self.consumeCount, 1)
+    self.events.RequestCastState.OnServerEvent:Fire(self.player)
+    lu.assertNil(self:lastState().result)
 end
 
 function TestCastWaiting:test_hook_handoff_and_reel_clear_waiting()

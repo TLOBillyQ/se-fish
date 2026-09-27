@@ -289,13 +289,13 @@ function TestLanding:spyQuest()
     end }
 end
 
-function TestLanding:test_cast_into_water_notifies_each_cast_and_land_cast_does_not()
+function TestLanding:test_only_valid_water_cast_notifies_quest()
     self:spyQuest()
     self.player.Character.Position = vec(10, 2, 20)
     self.cast:Cast(self.player, { slot = 1, itemId = 'starterRod' })
-    lu.assertNil(self.cast.Sessions[self.player.UserId].session.zoneId)
+    lu.assertNil(self.cast.Sessions[self.player.UserId])
+    lu.assertEquals(self:lastState().result.reason, 'invalidLanding')
     lu.assertEquals(#self.facts, 0)
-    self.cast:Reel(self.player)
     self.player.Character.Position = vec(-11.75, 2, 22.75)
     self.cast:Cast(self.player, { slot = 1, itemId = 'starterRod' })
     lu.assertNotNil(self.cast.Sessions[self.player.UserId].session.zoneId)

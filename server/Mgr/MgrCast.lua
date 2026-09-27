@@ -58,34 +58,69 @@ function Mgr:PushState(player)
     self:SendState(player, current and current.player == player and current.session or nil, true)
 end
 
+-- 单次失败反馈不进入会话或快照；已有会话时不附 phase，避免误清等待状态。
+function Mgr:SendFailure(player, reason, landing, active)
+    local result = { reason = reason, landing = landing }
+    REUtil:GetRE('CastState'):FireClient(player, active and { result = result }
+        or { phase = 'idle', result = result })
+end
+
 function Mgr:Cast(player, payload)
+    local current = self.Sessions[player.UserId]
+    if current then
+        self:SendFailure(player, 'alreadyCasting', nil, true)
+        return
+    end
     local data = MgrPlayerData:GetDataInst(player)
-    local character = player and player.Character
-    if not data or not character or self.Sessions[player.UserId] then return end
-    if self.FishUnit and not self.FishUnit:CanCast(player) then return end
+    local character = player.Character
+    if not data or not character then
+        self:SendFailure(player, 'unavailable')
+        return
+    end
+    if self.FishUnit and not self.FishUnit:CanCast(player) then
+        self:SendFailure(player, 'holding')
+        return
+    end
     local selected, entry = selectedRod(data, payload)
-    if not entry then return end
-    local landing, zone = castLanding(character)
-    if not landing then return end
-    if REUtil:CheckRECD(player, 'CastAction', GameCfg.Casting.ActionCooldownSec) then return end
+    if not entry then
+        self:SendFailure(player, 'invalidRod')
+        return
+    end
+    local ok, landing, zone = pcall(castLanding, character)
+    if not ok then
+        print('[MgrCast] 计算落点失败', player.UserId, tostring(landing))
+        self:SendFailure(player, 'unavailable')
+        return
+    end
+    if not landing or not zone then
+        self:SendFailure(player, landing and 'invalidLanding' or 'unavailable', landing)
+        return
+    end
+    if REUtil:CheckRECD(player, 'CastAction', GameCfg.Casting.ActionCooldownSec) then
+        self:SendFailure(player, 'cooldown')
+        return
+    end
     local baitOk, baitId = data:ConsumeSelectedBait()
-    if not baitOk then return end
+    if not baitOk then
+        self:SendFailure(player, 'baitUnavailable')
+        return
+    end
     self.NextCastId = (self.NextCastId or 0) + 1
     local session = {
         castId = self.NextCastId,
         phase = 'cast',
         landing = landing,
-        zoneId = zone and zone.Id or nil,
+        zoneId = zone.Id,
         baitId = baitId,
         slot = selected,
         rodLevel = GameCfg.Items.Definitions[entry.itemId].Level or 1,
-        hookAt = zone and (self.World:GetServerTime() + GameCfg.Casting.HookDelaySec) or nil,
+        hookAt = self.World:GetServerTime() + GameCfg.Casting.HookDelaySec,
     }
     self.Sessions[player.UserId] = { player = player, session = session }
     self:SendState(player, session)
-    print('[MgrCast] 抛竿', player.UserId, session.zoneId or 'land', baitId or 'none')
-    -- 新手任务「水边抛竿」事实（#52）：只有落点判进水区才算，陆地抛竿不报
-    if session.zoneId and self.Quest then
+    print('[MgrCast] 抛竿', player.UserId, session.zoneId, baitId or 'none')
+    -- 新手任务「水边抛竿」事实（#52）：只有有效入水的抛竿才报。
+    if self.Quest then
         self.Quest:Notify('CastWater', player, { itemId = baitId,
             eventId = 'cast:' .. tostring(player.UserId) .. ':' .. tostring(session.castId) })
     end
@@ -222,6 +257,11 @@ function Mgr:Update()
                     self:SendState(current.player, session)
                     print('[MgrCast] 上钩', current.player.UserId, fishId, session.mult)
                 end
+            else
+                -- 空抽保留已消费的鱼饵；先发 idle 清会话，再发一次性结果。
+                self:EndSession(current.player, current)
+                self:SendFailure(current.player, 'noFish')
+                print('[MgrCast] 空抽', current.player.UserId, session.zoneId)
             end
         end
     end
