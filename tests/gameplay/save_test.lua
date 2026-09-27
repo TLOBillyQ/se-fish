@@ -47,6 +47,8 @@ function TestSave:setUp()
     self.savedGrantDebug = require('common.GameCfg').Debug
     require('common.GameCfg').Debug = { Enabled = true, InitialGrants = self.savedGrantDebug.InitialGrants }
     self.cfg = require('common.GameCfg')
+    self.originalSlot = self.cfg.Save.AcceptanceSlot
+    self.cfg.Save.AcceptanceSlot = ''
     self.savedGame = rawget(_G, 'game')
     self.ops = {}
     self.failGet, self.failSet, self.failUpdate, self.casConflicts = 0, 0, 0, 0
@@ -104,6 +106,7 @@ function TestSave:flushSpawns()
 end
 
 function TestSave:tearDown()
+    self.cfg.Save.AcceptanceSlot = self.originalSlot
     require('common.GameCfg').Debug = self.savedGrantDebug
     package.loaded['server.Mgr.MgrSave'] = self.saveModule
     _G.game = self.savedGame
@@ -116,6 +119,24 @@ function TestSave:test_config_has_store_retry_policy()
     lu.assertTrue(cfg.Save.MaxRetries >= 2)
     lu.assertTrue(cfg.Save.RetryDelaySec > 0)
     lu.assertTrue(cfg.Save.AutosaveSec > 0)
+end
+
+function TestSave:test_acceptance_slot_keeps_keys_isolated_and_pinned_for_the_session()
+    lu.assertEquals(self.save:Key(1), 'u1')
+    self.cfg.Save.AcceptanceSlot = 'qa93-first'
+    lu.assertEquals(self.save:Key(1), 'u1') -- 本局内修改配置不改变写入目标
+    local another = assert(loadfile('server/Mgr/MgrSave.lua'))()
+    lu.assertEquals(another:Key(1), 'u1:qa:qa93-first')
+    self.cfg.Save.AcceptanceSlot = 'qa93-second'
+    lu.assertEquals(another:Key(1), 'u1:qa:qa93-first')
+end
+
+function TestSave:test_invalid_acceptance_slot_fails_before_any_key_is_used()
+    self.cfg.Save.AcceptanceSlot = false
+    local another = assert(loadfile('server/Mgr/MgrSave.lua'))()
+    lu.assertError(function() another:Key(1) end)
+    self.cfg.Save.AcceptanceSlot = '../unsafe'
+    lu.assertError(function() another:Key(1) end)
 end
 
 function TestSave:test_serialize_roundtrip_restores_coin_slots_bait_upgrade_zone()
