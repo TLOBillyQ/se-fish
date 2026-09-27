@@ -4,6 +4,7 @@
 local GameCfg = require('common.GameCfg')
 local REUtil = require('common.REUtil')
 local Util = require('common.Util')
+local SquareButtonImage = 'official://image/11017'
 
 local LocalShop = { Bubbles = {} }
 
@@ -45,8 +46,23 @@ function LocalShop:CreateBubble(anchor)
         Parent = node, Name = 'BtnShopEnter', Position = Vector2.New(0, 0), Size = Vector2.New(360, 72),
     })
     if okBtn and btn then
-        btn.ButtonText = cfg.HintText
+        btn.ButtonText = ''
+        btn.NormalImage = SquareButtonImage
+        btn.PressImage = SquareButtonImage
+        btn.DisableImage = SquareButtonImage
+        btn.ButtonNormalColor = Color.New(54, 100, 140, 255)
+        btn.ButtonPressColor = Color.New(36, 130, 94, 255)
+        btn.ButtonDisableColor = Color.New(120, 120, 120, 255)
         btn.TouchEnabled = true
+        local label = World:CreateUnit('EUITextLabel', {
+            Parent = node, Name = 'LabelShopEnterTheme', Position = btn.Position, Size = btn.Size,
+            Text = cfg.HintText, FontSize = 26, TextColor = Color.New(255, 255, 255, 255),
+        })
+        if label then
+            label.TouchEnabled = false
+            label.SwallowTouchEnabled = false
+            label.LocalZOrder = 1
+        end
         btn.OnClicked:Connect(function() self:Open() end)
     else
         print('[LocalShop] 入口按钮创建失败', tostring(btn))
