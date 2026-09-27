@@ -182,6 +182,135 @@ function TestCastWaiting:test_prerequisite_reasons_and_unavailable_are_distinct(
     lu.assertEquals(self.consumeCount, 1)
 end
 
+function TestCastWaiting:test_next_fish_only_consumed_after_successful_landing()
+    local savedVector = _G.Vector3
+    local savedDebug = GameCfg.Debug
+    local spawnCount = 0
+    _G.Vector3 = { New = function(_, x, y, z) return { x = x, y = y, z = z } end }
+    GameCfg.Debug = { Enabled = true, InitialGrants = savedDebug.InitialGrants }
+    self.cast.FishUnit.SpawnLanded = function()
+        spawnCount = spawnCount + 1
+        if spawnCount == 1 then return nil, 'failed' end
+        return { Id = spawnCount }
+    end
+    local ok, err = pcall(function()
+        self.cast:SetNextFish(self.player, 'eel')
+        self:castRod()
+        self.now = GameCfg.Casting.HookDelaySec
+        self.cast:Update()
+        local first = self.cast.Sessions[self.player.UserId].session
+        lu.assertEquals(first.fishId, 'eel')
+        self.cast:FinishReel(self.player, first.reelSession, 'landed')
+        lu.assertEquals(self.cast.NextFish[self.player.UserId].fishId, 'eel')
+        self.cast:EndSession(self.player, self.cast.Sessions[self.player.UserId])
+        self:castRod()
+        self.now = self.now + GameCfg.Casting.HookDelaySec
+        self.cast:Update()
+        local second = self.cast.Sessions[self.player.UserId].session
+        lu.assertEquals(second.fishId, 'eel')
+        self.cast:FinishReel(self.player, second.reelSession, 'landed')
+        lu.assertNil(self.cast.NextFish[self.player.UserId])
+        self.cast:EndSession(self.player, self.cast.Sessions[self.player.UserId])
+        self:castRod()
+        self.now = self.now + GameCfg.Casting.HookDelaySec
+        local originalRows = GameCfg.Casting.Zones.WaterCircle2
+        GameCfg.Casting.Zones.WaterCircle2 = { { Id = 'carp', Bait = 'worm', RodLevel = 1, DrawWeight = 1 } }
+        self.cast:Update()
+        GameCfg.Casting.Zones.WaterCircle2 = originalRows
+        lu.assertEquals(self.cast.Sessions[self.player.UserId].session.fishId, 'carp')
+    end)
+    GameCfg.Debug, _G.Vector3 = savedDebug, savedVector
+    if not ok then error(err) end
+end
+
+function TestCastWaiting:test_next_fish_survives_unhooked_reel()
+    local savedDebug = GameCfg.Debug
+    GameCfg.Debug = { Enabled = true, InitialGrants = savedDebug.InitialGrants }
+    local ok, err = pcall(function()
+        self.cast:SetNextFish(self.player, 'eel')
+        self:castRod()
+        self.now = GameCfg.Casting.HookDelaySec
+        self.cast:Update()
+        local session = self.cast.Sessions[self.player.UserId].session
+        lu.assertEquals(session.fishId, 'eel')
+        self.cast:FinishReel(self.player, session.reelSession, 'unhooked')
+        lu.assertEquals(self.cast.NextFish[self.player.UserId].fishId, 'eel')
+    end)
+    GameCfg.Debug = savedDebug
+    if not ok then error(err) end
+end
+
+function TestCastWaiting:test_next_fish_applies_to_already_hooked_fish()
+    local savedDebug = GameCfg.Debug
+    GameCfg.Debug = { Enabled = true, InitialGrants = savedDebug.InitialGrants }
+    local ok, err = pcall(function()
+        self:castRod()
+        self.now = GameCfg.Casting.HookDelaySec
+        self.cast:Update()
+        local session = self.cast.Sessions[self.player.UserId].session
+        self.cast:SetNextFish(self.player, 'eel')
+        lu.assertEquals(session.fishId, 'eel')
+        lu.assertEquals(self:lastState().fishId, 'eel')
+        lu.assertEquals(self.cast.NextFish[self.player.UserId].serial, session.forcedFishSerial)
+    end)
+    GameCfg.Debug = savedDebug
+    if not ok then error(err) end
+end
+
+function TestCastWaiting:test_new_request_same_fish_survives_older_landing()
+    local savedVector, savedDebug = _G.Vector3, GameCfg.Debug
+    _G.Vector3 = { New = function(_, x, y, z) return { x = x, y = y, z = z } end }
+    GameCfg.Debug = { Enabled = true, InitialGrants = savedDebug.InitialGrants }
+    self.cast.FishUnit.SpawnLanded = function() return { Id = 1 } end
+    local ok, err = pcall(function()
+        self.cast:SetNextFish(self.player, 'eel')
+        self:castRod()
+        self.now = GameCfg.Casting.HookDelaySec
+        self.cast:Update()
+        local session = self.cast.Sessions[self.player.UserId].session
+        local firstSerial = session.forcedFishSerial
+        self.cast:SetNextFish(self.player, 'eel')
+        lu.assertNotEquals(self.cast.NextFish[self.player.UserId].serial, firstSerial)
+        self.cast:FinishReel(self.player, session.reelSession, 'landed')
+        lu.assertNil(self.cast.NextFish[self.player.UserId])
+    end)
+    GameCfg.Debug, _G.Vector3 = savedDebug, savedVector
+    if not ok then error(err) end
+end
+
+function TestCastWaiting:test_disabling_debug_clears_pending_fish_and_blocks_hooked_override()
+    local savedDebug, savedVector = GameCfg.Debug, _G.Vector3
+    GameCfg.Debug = { Enabled = true, InitialGrants = savedDebug.InitialGrants }
+    _G.Vector3 = { New = function(_, x, y, z) return { x = x, y = y, z = z } end }
+    local spawned = 0
+    self.cast.FishUnit.SpawnLanded = function() spawned = spawned + 1; return { Id = spawned } end
+    local ok, err = pcall(function()
+        self.cast:SetNextFish(self.player, 'eel')
+        self:castRod()
+        self.now = GameCfg.Casting.HookDelaySec
+        self.cast:Update()
+        local session = self.cast.Sessions[self.player.UserId].session
+        GameCfg.Debug.Enabled = false
+        self.cast:Update()
+        lu.assertNil(self.cast.NextFish[self.player.UserId])
+        self.cast:FinishReel(self.player, session.reelSession, 'landed')
+        lu.assertEquals(spawned, 0)
+        GameCfg.Debug.Enabled = true
+        self:castRod()
+        self.now = self.now + GameCfg.Casting.HookDelaySec
+        self.cast:Update()
+        lu.assertNil(self.cast.Sessions[self.player.UserId].session.forcedFishSerial)
+    end)
+    GameCfg.Debug, _G.Vector3 = savedDebug, savedVector
+    if not ok then error(err) end
+end
+
+function TestCastWaiting:test_next_fish_cleared_on_player_removal()
+    self.cast:SetNextFish(self.player, 'eel')
+    self.cast:OnPlayerRemoving(self.player)
+    lu.assertNil(self.cast.NextFish[self.player.UserId])
+end
+
 function TestCastWaiting:test_repeated_cast_does_not_clear_existing_session()
     self:castRod()
     local session = self.cast.Sessions[self.player.UserId]

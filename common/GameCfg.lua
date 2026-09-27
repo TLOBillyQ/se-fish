@@ -219,6 +219,10 @@ GameCfg.Loot = {
 GameCfg.Save = {
     Store = 'sefish_save_v1',
     KeyPrefix = 'u',
+    -- #93 验收专用：在试玩前执行 lua tools/cli.lua acceptance-slot new，并部署。
+    -- 同一账号同槽重进会恢复进度；切换或关闭槽用 acceptance-slot set/off，正式存档不受影响。
+    -- 试玩过程中不要部署或更换槽名。
+    AcceptanceSlot = '',
     MaxRetries = 3,
     RetryDelaySec = 1,
     AutosaveSec = 60,

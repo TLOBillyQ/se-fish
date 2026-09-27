@@ -96,8 +96,18 @@ function Mgr:PrepareStorage(data, payload)
     return self:Item(data, { itemId = GameCfg.Items.Id.Tilapia, count = count })
 end
 
+function Mgr:NextFish(_, payload, target)
+    local fishId = payload.fishId
+    if type(fishId) ~= 'string' or not GameCfg.Fish[fishId] then
+        return false, '鱼种 ID 不在白名单中'
+    end
+    if not self.Cast then return false, '钓鱼管理器未就绪' end
+    self.Cast:SetNextFish(target, fishId)
+    return true
+end
+
 local Actions = { Coin = 'Coin', Item = 'Item', SetHealth = 'SetHealth', SetHunger = 'SetHunger',
-    PrepareStorage = 'PrepareStorage' }
+    PrepareStorage = 'PrepareStorage', NextFish = 'NextFish' }
 
 -- 处理一次 GM 请求；发放成功返回 true
 function Mgr:Handle(player, payload)
@@ -114,8 +124,8 @@ function Mgr:Handle(player, payload)
     local ok, reason = false, '请求或目标无效'
     if data then ok, reason = self[method](self, data, payload, target) end
     print('[MgrGM]', ok and '发放' or '拒绝', player and player.UserId, '->', target and target.UserId,
-        tostring(payload.action), tostring(payload.amount or payload.itemId or payload.value or payload.scene), tostring(payload.count or ''))
-    if ok then self.PlayerData:SendItemBar(target) end
+        tostring(payload.action), tostring(payload.amount or payload.itemId or payload.value or payload.scene or payload.fishId), tostring(payload.count or ''))
+    if ok and method ~= 'NextFish' then self.PlayerData:SendItemBar(target) end
     self:Reply(player, { ok = ok, action = payload.action, target = target and target.UserId,
         reason = not ok and (reason or '请求未通过') or nil })
     return ok

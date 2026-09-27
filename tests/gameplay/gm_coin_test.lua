@@ -133,6 +133,21 @@ function TestGMCoin:test_item_bar_grant_is_all_or_nothing()
     lu.assertTrue(self.gm:Handle(self.me, { action = 'Item', itemId = 'starterRod', count = 1 }))
 end
 
+function TestGMCoin:test_next_fish_requires_debug_valid_fish_and_online_target()
+    self.gm.Cast = { NextFish = {}, SetNextFish = function(cast, target, fishId)
+        cast.NextFish[target.UserId] = { fishId = fishId }
+    end }
+    lu.assertTrue(self.gm:Handle(self.me, { action = 'NextFish', fishId = 'eel', target = 2 }))
+    lu.assertEquals(self.gm.Cast.NextFish[2].fishId, 'eel')
+    lu.assertNil(self.gm.Cast.NextFish[1])
+    lu.assertEquals(#self.synced, 0)
+    lu.assertFalse(self.gm:Handle(self.me, { action = 'NextFish', fishId = 'unknown' }))
+    lu.assertFalse(self.gm:Handle(self.me, { action = 'NextFish', fishId = 'bass', target = 999 }))
+    self.cfg.Debug.Enabled = false
+    lu.assertFalse(self.gm:Handle(self.me, { action = 'NextFish', fishId = 'bass', target = 2 }))
+    lu.assertEquals(self.gm.Cast.NextFish[2].fishId, 'eel')
+end
+
 function TestGMCoin:test_snapshot_carries_coin_for_hud()
     self.myData:AddCoin(12, nil, 'test')
     lu.assertEquals(self.myData:GetItemBarSnapshot().coin, 12)

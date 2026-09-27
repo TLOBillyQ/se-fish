@@ -9,6 +9,20 @@ local Panel = { Connections = {}, Nodes = {} }
 -- 会渲染默认椭圆贴图，被深色染色后成为遮挡面板的黑色异形块（本面板曾因此不可读）。
 local ColorBlockImage = 'official://image/11017'
 
+local FishPageSize = 6
+local FishIds = { 'eel', 'alligatorGar' }
+local OtherFishIds = {}
+for fishId in pairs(GameCfg.Fish) do
+    if fishId ~= 'eel' and fishId ~= 'alligatorGar' then OtherFishIds[#OtherFishIds + 1] = fishId end
+end
+table.sort(OtherFishIds)
+for _, fishId in ipairs(OtherFishIds) do FishIds[#FishIds + 1] = fishId end
+
+local FishActions = {}
+for index = 1, FishPageSize do FishActions[index] = { fishSlot = index, label = '' } end
+FishActions[7] = { fishPage = -1, label = '上一页' }
+FishActions[8] = { fishPage = 1, label = '下一页' }
+
 local Groups = {
     { title = '金币', actions = {
         { label = '+100 金币', payload = { action = 'Coin', amount = 100 } },
@@ -18,6 +32,7 @@ local Groups = {
         { label = '罗非鱼 ×1', payload = { action = 'Item', itemId = GameCfg.Items.Id.Tilapia, count = 1 } },
         { label = '罗非鱼 ×5', payload = { action = 'Item', itemId = GameCfg.Items.Id.Tilapia, count = 5 } },
     } },
+    { title = '下一条鱼', actions = FishActions },
     { title = '#85 验收', actions = {
         { label = '首级：备金币', payload = { action = 'PrepareStorage', scene = 'first' } },
         { label = '首级：清金币', payload = { action = 'PrepareStorage', scene = 'poor' } },
@@ -116,10 +131,33 @@ function Panel:ShowState(snapshot)
         .. '\n背包每级 +5，末级 +10；最终 8/40 格'
 end
 
+function Panel:UpdateFishPage()
+    local pages = math.ceil(#FishIds / FishPageSize)
+    self.FishPage = math.max(1, math.min(self.FishPage or 1, pages))
+    for index, node in ipairs(self.FishLabels or {}) do
+        local fishId = FishIds[(self.FishPage - 1) * FishPageSize + index]
+        node.Text = fishId and GameCfg.Fish[fishId].Name or ''
+        if self.FishButtons[index] then self.FishButtons[index].Visible = self.IsOpen and fishId ~= nil end
+        node.Visible = self.IsOpen and fishId ~= nil
+    end
+    if self.FishPageLabel then
+        self.FishPageLabel.Text = string.format('下一页 (%d/%d)', self.FishPage, pages)
+    end
+end
+
+function Panel:SelectFish(index)
+    local fishId = FishIds[(self.FishPage - 1) * FishPageSize + index]
+    if not fishId then return end
+    REUtil:GetRE('GMAction'):FireServer({ action = 'NextFish', fishId = fishId })
+    self.Feedback.Text = '等待服务端确认：' .. GameCfg.Fish[fishId].Name
+    print('[GMPanel] 请求 NextFish', fishId)
+end
+
 function Panel:Toggle()
     self.IsOpen = not self.IsOpen
     self.Background.Visible = self.IsOpen
     for _, node in ipairs(self.PanelNodes) do node.Visible = self.IsOpen end
+    if self.IsOpen then self:UpdateFishPage() end
     self.EntryLabel.Text = self.IsOpen and '收起 GM' or 'GM'
     if self.IsOpen then REUtil:GetRE('RequestItemBar'):FireServer() end
     print('[GMPanel]', self.IsOpen and '展开' or '收起')
@@ -149,6 +187,9 @@ end
 
 function Panel:Build(root, resolution, player)
     self.PanelNodes = {}
+    self.FishLabels = {}
+    self.FishButtons = {}
+    self.FishPage = 1
     local width = 560
     -- 右对齐：面板中心距右边缘 16px，最小不小于半宽+16
     local right = math.max(width / 2 + 16, resolution.x - width / 2 - 16)
@@ -199,14 +240,26 @@ function Panel:Build(root, resolution, player)
             local x = right + (column - 0.5) * 266 * scale
             local rowY = relY(y - math.floor((index - 1) / 2) * 96)
             local btn = button(self, root, 'GM操作_' .. group.title .. index, x, rowY, 250, 76, function()
-                REUtil:GetRE('GMAction'):FireServer({ action = item.payload.action, amount = item.payload.amount,
-                    itemId = item.payload.itemId, count = item.payload.count, scene = item.payload.scene })
-                self.Feedback.Text = '等待服务端确认…'
-                print('[GMPanel] 请求', item.payload.action, item.payload.amount or item.payload.itemId or item.payload.scene,
-                    item.payload.count or '')
+                if item.fishSlot then
+                    self:SelectFish(item.fishSlot)
+                elseif item.fishPage then
+                    self.FishPage = self.FishPage + item.fishPage
+                    self:UpdateFishPage()
+                else
+                    REUtil:GetRE('GMAction'):FireServer({ action = item.payload.action, amount = item.payload.amount,
+                        itemId = item.payload.itemId, count = item.payload.count, scene = item.payload.scene })
+                    self.Feedback.Text = '等待服务端确认…'
+                    print('[GMPanel] 请求', item.payload.action,
+                        item.payload.amount or item.payload.itemId or item.payload.scene, item.payload.count or '')
+                end
             end)
             local btnLabel = label(self, root, 'GM操作文字_' .. group.title .. index, item.label,
-                x, rowY, 250, 76, 32)
+                x, rowY, 250, 76, item.fishSlot and 23 or 32)
+            if item.fishSlot then
+                self.FishLabels[item.fishSlot] = btnLabel
+                self.FishButtons[item.fishSlot] = btn
+            end
+            if item.fishPage == 1 then self.FishPageLabel = btnLabel end
             self.PanelNodes[#self.PanelNodes + 1] = btn
             self.PanelNodes[#self.PanelNodes + 1] = btnLabel
         end
@@ -223,8 +276,9 @@ function Panel:Build(root, resolution, player)
     listen(self, REUtil:GetRE('ItemBarState').OnClientEvent, function(snapshot) self:ShowState(snapshot) end)
     listen(self, REUtil:GetRE('GMResult').OnClientEvent, function(result)
         if type(result) ~= 'table' or (result.action ~= 'Coin' and result.action ~= 'Item'
-            and result.action ~= 'PrepareStorage') then return end
+            and result.action ~= 'PrepareStorage' and result.action ~= 'NextFish') then return end
         self.Feedback.Text = result.ok and (result.action == 'PrepareStorage' and '条件已准备，请按提示操作原界面'
+            or result.action == 'NextFish' and '服务端确认：下一次上岸鱼种已设置'
             or ('服务端确认：' .. (result.action == 'Coin' and '金币' or '物品') .. '发放成功'))
             or ('服务端拒绝：' .. tostring(result.reason or '请求未通过'))
         print('[GMPanel] 结果', result.ok and '成功' or '拒绝', tostring(result.reason or ''))
@@ -249,6 +303,10 @@ function Panel:Destroy()
     self.CapacityLabel = nil
     self.Feedback = nil
     self.Guide = nil
+    self.FishLabels = nil
+    self.FishButtons = nil
+    self.FishPageLabel = nil
+    self.FishPage = nil
 end
 
 return Panel

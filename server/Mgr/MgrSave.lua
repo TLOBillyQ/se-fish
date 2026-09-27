@@ -18,7 +18,17 @@ local function task()
 end
 
 function Mgr:Key(userId)
-    return cfg().KeyPrefix .. tostring(userId)
+    if not self.SlotPinned then
+        local slot = cfg().AcceptanceSlot
+        assert(slot == nil or slot == '' or
+            (type(slot) == 'string' and #slot <= 40 and slot:match('^[%w_-]+$')),
+            '验收存档槽须为 1—40 位字母、数字、下划线或连字符')
+        self.AcceptanceSlot = slot or ''
+        self.SlotPinned = true
+    end
+    local key = cfg().KeyPrefix .. tostring(userId)
+    if self.AcceptanceSlot == '' then return key end
+    return key .. ':qa:' .. self.AcceptanceSlot
 end
 
 -- 取 DataStore；服务都没有时不走重试（谈不上限流），缓存结论避免刷屏
