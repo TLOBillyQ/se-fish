@@ -3,6 +3,16 @@ local GameCfg = require('common.GameCfg')
 local PlayerData = {}
 PlayerData.__index = PlayerData
 
+local function hasIndividualMult(itemId)
+    if GameCfg.Fish[itemId] then return true end
+    for _, fish in pairs(GameCfg.Fish) do
+        for _, drop in ipairs(fish.Drops or {}) do
+            if drop.ItemId == itemId then return true end
+        end
+    end
+    return false
+end
+
 function PlayerData.New(player, onItemBarChanged)
     return setmetatable({ Player = player, Inited = false, OnItemBarChanged = onItemBarChanged }, PlayerData)
 end
@@ -38,7 +48,46 @@ function PlayerData:Init()
         Zone = GameCfg.Ferry.HomeZone,
     }
     self.Inited = true
+    self.Revision = 0
     self:Sync()
+end
+
+function PlayerData:IsValidSave(snapshot)
+    local function int(n, min, max)
+        return type(n) == 'number' and n == math.floor(n) and n >= min and n <= max
+    end
+    if type(snapshot) ~= 'table' or snapshot.v ~= 1
+        or not int(snapshot.coin, 0, math.maxinteger)
+        or not int(snapshot.up, 0, #GameCfg.Items.UpgradePrices)
+        or type(snapshot.zone) ~= 'string' or snapshot.zone == ''
+        or type(snapshot.bait) ~= 'table' then return false end
+    for id, count in pairs(snapshot.bait) do
+        local def = GameCfg.Items.Definitions[id]
+        if not def or def.Container ~= GameCfg.Items.ContainerId.Bait
+            or not int(count, 1, math.maxinteger) then return false end
+    end
+    local capacity = GameCfg.Items.InitialBackpackSlots + snapshot.up * GameCfg.Items.BackpackSlotsPerUpgrade
+    if snapshot.up == #GameCfg.Items.UpgradePrices then capacity = GameCfg.Items.MaxBackpackSlots end
+    for _, pair in ipairs({ { snapshot.bar, GameCfg.Items.InitialItemBarSlots + snapshot.up },
+        { snapshot.bp, capacity } }) do
+        local packed, max = pair[1], pair[2]
+        if type(packed) ~= 'table' then return false end
+        local seen, count = {}, 0
+        for key, slot in pairs(packed) do
+            count = count + 1
+            local def = type(slot) == 'table' and GameCfg.Items.Definitions[slot.id]
+            if not int(key, 1, max) or not def or def.Container == GameCfg.Items.ContainerId.Bait
+                or not int(slot.i, 1, max) or seen[slot.i] or not int(slot.n, 1, 1)
+                or slot.m ~= nil and (type(slot.m) ~= 'number' or slot.m < 1 or slot.m > 2) then
+                return false
+            end
+            seen[slot.i] = true
+        end
+        for index = 1, count do
+            if packed[index] == nil then return false end
+        end
+    end
+    return true
 end
 
 -- 存档序列化（#92）：最小集——金币、道具栏/背包物品（含格子位置与个体倍率）、鱼饵计数、
@@ -127,6 +176,7 @@ function PlayerData:ApplySave(snapshot)
         unpack(snapshot.bp, GameCfg.Items.ContainerId.Backpack, self:BackpackCapacity())
     self.Data.SelectedSlot = nil
     self.Data.SelectedBait = nil
+    self.Revision = (self.Revision or 0) + 1
     self:Sync()
     return true
 end
@@ -140,6 +190,70 @@ function PlayerData:BackpackCapacity()
     local capacity = GameCfg.Items.InitialBackpackSlots + level * GameCfg.Items.BackpackSlotsPerUpgrade
     if level == #GameCfg.Items.UpgradePrices then capacity = GameCfg.Items.MaxBackpackSlots end
     return capacity
+end
+
+-- GM 局部补丁先在副本上校验最终容量，再一次替换权威状态。
+function PlayerData:ApplyGMPatch(patch)
+    if not self.Inited or type(patch) ~= 'table' then return false, '状态尚未就绪' end
+    local function int(n, min, max)
+        return type(n) == 'number' and n == math.floor(n) and n >= min and n <= max
+    end
+    local coin = patch.coin == nil and self.Data.FishCoin or patch.coin
+    local level = patch.upgradeLevel == nil and self.Data.UpgradeLevel or patch.upgradeLevel
+    if not int(coin, 0, math.maxinteger) or not int(level, 0, #GameCfg.Items.UpgradePrices) then
+        return false, '金币或扩容等级无效'
+    end
+    if patch.slots ~= nil and type(patch.slots) ~= 'table' then return false, '格位操作无效' end
+    local ids = GameCfg.Items.ContainerId
+    local containers = {}
+    for _, id in ipairs({ ids.ItemBar, ids.Backpack }) do
+        local copy = {}
+        for index, entry in pairs(self.Data.Containers[id]) do copy[index] = entry end
+        containers[id] = copy
+    end
+    local barCount = GameCfg.Items.InitialItemBarSlots + level
+    local backpackCount = GameCfg.Items.InitialBackpackSlots + level * GameCfg.Items.BackpackSlotsPerUpgrade
+    if level == #GameCfg.Items.UpgradePrices then backpackCount = GameCfg.Items.MaxBackpackSlots end
+    local seen = {}
+    for key, edit in pairs(patch.slots or {}) do
+        if type(key) ~= 'number' or not int(key, 1, 100) or type(edit) ~= 'table' then
+            return false, '格位操作无效'
+        end
+        local id = edit.container
+        local max = id == ids.ItemBar and barCount or id == ids.Backpack and backpackCount
+        local oldMax = id == ids.ItemBar and self:ItemBarCapacity()
+            or id == ids.Backpack and self:BackpackCapacity()
+        if not max or not int(edit.index, 1, edit.clear == true and math.max(max, oldMax) or max) then
+            return false, '格号无效'
+        end
+        local unique = id .. ':' .. edit.index
+        if seen[unique] then return false, '格号重复' end
+        seen[unique] = true
+        if edit.clear == true and edit.itemId == nil and edit.count == nil and edit.mult == nil then
+            containers[id][edit.index] = nil
+        else
+            local definition = type(edit.itemId) == 'string' and GameCfg.Items.Definitions[edit.itemId]
+            if edit.clear ~= nil or not definition or definition.Container == ids.Bait
+                or not int(edit.count, 1, 1) then return false, '格位物品或件数无效' end
+            local mult = edit.mult
+            if mult ~= nil and (type(mult) ~= 'number' or mult < 1 or mult > 2
+                or math.abs(mult * 100 - math.floor(mult * 100 + 0.5)) > 1e-7
+                or not hasIndividualMult(edit.itemId)) then return false, '个体倍率无效' end
+            containers[id][edit.index] = { itemId = edit.itemId, count = 1, containerId = id, mult = mult }
+        end
+    end
+    for _, pair in ipairs({ { ids.ItemBar, barCount }, { ids.Backpack, backpackCount } }) do
+        for index, entry in pairs(containers[pair[1]]) do
+            if entry and (type(index) ~= 'number' or index > pair[2]) then
+                return false, '缩容将挤掉已有物品'
+            end
+        end
+    end
+    self:ChangeCoin(coin - self.Data.FishCoin, function(data)
+        data.UpgradeLevel = level
+        data.Containers = containers
+    end, 'gm-state')
+    return true
 end
 
 local function copySlots(items, capacity)
@@ -469,6 +583,7 @@ function PlayerData:UpdateData(updateCallBack, doSync)
     if not self.Inited or not updateCallBack then return end
     self.Touched = true -- 进图后已有操作（#92 读档竞态会话锁：MgrSave 据此跳过旧档覆盖）
     updateCallBack(self.Data)
+    self.Revision = (self.Revision or 0) + 1
     local selected = self.Data.SelectedSlot
     local entry = selected and self.Data.Containers[GameCfg.Items.ContainerId.ItemBar][selected]
     if selected and (not entry or entry.count <= 0) then self.Data.SelectedSlot = nil end

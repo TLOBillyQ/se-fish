@@ -49,6 +49,7 @@ MgrMap.MgrCast.Quest = MgrMap.MgrQuest
 MgrMap.MgrFishUnit.Quest = MgrMap.MgrQuest
 MgrMap.MgrPlayerData.Vitals = MgrMap.MgrVitals
 MgrMap.MgrGM.Vitals = MgrMap.MgrVitals
+MgrMap.MgrGM.Save = MgrMap.MgrSave
 MgrMap.MgrFerry.PlayerData = MgrMap.MgrPlayerData
 MgrMap.MgrFerry.Interact = MgrMap.MgrInteract
 MgrMap.MgrPlayerData.Save = MgrMap.MgrSave
@@ -101,7 +102,6 @@ end
 
 GameStart()
 RunService.Heartbeat:Connect(HandleTimeUpdate)
-
 
 
 

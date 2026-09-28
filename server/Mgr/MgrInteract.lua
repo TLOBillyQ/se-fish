@@ -89,6 +89,10 @@ end
 -- 信物兑换：扣除与发放由 PlayerData:ExchangeSlot 一次落地；满格拒绝且不消耗信物，
 -- 不给金币、不报任务事实。'bad' 只会是配置错误（产物 id 不在物品表），记错误日志
 function Mgr:Exchange(player, data, anchor, point, exchange)
+    if self.Save and self.Save:IsPaused(player.UserId) then
+        self:Reply(player, { ok = false, reason = '临时本局暂停信物兑换，请先保存到存档' })
+        return false
+    end
     local ok, reason = data:ExchangeSlot(exchange.slot, exchange.product)
     if not ok then
         if reason ~= 'full' then

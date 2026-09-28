@@ -36,13 +36,8 @@ local Groups = {
         { label = '挥砍伤害 +25', payload = { action = 'AddAttack' } },
     } },
     { title = '下一条鱼', actions = FishActions },
-    { title = '#85 验收', actions = {
-        { label = '首级：备金币', payload = { action = 'PrepareStorage', scene = 'first' } },
-        { label = '首级：清金币', payload = { action = 'PrepareStorage', scene = 'poor' } },
-        { label = '转入：备鱼获', payload = { action = 'PrepareStorage', scene = 'transfer' } },
-        { label = '满格：填空格', payload = { action = 'PrepareStorage', scene = 'full' } },
-        { label = '六级：备金币', payload = { action = 'PrepareStorage', scene = 'six' } },
-        { label = '购买：备金币', payload = { action = 'PrepareStorage', scene = 'purchase' } },
+    { title = '状态与存档', actions = {
+        { label = '打开状态配置', statePage = true },
     } },
 }
 
@@ -118,6 +113,8 @@ function Panel:ShowState(snapshot)
     self.CapacityLabel.Text = string.format('道具栏 %d/%d　背包 %d/%d',
         occupied(snapshot.slots, snapshot.slotCount), snapshot.slotCount,
         occupied(snapshot.backpack, snapshot.backpackCount), snapshot.backpackCount)
+    self.Snapshot = snapshot
+    self:ShowSlots()
     local nextPrice = GameCfg.Items.UpgradePrices[snapshot.upgradeLevel + 1]
     local upgrade = nextPrice and ('下级 ' .. nextPrice .. ' 金币；' .. (snapshot.coin >= nextPrice and '金币足够' or '金币不足'))
         or '已升满：再次扩容不得扣金币'
@@ -132,6 +129,63 @@ function Panel:ShowState(snapshot)
         .. '\n备购买金币 → 钓场商店买鱼竿拒绝且不扣币'
         .. '\n六级价格：100/200/400/800/1600/3200'
         .. '\n背包每级 +5，末级 +10；最终 8/40 格'
+end
+
+function Panel:ShowSlots()
+    if not self.Snapshot or not self.SlotDetails then return end
+    local page = self.SlotPage or 0
+    local entries, prefix, first, last
+    if page == 0 then
+        entries, prefix, first, last = self.Snapshot.slots, '道具栏', 1, self.Snapshot.slotCount
+    else
+        entries, prefix, first = self.Snapshot.backpack, '背包', (page - 1) * 8 + 1
+        last = math.min(first + 7, self.Snapshot.backpackCount)
+    end
+    local lines = {}
+    for index = first, last do
+        local entry = entries[index]
+        local item = entry and GameCfg.Items.Definitions[entry.itemId]
+        lines[#lines + 1] = prefix .. index .. '：' .. (item and item.Name or '空')
+            .. (entry and entry.mult and (' ×' .. tostring(entry.mult)) or '')
+    end
+    self.SlotDetails.Text = table.concat(lines, '\n')
+end
+
+local function value(field)
+    local text = field and field.Text
+    if type(text) ~= 'string' or text == '' then return nil end
+    return text
+end
+
+function Panel:SendState(action, clear)
+    local payload = { action = action }
+    if action == 'ApplyState' then
+        if value(self.Fields.coin) then payload.coin = tonumber(value(self.Fields.coin)) or value(self.Fields.coin) end
+        if value(self.Fields.upgradeLevel) then
+            payload.upgradeLevel = tonumber(value(self.Fields.upgradeLevel)) or value(self.Fields.upgradeLevel)
+        end
+        if value(self.Fields.container) or value(self.Fields.index) or value(self.Fields.itemId) or clear then
+            payload.slots = { { container = value(self.Fields.container), index = tonumber(value(self.Fields.index))
+                or value(self.Fields.index), clear = clear or nil } }
+            if not clear then
+                payload.slots[1].itemId = value(self.Fields.itemId)
+                payload.slots[1].count = tonumber(value(self.Fields.count)) or value(self.Fields.count)
+                payload.slots[1].mult = value(self.Fields.mult)
+                    and (tonumber(value(self.Fields.mult)) or value(self.Fields.mult)) or nil
+            end
+        end
+    elseif action == 'SelectSaveSlot' then
+        payload.slot = value(self.Fields.slot) or ''
+    end
+    REUtil:GetRE('GMAction'):FireServer(payload)
+    self.Feedback.Text = '等待服务端确认…'
+end
+
+function Panel:ShowPage(state)
+    self.StatePage = state
+    for _, node in ipairs(self.MainNodes or {}) do node.Visible = self.IsOpen and not state end
+    for _, node in ipairs(self.StateNodes or {}) do node.Visible = self.IsOpen and state end
+    if state and self.IsOpen then self:SendState('GetState') end
 end
 
 function Panel:UpdateFishPage()
@@ -159,7 +213,7 @@ end
 function Panel:Toggle()
     self.IsOpen = not self.IsOpen
     self.Background.Visible = self.IsOpen
-    for _, node in ipairs(self.PanelNodes) do node.Visible = self.IsOpen end
+    self:ShowPage(self.StatePage or false)
     if self.IsOpen then self:UpdateFishPage() end
     self.EntryLabel.Text = self.IsOpen and '收起 GM' or 'GM'
     if self.IsOpen then
@@ -196,6 +250,8 @@ function Panel:Build(root, resolution, player)
     self.FishLabels = {}
     self.FishButtons = {}
     self.FishPage = 1
+    self.SlotPage = 0
+    self.StateNodes = {}
     local width = 560
     -- 右对齐：面板中心距右边缘 16px，最小不小于半宽+16
     local right = math.max(width / 2 + 16, resolution.x - width / 2 - 16)
@@ -254,6 +310,8 @@ function Panel:Build(root, resolution, player)
                 elseif item.fishPage then
                     self.FishPage = self.FishPage + item.fishPage
                     self:UpdateFishPage()
+                elseif item.statePage then
+                    self:ShowPage(true)
                 else
                     REUtil:GetRE('GMAction'):FireServer({ action = item.payload.action, amount = item.payload.amount,
                         itemId = item.payload.itemId, count = item.payload.count, scene = item.payload.scene })
@@ -279,20 +337,88 @@ function Panel:Build(root, resolution, player)
     self.Guide = label(self, root, 'GM验收引导', '等待服务端同步验收状态', right,
         relY(y - 220), width - 24, 372, 25)
     self.PanelNodes[#self.PanelNodes + 1] = self.Guide
+    self.MainNodes = {}
+    for _, node in ipairs(self.PanelNodes) do
+        if node ~= self.Background then self.MainNodes[#self.MainNodes + 1] = node end
+    end
+    self.StateNodes[#self.StateNodes + 1] = self.Feedback
+    local function stateLabel(name, text, x, offset, w, h, size)
+        local node = label(self, root, name, text, x, relY(offset), w, h, size)
+        self.StateNodes[#self.StateNodes + 1] = node
+        self.PanelNodes[#self.PanelNodes + 1] = node
+        return node
+    end
+    local function stateButton(name, text, x, offset, callback)
+        local node = button(self, root, name, x, relY(offset), 235, 64, callback)
+        self.StateNodes[#self.StateNodes + 1] = node
+        self.PanelNodes[#self.PanelNodes + 1] = node
+        stateLabel(name .. '文字', text, x, offset, 235, 64, 28)
+    end
+    self.Fields = {}
+    stateLabel('GM状态标题', '状态配置与存档', right, topRow, width - 24, 52, 40)
+    self.StatusLabel = stateLabel('GM存档状态', '当前槽：等待同步', right, topRow - 60, width - 24, 94, 26)
+    stateLabel('GM字段提示', '空白保持原样；单格编辑填写容器、格号、物品 ID、件数 1', right,
+        topRow - 154, width - 24, 48, 23)
+    local fields = {
+        { 'coin', '金币（可填 0）' }, { 'upgradeLevel', '扩容等级 0—6' },
+        { 'container', '容器 itemBar/backpack' }, { 'index', '格号' },
+        { 'itemId', '物品 ID' }, { 'count', '件数 1' },
+        { 'mult', '鱼获倍率 1—2（可空）' }, { 'slot', '下次进图槽名（空白为默认槽）' },
+    }
+    for index, field in ipairs(fields) do
+        local row = math.floor((index - 1) / 2)
+        local x = right + ((index - 1) % 2 - 0.5) * 266 * scale
+        local offset = topRow - 224 - row * 100
+        stateLabel('GM字段名_' .. field[1], field[2], x, offset + 25, 250, 42, 22)
+        local input = create(self, 'EUIInputField', root, 'GM输入_' .. field[1], x, relY(offset - 20),
+            240, 56, { Text = '', FontSize = 28, TextColor = Color.New(255, 255, 255, 255),
+                PlaceHolderText = '填写' })
+        input.TouchEnabled = true
+        self.Fields[field[1]] = input
+        self.StateNodes[#self.StateNodes + 1] = input
+        self.PanelNodes[#self.PanelNodes + 1] = input
+    end
+    local left, rightButton = right - 133 * scale, right + 133 * scale
+    local actionsY = topRow - 640
+    stateButton('GM应用', '应用到本局', left, actionsY, function() self:SendState('ApplyState') end)
+    stateButton('GM清格', '明确清空格位', rightButton, actionsY, function() self:SendState('ApplyState', true) end)
+    stateButton('GM保存', '保存到存档', left, actionsY - 76, function() self:SendState('SaveState') end)
+    stateButton('GM读取', '读取存档', rightButton, actionsY - 76, function() self:SendState('ReadState') end)
+    stateButton('GM切槽', '设置下次进图槽', left, actionsY - 152, function() self:SendState('SelectSaveSlot') end)
+    stateButton('GM返回', '返回 GM 操作', rightButton, actionsY - 152, function() self:ShowPage(false) end)
+    stateButton('GM占格翻页', '查看后续格位', rightButton, actionsY - 230, function()
+        self.SlotPage = (self.SlotPage + 1) % 6
+        self:ShowSlots()
+    end)
+    self.SlotDetails = stateLabel('GM格位明细', '等待状态同步', left, actionsY - 340, 245, 245, 21)
+    stateLabel('GM暂存提示', '应用后暂停自动保存；正常玩法进度也不落档。\n'
+        .. '重进图前须保存，否则本局改动丢失。', right, actionsY - 510, width - 24, 70, 22)
     -- 默认收起，避免遮挡游戏画面；IsOpen 在 Build 里显式初始化
     self.IsOpen = false
     for _, node in ipairs(self.PanelNodes) do node.Visible = false end
     listen(self, REUtil:GetRE('ItemBarState').OnClientEvent, function(snapshot) self:ShowState(snapshot) end)
     listen(self, REUtil:GetRE('GMResult').OnClientEvent, function(result)
         if type(result) ~= 'table' or (result.action ~= 'Coin' and result.action ~= 'Item'
-            and result.action ~= 'PrepareStorage' and result.action ~= 'NextFish'
-            and result.action ~= 'AddAttack' and result.action ~= 'GetAttack') then return end
+            and result.action ~= 'NextFish' and result.action ~= 'AddAttack' and result.action ~= 'GetAttack'
+            and result.action ~= 'ApplyState' and result.action ~= 'SaveState'
+            and result.action ~= 'ReadState' and result.action ~= 'SelectSaveSlot'
+            and result.action ~= 'GetState') then return end
+        if type(result.status) == 'table' and self.StatusLabel then
+            local status = result.status
+            self.StatusLabel.Text = '当前槽：' .. (status.currentSlot ~= '' and tostring(status.currentSlot) or '默认')
+                .. '　下次进图：' .. (status.nextSlot ~= '' and tostring(status.nextSlot) or '默认')
+                .. '\n自动保存：' .. (status.autosavePaused and '暂停（临时本局）' or '运行')
+        end
+        if type(result.snapshot) == 'table' then self:ShowState(result.snapshot) end
         if result.ok and (result.action == 'AddAttack' or result.action == 'GetAttack')
             and boundedInt(result.damage, math.maxinteger) then
             self.AttackLabel.Text = '当前挥砍伤害：' .. tostring(result.damage)
         end
-        if result.action == 'GetAttack' and result.ok then return end
-        self.Feedback.Text = result.ok and (result.action == 'PrepareStorage' and '条件已准备，请按提示操作原界面'
+        if (result.action == 'GetAttack' or result.action == 'GetState') and result.ok then return end
+        self.Feedback.Text = result.ok and (result.action == 'ApplyState' and '已应用到本局；自动保存暂停'
+            or result.action == 'SaveState' and '存档写入成功；自动保存恢复'
+            or result.action == 'ReadState' and '已读取并替换本局进度'
+            or result.action == 'SelectSaveSlot' and '下次进图切槽已保存'
             or result.action == 'NextFish' and '服务端确认：下一次上岸鱼种已设置'
             or result.action == 'AddAttack' and '服务端确认：挥砍伤害已增加'
             or ('服务端确认：' .. (result.action == 'Coin' and '金币' or '物品') .. '发放成功'))
@@ -324,6 +450,14 @@ function Panel:Destroy()
     self.FishButtons = nil
     self.FishPageLabel = nil
     self.FishPage = nil
+    self.StateNodes = nil
+    self.MainNodes = nil
+    self.Fields = nil
+    self.StatusLabel = nil
+    self.SlotDetails = nil
+    self.Snapshot = nil
+    self.StatePage = nil
+    self.SlotPage = nil
 end
 
 return Panel

@@ -49,6 +49,9 @@ end
 
 function Mgr:Board(player, data)
     local point = GameCfg.Ferry.Outbound
+    if self.Save and self.Save:IsPaused(player.UserId) then
+        return self:Fail(player, 'Board', '临时本局暂停交船票，请先保存到存档')
+    end
     if self.DepartAt then return self:Fail(player, 'Board', 'sailing') end
     if not self.Interact:InRange(player, point) then return self:Fail(player, 'Board', 'range') end
     if not data:ConsumeItem(point.Ticket) then return self:Fail(player, 'Board', 'ticket') end
