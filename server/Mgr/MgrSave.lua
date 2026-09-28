@@ -175,7 +175,10 @@ end
 -- 挡住新自动写入，等旧队列（含在途请求）排空后再改本局状态。
 function Mgr:ApplyTemporary(userId, data, patch, done)
     local session = self:Session(userId)
-    if session.Transition then return false, '存档操作进行中' end
+    if session.Transition then
+        done(false, '存档操作进行中')
+        return false, '存档操作进行中'
+    end
     session.Transition = true
     local accepted, failure = true, nil
     self:AfterIdle(userId, function()
@@ -192,27 +195,36 @@ function Mgr:SaveExplicit(userId, data, done)
     local session = self:Session(userId)
     if session.Transition then return false, '存档操作进行中' end
     session.Transition = true
+    local key = self:Key(userId)
     local requestedSnapshot = data:Serialize()
     self:AfterIdle(userId, function()
         self.Flying[userId] = true
         task():Spawn(function()
             local store = self:GetStore()
-            local snapshot = data.Inited and data:Serialize() or requestedSnapshot
-            local revision = data.Revision
-            local key = self:Key(userId)
-            local ok = store and snapshot and self:WithRetry('GM 保存 ' .. tostring(userId), function()
-                store:SetAsync(key, snapshot)
-            end) or false
-            if ok then
+            local ok, reason = false, '存档写入失败或服务不可用'
+            for _ = 1, 3 do
+                local snapshot = data.Inited and data:Serialize() or requestedSnapshot
+                local revision = data.Revision
+                if not store or not snapshot then break end
+                local written = self:WithRetry('GM 保存 ' .. tostring(userId), function()
+                    store:SetAsync(key, snapshot)
+                end)
+                if not written then break end
                 self:NoteWrite(userId, self:EstimateSize(snapshot), 'gm', '存档')
+                if not data.Inited or data.Revision == revision then
+                    ok = true
+                    break
+                end
+                reason = '保存期间本局状态持续变化，请重试'
+            end
+            if ok then
                 session.Paused = false
+            else
+                session.Paused = true
             end
             session.Transition = false
             self:Finish(userId)
-            if ok and data.Inited and data.Revision ~= revision then
-                self:Save(userId, data:Serialize(), 'gm-followup')
-            end
-            done(ok, ok and nil or '存档写入失败或服务不可用')
+            done(ok, ok and nil or reason)
         end)
     end)
     return true
@@ -222,6 +234,7 @@ function Mgr:ReadExplicit(userId, data, done)
     local session = self:Session(userId)
     if session.Transition then return false, '存档操作进行中' end
     session.Transition = true
+    local key = self:Key(userId)
     self:AfterIdle(userId, function()
         self.Flying[userId] = true
         task():Spawn(function()
@@ -230,7 +243,7 @@ function Mgr:ReadExplicit(userId, data, done)
             local ok, value = false, nil
             if store then
                 ok, value = self:WithRetry('GM 读取 ' .. tostring(userId), function()
-                    return store:GetAsync(self:Key(userId))
+                    return store:GetAsync(key)
                 end)
             end
             local valid = ok and value ~= nil and data.Inited
@@ -265,6 +278,10 @@ function Mgr:SelectNextSlot(userId, slot, done)
         done(ok, ok and nil or '存档槽选择未保存')
     end)
     return true
+end
+
+function Mgr:ReleaseSession(userId)
+    self.Sessions[userId] = nil
 end
 
 function Mgr:Save(userId, snapshot, reason)

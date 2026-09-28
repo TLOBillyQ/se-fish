@@ -114,6 +114,7 @@ function Panel:ShowState(snapshot)
         occupied(snapshot.slots, snapshot.slotCount), snapshot.slotCount,
         occupied(snapshot.backpack, snapshot.backpackCount), snapshot.backpackCount)
     self.Snapshot = snapshot
+    self:ShowStatus()
     self:ShowSlots()
     local nextPrice = GameCfg.Items.UpgradePrices[snapshot.upgradeLevel + 1]
     local upgrade = nextPrice and ('下级 ' .. nextPrice .. ' 金币；' .. (snapshot.coin >= nextPrice and '金币足够' or '金币不足'))
@@ -129,6 +130,23 @@ function Panel:ShowState(snapshot)
         .. '\n备购买金币 → 钓场商店买鱼竿拒绝且不扣币'
         .. '\n六级价格：100/200/400/800/1600/3200'
         .. '\n背包每级 +5，末级 +10；最终 8/40 格'
+end
+
+function Panel:ShowStatus()
+    if not self.StatusLabel then return end
+    local snapshot = self.Snapshot or {}
+    local status = self.Status or {}
+    local function slot(value)
+        return value == '' and '默认' or tostring(value or '等待同步')
+    end
+    self.StatusLabel.Text = string.format('金币：%s　扩容等级：%s\n道具栏：%s/%s　背包：%s/%s',
+        tostring(snapshot.coin or '—'), tostring(snapshot.upgradeLevel or '—'),
+        snapshot.slots and occupied(snapshot.slots, snapshot.slotCount) or '—', snapshot.slotCount or '—',
+        snapshot.backpack and occupied(snapshot.backpack, snapshot.backpackCount) or '—',
+        snapshot.backpackCount or '—')
+        .. '\n当前槽：' .. slot(status.currentSlot) .. '　下次进图：' .. slot(status.nextSlot)
+        .. '\n自动保存：' .. (status.autosavePaused == nil and '等待同步'
+            or status.autosavePaused and '暂停（临时本局）' or '运行')
 end
 
 function Panel:ShowSlots()
@@ -186,6 +204,7 @@ function Panel:ShowPage(state)
     for _, node in ipairs(self.MainNodes or {}) do node.Visible = self.IsOpen and not state end
     for _, node in ipairs(self.StateNodes or {}) do node.Visible = self.IsOpen and state end
     if state and self.IsOpen then self:SendState('GetState') end
+    if not state and self.IsOpen then self:UpdateFishPage() end
 end
 
 function Panel:UpdateFishPage()
@@ -214,7 +233,6 @@ function Panel:Toggle()
     self.IsOpen = not self.IsOpen
     self.Background.Visible = self.IsOpen
     self:ShowPage(self.StatePage or false)
-    if self.IsOpen then self:UpdateFishPage() end
     self.EntryLabel.Text = self.IsOpen and '收起 GM' or 'GM'
     if self.IsOpen then
         REUtil:GetRE('RequestItemBar'):FireServer()
@@ -356,9 +374,9 @@ function Panel:Build(root, resolution, player)
     end
     self.Fields = {}
     stateLabel('GM状态标题', '状态配置与存档', right, topRow, width - 24, 52, 40)
-    self.StatusLabel = stateLabel('GM存档状态', '当前槽：等待同步', right, topRow - 60, width - 24, 94, 26)
-    stateLabel('GM字段提示', '空白保持原样；单格编辑填写容器、格号、物品 ID、件数 1', right,
-        topRow - 154, width - 24, 48, 23)
+    self.StatusLabel = stateLabel('GM存档状态', '当前槽：等待同步', right, topRow - 112, width - 24, 162, 26)
+    stateLabel('GM字段提示', '空白保持原样；单格编辑填写\n容器、格号、物品 ID、件数 1', right,
+        topRow - 222, width - 24, 48, 23)
     local fields = {
         { 'coin', '金币（可填 0）' }, { 'upgradeLevel', '扩容等级 0—6' },
         { 'container', '容器 itemBar/backpack' }, { 'index', '格号' },
@@ -368,7 +386,7 @@ function Panel:Build(root, resolution, player)
     for index, field in ipairs(fields) do
         local row = math.floor((index - 1) / 2)
         local x = right + ((index - 1) % 2 - 0.5) * 266 * scale
-        local offset = topRow - 224 - row * 100
+        local offset = topRow - 292 - row * 100
         stateLabel('GM字段名_' .. field[1], field[2], x, offset + 25, 250, 42, 22)
         local input = create(self, 'EUIInputField', root, 'GM输入_' .. field[1], x, relY(offset - 20),
             240, 56, { Text = '', FontSize = 28, TextColor = Color.New(255, 255, 255, 255),
@@ -379,7 +397,7 @@ function Panel:Build(root, resolution, player)
         self.PanelNodes[#self.PanelNodes + 1] = input
     end
     local left, rightButton = right - 133 * scale, right + 133 * scale
-    local actionsY = topRow - 640
+    local actionsY = topRow - 708
     stateButton('GM应用', '应用到本局', left, actionsY, function() self:SendState('ApplyState') end)
     stateButton('GM清格', '明确清空格位', rightButton, actionsY, function() self:SendState('ApplyState', true) end)
     stateButton('GM保存', '保存到存档', left, actionsY - 76, function() self:SendState('SaveState') end)
@@ -403,12 +421,7 @@ function Panel:Build(root, resolution, player)
             and result.action ~= 'ApplyState' and result.action ~= 'SaveState'
             and result.action ~= 'ReadState' and result.action ~= 'SelectSaveSlot'
             and result.action ~= 'GetState') then return end
-        if type(result.status) == 'table' and self.StatusLabel then
-            local status = result.status
-            self.StatusLabel.Text = '当前槽：' .. (status.currentSlot ~= '' and tostring(status.currentSlot) or '默认')
-                .. '　下次进图：' .. (status.nextSlot ~= '' and tostring(status.nextSlot) or '默认')
-                .. '\n自动保存：' .. (status.autosavePaused and '暂停（临时本局）' or '运行')
-        end
+        if type(result.status) == 'table' then self.Status = result.status self:ShowStatus() end
         if type(result.snapshot) == 'table' then self:ShowState(result.snapshot) end
         if result.ok and (result.action == 'AddAttack' or result.action == 'GetAttack')
             and boundedInt(result.damage, math.maxinteger) then
@@ -456,6 +469,7 @@ function Panel:Destroy()
     self.StatusLabel = nil
     self.SlotDetails = nil
     self.Snapshot = nil
+    self.Status = nil
     self.StatePage = nil
     self.SlotPage = nil
 end

@@ -145,7 +145,8 @@ function PlayerData:ApplySave(snapshot)
     if type(snapshot.bait) == 'table' then
         for itemId, count in pairs(snapshot.bait) do
             local def = defs[itemId]
-            if def and def.Container == GameCfg.Items.ContainerId.Bait and positiveInt(count) then
+            if def and def.Container == GameCfg.Items.ContainerId.Bait and type(count) == 'number'
+                and count >= 0 and count == math.floor(count) then
                 bait[itemId] = count
             else
                 print('[PlayerData] 存档鱼饵无效，丢弃', userId, itemId, count)
@@ -317,8 +318,7 @@ end
 -- 写入当前区域（#89 摆渡，#92 存档读取）；只接受非空字符串
 function PlayerData:SetZone(zone)
     if not self.Inited or type(zone) ~= 'string' or zone == '' then return false end
-    self.Touched = true
-    self.Data.Zone = zone
+    self:UpdateData(function(data) data.Zone = zone end, false)
     return true
 end
 
@@ -567,9 +567,9 @@ function PlayerData:DiscardSlot(index)
         or index < 1 or index > self:ItemBarCapacity() then return false end
     local items = self.Data.Containers[GameCfg.Items.ContainerId.ItemBar]
     if not items[index] then return false end
-    self.Touched = true
-    items[index] = nil
-    if self.Data.SelectedSlot == index then self.Data.SelectedSlot = nil end
+    self:UpdateData(function()
+        items[index] = nil
+    end, false)
     return true
 end
 
