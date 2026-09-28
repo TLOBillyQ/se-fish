@@ -32,6 +32,9 @@ local Groups = {
         { label = '罗非鱼 ×1', payload = { action = 'Item', itemId = GameCfg.Items.Id.Tilapia, count = 1 } },
         { label = '罗非鱼 ×5', payload = { action = 'Item', itemId = GameCfg.Items.Id.Tilapia, count = 5 } },
     } },
+    { title = '战斗', actions = {
+        { label = '挥砍伤害 +25', payload = { action = 'AddAttack' } },
+    } },
     { title = '下一条鱼', actions = FishActions },
     { title = '#85 验收', actions = {
         { label = '首级：备金币', payload = { action = 'PrepareStorage', scene = 'first' } },
@@ -159,7 +162,10 @@ function Panel:Toggle()
     for _, node in ipairs(self.PanelNodes) do node.Visible = self.IsOpen end
     if self.IsOpen then self:UpdateFishPage() end
     self.EntryLabel.Text = self.IsOpen and '收起 GM' or 'GM'
-    if self.IsOpen then REUtil:GetRE('RequestItemBar'):FireServer() end
+    if self.IsOpen then
+        REUtil:GetRE('RequestItemBar'):FireServer()
+        REUtil:GetRE('GMAction'):FireServer({ action = 'GetAttack' })
+    end
     print('[GMPanel]', self.IsOpen and '展开' or '收起')
 end
 
@@ -195,7 +201,7 @@ function Panel:Build(root, resolution, player)
     local right = math.max(width / 2 + 16, resolution.x - width / 2 - 16)
     local top = resolution.y - 105
     -- 标题、三行状态与反馈；每组增加分组标题和按钮行。
-    local height = 736
+    local height = 784
     for _, group in ipairs(Groups) do
         height = height + 62 + math.ceil(#group.actions / 2) * 96
     end
@@ -228,7 +234,10 @@ function Panel:Build(root, resolution, player)
         relY(topRow - 158), width - 24, 48, 30)
     self.PanelNodes[#self.PanelNodes + 1] = self.StorageLabel
     self.PanelNodes[#self.PanelNodes + 1] = self.CapacityLabel
-    local y = topRow - 214
+    self.AttackLabel = label(self, root, 'GM挥砍伤害', '当前挥砍伤害：等待服务端确认', right,
+        relY(topRow - 206), width - 24, 48, 30)
+    self.PanelNodes[#self.PanelNodes + 1] = self.AttackLabel
+    local y = topRow - 262
     for _, group in ipairs(Groups) do
         local groupLabel = label(self, root, 'GM分组_' .. group.title, group.title, right, relY(y),
             width - 24, 44, 34)
@@ -276,9 +285,16 @@ function Panel:Build(root, resolution, player)
     listen(self, REUtil:GetRE('ItemBarState').OnClientEvent, function(snapshot) self:ShowState(snapshot) end)
     listen(self, REUtil:GetRE('GMResult').OnClientEvent, function(result)
         if type(result) ~= 'table' or (result.action ~= 'Coin' and result.action ~= 'Item'
-            and result.action ~= 'PrepareStorage' and result.action ~= 'NextFish') then return end
+            and result.action ~= 'PrepareStorage' and result.action ~= 'NextFish'
+            and result.action ~= 'AddAttack' and result.action ~= 'GetAttack') then return end
+        if result.ok and (result.action == 'AddAttack' or result.action == 'GetAttack')
+            and boundedInt(result.damage, math.maxinteger) then
+            self.AttackLabel.Text = '当前挥砍伤害：' .. tostring(result.damage)
+        end
+        if result.action == 'GetAttack' and result.ok then return end
         self.Feedback.Text = result.ok and (result.action == 'PrepareStorage' and '条件已准备，请按提示操作原界面'
             or result.action == 'NextFish' and '服务端确认：下一次上岸鱼种已设置'
+            or result.action == 'AddAttack' and '服务端确认：挥砍伤害已增加'
             or ('服务端确认：' .. (result.action == 'Coin' and '金币' or '物品') .. '发放成功'))
             or ('服务端拒绝：' .. tostring(result.reason or '请求未通过'))
         print('[GMPanel] 结果', result.ok and '成功' or '拒绝', tostring(result.reason or ''))
@@ -301,6 +317,7 @@ function Panel:Destroy()
     self.CoinLabel = nil
     self.StorageLabel = nil
     self.CapacityLabel = nil
+    self.AttackLabel = nil
     self.Feedback = nil
     self.Guide = nil
     self.FishLabels = nil

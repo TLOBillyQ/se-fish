@@ -5,7 +5,25 @@
 -- 设血量 / 饥饿度（#53）走 MgrVitals:SetHealth / SetHunger。
 local GameCfg = require('common.GameCfg')
 
-local Mgr = {}
+local Mgr = { AttackBonuses = {} }
+
+local AttackStep = 25
+local BaseAttack = GameCfg.Ability.InitialAbilities[2].AnchorAttributes.ABILITY_ANOSTATE_BULLET_DAMAGE
+
+function Mgr:GetMeleeDamage(player, base)
+    return base + (player and self.AttackBonuses[player.UserId] or 0)
+end
+
+function Mgr:AddAttack(_, _, target)
+    local previous = self.AttackBonuses[target.UserId] or 0
+    if previous > math.maxinteger - AttackStep - BaseAttack then return false, '伤害数值已达到可表示范围' end
+    self.AttackBonuses[target.UserId] = previous + AttackStep
+    return true
+end
+
+function Mgr:OnPlayerRemoving(player)
+    self.AttackBonuses[player.UserId] = nil
+end
 
 local MaxItemCount = 99
 
@@ -107,7 +125,11 @@ function Mgr:NextFish(_, payload, target)
 end
 
 local Actions = { Coin = 'Coin', Item = 'Item', SetHealth = 'SetHealth', SetHunger = 'SetHunger',
-    PrepareStorage = 'PrepareStorage', NextFish = 'NextFish' }
+    PrepareStorage = 'PrepareStorage', NextFish = 'NextFish', AddAttack = 'AddAttack', GetAttack = 'GetAttack' }
+
+function Mgr:GetAttack()
+    return true
+end
 
 -- 处理一次 GM 请求；发放成功返回 true
 function Mgr:Handle(player, payload)
@@ -125,8 +147,11 @@ function Mgr:Handle(player, payload)
     if data then ok, reason = self[method](self, data, payload, target) end
     print('[MgrGM]', ok and '发放' or '拒绝', player and player.UserId, '->', target and target.UserId,
         tostring(payload.action), tostring(payload.amount or payload.itemId or payload.value or payload.scene or payload.fishId), tostring(payload.count or ''))
-    if ok and method ~= 'NextFish' then self.PlayerData:SendItemBar(target) end
+    if ok and method ~= 'NextFish' and method ~= 'AddAttack' and method ~= 'GetAttack' then
+        self.PlayerData:SendItemBar(target)
+    end
     self:Reply(player, { ok = ok, action = payload.action, target = target and target.UserId,
+        damage = ok and (method == 'AddAttack' or method == 'GetAttack') and self:GetMeleeDamage(target, BaseAttack) or nil,
         reason = not ok and (reason or '请求未通过') or nil })
     return ok
 end

@@ -246,6 +246,10 @@ function M.Attach(anchor_script)
 		local hit_box_scale =
 			_safeScale(anchor_script:GetAttribute("ABILITY_ANOSTATE_HITBOX_SCALE"), Vector3.New(2, 2, 2))
 		local hit_damage = anchor_script:GetAttribute("ABILITY_ANOSTATE_BULLET_DAMAGE") or 0.0
+		local player = game:GetService("Players"):GetPlayerFromCharacter(owner)
+		if player then
+			hit_damage = require("server.Mgr.MgrGM"):GetMeleeDamage(player, hit_damage)
+		end
 		local hit_power = anchor_script:GetAttribute("ABILITY_ANOSTATE_HITPOWER") or 0.0
 		local weapon_prefab = anchor_script:GetAttribute("ABILITY_ANOSTATE_USE_PERFAB") or ""
 		local anim_id = anchor_script:GetAttribute("ABILITY_ANOSTATE_ANIMKEY") or ""
