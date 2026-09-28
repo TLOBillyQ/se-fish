@@ -25,6 +25,7 @@
 -- 死亡那一刻要生成的鱼获挂在 `Mgr:SubscribeDied` 上（路线图 I-13：血量归零那刻在鱼的位置生成鱼获）。
 
 local GameCfg = require("common.GameCfg")
+local DamageNotice = require("common.DamageNotice")
 
 local Mgr = {}
 
@@ -120,6 +121,7 @@ local function syncReceiver(carrier)
 	if not ok or not pos then
 		return
 	end
+	carrier.LastPosition = { x = pos.x, y = pos.y, z = pos.z }
 	pcall(function()
 		if receiver.SetPosition then
 			receiver:SetPosition(pos + carrier.ReceiverOffset)
@@ -141,10 +143,41 @@ end
 -- 实测（M18 台账 §11.3）：致命那一下引擎**只发 `Died`、不发 `HealthChanged`**，所以两条都要接。
 -- 通知前把 Controller 的真血量同步回记录：致命一击时 Died 早于 HealthChanged，
 -- 订阅者若读 carrier.Health 会看到上一档的值（实测读到 25 而不是 0）。
+function Mgr:RecordHealth(carrier)
+	if not carrier or carrier.Dead or not carrier.Controller then return end
+	local ok, health = pcall(function() return carrier.Controller.Health end)
+	if not ok or type(health) ~= 'number' or health ~= health then return end
+	local previous = carrier.Health
+	local position
+	if carrier.Body then
+		local positionOk, currentPosition = pcall(readPosition, carrier.Body)
+		if positionOk then position = currentPosition end
+	end
+	if not position then position = carrier.LastPosition end
+	carrier.Health = health
+	if position then carrier.LastPosition = { x = position.x, y = position.y, z = position.z } end
+	if carrier.Body and carrier.Body.UnitId and previous and health < previous then
+		if position then
+			local heightOk, size = pcall(function() return carrier.Body.Size end)
+			local height = heightOk and size and size.y
+			local payload = DamageNotice.FromHealth(carrier.Body.UnitId, previous, health, position,
+				nil, 'fish', height)
+			if payload then
+				print('[MgrFishCarrier] 实际扣血', payload.targetId, previous, health, payload.amount)
+				local sent, err = pcall(self.DamagePublisher or DamageNotice.Publish, payload)
+				if not sent then print('[MgrFishCarrier] 伤害通知失败', carrier.Body.UnitId, tostring(err)) end
+			end
+		else
+			print('[MgrFishCarrier] 实际扣血缺少受伤位置', carrier.Body.UnitId, previous, health)
+		end
+	end
+end
+
 function Mgr:NotifyDied(carrier)
 	if not carrier or carrier.Dead then
 		return
 	end
+	self:RecordHealth(carrier)
 	carrier.Dead = true
 	if carrier.Controller then
 		local ok, health = pcall(function()
@@ -212,12 +245,13 @@ function Mgr:Attach(body, opts)
 		FishId = opts.FishId,
 		Player = opts.Player,
 		ReceiverOffset = opts.ReceiverOffset or Vector3.New(0, 0, 0),
+		LastPosition = { x = pos.x, y = pos.y, z = pos.z },
 		Dead = false,
 	}
 
-	carrier.HealthConn = controller.HealthChanged:Connect(function(health)
-		carrier.Health = health
-		if health <= 0 then
+	carrier.HealthConn = controller.HealthChanged:Connect(function()
+		Mgr:RecordHealth(carrier)
+		if carrier.Health <= 0 then
 			Mgr:NotifyDied(carrier)
 		end
 	end)

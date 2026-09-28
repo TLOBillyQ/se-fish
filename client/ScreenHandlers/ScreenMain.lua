@@ -1,6 +1,7 @@
 local World = game:GetService('World')
 local GameCfg = require('common.GameCfg')
 local LocalAttackButton = require('client.LocalAttackButton')
+local DamageFloat = require('client.DamageFloat')
 
 local ScreenHandler = { UINodes = {}, UINodeMap = {} }
 
@@ -473,6 +474,7 @@ function ScreenHandler:Listen(source, callback)
 end
 
 function ScreenHandler:Cleanup()
+    DamageFloat:Clear()
     self:CloseScreen()
     LocalAttackButton:Destroy()
     for _, connection in ipairs(self.Connections or {}) do connection:Disconnect() end
@@ -552,6 +554,7 @@ function ScreenHandler:Init()
     local resolution = euiMgr:GetDeviceResolution()
     self.EuiResolution = resolution
     local root = self.RootNode
+    DamageFloat:Bind(root, resolution)
     self.LabelCoin = root:FindFirstChild('LabelCoin', true)
     local imageCoin = root:FindFirstChild('ImageCoin', true)
     if self.LabelCoin then self.LabelCoin.Visible = true else print('[ScreenMain] 找不到 LabelCoin 节点') end
@@ -762,6 +765,9 @@ function ScreenHandler:Init()
         self.CastState = state
         self:ShowCast()
     end)
+    self:Listen(_G.REUtil:GetRE('DamageNotice').OnClientEvent, function(payload)
+        if self.IsOpen then DamageFloat:Show(payload) end
+    end)
     self:Listen(_G.REUtil:GetRE('QuestState').OnClientEvent, function(state) self:ShowQuest(state) end)
     -- 开场对话降级的单行公告（#54，server/Mgr/MgrStory.lua）
     self:Listen(_G.REUtil:GetRE('StoryNotice').OnClientEvent, function(payload)
@@ -779,6 +785,7 @@ function ScreenHandler:Init()
             if self.ReelBar and self.ReelBar.Visible then self:ShowCast() end
             if self.CastFloat and self.IsOpen then self:UpdateCastFeedback() end
             if self.Starving then self:UpdateStarveFx() end
+            DamageFloat:Update()
         end)
     end
     -- 进图早期注册 FishCoin 属性监听不稳定，延迟后再挂
@@ -799,6 +806,7 @@ function ScreenHandler:Init()
 end
 
 function ScreenHandler:OpenScreen()
+    DamageFloat:Bind(self.RootNode, self.EuiResolution)
     self.IsOpen = true
     LocalAttackButton:SetOpen(true)
     _G.LocalReelIn:Resume()
@@ -813,6 +821,7 @@ function ScreenHandler:OpenScreen()
 end
 
 function ScreenHandler:CloseScreen()
+    DamageFloat:Clear()
     self.IsOpen = false
     self.FailureUntil = nil
     self.FailureLanding = nil

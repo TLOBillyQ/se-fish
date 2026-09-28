@@ -1,6 +1,6 @@
 -- Gherkin 步骤处理器聚合与分发。新增 feature 时在 SOURCES 中登记步骤模块。
 -- acceptance4lua 按原始步骤文本查 handler；具体值在运行期才解析。
-local SOURCES = {}
+local SOURCES = { 'tools.acceptance.fish_damage_steps' }
 local M = {}
 
 local PATTERNS = {}

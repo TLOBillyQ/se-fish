@@ -622,4 +622,18 @@ GameCfg.FishCarrier = {
     },
 }
 
+GameCfg.DamageFloat = {
+    DurationSec = 1,
+    RisePixels = 90,
+    SpreadPixels = 32,
+    HeadHeight = 1.6,
+    Width = 130,
+    Height = 70,
+    NormalFontSize = 36,
+    CriticalFontSize = 48,
+    NormalColor = { 255, 255, 255, 255 },
+    CriticalColor = { 255, 185, 45, 255 },
+    PoolSize = 24,
+}
+
 return GameCfg

@@ -382,6 +382,83 @@ function TestFishCarrierEngine:test_attach_destroys_the_orphan_receiver_when_con
   lu.assertTrue(receiver.Destroyed == true, "孤儿受击体必须被销毁")
 end
 
+function TestFishCarrierEngine:test_damage_reports_effective_health_once_for_every_path()
+  local mgr = freshManager()
+  local world = newFakeWorld()
+  local notices = {}
+  mgr.DamagePublisher = function(payload) notices[#notices + 1] = payload end
+  withFakeEngine(world, function()
+    local carrier = mgr:Spawn(SPAWN_OPTS)
+    carrier.Controller:TakeDamage(2.7)
+    lu.assertAlmostEquals(notices[1].amount, 2.7, 0.00001)
+    lu.assertEquals(notices[1].targetId, carrier.Body.UnitId)
+    lu.assertEquals(notices[1].position.y, 2)
+    mgr:Damage(carrier, 2.4)
+    lu.assertAlmostEquals(notices[2].amount, 2.4, 0.00001)
+    carrier.Controller.Health = 4
+    carrier.Controller.HealthChanged:Fire(4)
+    notices = {} -- 单独观察致命一击的通知
+    carrier.Controller.Health = 0
+    carrier.Controller.Died:Fire() -- 引擎致死时不一定发 HealthChanged
+    carrier.Controller.HealthChanged:Fire(0)
+    lu.assertEquals(#notices, 1)
+    lu.assertEquals(notices[1].amount, 4)
+    lu.assertEquals(carrier.Health, 0)
+  end)
+  mgr.DamagePublisher = nil
+end
+
+function TestFishCarrierEngine:test_zero_damage_recovery_and_binding_never_report()
+  local mgr = freshManager()
+  local world = newFakeWorld()
+  local notices = {}
+  mgr.DamagePublisher = function(payload) notices[#notices + 1] = payload end
+  withFakeEngine(world, function()
+    local carrier = mgr:Spawn(SPAWN_OPTS)
+    carrier.Controller.HealthChanged:Fire(50)
+    carrier.Controller:TakeDamage(0)
+    carrier.Controller.Health = 55
+    carrier.Controller.HealthChanged:Fire(55)
+    carrier.Controller:TakeDamage(0.1)
+    lu.assertEquals(#notices, 1)
+    lu.assertAlmostEquals(notices[1].amount, 0.1, 0.00001)
+  end)
+  mgr.DamagePublisher = nil
+end
+
+function TestFishCarrierEngine:test_overkill_reports_only_remaining_health()
+  local mgr = freshManager()
+  local world = newFakeWorld()
+  local notices = {}
+  mgr.DamagePublisher = function(payload) notices[#notices + 1] = payload end
+  withFakeEngine(world, function()
+    local carrier = mgr:Spawn(SPAWN_OPTS)
+    carrier.Controller.Health = 4
+    carrier.Controller.HealthChanged:Fire(4)
+    notices = {}
+    carrier.Controller:TakeDamage(10)
+    lu.assertEquals(carrier.Controller.Health, 0)
+    lu.assertEquals(#notices, 1)
+    lu.assertEquals(notices[1].amount, 4)
+  end)
+  mgr.DamagePublisher = nil
+end
+
+function TestFishCarrierEngine:test_last_known_body_position_survives_failed_position_read()
+  local mgr = freshManager()
+  local world = newFakeWorld()
+  local notices = {}
+  mgr.DamagePublisher = function(payload) notices[#notices + 1] = payload end
+  withFakeEngine(world, function()
+    local carrier = mgr:Spawn(SPAWN_OPTS)
+    carrier.Body.GetPosition = function() error('unit destroyed') end
+    carrier.Controller:TakeDamage(0.5)
+    lu.assertEquals(notices[1].position.x, 1)
+    lu.assertEquals(notices[1].amount, 0.5)
+  end)
+  mgr.DamagePublisher = nil
+end
+
 -- ===== 3. 接缝守卫（源码文本校对）=====
 
 TestFishCarrierSeam = {}
