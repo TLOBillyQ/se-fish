@@ -37,3 +37,11 @@ build/
 .uml-viewer/
 uml-viewer-log.txt
 # END UML-VIEWER
+
+# 本地 viewer 安装与验收产物；policy 保留可提交
+/uml
+/uml.ps1
+/CLAUDE.md
+/examples/*.edn
+!/examples/*.policy.edn
+/luacov.stats.out

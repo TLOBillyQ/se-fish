@@ -1,0 +1,1 @@
+{:title "se-fish omit tests/tools" :lang :lua :src "." :prefix "" :hierarchical true :omit [:tests :tools] :out "examples/se-fish-omit.edn"}

@@ -1,0 +1,8 @@
+{:title "se-fish deployment"
+ :lang :lua
+ :src "."
+ :prefix ""
+ :include-roots ["client" "server" "common"]
+ :hierarchical true
+ :order [client server common]
+ :out "examples/se-fish.edn"}

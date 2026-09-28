@@ -1,0 +1,6 @@
+{:title "se-fish full scan"
+ :lang :lua
+ :src "."
+ :prefix ""
+ :hierarchical true
+ :out "examples/se-fish-full.edn"}
