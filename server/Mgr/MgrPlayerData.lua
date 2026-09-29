@@ -141,27 +141,48 @@ end
 -- #124 统一分发：吃/药水/丢弃/攻击经同一入口。切手持与实际使用分两次——
 -- 首次只切手持（held），手持匹配才算再次并执行真实行为；重复点击、空格都有明确回包。
 -- 有 Save 时走持久操作协议（ResolveRequest+Execute，两步语义整体落在隔离 draft）；
--- 丢弃依赖地面物品接口（T05 PrepareDrop/CommitDrop）：未接入时拒绝且不扣物。
+-- 丢弃走 T05 地面物品接口：PrepareDrop 预留成功才扣件，CommitDrop 在持久成功回调生成；
+-- 接口未接入时拒绝且不扣物；攻击实际结算归 #128，占位明确未接错误。
 function Mgr:Operate(player, data, payload)
     local function finish(result, operation)
         if operation then result.operation = operation end
         _G.REUtil:GetRE('ItemBarResult'):FireClient(player, result)
     end
+    local function cancelDrop(reservation, drop)
+        if reservation and self.Loot and self.Loot.CancelDrop then
+            pcall(function() self.Loot:CancelDrop(player, reservation, drop) end)
+        end
+    end
     local op = payload.op
-    local slot = payload.slot
-    if op ~= 'eat' and op ~= 'discard' then
+    local weapon = payload.weapon
+    if op ~= 'eat' and op ~= 'discard' and op ~= 'attack' then
         finish({ ok = false, reason = 'unknown-op' })
         return
     end
-    if type(slot) ~= 'number' or slot ~= math.floor(slot)
-        or slot < 1 or slot > data:ItemBarCapacity() then
-        finish({ ok = false, reason = 'bad-slot' })
-        return
-    end
+    local slot = payload.slot
     local items = data.Data.Containers[GameCfg.Items.ContainerId.ItemBar]
-    local entry = items[slot]
+    local entry
+    if op == 'attack' then
+        -- 预检（新请求才做，重放不得被中间态拦截）：武器必须在独立库存里
+        if type(weapon) ~= 'string' or data:WeaponCount(weapon) < 1 then
+            finish({ ok = false, reason = 'bad-weapon' })
+            return
+        end
+    else
+        if type(slot) ~= 'number' or slot ~= math.floor(slot)
+            or slot < 1 or slot > data:ItemBarCapacity() then
+            finish({ ok = false, reason = 'bad-slot' })
+            return
+        end
+        entry = items[slot]
+    end
+    local dropApi = op == 'discard' and self.Loot
+        and type(self.Loot.PrepareDrop) == 'function' and type(self.Loot.CommitDrop) == 'function'
+    local drop = op == 'discard' and entry
+        and { itemId = entry.itemId, mult = entry.mult, slot = slot } or nil
     -- 预检（新请求才做，重放不得被中间态拦截）：格空与禁食直接回包
     local function precheck()
+        if op == 'attack' then return true end
         if not entry or entry.count <= 0 then
             finish({ ok = false, reason = 'empty' })
             return false
@@ -172,8 +193,34 @@ function Mgr:Operate(player, data, payload)
         end
         return true
     end
+    -- 丢弃预留：held 已匹配（本次将真正丢件）才先向地面物品接口预留；
+    -- 生成被拒时不扣物，首次切手持不触碰世界接口
+    local heldNow = data.Extra.inventory.selection.held
+    local willDrop = op == 'discard' and heldNow.kind == 'slot' and heldNow.slot == slot
+    local function reserveDrop()
+        if not willDrop then return true, nil end
+        if not dropApi then return true, nil end
+        local reservation, reason = self.Loot:PrepareDrop(player, drop)
+        if not reservation then
+            finish({ ok = false, op = 'discard', reason = 'drop-rejected' })
+            return false, tostring(reason)
+        end
+        return true, reservation
+    end
+    local function settleEffects(result)
+        if result.itemId and result.action ~= 'potion' and self.Vitals then
+            self.Vitals:Eat(player, result.itemId)
+        end
+    end
     local function transform(target)
         local held = target.Extra.inventory.selection.held
+        if op == 'attack' then
+            if held.kind == 'weapon' and held.id == weapon then
+                return nil, 'combat-pending' -- #128 接入战斗结算；切换语义已就位
+            end
+            if not target:HoldWeapon(weapon) then return nil, 'bad-weapon' end
+            return { ok = true, op = 'attack', held = true }
+        end
         if held.kind ~= 'slot' or held.slot ~= slot then
             -- 首次：只切手持，不消费
             if not target:HoldSlot(slot) then return nil, 'empty' end
@@ -183,8 +230,26 @@ function Mgr:Operate(player, data, payload)
         local heldEntry = target.Data.Containers[GameCfg.Items.ContainerId.ItemBar][slot]
         if not heldEntry or heldEntry.count <= 0 then return nil, 'empty' end
         if op == 'discard' then
-            -- 地面物品接口未接入（T05）：拒绝且不扣物
-            return nil, 'drop-unavailable'
+            if not dropApi then return nil, 'drop-unavailable' end
+            target:UpdateData(function(d)
+                local it = d.Containers[GameCfg.Items.ContainerId.ItemBar][slot]
+                if it.count > 1 then it.count = it.count - 1
+                else d.Containers[GameCfg.Items.ContainerId.ItemBar][slot] = nil end
+            end, true)
+            return { ok = true, op = 'discard', held = false, itemId = heldEntry.itemId }
+        end
+        local definition = GameCfg.Items.Definitions[heldEntry.itemId]
+        if definition and definition.Type == '属性道具' then
+            -- 药水：按 PotionLimits 累计；超限拒绝且不扣格
+            local limit = GameCfg.Items.PotionLimits[heldEntry.itemId]
+            local count = target.Extra.growth.potions[heldEntry.itemId] or 0
+            if limit and count >= limit then return nil, 'potion-capped' end
+            target.Extra.growth.potions[heldEntry.itemId] = count + 1
+            target:SelectSlot(slot)
+            target:UpdateData(function(d)
+                d.Containers[GameCfg.Items.ContainerId.ItemBar][slot] = nil
+            end, true)
+            return { ok = true, op = 'eat', held = false, itemId = heldEntry.itemId, action = 'potion' }
         end
         -- EatSlot 只吃选中格（#53）：分发已验槽位有效，先切选中再吃掉整格
         target:SelectSlot(slot)
@@ -213,26 +278,45 @@ function Mgr:Operate(player, data, payload)
                 end)
             return
         end
+        local reserved, reservation = reserveDrop()
+        if not reserved then return end
         local accepted, failure = self.Save:Execute(player, data, operation, transform,
             function(written, result)
                 if not written then
+                    cancelDrop(reservation, drop)
                     finish({ ok = false, reason = tostring(result) })
                     return
                 end
-                -- 世界内副作用（恢复）只在持久成功回调结算，失败无副作用
-                if result.itemId and self.Vitals then self.Vitals:Eat(player, result.itemId) end
+                -- 世界副作用只在持久成功回调结算，失败无副作用
+                if reservation then
+                    if not self.Loot:CommitDrop(player, reservation, drop) then
+                        print('[MgrPlayerData] 丢弃落物生成失败', player.UserId, tostring(drop.itemId))
+                    end
+                end
+                settleEffects(result)
                 finish(result)
             end)
-        if not accepted then finish({ ok = false, reason = tostring(failure) }) end
+        if not accepted then
+            cancelDrop(reservation, drop)
+            finish({ ok = false, reason = tostring(failure) })
+        end
         return
     end
     if not precheck() then return end
+    local reserved, reservation = reserveDrop()
+    if not reserved then return end
     local result, reason = transform(data)
     if not result then
+        cancelDrop(reservation, drop)
         finish({ ok = false, op = op, reason = reason })
         return
     end
-    if result.itemId and self.Vitals then self.Vitals:Eat(player, result.itemId) end
+    if reservation then
+        if not self.Loot:CommitDrop(player, reservation, drop) then
+            print('[MgrPlayerData] 丢弃落物生成失败', player.UserId, tostring(drop.itemId))
+        end
+    end
+    settleEffects(result)
     finish(result)
 end
 

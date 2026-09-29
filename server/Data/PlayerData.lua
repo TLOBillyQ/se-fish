@@ -442,6 +442,11 @@ function PlayerData:WeaponCount(itemId)
     return self.Inited and self.Data.Weapons[itemId] or 0
 end
 
+-- 已吃药水累计（#124，上限规则见 GameCfg.Items.PotionLimits）；属性效果由属性系统接入。
+function PlayerData:PotionCount(itemId)
+    return self.Inited and self.Extra.growth.potions[itemId] or 0
+end
+
 function PlayerData:ConsumeWeapon(itemId, count)
     if not self.Inited or not integer(count, 1) or self:WeaponCount(itemId) < count then return false end
     self:UpdateData(function(data)

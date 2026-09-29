@@ -50,6 +50,7 @@ function TestHoldOperateMgr:tearDown()
     Mgr:OnPlayerRemoving(self.player)
     Mgr.Vitals = nil
     Mgr.Save = nil
+    Mgr.Loot = nil
     _G.REUtil = self.oldREUtil
     GameCfg.Debug = self.debug
 end
@@ -87,6 +88,71 @@ function TestHoldOperateMgr:test_operate_switch_target_resets_hold()
     lu.assertEquals(switched, { ok = true, op = 'eat', held = true })
     lu.assertEquals(self.data:GetItemBarSnapshot().held, { kind = 'slot', id = 'bass', slot = 2 })
     lu.assertEquals(#self.eaten, 0)
+end
+
+-- 药水走同一 eat 通道：两步语义不变；按 PotionLimits 累计，超限拒绝且不扣格。
+function TestHoldOperateMgr:test_operate_potion_counts_and_caps()
+    lu.assertTrue(self.data:AddItem('item167', 1.5))
+    local first = self:operate({ action = 'Operate', op = 'eat', slot = 1 })
+    lu.assertEquals(first, { ok = true, op = 'eat', held = true })
+    local second = self:operate({ action = 'Operate', op = 'eat', slot = 1 })
+    lu.assertEquals(second, { ok = true, op = 'eat', held = false, itemId = 'item167', action = 'potion' })
+    lu.assertEquals(self.data:PotionCount('item167'), 1)
+    lu.assertNil(self.data:GetItemBarSnapshot().slots[1])
+    -- 到上限后拒绝且不扣格（再造一格药水）
+    lu.assertTrue(self.data:AddItem('item167', 1.5))
+    self.data.Extra.growth.potions.item167 = GameCfg.Items.PotionLimits.item167
+    self:operate({ action = 'Operate', op = 'eat', slot = 1 })
+    local capped = self:operate({ action = 'Operate', op = 'eat', slot = 1 })
+    lu.assertEquals(capped, { ok = false, op = 'eat', reason = 'potion-capped' })
+    lu.assertEquals(self.data:GetItemBarSnapshot().slots[1].itemId, 'item167')
+    lu.assertEquals(self.data:PotionCount('item167'), GameCfg.Items.PotionLimits.item167)
+end
+
+-- 丢弃接了地面物品接口（T05 契约）：先 PrepareDrop 预留，成功才扣 1 件并按倍率生成；
+-- PrepareDrop 拒绝时不扣物。
+function TestHoldOperateMgr:test_discard_uses_ground_item_api_when_available()
+    local prepared, committed = {}, {}
+    Mgr.Loot = {
+        -- T05 契约：PrepareDrop(player, drop) -> reservation|nil, reason
+        PrepareDrop = function(_, player, drop)
+            if drop.itemId == 'carp' then return nil, 'blocked' end
+            prepared[#prepared + 1] = drop
+            return { token = #prepared }
+        end,
+        -- CommitDrop(player, reservation, drop) -> ok
+        CommitDrop = function(_, player, reservation, drop)
+            committed[#committed + 1] = { reservation = reservation, drop = drop }
+            return true
+        end,
+    }
+    lu.assertTrue(self.data:AddItem('bass', 1.99))
+    lu.assertTrue(self.data:AddItem('carp', 1.37))
+    self:operate({ action = 'Operate', op = 'discard', slot = 1 })
+    local dropped = self:operate({ action = 'Operate', op = 'discard', slot = 1 })
+    lu.assertEquals(dropped, { ok = true, op = 'discard', held = false, itemId = 'bass' })
+    lu.assertEquals(#prepared, 1)
+    lu.assertEquals(prepared[1].mult, 1.99)
+    lu.assertEquals(#committed, 1)
+    lu.assertNil(self.data:GetItemBarSnapshot().slots[1])
+    lu.assertEquals(self.data:GetItemBarSnapshot().slots[2].itemId, 'carp')
+    -- PrepareDrop 拒绝：不扣物、明确错误
+    self:operate({ action = 'Operate', op = 'discard', slot = 2 })
+    local blocked = self:operate({ action = 'Operate', op = 'discard', slot = 2 })
+    lu.assertEquals(blocked, { ok = false, op = 'discard', reason = 'drop-rejected' })
+    lu.assertEquals(self.data:GetItemBarSnapshot().slots[2].itemId, 'carp')
+    Mgr.Loot = nil
+end
+
+-- 攻击占位：首次切武器手持，再次明确未接战斗系统（#128），不结算伤害。
+function TestHoldOperateMgr:test_attack_hold_first_combat_pending_second()
+    lu.assertTrue(self.data:GrantWeapon('item134', 1))
+    local first = self:operate({ action = 'Operate', op = 'attack', weapon = 'item134' })
+    lu.assertEquals(first, { ok = true, op = 'attack', held = true })
+    lu.assertEquals(self.data:GetItemBarSnapshot().held, { kind = 'weapon', id = 'item134', slot = nil })
+    local second = self:operate({ action = 'Operate', op = 'attack', weapon = 'item134' })
+    lu.assertEquals(second, { ok = false, op = 'attack', reason = 'combat-pending' })
+    lu.assertEquals(self.data:WeaponCount('item134'), 1)
 end
 
 -- 丢弃未接 PrepareDrop/CommitDrop：服务端拒绝、不扣物、回明确错误。

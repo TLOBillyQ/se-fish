@@ -56,6 +56,8 @@ GameCfg.Items = {
         EelMeat = 'eelMeat', EelHead = 'eelHead', GarMeat = 'garMeat', GarHead = 'garHead', Duck = 'duck', ShrimpTicket = 'shrimpTicket',
         ShrimpRod = 'shrimpRod', CrabRod = 'crabRod', NormalRod = 'normalRod', ProRod = 'proRod', AirforceRod = 'airforceRod', UnscientificRod = 'unscientificRod' },
     ActionCooldownSec = 0.12,
+    -- 药水累计上限（物品表 item167/168 SourceDescription：加速最多 20 个、变大最多 10 个）
+    PotionLimits = { item167 = 20, item168 = 10 },
     RodVisual = {
         -- Mesh 来自试玩世界单位「中式杆」（原 AssetId=map://preset/u46466002b9a47c588001c2e65ef4c3a）；
         -- 原场景 Scale=(0.2,1,0.2)，这里的缩放是左手持竿表现参数。
