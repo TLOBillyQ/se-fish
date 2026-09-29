@@ -96,6 +96,9 @@ function TestSave:setUp()
         return player, data
     end
     self.me, self.data = self.newData(1)
+    self.save:LoadInto(self.me, self.data)
+    self.ops, self.waits, self.syncs = {}, {}, 0
+    self.save.Ledger = {}
 end
 
 function TestSave:flushSpawns()
@@ -150,7 +153,7 @@ function TestSave:test_serialize_roundtrip_restores_coin_slots_bait_upgrade_zone
     -- 造一个带倍率的鱼获在背包里
     lu.assertTrue(d:AddItem('riverShrimp', 1.14))
     local snapshot = d:Serialize()
-    lu.assertEquals(snapshot.v, 1)
+    lu.assertEquals(snapshot.v, 2)
     -- 全新玩家读档
     local player2, d2 = self.newData(2)
     lu.assertTrue(d2:ApplySave(snapshot))
@@ -186,23 +189,16 @@ function TestSave:test_serialize_roundtrip_restores_coin_slots_bait_upgrade_zone
     lu.assertEquals(d2:ItemCount('shrimpTicket'), 1)
 end
 
-function TestSave:test_apply_save_drops_unknown_items_and_clamps_garbage()
+function TestSave:test_apply_save_rejects_garbage_without_partial_recovery()
     local _, d2 = self.newData(2)
-    lu.assertTrue(d2:ApplySave({
+    local before = d2:Serialize()
+    lu.assertFalse(d2:ApplySave({
         v = 1, coin = -50, up = 99, zone = 42,
         bar = { { i = 1, id = 'ghostItem', n = 1 }, { i = 99, id = 'duck', n = 1 }, { i = 2, id = 'duck', n = 'x' } },
         bp = { { i = 1, id = 'shrimpTicket', n = 1 } },
         bait = { sausage = 3, ghostBait = 9, worm = -2 },
     }))
-    lu.assertEquals(d2.Data.FishCoin, 0)               -- 负数钳到 0
-    lu.assertEquals(d2.Data.UpgradeLevel, #self.cfg.Items.UpgradePrices) -- 钳到升满
-    lu.assertEquals(d2.Data.Zone, self.cfg.Ferry.HomeZone) -- 非字符串忽略，留默认
-    lu.assertEquals(d2:ItemCount('ghostItem'), 0)      -- 未知物品丢弃
-    lu.assertEquals(d2:ItemCount('duck'), 0)           -- 越界格 / 坏计数都不进
-    lu.assertEquals(d2:ItemCount('shrimpTicket'), 1)
-    lu.assertEquals(d2.Data.Bait.sausage, 3)
-    lu.assertNil(d2.Data.Bait.ghostBait)               -- 未知鱼饵丢弃
-    lu.assertNil(d2.Data.Bait.worm)                    -- 负数鱼饵丢弃（读档不继承白送之外的负值）
+    lu.assertEquals(d2:Serialize(), before)
 end
 
 function TestSave:test_load_retries_then_succeeds_and_gives_up_without_touching_memory()
@@ -221,17 +217,16 @@ function TestSave:test_load_retries_then_succeeds_and_gives_up_without_touching_
 end
 
 function TestSave:test_save_failure_keeps_memory_and_reports()
-    self.failSet = 99
+    self.failUpdate = 99
     self.data.Data.FishCoin = 88
-    -- Enqueue 受理即返回 true（写是异步排空）；重试耗尽只丢这次写，不动内存态
+    -- 失败保留原 job 与写身份，恢复后 Update 再排空。
     lu.assertTrue(self.save:Save(1, self.data:Serialize(), 'test'))
     lu.assertEquals(self.data.Data.FishCoin, 88)
-    lu.assertNil(self.store.data[self.save:Key(1)])
-    lu.assertEquals(#self.waits, self.cfg.Save.MaxRetries - 1) -- 每次失败退避一次
-    -- 恢复后同一 key 能写进去
-    self.failSet = 0
-    lu.assertTrue(self.save:Save(1, self.data:Serialize(), 'test'))
-    lu.assertNotNil(self.store.data[self.save:Key(1)])
+    lu.assertEquals(self.store.data[self.save:Key(1)].coin, 0)
+    lu.assertEquals(#self.waits, self.cfg.Save.MaxRetries - 1)
+    self.failUpdate = 0
+    self.save:Update()
+    lu.assertEquals(self.store.data[self.save:Key(1)].coin, 88)
 end
 
 function TestSave:test_commit_uses_update_async_and_survives_cas_conflict()
@@ -300,12 +295,13 @@ function TestSave:test_load_into_applies_save_and_syncs_client()
     lu.assertEquals(d9.Data.FishCoin, 66)
     lu.assertEquals(d9:ItemCount('duck'), 1)
     lu.assertEquals(self.syncs, 1) -- 恢复后推了一次 ItemBarState
-    -- 没存档的玩家：不动初始数据，不额外推送
+    -- 新档同样发送 ready 快照。
     self.save:LoadInto(self.me, self.data)
-    lu.assertEquals(self.syncs, 1)
+    lu.assertEquals(self.syncs, 2)
 end
 
-function TestSave:test_unavailable_service_degrades_to_memory_only()
+function TestSave:test_unavailable_service_closes_persistence()
+    self.save.StoreChecked, self.save.Store = false, nil
     local env = self
     _G.game = { GetService = function(_, name)
         if name == 'Task' then return env.task end
@@ -343,10 +339,10 @@ function TestSave:test_autosave_periodically_saves_online_players()
     self.players = { self.me }
     self.data.Data.FishCoin = 33
     self.save:Update() -- 第一次只定下一次存档时刻
-    lu.assertNil(self.store.data[self.save:Key(1)])
+    lu.assertEquals(self.store.data[self.save:Key(1)].coin, 0)
     self.now = self.now + self.cfg.Save.AutosaveSec - 1
     self.save:Update() -- 还没到点
-    lu.assertNil(self.store.data[self.save:Key(1)])
+    lu.assertEquals(self.store.data[self.save:Key(1)].coin, 0)
     self.now = self.now + 1
     self.save:Update() -- 到点：在线玩家落档
     lu.assertEquals(self.store.data[self.save:Key(1)].coin, 33)
@@ -369,12 +365,12 @@ function TestSave:test_bind_to_close_flushes_all_online_players()
     lu.assertEquals(self.save.Ledger[1].LastReason, 'shutdown')
 end
 
-function TestSave:test_load_into_skips_apply_when_player_touched_data()
+function TestSave:test_load_into_never_discards_old_property_because_of_touched_flag()
     self.data.Data.FishCoin = 66
     self.store.data[self.save:Key(9)] = self.data:Serialize()
     local player9, d9 = self.newData(9)
-    d9.Touched = true -- 读档期间玩家已经操作过（喂了鱼/丢格/换区）
+    d9.Touched = true
     self.save:LoadInto(player9, d9)
-    lu.assertEquals(d9.Data.FishCoin, 0) -- 旧档不覆盖新操作
-    lu.assertEquals(self.syncs, 0)
+    lu.assertEquals(d9.Data.FishCoin, 66)
+    lu.assertEquals(self.syncs, 1)
 end

@@ -7,7 +7,7 @@ local CharacterLinks = {}
 
 function Mgr:GetDataInst(player)
     local data = player and DataMap[player.UserId]
-    if data and data.Player == player and data.Inited then return data end
+    if data and data.Player == player and data.Inited and data.LoadState == 'ready' then return data end
 end
 
 function Mgr:ClearHeldRod(player, character)
@@ -79,7 +79,7 @@ function Mgr:OnPlayerAdded(player)
         if self:GetDataInst(owner) == source then self:SendItemBar(owner) end
     end)
     DataMap[player.UserId] = data
-    data:Init()
+    data:Init(self.Save ~= nil)
     if self.Save then self.Save:LoadInto(player, data) end
     CharacterLinks[player.UserId] = {
         Added = player.CharacterAdded:Connect(function(character)

@@ -57,19 +57,31 @@ MgrMap.MgrInteract.Save = MgrMap.MgrSave
 MgrMap.MgrFerry.Save = MgrMap.MgrSave
 MgrMap.MgrSave.PlayerData = MgrMap.MgrPlayerData
 
-local function HandlePlayerAdded(player)
-    for k, mgr in pairs(MgrMap) do
-        if mgr.OnPlayerAdded then
-            pcall(function() mgr:OnPlayerAdded(player) end)
-        end
+-- 存档就绪前不创建 Vitals/Ability 等玩家状态；退出先撤销就绪标记，再清理管理器。
+local ActivePlayers = {}
+local function invoke(name, mgr, method, ...)
+    if not mgr[method] then return end
+    local ok, err = pcall(mgr[method], mgr, ...)
+    if not ok then print('[server.main]', name, method, tostring(err)) end
+end
+MgrMap.MgrSave.OnReady = function(player, data)
+    if MgrMap.MgrPlayerData:GetDataInst(player) ~= data or ActivePlayers[player.UserId] == player then return end
+    ActivePlayers[player.UserId] = player
+    for name, mgr in pairs(MgrMap) do
+        if name ~= 'MgrPlayerData' then invoke(name, mgr, 'OnPlayerAdded', player) end
     end
+end
+local function HandlePlayerAdded(player)
+    invoke('MgrPlayerData', MgrMap.MgrPlayerData, 'OnPlayerAdded', player)
 end
 
 local function HandlePlayerRemoving(player)
-    --player:AddTag("Removing")
-    for k, mgr in pairs(MgrMap) do
-        if mgr.OnPlayerRemoving then
-            pcall(function() mgr:OnPlayerRemoving(player) end)
+    local active = ActivePlayers[player.UserId] == player
+    if active then ActivePlayers[player.UserId] = nil end
+    invoke('MgrPlayerData', MgrMap.MgrPlayerData, 'OnPlayerRemoving', player)
+    if active then
+        for name, mgr in pairs(MgrMap) do
+            if name ~= 'MgrPlayerData' then invoke(name, mgr, 'OnPlayerRemoving', player) end
         end
     end
 end

@@ -11,6 +11,7 @@ function TestGMState:setUp()
     self.oldDebug = self.cfg.Debug
     self.cfg.Debug = { Enabled = true, InitialGrants = self.oldDebug.InitialGrants }
     self.values = {}
+    self.failGet, self.failSet = false, false
     self.players = {}
     self.spawns = {}
     local env = self
@@ -23,7 +24,12 @@ function TestGMState:setUp()
             if env.failSet then error('write unavailable') end
             env.values[key] = value
         end,
-        UpdateAsync = function(_, key, fn) env.values[key] = fn(env.values[key]) end,
+        UpdateAsync = function(_, key, fn)
+            if env.failSet then error('write unavailable') end
+            local value = fn(env.values[key])
+            if value then env.values[key] = value end
+            return value
+        end,
     }
     _G.game = { GetService = function(_, name)
         if name == 'Task' then return {
@@ -54,6 +60,9 @@ function TestGMState:setUp()
     end
     self.me, self.mine = add(1)
     self.you, self.yours = add(2)
+    self.save:LoadInto(self.me, self.mine)
+    self.save:LoadInto(self.you, self.yours)
+    self:drain()
 end
 
 function TestGMState:test_slots_capacity_and_invalid_patch_are_all_or_nothing()
@@ -99,7 +108,7 @@ function TestGMState:test_explicit_save_confirms_persistence_and_failure_keeps_p
     self:drain()
     lu.assertFalse(self.replies[#self.replies].ok)
     lu.assertTrue(self.replies[#self.replies].status.autosavePaused)
-    lu.assertNil(self.values.u1)
+    lu.assertEquals(self.values.u1.coin, 0)
     self.failSet = false
     lu.assertTrue(self.gm:Handle(self.me, { action = 'SaveState' }))
     self:drain()
@@ -110,6 +119,7 @@ end
 
 function TestGMState:test_read_empty_or_invalid_retains_state_and_valid_read_replaces_it()
     lu.assertTrue(self.gm:Handle(self.me, { action = 'ApplyState', coin = 91 }))
+    self.values.u1 = nil
     lu.assertTrue(self.gm:Handle(self.me, { action = 'ReadState' }))
     self:drain()
     lu.assertFalse(self.replies[#self.replies].ok)

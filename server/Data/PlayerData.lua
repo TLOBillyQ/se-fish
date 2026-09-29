@@ -3,6 +3,49 @@ local GameCfg = require('common.GameCfg')
 local PlayerData = {}
 PlayerData.__index = PlayerData
 
+local function copy(value)
+    if type(value) ~= 'table' then return value end
+    local out = {}
+    for k, v in pairs(value) do out[k] = copy(v) end
+    return out
+end
+
+local function integer(n, min, max)
+    return type(n) == 'number' and n == n and n < math.huge
+        and n == math.floor(n) and n >= min and n <= (max or math.maxinteger)
+end
+
+-- 扩展字段仅承载持久状态；库存、成长、任务等系统由各子单接入。
+local function defaults(zone)
+    return {
+        inventory = { weapons = {}, magazines = {}, selection = {} },
+        growth = { upgrades = {}, purchases = {}, potions = {} },
+        survival = { health = GameCfg.Vitals.MaxHealth, hunger = GameCfg.Vitals.MaxHunger,
+            weakRemaining = 0, dyingRemaining = 0, deadRemaining = 0, dying = false, dead = false },
+        collection = { weights = {}, unlocked = {} }, quest = { step = 1, count = 0 },
+        story = { read = {} }, travel = { arrived = {}, zone = GameCfg.ResolveZoneId(zone), safePoint = {} },
+        lottery = { pity = 0 }, achievements = {}, recovery = {}, cooldowns = {},
+    }
+end
+
+-- 拒绝非序列化值、循环、过深和非有限数，不能把损坏扩展字段静默丢弃。
+local function serializable(value, seen, depth)
+    local kind = type(value)
+    if kind == 'number' then return value == value and math.abs(value) < math.huge end
+    if kind == 'string' then return #value <= 16384 end
+    if kind == 'boolean' or kind == 'nil' then return true end
+    if kind ~= 'table' or depth > 12 or seen[value] then return false end
+    seen[value] = true
+    local count = 0
+    for key, child in pairs(value) do
+        count = count + 1
+        if count > 4096 or (type(key) ~= 'string' and not integer(key, 1))
+            or not serializable(child, seen, depth + 1) then return false end
+    end
+    seen[value] = nil
+    return true
+end
+
 local function hasIndividualMult(itemId)
     if GameCfg.Fish[itemId] then return true end
     for _, fish in pairs(GameCfg.Fish) do
@@ -18,8 +61,10 @@ function PlayerData.New(player, onItemBarChanged)
 end
 
 -- 进图白送只在调试开关打开时发放（#49）；重复 Init 不会重置已有库存。
-function PlayerData:Init()
+function PlayerData:Init(waitForLoad)
     if not self.Player or self.Inited then return end
+    if waitForLoad then self.LoadState = 'pending' return end
+    self.LoadState = 'ready'
     local items = {}
     local backpack = {}
     local bait = {}
@@ -47,47 +92,91 @@ function PlayerData:Init()
         -- 当前区域（#89 摆渡写入，#92 存档用）：开局在 HomeZone（第一钓鱼区）
         Zone = GameCfg.Ferry.HomeZone,
     }
+    self.Extra = defaults(self.Data.Zone)
+    self.SaveMeta = { epoch = 0, revision = 0, sequence = 0, floor = 0, operations = {} }
     self.Inited = true
     self.Revision = 0
     self:Sync()
 end
 
-function PlayerData:IsValidSave(snapshot)
-    local function int(n, min, max)
-        return type(n) == 'number' and n == math.floor(n) and n >= min and n <= max
+function PlayerData:CompleteLoad(snapshot)
+    if not self.Player then return false end
+    if snapshot ~= nil and not self:IsValidSave(snapshot) then
+        self.LoadState = 'failed'
+        return false
     end
-    if type(snapshot) ~= 'table' or snapshot.v ~= 1
-        or not int(snapshot.coin, 0, math.maxinteger)
-        or not int(snapshot.up, 0, #GameCfg.Items.UpgradePrices)
-        or type(snapshot.zone) ~= 'string' or snapshot.zone == ''
-        or type(snapshot.bait) ~= 'table' then return false end
-    for id, count in pairs(snapshot.bait) do
-        local def = GameCfg.Items.Definitions[id]
-        if not def or def.Container ~= GameCfg.Items.ContainerId.Bait
-            or not int(count, 1, math.maxinteger) then return false end
+    self:Init()
+    if snapshot then self:ApplySave(snapshot) end
+    self.LoadState = 'ready'
+    return true
+end
+
+function PlayerData:Migrate(snapshot)
+    if type(snapshot) ~= 'table' or (snapshot.v ~= 1 and snapshot.v ~= 2)
+        or not serializable(snapshot, {}, 0) then return nil, '未知版本或不可序列化数据' end
+    local saved = copy(snapshot)
+    if not integer(saved.coin, 0) or not integer(saved.up, 0, #GameCfg.Items.UpgradePrices)
+        or type(saved.zone) ~= 'string' or saved.zone == '' or type(saved.bait) ~= 'table' then
+        return nil, '基础字段损坏'
     end
-    local capacity = GameCfg.Items.InitialBackpackSlots + snapshot.up * GameCfg.Items.BackpackSlotsPerUpgrade
-    if snapshot.up == #GameCfg.Items.UpgradePrices then capacity = GameCfg.Items.MaxBackpackSlots end
-    for _, pair in ipairs({ { snapshot.bar, GameCfg.Items.InitialItemBarSlots + snapshot.up },
-        { snapshot.bp, capacity } }) do
+    local bait = {}
+    for id, count in pairs(saved.bait) do
+        local mapped = GameCfg.Items.LegacyIdMap[id] or id
+        local def = GameCfg.Items.Definitions[mapped]
+        if not def or def.Container ~= GameCfg.Items.ContainerId.Bait or not integer(count, 0) then
+            return nil, '鱼饵字段损坏'
+        end
+        bait[mapped] = (bait[mapped] or 0) + count
+    end
+    saved.bait = bait
+    local capacity = GameCfg.Items.InitialBackpackSlots + saved.up * GameCfg.Items.BackpackSlotsPerUpgrade
+    if saved.up == #GameCfg.Items.UpgradePrices then capacity = GameCfg.Items.MaxBackpackSlots end
+    for _, pair in ipairs({ { saved.bar, GameCfg.Items.InitialItemBarSlots + saved.up }, { saved.bp, capacity } }) do
         local packed, max = pair[1], pair[2]
-        if type(packed) ~= 'table' then return false end
+        if type(packed) ~= 'table' then return nil, '库存缺失' end
         local seen, count = {}, 0
         for key, slot in pairs(packed) do
             count = count + 1
-            local def = type(slot) == 'table' and GameCfg.Items.Definitions[slot.id]
-            if not int(key, 1, max) or not def or def.Container == GameCfg.Items.ContainerId.Bait
-                or not int(slot.i, 1, max) or seen[slot.i] or not int(slot.n, 1, 1)
+            if not integer(key, 1, max) or type(slot) ~= 'table' then return nil, '库存结构损坏' end
+            slot.id = GameCfg.Items.LegacyIdMap[slot.id] or slot.id
+            local def = GameCfg.Items.Definitions[slot.id]
+            if not def or def.Container == GameCfg.Items.ContainerId.Bait
+                or not integer(slot.i, 1, max) or seen[slot.i] or not integer(slot.n, 1, 1)
                 or slot.m ~= nil and (type(slot.m) ~= 'number' or slot.m < 1 or slot.m > 2) then
-                return false
+                return nil, '物品实例损坏'
             end
             seen[slot.i] = true
         end
-        for index = 1, count do
-            if packed[index] == nil then return false end
+        for i = 1, count do if packed[i] == nil then return nil, '库存序列不连续' end end
+    end
+    if saved.v == 1 then
+        saved.extra = defaults(saved.zone)
+        saved.meta = { epoch = 0, revision = 0, sequence = 0, floor = 0, operations = {} }
+    else
+        local meta, extra = saved.meta, saved.extra
+        if type(meta) ~= 'table' or not integer(meta.epoch, 0) or not integer(meta.revision, 0)
+            or not integer(meta.sequence, 0) or not integer(meta.floor, 0, meta.sequence)
+            or type(meta.operations) ~= 'table' or #meta.operations > 64 or type(extra) ~= 'table' then
+            return nil, '持久身份损坏'
+        end
+        for name in pairs(defaults(saved.zone)) do
+            if type(extra[name]) ~= 'table' then return nil, '扩展字段缺失 ' .. name end
+        end
+        local last = meta.floor
+        for _, op in ipairs(meta.operations) do
+            if type(op) ~= 'table' or not integer(op.sequence, last + 1, meta.sequence)
+                or type(op.id) ~= 'string' or type(op.kind) ~= 'string' or type(op.result) ~= 'table' then
+                return nil, '操作日志损坏'
+            end
+            last = op.sequence
         end
     end
-    return true
+    saved.v = 2
+    return saved
+end
+
+function PlayerData:IsValidSave(snapshot)
+    return self:Migrate(snapshot) ~= nil
 end
 
 -- 存档序列化（#92）：最小集——金币、道具栏/背包物品（含格子位置与个体倍率）、鱼饵计数、
@@ -99,7 +188,9 @@ function PlayerData:Serialize()
         local out = {}
         for index, entry in pairs(self.Data.Containers[containerId]) do
             if entry and entry.count > 0 then
-                out[#out + 1] = { i = index, id = entry.itemId, n = entry.count, m = entry.mult }
+                local slot = copy(entry.saved or {})
+                slot.i, slot.id, slot.n, slot.m = index, entry.itemId, entry.count, entry.mult
+                out[#out + 1] = slot
             end
         end
         table.sort(out, function(a, b) return a.i < b.i end)
@@ -108,7 +199,9 @@ function PlayerData:Serialize()
     local bait = {}
     for itemId, count in pairs(self.Data.Bait) do bait[itemId] = count end
     return {
-        v = 1,
+        v = 2,
+        extra = copy(self.Extra),
+        meta = copy(self.SaveMeta),
         coin = self.Data.FishCoin,
         bar = pack(GameCfg.Items.ContainerId.ItemBar),
         bp = pack(GameCfg.Items.ContainerId.Backpack),
@@ -118,65 +211,32 @@ function PlayerData:Serialize()
     }
 end
 
--- 读档灌入（#92）：逐项校验——未知物品/坏计数/越界格位丢弃并记日志，金币负数钳 0、
--- 升级等级钳到升满，区域只收非空字符串；任一字段脏不影响其余字段恢复。
+-- 先完整校验，再一次恢复；未知版本与坏档不会部分覆盖内存财产。
 function PlayerData:ApplySave(snapshot)
-    if not self.Inited or type(snapshot) ~= 'table' then return false end
-    local function positiveInt(n)
-        return type(n) == 'number' and n >= 1 and n == math.floor(n)
+    if not self.Inited then return false end
+    local saved, reason = self:Migrate(snapshot)
+    if not saved then
+        print('[PlayerData] 拒绝存档', self.Player and self.Player.UserId, reason)
+        return false
     end
-    local defs = GameCfg.Items.Definitions
-    local userId = self.Player and self.Player.UserId
-    if snapshot.v ~= 1 then
-        print('[PlayerData] 存档版本未知，按 v1 尽力恢复', userId, tostring(snapshot.v))
-    end
-    local coin = snapshot.coin
-    if type(coin) == 'number' then
-        self.Data.FishCoin = math.max(0, math.floor(coin))
-    end
-    local up = snapshot.up
-    if type(up) == 'number' and up == math.floor(up) then
-        self.Data.UpgradeLevel = math.min(math.max(0, up), #GameCfg.Items.UpgradePrices)
-    end
-    if type(snapshot.zone) == 'string' and snapshot.zone ~= '' then
-        self.Data.Zone = snapshot.zone
-    end
-    local bait = {}
-    if type(snapshot.bait) == 'table' then
-        for itemId, count in pairs(snapshot.bait) do
-            local def = defs[itemId]
-            if def and def.Container == GameCfg.Items.ContainerId.Bait and type(count) == 'number'
-                and count >= 0 and count == math.floor(count) then
-                bait[itemId] = count
-            else
-                print('[PlayerData] 存档鱼饵无效，丢弃', userId, itemId, count)
-            end
-        end
-    end
-    self.Data.Bait = bait
-    local function unpack(packed, containerId, capacity)
+    local function unpack(packed, containerId)
         local items = {}
-        if type(packed) ~= 'table' then return items end
         for _, slot in ipairs(packed) do
-            local index = type(slot) == 'table' and slot.i or nil
-            local itemId = type(slot) == 'table' and slot.id or nil
-            local count = type(slot) == 'table' and slot.n or nil
-            if type(index) == 'number' and index == math.floor(index) and index >= 1 and index <= capacity
-                and defs[itemId] and positiveInt(count) then
-                items[index] = { itemId = itemId, count = count, containerId = containerId,
-                    mult = type(slot.m) == 'number' and slot.m or nil }
-            else
-                print('[PlayerData] 存档格位无效，丢弃', userId, tostring(index), tostring(itemId))
-            end
+            items[slot.i] = { itemId = slot.id, count = slot.n, mult = slot.m,
+                containerId = containerId, saved = copy(slot) }
         end
         return items
     end
-    self.Data.Containers[GameCfg.Items.ContainerId.ItemBar] =
-        unpack(snapshot.bar, GameCfg.Items.ContainerId.ItemBar, self:ItemBarCapacity())
-    self.Data.Containers[GameCfg.Items.ContainerId.Backpack] =
-        unpack(snapshot.bp, GameCfg.Items.ContainerId.Backpack, self:BackpackCapacity())
-    self.Data.SelectedSlot = nil
-    self.Data.SelectedBait = nil
+    self.Data.FishCoin = saved.coin
+    self.Data.UpgradeLevel, self.Data.Zone = saved.up, saved.zone
+    self.Data.Bait = saved.bait
+    self.Data.Containers = {
+        [GameCfg.Items.ContainerId.ItemBar] = unpack(saved.bar, GameCfg.Items.ContainerId.ItemBar),
+        [GameCfg.Items.ContainerId.Backpack] = unpack(saved.bp, GameCfg.Items.ContainerId.Backpack),
+    }
+    self.Extra, self.SaveMeta = saved.extra, saved.meta
+    self.Data.SelectedSlot = self.Extra.inventory.selection.slot
+    self.Data.SelectedBait = self.Extra.inventory.selection.bait
     self.Revision = (self.Revision or 0) + 1
     self:Sync()
     return true
@@ -581,7 +641,7 @@ end
 
 function PlayerData:UpdateData(updateCallBack, doSync)
     if not self.Inited or not updateCallBack then return end
-    self.Touched = true -- 进图后已有操作（#92 读档竞态会话锁：MgrSave 据此跳过旧档覆盖）
+    self.Touched = true -- 仅供调试观察；读档屏障不再用它跳过旧财产
     updateCallBack(self.Data)
     self.Revision = (self.Revision or 0) + 1
     local selected = self.Data.SelectedSlot
