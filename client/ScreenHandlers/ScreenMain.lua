@@ -9,6 +9,55 @@ function ScreenHandler:Action(action, value)
     _G.REUtil:GetRE('ItemBarAction'):FireServer({ action = action, value = value })
 end
 
+-- #124 两步操作（吃/丢弃/攻击）：每次请求带单调 seq，服务端回包带 operation 身份，
+-- 断线重试可凭 seq 或原 identity 续发，重复结算由服务端操作日志挡掉。
+function ScreenHandler:Operate(payload)
+    self.OpSeq = (self.OpSeq or 0) + 1
+    payload.seq = self.OpSeq
+    payload.action = 'Operate'
+    _G.REUtil:GetRE('ItemBarAction'):FireServer(payload)
+end
+
+-- #124 双向拖拽：触摸起点记源格，抬起位置命中其他格发 MoveSlot；
+-- 原地（点击）与拖出格区都不发请求，容器与槽位由服务端复验。
+function ScreenHandler:bindDrag(btn, container, index)
+    if not btn.OnTouchBegan or not btn.OnTouchEnded then return end
+    self:Listen(btn.OnTouchBegan, function(touch)
+        self.DragSource = { container = container, index = index,
+            began = touch and touch.BeganPosition }
+    end)
+    self:Listen(btn.OnTouchEnded, function(touch)
+        local source = self.DragSource
+        self.DragSource = nil
+        if not source or source.container ~= container or source.index ~= index then return end
+        local ended = touch and touch.EndedPosition
+        if not ended or not source.began then return end
+        if math.abs(ended.x - source.began.x) < 10 and math.abs(ended.y - source.began.y) < 10 then return end
+        local target = self:SlotAtPosition(ended)
+        if not target or target.container == source.container and target.index == source.index then return end
+        self:Action('MoveSlot', { from = source.container, index = source.index,
+            target = target.container, slot = target.index })
+    end)
+end
+
+function ScreenHandler:SlotAtPosition(pos)
+    if type(pos) ~= 'table' or type(pos.x) ~= 'number' or type(pos.y) ~= 'number' then return nil end
+    for index, p in ipairs(self.ItemBarSlotPos or {}) do
+        local slot = self.Slots and self.Slots[index]
+        if slot and slot.Background.Visible
+            and math.abs(pos.x - p.x) <= 55 and math.abs(pos.y - p.y) <= 55 then
+            return { container = GameCfg.Items.ContainerId.ItemBar, index = index }
+        end
+    end
+    for index, p in ipairs(self.BackpackSlotPos or {}) do
+        local entry = self.BackpackSlots and self.BackpackSlots[index]
+        if entry and entry.Button.Visible
+            and math.abs(pos.x - p.x) <= 47 and math.abs(pos.y - p.y) <= 45 then
+            return { container = GameCfg.Items.ContainerId.Backpack, index = index }
+        end
+    end
+    return nil
+end
 function ScreenHandler:Show(state)
     if type(state) ~= 'table' or type(state.slots) ~= 'table' then return end
     self.Snapshot = state
@@ -47,17 +96,27 @@ function ScreenHandler:Show(state)
     self.BtnSausage.ButtonNormalColor = state.selectedBait == sausageId
         and Color.New(36, 130, 94, 255) or Color.New(54, 100, 140, 255)
     self.BtnSausage.TouchEnabled = sausageCount > 0
-    -- 吃（#53）：选中格是能吃的鱼获时吃它，否则吃蚯蚓
-    local food = self:SelectedFood()
+    -- 吃（#53/#124）：选中格有食物时走 Operate 两步——首次只切手持，再点真吃；
+    -- 手持确认态由服务端快照驱动，重复点击、关闭界面后状态仍合法
+    local food, foodSlot = self:SelectedFood()
+    local heldSlot = state.held and state.held.kind == 'slot' and state.held.slot or nil
     self.BtnEat.TouchEnabled = food ~= nil or count > 0
-    self.BtnEatLabel.Text = food and '吃' .. GameCfg.Items.Definitions[food.itemId].Name
-        or count > 0 and '吃蚯蚓' or '蚯蚓用尽'
+    if food then
+        local name = GameCfg.Items.Definitions[food.itemId].Name
+        self.BtnEatLabel.Text = heldSlot == foodSlot and ('吃' .. name) or ('手持' .. name)
+    else
+        self.BtnEatLabel.Text = count > 0 and '吃蚯蚓' or '蚯蚓用尽'
+    end
     self.BtnNoneLabel.Text = '不挂鱼饵'
     self:ShowCoin(state.coin)
     self:ShowCast()
     local selected = state.selectedSlot and state.slots[state.selectedSlot]
     self.BtnDiscard.Visible = selected ~= nil
     self.BtnDiscardLabel.Visible = selected ~= nil
+    self.BtnDiscardLabel.Text = selected and heldSlot == state.selectedSlot
+        and '确认丢弃' or '丢弃选中物'
+    self:ShowDynamicBait(state)
+    self:ShowDynamicWeapons(state)
     self:ShowBackpack()
 end
 
@@ -325,6 +384,77 @@ local function passive(node)
     return node
 end
 
+
+-- #124 动态鱼饵：硬编码三键之外的鱼饵按快照生成按钮（策划「弹窗列出背包现有鱼饵」的最小形态），
+-- 数量为 0 或快照消失即隐藏。位置与 HookHint 同排，待 #55 截图迭代整体布局。
+function ScreenHandler:ShowDynamicBait(state)
+    self.BaitDyn = self.BaitDyn or {}
+    for _, entry in pairs(self.BaitDyn) do
+        entry.Button.Visible = false
+        entry.Label.Visible = false
+    end
+    if type(state.bait) ~= 'table' or not self.UIRoot then return end
+    local fixed = { [GameCfg.Items.Id.Worm] = true, [GameCfg.Items.Id.Duck] = true,
+        [GameCfg.Items.Id.Sausage] = true }
+    local order = {}
+    for id, count in pairs(state.bait) do
+        if not fixed[id] and type(count) == 'number' and count > 0 then order[#order + 1] = id end
+    end
+    table.sort(order)
+    for i, id in ipairs(order) do
+        local entry = self.BaitDyn[id]
+        if not entry then
+            local x = 120 + (i - 1) * 180
+            local btn = button(self.UIRoot, 'BaitDyn_' .. id, x, 800, 170)
+            local label = overlay(self.UIRoot, 'BaitDynLabel_' .. id, x, 800, 170, 70,
+                '', 24, Color.New(255, 255, 255, 255))
+            self.Buttons[#self.Buttons + 1] = btn
+            self.Overlays[#self.Overlays + 1] = label
+            self:Listen(btn.OnClicked, function() self:Action('SelectBait', id) end)
+            entry = { Button = btn, Label = label }
+            self.BaitDyn[id] = entry
+        end
+        local definition = GameCfg.Items.Definitions[id]
+        entry.Label.Text = (definition and definition.Name or id) .. ' ×' .. tostring(state.bait[id])
+        entry.Button.Visible = true
+        entry.Label.Visible = true
+    end
+end
+
+-- #124 武器独立库存：快照驱动的武器按钮（武器不占普通格），点击走 Operate 两步——
+-- 首次切手持，再次攻击（战斗结算归 #128）。
+function ScreenHandler:ShowDynamicWeapons(state)
+    self.WeaponBtns = self.WeaponBtns or {}
+    for _, entry in pairs(self.WeaponBtns) do
+        entry.Button.Visible = false
+        entry.Label.Visible = false
+    end
+    if type(state.weapons) ~= 'table' or not self.UIRoot then return end
+    local order = {}
+    for id, count in pairs(state.weapons) do
+        if type(count) == 'number' and count > 0 then order[#order + 1] = id end
+    end
+    table.sort(order)
+    for i, id in ipairs(order) do
+        local entry = self.WeaponBtns[id]
+        if not entry then
+            local x = 120 + (i - 1) * 180
+            local btn = button(self.UIRoot, 'WeaponItem_' .. id, x, 910, 170)
+            local label = overlay(self.UIRoot, 'WeaponItemLabel_' .. id, x, 910, 170, 70,
+                '', 24, Color.New(255, 255, 255, 255))
+            self.Buttons[#self.Buttons + 1] = btn
+            self.Overlays[#self.Overlays + 1] = label
+            self:Listen(btn.OnClicked, function() self:Operate({ op = 'attack', weapon = id }) end)
+            entry = { Button = btn, Label = label }
+            self.WeaponBtns[id] = entry
+        end
+        local definition = GameCfg.Items.Definitions[id]
+        entry.Label.Text = (definition and definition.Name or id) .. ' ×' .. tostring(state.weapons[id])
+        entry.Button.Visible = true
+        entry.Label.Visible = true
+    end
+end
+
 -- 左上角血球 / 饥饿球与四边红框（#53）；图片用途见 GameCfg.Vitals
 -- [未查证：位置是否与场景既有的 LabelCoin 重叠，待 #55 截图迭代；原点左下、Y 向上]
 function ScreenHandler:BuildVitals(root, resolution)
@@ -419,6 +549,7 @@ function ScreenHandler:BuildBackpack(root, resolution)
     local top = resolution.y - 100
     self.BackpackOpen = false
     self.BackpackSlots = {}
+    self.BackpackSlotPos = {}
     self.BackpackButton = button(root, 'BtnBackpack', center, top, 220)
     self.BackpackLabel = overlay(root, 'LabelBackpack', center, top, 220, 70,
         '背包', 26, Color.New(255, 255, 255, 255))
@@ -435,6 +566,8 @@ function ScreenHandler:BuildBackpack(root, resolution)
         local label = overlay(root, 'BackpackLabel' .. index, x, y, 95, 80,
             '', 19, Color.New(255, 255, 255, 255))
         self.BackpackSlots[index] = { Button = btn, Label = label }
+        self.BackpackSlotPos[index] = { x = x, y = y }
+        self:bindDrag(btn, GameCfg.Items.ContainerId.Backpack, index)
         self.Buttons[#self.Buttons + 1] = btn
         self.Overlays[#self.Overlays + 1] = label
         self:Listen(btn.OnClicked, function()
@@ -484,7 +617,15 @@ function ScreenHandler:Cleanup()
     self.Connections = nil
     self.Overlays = nil
     self.Slots = nil
+    self.ItemBarSlotPos = nil
     self.BackpackSlots = nil
+    self.BackpackSlotPos = nil
+    self.BaitDyn = nil
+    self.WeaponBtns = nil
+    self.DragSource = nil
+    self.OpSeq = nil
+    self.UIRoot = nil
+    self.LastOperateOperation = nil
     self.BackpackButton = nil
     self.BackpackPanel = nil
     self.BackpackLabel = nil
@@ -560,6 +701,7 @@ function ScreenHandler:Init()
     if self.LabelCoin then self.LabelCoin.Visible = true else print('[ScreenMain] 找不到 LabelCoin 节点') end
     if imageCoin then imageCoin.Visible = true end
     self.Slots = {}
+    self.ItemBarSlotPos = {}
     self.Buttons = {}
     self.Connections = {}
     self.Overlays = {}
@@ -588,8 +730,11 @@ function ScreenHandler:Init()
         self.Overlays[#self.Overlays + 1] = label
         self.Overlays[#self.Overlays + 1] = amount
         self.Slots[index] = { Background = background, Icon = icon, Label = label, Count = amount }
+        self.ItemBarSlotPos[index] = { x = x, y = y }
+        self:bindDrag(background, GameCfg.Items.ContainerId.ItemBar, index)
         self:Listen(background.OnClicked, function() self:Action('SelectSlot', index) end)
     end
+    self.UIRoot = root
     self:BuildBackpack(root, resolution)
     self.BtnBait = button(root, 'BaitWorm', firstX + 80, 540, 170)
     self.BtnNone = button(root, 'BaitNone', firstX + 270, 540, 170)
@@ -708,14 +853,30 @@ function ScreenHandler:Init()
     self:Listen(self.BtnNone.OnClicked, function() self:Action('SelectBait') end)
     self:Listen(self.BtnEat.OnClicked, function()
         local _, slot = self:SelectedFood()
-        if slot then self:Action('EatSlot', slot) else self:Action('EatBait', GameCfg.Items.Id.Worm) end
+        if slot then
+            self:Operate({ op = 'eat', slot = slot })
+        else
+            self:Action('EatBait', GameCfg.Items.Id.Worm)
+        end
     end)
     self:Listen(self.BtnDiscard.OnClicked, function()
         if self.Snapshot and self.Snapshot.selectedSlot then
-            self:Action('DiscardSlot', self.Snapshot.selectedSlot)
+            self:Operate({ op = 'discard', slot = self.Snapshot.selectedSlot })
         end
     end)
     self:Listen(_G.REUtil:GetRE('ItemBarState').OnClientEvent, function(state) self:Show(state) end)
+    -- #124 操作回包：失败给具体提示；operation 身份随回包带回，凭它可跨重连重试
+    self:Listen(_G.REUtil:GetRE('ItemBarResult').OnClientEvent, function(result)
+        if type(result) ~= 'table' or result.ok ~= false then return end
+        self.LastOperateOperation = result.operation or self.LastOperateOperation
+        local hints = { empty = '物品已不在格子里', ['cannot-eat'] = '现在不能吃',
+            ['drop-unavailable'] = '丢弃通道未就绪（地面物品）', ['drop-rejected'] = '这里丢不下',
+            ['potion-capped'] = '这类药水已到上限', ['combat-pending'] = '战斗结算未接入（#128）',
+            ['bad-weapon'] = '没有这件武器', ['bad-slot'] = '格子不存在', ['unknown-op'] = '未知操作' }
+        if _G.LocalMsgNotice then
+            _G.LocalMsgNotice(hints[result.reason] or ('操作失败 ' .. tostring(result.reason)))
+        end
+    end)
     self:Listen(_G.REUtil:GetRE('CastState').OnClientEvent, function(state)
         if type(state) ~= 'table' then return end
         if state.result then
