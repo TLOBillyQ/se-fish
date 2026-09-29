@@ -261,3 +261,148 @@ function TestFlightPath:test_dive_cadence_and_recovery_without_target()
     lu.assertEquals(solo, 0)
     lu.assertEquals(state.Stats.Dives, 3)
 end
+
+-- 能力 C：巡航叼人（挂点附着、携带跟随、释放）。
+-- 失败方式（先列后写）：
+--   1. 挂点落在宿主体内：携带物与宿主身体重叠（真机「挂点不穿出」的判定前提）；
+--   2. 挂点坐标不随宿主位姿/体型变化：三倍体型或转身后挂点仍按 1 倍、按原始朝向算；
+--   3. 携带物被甩开/瞬移：偏离挂点后不回收，或每帧都被判定偏离而抖在原地；
+--   4. 越界携带：超出抓取距离仍能叼走；无挂点/无目标也能叼；
+--   5. 释放不干净：超时或目标出 NaN 后仍处于携带态、能重复释放、落点算不出。
+local function newCarry(cfg, host)
+    local Carry = require('common.CarryMount')
+    return Carry, Carry.New(cfg, host or { x = 0, y = 0, z = 0 }, 0, 100)
+end
+
+TestCarryMount = {}
+
+function TestCarryMount:setUp()
+    self.Cfg = require('common.GameCfg')
+    self.Carry = require('common.CarryMount')
+    self.CarryCfg = self.Cfg.Ability.Carry
+end
+
+function TestCarryMount:test_config_matches_spec()
+    lu.assertEquals(self.CarryCfg.GrabDamage, 300) -- GameSpec §12：沧龙咬中 300
+    lu.assertEquals(self.CarryCfg.Socket, 'LiftSocket') -- 与顶鱼挂点同名
+    lu.assertEquals(self.CarryCfg.MaxCarrySec, 20)
+end
+
+function TestCarryMount:test_mount_offset_must_clear_both_bodies()
+    local cfg = self.CarryCfg
+    local need = cfg.HostHalfHeight + cfg.CarriedHalfHeight
+    -- 配置里的嘴部挂点本身必须已经在宿主体外
+    local offset = { x = cfg.Offset.x, y = cfg.Offset.y, z = cfg.Offset.z }
+    local safe = self.Carry.SafeOffset(offset, cfg.HostHalfHeight, cfg.CarriedHalfHeight)
+    lu.assertFalse(safe.Corrected, '默认挂点不该需要纠正')
+    lu.assertTrue(self.Carry.Length(safe.Offset) >= need, '默认挂点必须清空宿主与携带物')
+    -- 贴脸的挂点必须被推出去，且保留原方向
+    local squeezed = self.Carry.SafeOffset({ x = 0, y = 0.3, z = 0.4 }, cfg.HostHalfHeight, cfg.CarriedHalfHeight)
+    lu.assertTrue(squeezed.Corrected)
+    lu.assertTrue(self.Carry.Length(squeezed.Offset) >= need)
+    lu.assertTrue(squeezed.Offset.z > 0.4, '必须在原方向上推出去')
+    lu.assertAlmostEquals(squeezed.Offset.z / squeezed.Offset.y, 0.4 / 0.3, 1e-9)
+    -- 零位移没有方向可用：给一个确定性方向而不是 NaN
+    local zero = self.Carry.SafeOffset({ x = 0, y = 0, z = 0 }, 1, 1)
+    lu.assertTrue(self.Carry.Length(zero.Offset) >= 2)
+    lu.assertTrue(zero.Offset.z > 0)
+    lu.assertEquals(zero.Offset.x, 0)
+end
+
+function TestCarryMount:test_mount_point_uses_host_pose_and_scaled_offset()
+    local offset = { x = 0, y = 2, z = 2 }
+    local host = { x = 10, y = 5, z = -3 }
+    local point = self.Carry.MountPoint(host, offset, 0)
+    lu.assertEquals(point, { x = 10, y = 7, z = -1 })
+    -- 转身 90 度：挂点跟着宿主朝向走
+    local turned = self.Carry.MountPoint(host, offset, math.pi / 2)
+    lu.assertAlmostEquals(turned.x, 12, 1e-9)
+    lu.assertAlmostEquals(turned.y, 7, 1e-9)
+    lu.assertAlmostEquals(turned.z, -3, 1e-9)
+    -- 三倍体型：挂点位移随体型放大，挂件才不会陷进放大的身体
+    local BodyScale = require('common.BodyScale')
+    local base = { CapsuleHeight = self.Cfg.Ability.BodyScale.CapsuleHeight,
+        SocketOffset = { x = 0, y = 2, z = 2 } }
+    local one = BodyScale.Derive(1, base)
+    local three = BodyScale.Derive(3, base)
+    local p1 = self.Carry.MountPoint(host, one.SocketOffset, 0)
+    local p3 = self.Carry.MountPoint(host, three.SocketOffset, 0)
+    lu.assertTrue(p3.y > p1.y and p3.z > p1.z)
+    lu.assertEquals(p3.y, 11)
+end
+
+function TestCarryMount:test_attach_needs_a_target_inside_grab_range()
+    local Carry, state = newCarry(self.CarryCfg)
+    lu.assertFalse(Carry.Attach(state, nil, 100).Ok)
+    lu.assertEquals(Carry.Attach(state, nil, 100).Reason, 'noTarget')
+    local far = { x = 99, y = 0, z = 0 }
+    lu.assertFalse(Carry.Attach(state, far, 100).Ok)
+    lu.assertEquals(Carry.Attach(state, far, 100).Reason, 'outOfRange')
+    lu.assertFalse(Carry.Carried(state))
+    local near = { x = 1, y = 0, z = 1 }
+    local attach = Carry.Attach(state, near, 100)
+    lu.assertTrue(attach.Ok)
+    lu.assertEquals(attach.Damage, self.CarryCfg.GrabDamage)
+    lu.assertTrue(Carry.Carried(state))
+    -- 没有挂点的宿主不吃这套（不能凭空抱走）
+    local Bare, bareState = newCarry({ Socket = nil, GrabRange = 2.5, GrabDamage = 300,
+        Offset = { x = 0, y = 0, z = 2 }, FollowTolerance = 3, MaxCarrySec = 20 })
+    lu.assertFalse(Bare.Attach(bareState, near, 100).Ok)
+    lu.assertEquals(Bare.Attach(bareState, near, 100).Reason, 'noSocket')
+end
+
+function TestCarryMount:test_carried_body_is_snapped_back_when_it_drifts()
+    local Carry, state = newCarry(self.CarryCfg)
+    Carry.Attach(state, { x = 1, y = 0, z = 1 }, 100)
+    local mount = self.Carry.MountPoint(state.Host, state.Offset, state.Yaw)
+    -- 容差内不动它，避免每帧都被「纠正」而抖动
+    local near = { x = mount.x + 0.1, y = mount.y, z = mount.z }
+    local kept = Carry.Follow(state, near, 100, 0.05)
+    lu.assertFalse(kept.Snapped)
+    lu.assertEquals(kept.Position, near)
+    lu.assertEquals(state.Stats.Snaps, 0)
+    -- 被甩开后整段钳回挂点
+    local away = { x = mount.x + 20, y = mount.y, z = mount.z }
+    local snapped = Carry.Follow(state, away, 100, 0.05)
+    lu.assertTrue(snapped.Snapped)
+    lu.assertEquals(snapped.Position, mount)
+    lu.assertEquals(state.Stats.Snaps, 1)
+    -- NaN 目标直接释放，绝不把 NaN 写回玩家身上
+    local nan = Carry.Follow(state, { x = 0 / 0, y = 1, z = 2 }, 101, 0.05)
+    lu.assertTrue(nan.Released)
+    lu.assertEquals(nan.Reason, 'nan')
+    lu.assertFalse(Carry.Carried(state))
+    lu.assertFalse(nan.Position.x ~= nan.Position.x)
+end
+
+function TestCarryMount:test_carry_expires_and_drops_ahead_of_the_host()
+    local Carry, state = newCarry(self.CarryCfg)
+    Carry.Attach(state, { x = 1, y = 0, z = 1 }, 100)
+    state.Host = { x = 0, y = 3, z = 0 }
+    state.GroundY = 2
+    local last = nil
+    for step = 1, 600 do
+        last = Carry.Step(state, 100 + step * 0.05, 0.05)
+        if last.Released then break end
+    end
+    lu.assertTrue(last.Released)
+    lu.assertEquals(last.Reason, 'timeout')
+    lu.assertFalse(Carry.Carried(state))
+    -- 落点在宿主前方 DropForward 米、离地 DropHeight 米
+    local drop = last.DropPoint
+    lu.assertAlmostEquals(drop.y, state.GroundY + self.CarryCfg.DropHeight, 1e-9)
+    lu.assertTrue(math.abs(drop.z - self.CarryCfg.DropForward) < 1e-9)
+    -- 释放后不再重复触发，也不残留挂点
+    local again = Carry.Step(state, 200, 0.05)
+    lu.assertFalse(again.Released)
+    lu.assertEquals(Carry.Release(state, 200, 'manual').Ok, false)
+    lu.assertEquals(Carry.Release(state, 200, 'manual').Reason, 'notCarrying')
+end
+
+function TestCarryMount:test_step_without_carry_is_a_noop()
+    local Carry, state = newCarry(self.CarryCfg)
+    local events = Carry.Step(state, 100.05, 0.05)
+    lu.assertFalse(events.Released)
+    lu.assertEquals(events.Position, nil)
+    lu.assertEquals(state.Stats.Frames, 1)
+end
