@@ -167,6 +167,10 @@ function PlayerData:Migrate(snapshot)
         end
         if type(extra.inventory.selection) ~= 'table' or type(extra.travel.arrived) ~= 'table'
             or type(extra.travel.safePoint) ~= 'table' or type(extra.inventory.weapons) ~= 'table' then return nil, '扩展字段损坏' end
+        local held = extra.inventory.selection.held
+        if type(held) ~= 'table' or held.kind ~= nil and held.kind ~= 'slot' and held.kind ~= 'weapon'
+            or held.id ~= nil and type(held.id) ~= 'string'
+            or held.slot ~= nil and not integer(held.slot, 1, max) then return nil, '手持状态损坏' end
         for itemId, count in pairs(extra.inventory.weapons) do
             local def = GameCfg.Items.Definitions[itemId]
             if not def or def.Type ~= '近战武器' and def.Type ~= '远程武器'
@@ -255,6 +259,7 @@ function PlayerData:ApplySave(snapshot)
     self.Data.SelectedBait = self.Extra.inventory.selection.bait
     self.Data.SelectedWeapon = self.Extra.inventory.selection.weapon
     self.Data.Weapons = copy(self.Extra.inventory.weapons)
+    self:SanitizeHeld()
     self.Revision = (self.Revision or 0) + 1
     self:Sync()
     return true
@@ -385,6 +390,39 @@ function PlayerData:SelectSlot(index)
     return true
 end
 
+-- 切手持与实际使用分两次：首次仅切手持（held），再次才算使用；同目标再点取消。
+-- held 的权威存储是 extra.inventory.selection.held（随存档持久化）。
+function PlayerData:HoldSlot(index)
+    if not self.Inited or type(index) ~= 'number' or index ~= math.floor(index)
+        or index < 1 or index > self:ItemBarCapacity() then return false end
+    local held = self.Extra.inventory.selection.held
+    if held.kind == 'slot' and held.slot == index then
+        held.kind, held.id, held.slot = nil, nil, nil
+        return true
+    end
+    local entry = self.Data.Containers[GameCfg.Items.ContainerId.ItemBar][index]
+    if not entry or entry.count <= 0 then return false end
+    held.kind, held.id, held.slot = 'slot', entry.itemId, index
+    return true
+end
+
+-- 槽位/武器失效（丢弃、吃掉、耗尽、移动换物）时清空手持，避免悬空；读档恢复后同样校验。
+function PlayerData:SanitizeHeld()
+    local held = self.Extra.inventory.selection.held
+    if held.kind == 'slot' then
+        local entry = held.slot and self.Data.Containers[GameCfg.Items.ContainerId.ItemBar][held.slot]
+        if not entry or entry.count <= 0 or entry.itemId ~= held.id then
+            held.kind, held.id, held.slot = nil, nil, nil
+        end
+    elseif held.kind == 'weapon' then
+        if self:WeaponCount(held.id) < 1 then
+            held.kind, held.id, held.slot = nil, nil, nil
+        end
+    elseif held.kind ~= nil then
+        held.kind, held.id, held.slot = nil, nil, nil
+    end
+end
+
 local function isWeapon(itemId)
     local definition = type(itemId) == 'string' and GameCfg.Items.Definitions[itemId]
     return definition ~= nil and (definition.Type == '近战武器' or definition.Type == '远程武器')
@@ -424,6 +462,19 @@ function PlayerData:SelectWeapon(itemId)
     if not isWeapon(itemId) or self:WeaponCount(itemId) < 1 then return false end
     self.Data.SelectedWeapon = self.Data.SelectedWeapon ~= itemId and itemId or nil
     self:PublishItemBar()
+    return true
+end
+
+-- 武器手持：独立库存校验，不占格；同武器再点取消。
+function PlayerData:HoldWeapon(itemId)
+    if not self.Inited then return false end
+    local held = self.Extra.inventory.selection.held
+    if held.kind == 'weapon' and held.id == itemId then
+        held.kind, held.id, held.slot = nil, nil, nil
+        return true
+    end
+    if not isWeapon(itemId) or self:WeaponCount(itemId) < 1 then return false end
+    held.kind, held.id, held.slot = 'weapon', itemId, nil
     return true
 end
 
@@ -767,6 +818,7 @@ function PlayerData:UpdateData(updateCallBack, doSync)
     if selected and (not entry or entry.count <= 0) then self.Data.SelectedSlot = nil end
     local baitId = self.Data.SelectedBait
     if baitId and not self:HasBait(baitId) then self.Data.SelectedBait = nil end
+    self:SanitizeHeld()
     if doSync then
         self:Sync()
         self:PublishItemBar()
