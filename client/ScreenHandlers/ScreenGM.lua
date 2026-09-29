@@ -147,6 +147,32 @@ function Panel:ShowStatus()
         .. '\n当前槽：' .. slot(status.currentSlot) .. '　下次进图：' .. slot(status.nextSlot)
         .. '\n自动保存：' .. (status.autosavePaused == nil and '等待同步'
             or status.autosavePaused and '暂停（临时本局）' or '运行')
+    self:ShowFieldValues()
+end
+
+function Panel:ShowFieldValues()
+    if not self.FieldLabels then return end
+    local snapshot = self.Snapshot or {}
+    local status = self.Status or {}
+    local fields = self.Fields or {}
+    local container = fields.container and fields.container.Text
+    local index = fields.index and tonumber(fields.index.Text)
+    local slots = container == 'itemBar' and snapshot.slots
+        or container == 'backpack' and snapshot.backpack
+    local entry = slots and index and slots[index]
+    local item = entry and GameCfg.Items.Definitions[entry.itemId]
+    local function current(value)
+        return value == nil and '等待同步' or tostring(value)
+    end
+    self.FieldLabels.coin.Text = '金币　当前 ' .. current(snapshot.coin)
+    self.FieldLabels.upgradeLevel.Text = '扩容等级 0—6　当前 ' .. current(snapshot.upgradeLevel)
+    self.FieldLabels.container.Text = '容器 itemBar/backpack'
+    self.FieldLabels.index.Text = '格号　选定后查看该格'
+    self.FieldLabels.itemId.Text = '物品 ID　当前 ' .. (item and item.Name or '空')
+    self.FieldLabels.count.Text = '件数 1　当前 ' .. (entry and current(entry.count) or '空')
+    self.FieldLabels.mult.Text = '鱼获倍率 1—2　当前 ' .. (entry and current(entry.mult) or '无')
+    self.FieldLabels.slot.Text = '下次进图槽　当前 '
+        .. (status.nextSlot == '' and '默认' or current(status.nextSlot))
 end
 
 function Panel:ShowSlots()
@@ -373,6 +399,7 @@ function Panel:Build(root, resolution, player)
         stateLabel(name .. '文字', text, x, offset, 235, 64, 28)
     end
     self.Fields = {}
+    self.FieldLabels = {}
     stateLabel('GM状态标题', '状态配置与存档', right, topRow, width - 24, 52, 40)
     self.StatusLabel = stateLabel('GM存档状态', '当前槽：等待同步', right, topRow - 112, width - 24, 162, 26)
     stateLabel('GM字段提示', '空白保持原样；单格编辑填写\n容器、格号、物品 ID、件数 1', right,
@@ -387,15 +414,26 @@ function Panel:Build(root, resolution, player)
         local row = math.floor((index - 1) / 2)
         local x = right + ((index - 1) % 2 - 0.5) * 266 * scale
         local offset = topRow - 292 - row * 100
-        stateLabel('GM字段名_' .. field[1], field[2], x, offset + 25, 250, 42, 22)
+        self.FieldLabels[field[1]] = stateLabel('GM字段名_' .. field[1], field[2],
+            x, offset + 25, 250, 42, 22)
+        local background = create(self, 'EUIImage', root, 'GM输入背景_' .. field[1],
+            x, relY(offset - 20), 240, 56, {
+                Image = ColorBlockImage, Color = Color.New(245, 226, 190, 255),
+            })
+        background.TouchEnabled = false
+        background.SwallowTouchEnabled = false
+        self.StateNodes[#self.StateNodes + 1] = background
+        self.PanelNodes[#self.PanelNodes + 1] = background
         local input = create(self, 'EUIInputField', root, 'GM输入_' .. field[1], x, relY(offset - 20),
-            240, 56, { Text = '', FontSize = 28, TextColor = Color.New(255, 255, 255, 255),
+            240, 56, { Text = '', FontSize = 28, TextColor = Color.New(35, 25, 18, 255),
                 PlaceHolderText = '填写' })
         input.TouchEnabled = true
         self.Fields[field[1]] = input
         self.StateNodes[#self.StateNodes + 1] = input
         self.PanelNodes[#self.PanelNodes + 1] = input
+        listen(self, input.OnDetach, function() self:ShowFieldValues() end)
     end
+    self:ShowFieldValues()
     local left, rightButton = right - 133 * scale, right + 133 * scale
     local actionsY = topRow - 708
     stateButton('GM应用', '应用到本局', left, actionsY, function() self:SendState('ApplyState') end)
@@ -467,6 +505,7 @@ function Panel:Destroy()
     self.StateNodes = nil
     self.MainNodes = nil
     self.Fields = nil
+    self.FieldLabels = nil
     self.StatusLabel = nil
     self.SlotDetails = nil
     self.Snapshot = nil

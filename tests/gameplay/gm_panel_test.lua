@@ -32,7 +32,7 @@ function TestGMPanel:setUp()
     self.nodes, self.requests, self.events = {}, {}, {}
     self.root = {}
     local world = { CreateUnit = function(_, kind, props)
-        local node = { Kind = kind, OnClicked = signal(), Destroy = function() end }
+        local node = { Kind = kind, OnClicked = signal(), OnDetach = signal(), Destroy = function() end }
         for key, value in pairs(props) do node[key] = value end
         env.nodes[node.Name] = node
         return node
@@ -143,4 +143,23 @@ function TestGMPanel:test_state_page_acknowledges_refresh_and_apply()
     self.events.GMResult.OnClientEvent:Fire({ action = 'ApplyState', ok = true,
         status = { currentSlot = '', nextSlot = '', autosavePaused = true } })
     lu.assertStrContains(self.panel.Feedback.Text, '已应用到本局')
+end
+
+function TestGMPanel:test_state_fields_show_current_values_and_edited_slot()
+    self.nodes['GM入口'].OnClicked:Fire()
+    self.nodes['GM操作_状态与存档1'].OnClicked:Fire()
+    self.events.GMResult.OnClientEvent:Fire({ action = 'GetState', ok = true,
+        status = { currentSlot = '', nextSlot = 'qa115', autosavePaused = false },
+        snapshot = { coin = 17, upgradeLevel = 0, slotCount = 2, backpackCount = 5,
+            slots = { [1] = { itemId = 'starterRod', count = 1 } },
+            backpack = { [1] = { itemId = 'tilapia', count = 1, mult = 1.5 } } } })
+    lu.assertStrContains(self.nodes['GM字段名_coin'].Text, '当前 17')
+    lu.assertStrContains(self.nodes['GM字段名_upgradeLevel'].Text, '当前 0')
+    lu.assertStrContains(self.nodes['GM字段名_slot'].Text, 'qa115')
+    lu.assertEquals(self.nodes['GM输入背景_coin'].Kind, 'EUIImage')
+    self.panel.Fields.container.Text = 'backpack'
+    self.panel.Fields.index.Text = '1'
+    self.panel.Fields.index.OnDetach:Fire('1')
+    lu.assertStrContains(self.nodes['GM字段名_itemId'].Text, '罗非鱼')
+    lu.assertStrContains(self.nodes['GM字段名_mult'].Text, '1.5')
 end
