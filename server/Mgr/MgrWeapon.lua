@@ -454,7 +454,12 @@ function Mgr:Throw(player, payload)
         return true
     end
     -- 持久模式：消费与结果同键落账，成功回调里才发飞行物；重放只回历史结果
+    -- （operation 身份必须是协议下发的表，与 MgrShop 同款校验）
     local requestId = payload.operation
+    if requestId ~= nil and type(requestId) ~= 'table' then
+        self:Fail(player, 'throw', 'bad-operation')
+        return true
+    end
     if requestId == nil then requestId = payload.seq end
     local operation, mode = self.Save:ResolveRequest(player, data, 'throw', requestId)
     if not operation then
