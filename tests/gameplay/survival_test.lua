@@ -11,6 +11,7 @@
 --   7. 原生 Died/Reborn 与轮询兜底同时触发时重复复活；MgrVitals 兜底 Reborn 在接管期抢跑；
 --   8. 抢救接缝：非濒死能救、救后血量不是 10%；状态泄漏到其他玩家；离开后状态残留。
 local lu = require('luaunit')
+local PlayerData = require('server.Data.PlayerData')
 
 TestSurvivalConfig = {}
 
@@ -52,21 +53,76 @@ local function newPlayer(id)
     return p
 end
 
+-- 真实 MgrSave + PlayerData（沿用 save_foundation_test 的引擎边界替身：Task 排队执行、DataStore 内存桶）。
+-- 落账回调在 drain() 时才到达，用来观察「先持久后生效」与在飞窗口。
+local function attachSave(env)
+    env.oldGame = _G.game
+    env.values, env.queue, env.writeFailure = {}, {}, nil -- luaunit 各用例共用同一个 self，标志必须每次复位
+    env.store = {
+        GetAsync = function(_, key) return env.values[key] end,
+        UpdateAsync = function(_, key, transform)
+            if env.writeFailure then error('写档失败') end
+            local value = transform(env.values[key])
+            if value then env.values[key] = value end
+            return value
+        end,
+        SetAsync = function(_, key, value) env.values[key] = value end,
+    }
+    _G.game = { GetService = function(_, name)
+        if name == 'Task' then
+            return { Spawn = function(_, fn) env.queue[#env.queue + 1] = fn end, Wait = function() end }
+        end
+        if name == 'DataStoreService' then return { GetDataStore = function() return env.store end } end
+        if name == 'World' then return { GetServerTime = function() return env.now end } end
+        if name == 'Players' then return { GetPlayers = function() return {} end } end
+    end }
+    env.save = assert(loadfile('server/Mgr/MgrSave.lua'))()
+    function env:drain()
+        while #self.queue > 0 do table.remove(self.queue, 1)() end
+    end
+end
+
+local function joinData(env, player)
+    local data = PlayerData.New(player)
+    data:Init(true)
+    env.save:LoadInto(player, data)
+    env:drain()
+    lu.assertEquals(data.LoadState, 'ready')
+    return data
+end
+
+-- 不经 ItemCount（Inited=false 时恒为 0）直接数容器里的件数，读档屏障关闭后也能看物品还在不在
+local function rawCount(data, itemId)
+    local total = 0
+    for _, container in pairs(data.Data.Containers) do
+        for _, entry in pairs(container) do
+            if entry.itemId == itemId and entry.count > 0 then total = total + entry.count end
+        end
+    end
+    return total
+end
+
 TestSurvivalDowned = {}
 
 function TestSurvivalDowned:setUp()
     local env = self
     self.now = 100
     self.messages = {}
+    self.events = {} -- 按名缓存：服务端 Start 里连的 OnServerEvent 与测试触发的是同一个信号
     self.savedRE = package.loaded['common.REUtil']
     package.loaded['common.REUtil'] = {
         GetRE = function(_, name)
             self.messages[name] = self.messages[name] or {}
-            return { FireClient = function(_, player, value)
-                table.insert(self.messages[name], { player = player, value = value })
-            end, FireAllClients = function(_, value)
-                table.insert(self.messages[name], { player = 'all', value = value })
-            end, OnServerEvent = signal() }
+            self.events[name] = self.events[name] or {
+                FireClient = function(_, player, value)
+                    table.insert(env.messages[name], { player = player, value = value })
+                end,
+                FireAllClients = function(_, value)
+                    table.insert(env.messages[name], { player = 'all', value = value })
+                end,
+                OnServerEvent = signal(),
+            }
+            return self.events[name]
         end,
         CheckRECD = function() return false end,
     }
@@ -358,4 +414,246 @@ function TestSurvivalRescue:test_old_deadline_never_applies_to_rescued_or_redown
     self.now = 125 -- 新一轮从 110 起算满 15 秒
     self.s:Update()
     lu.assertEquals(self.v:LifeStatus(self.a), 'dead')
+end
+
+TestSurvivalAdrenaline = {}
+
+function TestSurvivalAdrenaline:setUp()
+    TestSurvivalDowned.setUp(self)
+    attachSave(self)
+    self.data = joinData(self, self.a)
+    local env = self
+    self.s.Save = self.save
+    self.s.PlayerData = { GetDataInst = function(_, p) return p == env.a and env.data or nil end }
+    self.s:Start() -- 连上 SurvivalAction 上行事件
+end
+
+function TestSurvivalAdrenaline:tearDown()
+    _G.game = self.oldGame
+    TestSurvivalDowned.tearDown(self)
+end
+
+function TestSurvivalAdrenaline:ctrl(p) return (p or self.a).Character.Controller end
+
+function TestSurvivalAdrenaline:give(n)
+    for _ = 1, n do lu.assertTrue(self.data:GrantItem('item171', 1)) end
+end
+
+function TestSurvivalAdrenaline:use(seq)
+    self.events.SurvivalAction.OnServerEvent:Fire(self.a, { action = 'UseAdrenaline', seq = seq })
+end
+
+function TestSurvivalAdrenaline:result()
+    local sent = self.messages.SurvivalResult
+    return sent[#sent].value
+end
+
+function TestSurvivalAdrenaline:test_use_consumes_one_item_and_rescues_only_after_persist()
+    self:give(2)
+    TestSurvivalDowned.enterDowned(self) -- now=100
+    self:use(1)
+    -- 持久成功前不生效：血仍锁 1，物品仍在，倒计时仍是濒死
+    lu.assertTrue(self.v:IsDowned(self.a))
+    lu.assertEquals(self:ctrl().Health, 1)
+    lu.assertEquals(rawCount(self.data, 'item171'), 2) -- 在飞期间读档屏障关闭，直接数容器
+    self:drain()
+    lu.assertEquals(self.data:ItemCount('item171'), 1) -- 恰好扣 1 件
+    lu.assertEquals(self.v:LifeStatus(self.a), 'alive')
+    lu.assertEquals(self:ctrl().Health, 30) -- 恢复 10% × 300
+    lu.assertEquals(self:ctrl().WalkSpeed, 10) -- 自救不带虚弱
+    lu.assertTrue(self:result().ok)
+    local operations = self.data:Serialize().meta.operations
+    lu.assertEquals(#operations, 1)
+    lu.assertEquals(operations[1].kind, 'survival:adrenaline') -- 落进 #123 操作日志
+end
+
+function TestSurvivalAdrenaline:test_without_item_opens_platform_purchase_seam_and_changes_nothing()
+    local opened = {}
+    self.s.Platform = { OpenAdrenalineShop = function(_, p) opened[#opened + 1] = p end }
+    TestSurvivalDowned.enterDowned(self)
+    self:use(1)
+    self:drain()
+    lu.assertEquals(opened, { self.a }) -- T26 平台购买入口接缝
+    lu.assertFalse(self:result().ok)
+    lu.assertEquals(self:result().reason, 'no-adrenaline')
+    lu.assertTrue(self.v:IsDowned(self.a))
+    lu.assertEquals(self:ctrl().Health, 1)
+    lu.assertEquals(#self.data:Serialize().meta.operations, 0) -- 没建操作、没落账
+    self.s.Platform = nil -- 接缝缺席（T26 未接）：只回包不报错
+    self:use(2)
+    lu.assertEquals(self:result().reason, 'no-adrenaline')
+end
+
+function TestSurvivalAdrenaline:test_concurrent_clicks_consume_exactly_one()
+    self:give(2)
+    TestSurvivalDowned.enterDowned(self)
+    self:use(1)
+    self:use(2) -- 第一次落账未确认时的并发点击
+    lu.assertEquals(self:result().reason, 'busy')
+    self:drain()
+    self:use(3) -- 已救起后的迟到点击
+    self:drain()
+    lu.assertEquals(self:result().reason, 'not-downed')
+    lu.assertEquals(self.data:ItemCount('item171'), 1)
+    lu.assertEquals(#self.data:Serialize().meta.operations, 1)
+end
+
+function TestSurvivalAdrenaline:test_same_request_replay_never_charges_or_rescues_twice()
+    self:give(2)
+    TestSurvivalDowned.enterDowned(self)
+    self:use(1)
+    self:drain()
+    self.now = 110
+    lu.assertTrue(self.v:ApplyHit(self.v:NewHit(self.b, 'fishAttack'), self.a, 100)) -- 30 血再次致命
+    lu.assertTrue(self.v:IsDowned(self.a))
+    self:use(1) -- 同一请求号重放：只回放记录，不再扣物、不再救起
+    self:drain()
+    lu.assertEquals(self:result().reason, 'replay')
+    lu.assertEquals(self.data:ItemCount('item171'), 1)
+    lu.assertTrue(self.v:IsDowned(self.a))
+    lu.assertEquals(self:ctrl().Health, 1)
+    self:use(2) -- 新请求号才是新的一次自救
+    self:drain()
+    lu.assertEquals(self.data:ItemCount('item171'), 0)
+    lu.assertEquals(self.v:LifeStatus(self.a), 'alive')
+    lu.assertEquals(self:ctrl().Health, 30)
+end
+
+function TestSurvivalAdrenaline:test_only_downed_players_can_use_and_the_item_is_kept()
+    self:give(1)
+    self:use(1) -- 活动中
+    self:drain()
+    lu.assertEquals(self:result().reason, 'not-downed')
+    TestSurvivalDowned.enterDowned(self)
+    self.now = 115
+    self.s:Update() -- 15 秒到转死亡
+    self:use(2)
+    self:drain()
+    lu.assertEquals(self:result().reason, 'not-downed')
+    lu.assertEquals(self.data:ItemCount('item171'), 1)
+    lu.assertEquals(self.v:LifeStatus(self.a), 'dead')
+end
+
+function TestSurvivalAdrenaline:test_downed_countdown_waits_for_the_in_flight_adrenaline()
+    self:give(1)
+    TestSurvivalDowned.enterDowned(self) -- 100 进濒死，截止点 115
+    self:use(1)
+    self.now = 116 -- 落账未回，截止点已过
+    self.s:Update()
+    lu.assertTrue(self.v:IsDowned(self.a)) -- 已付出的自救不能被倒计时抢先转死亡而白扣物品
+    self:drain()
+    lu.assertEquals(self.v:LifeStatus(self.a), 'alive')
+    lu.assertEquals(self.data:ItemCount('item171'), 0)
+    lu.assertEquals(self:ctrl().Health, 30)
+end
+
+function TestSurvivalAdrenaline:test_teammate_rescue_cannot_race_the_in_flight_adrenaline()
+    self:give(1)
+    TestSurvivalDowned.enterDowned(self)
+    self:use(1)
+    lu.assertFalse(self.v:Rescue(self.a, self.b)) -- 自救结算进行中队友抢救让位，否则物品白扣
+    self:drain()
+    lu.assertEquals(self:ctrl().Health, 30)
+    lu.assertEquals(self.data:ItemCount('item171'), 0)
+end
+
+function TestSurvivalAdrenaline:test_old_callback_cannot_touch_the_state_of_a_rejoined_player()
+    self:give(1)
+    TestSurvivalDowned.enterDowned(self)
+    self:use(1)
+    local old = self.s:GetState(self.a)
+    self.s:OnPlayerRemoving(self.a)
+    self.s:OnPlayerAdded(self.a) -- 重进：全新的活动状态
+    local new = self.s:GetState(self.a)
+    lu.assertNotIs(new, old)
+    self:drain() -- 旧请求的落账回调此刻到达
+    lu.assertEquals(new.phase, 'alive')
+    lu.assertNil(new.adrenalineFlying)
+    lu.assertEquals(self:ctrl().Health, 1) -- 旧回调没有对新状态执行救起
+end
+
+function TestSurvivalAdrenaline:test_rejected_settlement_leaves_no_flight_marker_or_side_effects()
+    -- 预检看到有物品但结算时扣不到（内存与草稿不一致的防御分支）：拒绝、无副作用、不留在飞标记
+    self.data.ItemCount = function() return 1 end
+    TestSurvivalDowned.enterDowned(self)
+    self:use(1)
+    lu.assertEquals(self:result().reason, 'no-adrenaline')
+    lu.assertNil(self.s:GetState(self.a).adrenalineFlying)
+    lu.assertTrue(self.v:IsDowned(self.a))
+    lu.assertEquals(#self.data:Serialize().meta.operations, 0)
+    self.now = 115 -- 标记没残留：倒计时照常转死亡
+    self.s:Update()
+    lu.assertEquals(self.v:LifeStatus(self.a), 'dead')
+end
+
+function TestSurvivalAdrenaline:test_persist_failure_keeps_item_and_does_not_rescue()
+    self:give(1)
+    TestSurvivalDowned.enterDowned(self)
+    self.writeFailure = true
+    self:use(1)
+    for _ = 1, 6 do -- 写档重试耗尽后关闭会话，回调收到失败
+        self.save:Update()
+        self:drain()
+    end
+    lu.assertFalse(self:result().ok)
+    lu.assertEquals(rawCount(self.data, 'item171'), 1) -- 物品仍在
+    lu.assertNil(self.s:GetState(self.a).adrenalineFlying)
+    lu.assertEquals(self:ctrl().Health, 1)
+    lu.assertTrue(self.v:IsDowned(self.a)) -- 失败不救起
+end
+
+TestSurvivalHelp = {}
+
+function TestSurvivalHelp:setUp()
+    TestSurvivalDowned.setUp(self)
+    self.c = newPlayer(3)
+    self.c.Character.Position = { x = 100, y = 0, z = 0 } -- 远在 30 米外
+    self.v:OnPlayerAdded(self.c)
+    self.s:OnPlayerAdded(self.c)
+    self.s:Start()
+end
+
+function TestSurvivalHelp:tearDown()
+    TestSurvivalDowned.tearDown(self)
+end
+
+function TestSurvivalHelp:ctrl(p) return (p or self.a).Character.Controller end
+
+function TestSurvivalHelp:call()
+    self.events.SurvivalAction.OnServerEvent:Fire(self.a, { action = 'CallHelp' })
+end
+
+function TestSurvivalHelp:helpFor(player)
+    local out = {}
+    for _, message in ipairs(self.messages.SurvivalHelp or {}) do
+        if message.player == player then out[#out + 1] = message.value end
+    end
+    return out
+end
+
+function TestSurvivalHelp:test_call_help_reaches_only_nearby_teammates_while_downed()
+    self:call() -- 活动中呼救无效
+    lu.assertEquals(#(self.messages.SurvivalHelp or {}), 0)
+    TestSurvivalDowned.enterDowned(self)
+    self:call()
+    local heard = self:helpFor(self.b)
+    lu.assertEquals(#heard, 1) -- b 在 30 米内
+    lu.assertEquals(heard[1].name, 'p1')
+    lu.assertEquals(heard[1].text, require('common.GameCfg').Survival.HelpCries[1])
+    lu.assertEquals(#self:helpFor(self.c), 0) -- c 在 30 米外
+    lu.assertEquals(#self:helpFor(self.a), 0) -- 不回给自己
+end
+
+function TestSurvivalHelp:test_call_help_is_rate_limited_and_cycles_the_cries()
+    local cries = require('common.GameCfg').Survival.HelpCries
+    TestSurvivalDowned.enterDowned(self)
+    self:call()
+    self.now = 100.5
+    self:call() -- 1 秒冷却内
+    lu.assertEquals(#self:helpFor(self.b), 1)
+    self.now = 101
+    self:call()
+    local heard = self:helpFor(self.b)
+    lu.assertEquals(#heard, 2)
+    lu.assertEquals(heard[2].text, cries[2])
 end

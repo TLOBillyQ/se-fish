@@ -52,6 +52,7 @@ end
 -- 断开放鱼复用 MgrFishUnit:OnDied（放下举鱼 + 打断抛竿会话）；收线会话由 MgrReelIn:Interrupt 断开。
 function Mgr:EnterDowned(state, vitalState)
     state.phase = 'downed'
+    state.episode = (state.episode or 0) + 1
     state.downedAt = self:Now()
     if self.Vitals then self.Vitals:SetControllerHealth(vitalState, 1) end
     if self.FishUnit and self.FishUnit.OnDied then
@@ -101,6 +102,8 @@ function Mgr:Hooks()
             return true
         end,
         Rescue = function(vitalState)
+            local state = self.States[vitalState.player.UserId]
+            if state and state.adrenalineFlying then return false end -- 自救落账中让位
             return self:RescueDowned(self.States[vitalState.player.UserId], vitalState)
         end,
         -- 漏网死亡（绕过致命拦截的引擎死亡）：纳入状态机按死亡处理。断开放鱼由
@@ -176,7 +179,7 @@ function Mgr:Update()
     local now = self:Now()
     local c = cfg()
     for _, state in pairs(self.States) do
-        if state.phase == 'downed' and now - state.downedAt >= c.DownedSec then
+        if state.phase == 'downed' and not state.adrenalineFlying and now - state.downedAt >= c.DownedSec then
             state.phase = 'dead'
             state.downedAt = nil
             state.deadAt = now
@@ -199,8 +202,105 @@ function Mgr:Update()
     end
 end
 
+function Mgr:Reply(player, payload)
+    REUtil:GetRE('SurvivalResult'):FireClient(player, payload)
+end
+
+-- 肾上腺素自救（策划案：消耗一个恢复 10%；没有则拉起平台购买入口）。
+-- 预检（濒死 / 无在飞 / 有物品）→ #123 持久操作：物品扣除与操作日志同键落账，落账确认后才救起。
+-- 在飞期间濒死倒计时冻结、队友抢救让位，避免「已扣物品却被转死亡 / 抢先救起」；
+-- 回调按 state 对象与 episode 双重核对，旧请求不会落到重进或再次濒死的新状态上。
+function Mgr:UseAdrenaline(player, payload)
+    local seq = type(payload) == 'table' and payload.seq or nil
+    local function fail(reason)
+        self:Reply(player, { seq = seq, ok = false, reason = reason })
+        return false
+    end
+    local state = self:GetState(player)
+    if not state or state.phase ~= 'downed' then return fail('not-downed') end
+    if state.adrenalineFlying then return fail('busy') end
+    local data = self.PlayerData and self.PlayerData:GetDataInst(player)
+    if not data or not self.Save then return fail('unavailable') end
+    local itemId = cfg().AdrenalineItemId
+    if data:ItemCount(itemId) < 1 then
+        if self.Platform and self.Platform.OpenAdrenalineShop then
+            local ok, err = pcall(self.Platform.OpenAdrenalineShop, self.Platform, player)
+            if not ok then print('[MgrSurvival] 平台购买入口失败', player.UserId, tostring(err)) end
+        end
+        return fail('no-adrenaline')
+    end
+    local operation, mode = self.Save:ResolveRequest(player, data, 'survival:adrenaline', seq)
+    if not operation then return fail(mode) end
+    if mode == 'replay' then return fail('replay') end -- 同请求号只回放记录，不再扣物、不再救起
+    local episode = state.episode
+    state.adrenalineFlying = true
+    local accepted, why = self.Save:Execute(player, data, operation, function(draft)
+        if not draft:ConsumeItem(itemId) then return nil, 'no-adrenaline' end
+        return { ok = true, seq = seq }
+    end, function(written, result)
+        if self.States[player.UserId] ~= state then return end -- 已离开 / 重进：旧回调作废
+        state.adrenalineFlying = nil
+        if not written then return fail(tostring(result)) end
+        local vitalState = self.Vitals and self.Vitals:GetState(player)
+        if state.phase ~= 'downed' or state.episode ~= episode or not vitalState
+            or not self:RescueDowned(state, vitalState) then
+            return fail('not-downed')
+        end
+        if self.PlayerData and self.PlayerData.SendItemBar then self.PlayerData:SendItemBar(player) end
+        print('[MgrSurvival] 肾上腺素自救', player.UserId, operation.id)
+        self:Reply(player, { seq = seq, ok = true })
+    end)
+    if not accepted then
+        state.adrenalineFlying = nil
+        return fail(why or 'pending')
+    end
+    return true
+end
+
+local function distance(a, b)
+    local ok, d = pcall(function()
+        local dx, dy, dz = a.x - b.x, (a.y or 0) - (b.y or 0), (a.z or 0) - (b.z or 0)
+        return math.sqrt(dx * dx + dy * dy + dz * dz)
+    end)
+    return ok and d or math.huge
+end
+
+-- 呼救（策划案 30 米内队友能看到呼救气泡）：只在濒死时有效，1 秒冷却，台词循环。
+function Mgr:CallHelp(player)
+    local state = self:GetState(player)
+    if not state or state.phase ~= 'downed' then return false end
+    local c, now = cfg(), self:Now()
+    if state.lastHelp and now - state.lastHelp < c.HelpCooldownSec then return false end
+    state.lastHelp = now
+    state.helpIndex = (state.helpIndex or 0) % #c.HelpCries + 1
+    local origin = player.Character and player.Character.Position
+    local re = REUtil:GetRE('SurvivalHelp')
+    for _, other in pairs(self.States) do
+        if other ~= state and other.player.Character
+            and distance(origin, other.player.Character.Position) <= c.HelpRadius then
+            re:FireClient(other.player, { userId = player.UserId, name = player.Name,
+                text = c.HelpCries[state.helpIndex] })
+        end
+    end
+    return true
+end
+
+function Mgr:OnAction(player, payload)
+    if type(payload) ~= 'table' then return end
+    if payload.action == 'UseAdrenaline' then
+        if REUtil:CheckRECD(player, 'SurvivalAction', 0.2) then return end
+        self:UseAdrenaline(player, payload)
+    elseif payload.action == 'CallHelp' then
+        self:CallHelp(player)
+    end
+end
+
 function Mgr:Start()
-    self.World = game:GetService('World')
+    local ok, world = pcall(function() return game:GetService('World') end)
+    if ok then self.World = world end
+    REUtil:GetRE('SurvivalAction').OnServerEvent:Connect(function(player, payload)
+        self:OnAction(player, payload)
+    end)
 end
 
 return Mgr
