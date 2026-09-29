@@ -196,6 +196,8 @@ function Mgr:LoadInto(player, data)
             if self.OnReady then self.OnReady(player, data) end
         end)
     end
+    -- 旧会话正在选槽时，等它选完再读档，避免槽位竞争。
+    -- 闭包捕获 s/data，等待期间若重进替换会话，IsCurrent 会拒绝执行。
     if previous.SlotChoosing then
         previous.SlotWaiters = previous.SlotWaiters or {}
         table.insert(previous.SlotWaiters, load)
@@ -471,7 +473,7 @@ function Mgr:SelectNextSlot(userId, slot, done)
         local ok = self:WithRetry('选择槽 ' .. userId, function()
             store:SetAsync(cfg().KeyPrefix .. userId .. ':gm-slot', slot)
         end)
-        if ok then s.Next = slot end
+        if ok and self.Sessions[userId] == s then s.Next = slot end
         s.SlotChoosing = false
         local waiters = s.SlotWaiters or {}
         s.SlotWaiters = nil
