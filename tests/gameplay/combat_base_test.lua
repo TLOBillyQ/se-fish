@@ -129,6 +129,56 @@ function TestMgrAbilityActionGuard:test_player_cast_is_blocked_by_vitals_state()
     lu.assertTrue(guard(free, 0))
 end
 
+function TestCombatBase:test_negative_eat_uses_unified_damage_entry_with_eat_category()
+    -- 负食用（如核废料桶 item126 EatPercent=-99）必须走 ApplyDamage 单点，携带 eat 类别，
+    -- 跳字通知与实际扣血一致；旧路 SetControllerHealth 直扣不会产生通知
+    local categories = {}
+    self.v:SetLifeHooks({ CanTakeDamage = function(_, hit)
+        categories[#categories + 1] = hit and hit.category or 'none'
+        return true
+    end })
+    lu.assertTrue(self.v:Eat(self.a, 'item126'))
+    lu.assertEquals(categories, { 'eat' })
+    lu.assertEquals(self.a.Character.Controller.Health, 3)
+    lu.assertEquals(#self.notices, 1)
+    lu.assertEquals(self.notices[1].amount, 297)
+end
+
+function TestCombatBase:test_negative_eat_is_blocked_while_downed()
+    -- 濒死锁血：负食用同样不能绕过状态判定（CanEat 已用 CanAct 互斥）
+    self.v:SetLifeHooks({ LifeStatus = function() return 'downed' end,
+        CanTakeDamage = function() return false end })
+    lu.assertFalse(self.v:CanEat(self.a, 'item126'))
+    lu.assertFalse(self.v:Eat(self.a, 'item126'))
+    lu.assertEquals(self.a.Character.Controller.Health, 300)
+    lu.assertEquals(#self.notices, 0)
+end
+
+function TestCombatBase:test_hunger_damage_carries_hunger_category()
+    local categories = {}
+    self.v:SetLifeHooks({ CanTakeDamage = function(_, hit)
+        categories[#categories + 1] = hit and hit.category or 'none'
+        return true
+    end })
+    local state = self.v:GetState(self.a)
+    state.hunger = 0
+    state.lastSec = 99
+    self.v:UpdateState(state, 100)
+    lu.assertEquals(categories, { 'hunger' })
+    lu.assertEquals(self.a.Character.Controller.Health, 295)
+end
+
+function TestCombatBase:test_gm_health_reduction_uses_gm_category()
+    local categories = {}
+    self.v:SetLifeHooks({ CanTakeDamage = function(_, hit)
+        categories[#categories + 1] = hit and hit.category or 'none'
+        return true
+    end })
+    lu.assertTrue(self.v:SetHealth(self.a, 200))
+    lu.assertEquals(categories, { 'gm' })
+    lu.assertEquals(self.a.Character.Controller.Health, 200)
+end
+
 function TestCombatBase:test_fish_damage_uses_same_hit_identity_and_reports_actual_amount()
     local carrier = { Body = { UnitId = 91 }, Receiver = {}, Controller = {} }
     local damageCalls = {}

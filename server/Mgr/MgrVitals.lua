@@ -304,7 +304,8 @@ function Mgr:CanEat(player, itemId)
     return state ~= nil and self:CanAct(player) and definition ~= nil and type(definition.EatPercent) == 'number'
 end
 
--- 吃一件：血量与饥饿各恢复「食用恢复百分比 × 上限」，不超上限；库存由调用方先扣
+-- 吃一件：血量与饥饿各恢复「食用恢复百分比 × 上限」，不超上限；库存由调用方先扣。
+-- #128：负食用（如核废料桶 item126）是伤害，走 ApplyDamage 统一入口，类别 eat，不绕过濒死锁血。
 function Mgr:Eat(player, itemId)
     if not self:CanEat(player, itemId) then return false end
     local state = self:GetState(player)
@@ -312,8 +313,15 @@ function Mgr:Eat(player, itemId)
     local percent = GameCfg.Items.Definitions[itemId].EatPercent
     state.hunger = Vitals.Restore(state.hunger, c.MaxHunger, percent)
     self:WriteHunger(state)
-    local health = healthOf(state)
-    if health then self:SetControllerHealth(state, Vitals.Restore(math.floor(health), c.MaxHealth, percent)) end
+    if percent < 0 then
+        local damage = math.floor(c.MaxHealth * -percent / 100)
+        if damage > 0 then
+            self:ApplyDamage(player, damage, self:NewHit(player, 'eat'))
+        end
+    else
+        local health = healthOf(state)
+        if health then self:SetControllerHealth(state, Vitals.Restore(math.floor(health), c.MaxHealth, percent)) end
+    end
     print('[MgrVitals] 吃', player.UserId, itemId, 'health=' .. tostring(healthOf(state)),
         'hunger=' .. tostring(state.hunger))
     return true
@@ -335,7 +343,7 @@ function Mgr:SetHealth(player, value)
     if not state or state.dead or not isInt(value) or value < 0 or value > cfg().MaxHealth then return false end
     local health = healthOf(state)
     if not health then return false end
-    if value < health then return self:ApplyDamage(player, health - value) end
+    if value < health then return self:ApplyDamage(player, health - value, self:NewHit(nil, 'gm')) end
     if value > health then return self:SetControllerHealth(state, value) end
     return true
 end
@@ -387,7 +395,7 @@ function Mgr:UpdateState(state, now)
     end
     if damage > 0 then
         print('[MgrVitals] 饥饿掉血', state.player.UserId, damage, 'health=' .. tostring(health))
-        self:ApplyDamage(state.player, damage)
+        self:ApplyDamage(state.player, damage, self:NewHit(nil, 'hunger'))
     end
 end
 
