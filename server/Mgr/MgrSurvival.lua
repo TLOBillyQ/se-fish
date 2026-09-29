@@ -308,6 +308,9 @@ function Mgr:UseAdrenaline(player, payload)
         self:Reply(player, { seq = seq, ok = false, reason = reason })
         return false
     end
+    if type(seq) ~= 'number' or seq ~= math.floor(seq) or seq < 1 or seq > 2147483647 then
+        return fail('invalid') -- 与 MgrShop 同款边界：坏请求号在任何预检 / 副作用之前拒掉
+    end
     local data = self.PlayerData and self.PlayerData:GetDataInst(player)
     if not data or not self.Save then return fail('unavailable') end
     local operation, mode = self.Save:ResolveRequest(player, data, 'survival:adrenaline', seq)

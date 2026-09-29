@@ -654,6 +654,16 @@ function TestSurvivalAdrenaline:test_replay_after_successful_rescue_answers_repl
     lu.assertEquals(#self.data:Serialize().meta.operations, 1)
 end
 
+function TestSurvivalAdrenaline:test_non_numeric_seq_rejected_before_any_precheck_or_side_effect()
+    local opened = {}
+    self.s.Platform = { OpenAdrenalineShop = function(_, p) opened[#opened + 1] = p end }
+    TestSurvivalDowned.enterDowned(self)
+    self.events.SurvivalAction.OnServerEvent:Fire(self.a, { action = 'UseAdrenaline', seq = 'abc' })
+    lu.assertEquals(self:result().reason, 'invalid')
+    lu.assertEquals(#opened, 0) -- 没物品也不弹商店：坏请求号最先拒
+    lu.assertEquals(#self.data:Serialize().meta.operations, 0)
+end
+
 TestSurvivalHelp = {}
 
 function TestSurvivalHelp:setUp()
