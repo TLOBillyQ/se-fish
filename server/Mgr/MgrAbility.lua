@@ -199,7 +199,22 @@ function Mgr:CastFish(fish)
     return AbilityAPI.CastAbility(record.Receiver, record.Entry.Index)
 end
 
+function Mgr:CanCast(unit)
+	local player = unit and unit.UserId and unit or nil
+	if not player and unit then
+		local players = game:GetService("Players")
+		if players and players.GetPlayerFromCharacter then
+			local ok, found = pcall(players.GetPlayerFromCharacter, players, unit)
+			if ok then player = found end
+		end
+	end
+	if not player then return true end -- 鱼等服务端单位的技能不受玩家动作互斥影响
+	if not self.Vitals then return true end
+	return self.Vitals:CanAct(player)
+end
+
 function Mgr:Start()
+	AbilityAPI.SetCastGuard(function(unit, index) return self:CanCast(unit) end)
 end
 
 function Mgr:OnPlayerAdded(player)

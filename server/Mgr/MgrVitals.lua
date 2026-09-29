@@ -79,6 +79,10 @@ function Mgr:IsDowned(player)
     return self:LifeStatus(player) == 'downed'
 end
 
+function Mgr:CanAct(player)
+    return self:LifeStatus(player) == 'alive'
+end
+
 function Mgr:CanTakeDamage(player, hit)
     local state = self:GetState(player)
     if not state then return false end
@@ -283,7 +287,7 @@ end
 function Mgr:CanEat(player, itemId)
     local state = self:GetState(player)
     local definition = type(itemId) == 'string' and GameCfg.Items.Definitions[itemId]
-    return state ~= nil and not state.dead and definition ~= nil and type(definition.EatPercent) == 'number'
+    return state ~= nil and self:CanAct(player) and definition ~= nil and type(definition.EatPercent) == 'number'
 end
 
 -- 吃一件：血量与饥饿各恢复「食用恢复百分比 × 上限」，不超上限；库存由调用方先扣

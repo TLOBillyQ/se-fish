@@ -102,3 +102,29 @@ function TestAbilityCastGuard:test_root_api_applies_server_guard_before_package_
     lu.assertTrue(api.CastAbility(unit, 2))
     lu.assertEquals(#calls, 1)
 end
+
+TestMgrAbilityActionGuard = {}
+function TestMgrAbilityActionGuard:test_player_cast_is_blocked_by_vitals_state()
+    local oldGame, oldApi = rawget(_G, 'game'), package.loaded['server.AbilityAPI']
+    local guard
+    package.loaded['server.AbilityAPI'] = { SetCastGuard = function(fn) guard = fn end }
+    _G.game = { GetService = function() return {} end }
+    local mgr = assert(loadfile('server/Mgr/MgrAbility.lua'))()
+    local blocked, free = player(1), player(2)
+    local vitals = assert(loadfile('server/Mgr/MgrVitals.lua'))()
+    vitals.Now = function() return 100 end
+    vitals:OnPlayerAdded(blocked)
+    vitals:OnPlayerAdded(free)
+    vitals:SetLifeHooks({ LifeStatus = function(state)
+        return state.player == blocked and 'downed' or 'alive'
+    end })
+    mgr.Vitals = vitals
+    mgr:Start()
+    _G.game = oldGame
+    package.loaded['server.AbilityAPI'] = oldApi
+    lu.assertNotNil(guard)
+    lu.assertFalse(mgr:CanCast(blocked))
+    lu.assertFalse(guard(blocked, 0))
+    lu.assertTrue(mgr:CanCast(free))
+    lu.assertTrue(guard(free, 0))
+end
