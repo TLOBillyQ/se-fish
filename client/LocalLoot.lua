@@ -1,5 +1,7 @@
 -- 鱼获「拾取」文字泡（#43）：按服务端广播的鱼获列表在每份鱼获上方建场景 UI 按钮，
 -- 本地角色在 PickupRadius 米内才显示；点击只发请求（ItemBarAction{action='Pickup'}），结果以服务端回包为准。
+-- 预警闪烁（#126）：快照里 warn=true 的件进入 30 秒回收预警，文字泡按 GameCfg.Loot.FlashIntervalSec
+-- 与服务端模型的可见性同节奏闪；预警期内拾取仍被服务端接受，闪到亮的那半拍照常可点。
 local GameCfg = require('common.GameCfg')
 local REUtil = require('common.REUtil')
 
@@ -36,7 +38,7 @@ function LocalLoot:Create(loot)
         return
     end
     node.Visible = false
-    self.Nodes[loot.id] = { Node = node, Position = loot }
+    self.Nodes[loot.id] = { Node = node, Position = loot, Warning = loot.warn == true }
 end
 
 function LocalLoot:Show(list)
@@ -44,23 +46,34 @@ function LocalLoot:Show(list)
     for _, loot in ipairs(list or {}) do
         alive[loot.id] = true
         if not self.Nodes[loot.id] then self:Create(loot) end
+        local entry = self.Nodes[loot.id]
+        if entry then entry.Warning = loot.warn == true end
     end
     for id in pairs(self.Nodes) do
         if not alive[id] then self:Clear(id) end
     end
 end
 
-function LocalLoot:Update()
+-- 预警件的显隐：按配置间隔交替，不额外依赖服务端每帧广播（服务端模型同步在闪）
+function LocalLoot:BlinkTick(entry, dt)
+    local interval = GameCfg.Loot.FlashIntervalSec or 0.5
+    entry.Blink = (entry.Blink or 0) + (dt or 0)
+    return math.floor(entry.Blink / interval) % 2 == 0
+end
+
+function LocalLoot:Update(dt)
     local character = Players.LocalPlayer and Players.LocalPlayer.Character
     local pos = character and character.Position
     local radius = GameCfg.Loot.PickupRadius
     for _, entry in pairs(self.Nodes) do
-        local visible = false
+        local near = false
         if pos then
             local p = entry.Position
             local dx, dy, dz = pos.x - p.x, pos.y - p.y, pos.z - p.z
-            visible = dx * dx + dy * dy + dz * dz <= radius * radius
+            near = dx * dx + dy * dy + dz * dz <= radius * radius
         end
+        local visible = near
+        if near and entry.Warning then visible = self:BlinkTick(entry, dt) end
         if entry.Visible ~= visible then
             entry.Visible = visible
             pcall(function() entry.Node.Visible = visible end)
@@ -75,7 +88,7 @@ function LocalLoot:Start()
             _G.LocalMsgNotice('背包已满')
         end
     end)
-    game:GetService('RunService').Heartbeat:Connect(function() self:Update() end)
+    game:GetService('RunService').Heartbeat:Connect(function(dt) self:Update(dt) end)
     REUtil:GetRE('RequestLoot'):FireServer()
 end
 
