@@ -148,14 +148,15 @@ function TestMgrWeapon:setUp()
     self.casts, self.swingStaged, self.replies = {}, {}, {}
     self.applied, self.spawnedFish, self.order = {}, {}, 0
     local env = self
+    -- 与真实 server.AbilityAPI 一致的点调用签名（模块函数，非方法）
     package.loaded['server.AbilityAPI'] = {
-        StageSwing = function(_, userId, swing) env.swingStaged[userId] = swing end,
-        PeekSwing = function(_, userId) return env.swingStaged[userId] end,
-        TakeSwing = function(_, userId)
+        StageSwing = function(userId, swing) env.swingStaged[userId] = swing end,
+        PeekSwing = function(userId) return env.swingStaged[userId] end,
+        TakeSwing = function(userId)
             local s = env.swingStaged[userId]; env.swingStaged[userId] = nil; return s end,
-        CastAbility = function(_, unit, index)
+        CastAbility = function(unit, index)
             env.casts[#env.casts + 1] = { unit = unit, index = index }; return true end,
-        AddCastGuard = function(_, fn) env.castGuard = fn end,
+        AddCastGuard = function(fn) env.castGuard = fn end,
     }
     _G.REUtil = {
         GetRE = function(_, name)
@@ -260,7 +261,7 @@ function TestMgrWeapon:test_gun_magazine_empties_then_auto_reload_two_seconds()
     lu.assertFalse(reply.ok)
     lu.assertEquals(reply.reason, 'empty')
     lu.assertTrue(reply.autoReload)
-    lu.assertGreaterThan(self.mgr:GetState(42).mags.item137.reloadUntil, 1011)
+    lu.assertTrue(self.mgr:GetState(42).mags.item137.reloadUntil > 1011)
     -- 换弹中发射被拒
     lu.assertEquals(self.mgr:Attack(self.player).reason, 'reloading')
     -- 手动换弹不重置/不叠加
@@ -298,7 +299,7 @@ function TestMgrWeapon:test_fire_rate_enforced_server_side()
     lu.assertTrue(self.mgr:Attack(self.player).ok)
     self.now = 1000.1 -- 客户端加速：0.1 < 0.15 拒绝
     lu.assertEquals(self.mgr:Attack(self.player).reason, 'cooldown')
-    self.now = 1000.15
+    self.now = 1000.16 -- 0.16 ≥ 0.15 放行（0.15 恰为浮点边界，避开）
     lu.assertTrue(self.mgr:Attack(self.player).ok)
 end
 
@@ -341,6 +342,7 @@ function TestMgrWeapon:test_gun_ray_miss_applies_nothing()
     lu.assertEquals(#self.applied, 0)
     self.rayHit = { Instance = { UnitId = 999, UnitType = 'WorldUnit', PhysicsActive = true },
         Position = { x = 0, y = 2, z = 3 } } -- 墙：不解析出玩家/鱼
+    self.now = 1001 -- 过射速间隔再打一发
     lu.assertTrue(self.mgr:Attack(self.player).ok)
     lu.assertEquals(#self.applied, 0)
 end
@@ -348,11 +350,12 @@ end
 function TestMgrWeapon:test_cast_guard_requires_staged_swing_for_melee_only()
     self.mgr:Start() -- 注册 AddCastGuard 与 WeaponAction 通道
     lu.assertNotNil(self.castGuard)
-    lu.assertTrue(self.castGuard(self.player.Character, 1))       -- 已登记（上面用例遗留？）——独立再验：
+    self.swingStaged[42] = { damage = 5, range = 2 }
+    lu.assertTrue(self.castGuard(self.player.Character, 1))  -- 已登记放行
     self.swingStaged[42] = nil
-    lu.assertFalse(self.castGuard(self.player.Character, 1))      -- 近战槽无登记拒绝
-    lu.assertTrue(self.castGuard(self.player.Character, 0))       -- 其它槽位不受影响
-    lu.assertTrue(self.castGuard({ UnitId = 5 }, 1))              -- 非玩家单位（鱼施法）不受影响
+    lu.assertFalse(self.castGuard(self.player.Character, 1)) -- 近战槽无登记拒绝
+    lu.assertTrue(self.castGuard(self.player.Character, 0))  -- 其它槽位不受影响
+    lu.assertTrue(self.castGuard({ UnitId = 5 }, 1))         -- 非玩家单位（鱼施法）不受影响
 end
 
 -- ===== 投掷 / 爆炸 =====
@@ -403,7 +406,11 @@ function TestMgrWeaponThrow:setUp()
     self.mgr.FishUnit = { Fish = {}, SpawnBlastFish = function(_, fishId, mult, pos, owner)
         env.order = env.order + 1
         env.spawnedFish[#env.spawnedFish + 1] = { order = env.order,
-            fishId = fishId, mult = mult, pos = pos, owner = owner } end }
+            fishId = fishId, mult = mult, pos = pos, owner = owner }
+        -- 真实 MgrFishUnit 会把鱼登记进 Fish 表：爆炸结算能看到刚生成的保底鱼
+        local id = 1000 + #env.spawnedFish
+        env.mgr.FishUnit.Fish[id] = { Id = id, Carrier = { Body = { Position = pos } } }
+        return { Id = id } end }
     self.mgr.FishCarrier = { ResolveCarrier = function() return nil end }
     local realLaunch = self.mgr.Launch
     self.mgr.Launch = function(m, player, itemId, target)
@@ -418,12 +425,24 @@ function TestMgrWeaponThrow:tearDown()
 end
 
 local function giveExplosive(data, itemId, count)
-    lu.assertTrue(data:AddItem(itemId, count))
+    -- AddItem 一次添一件（mult 是倍率元数据，不是数量）；每格一件不堆叠
+    for _ = 1, count do lu.assertTrue(data:AddItem(itemId)) end
+end
+
+-- 道具栏初始有新手鱼竿占 1 号位（容量 2）：按实际落格找槽位
+local function barSlotOf(data, itemId)
+    local snap = data:GetItemBarSnapshot()
+    for index, entry in pairs(snap.slots) do
+        if entry.itemId == itemId then return index end
+    end
+    return nil
 end
 
 function TestMgrWeaponThrow:test_throw_consumes_exactly_one_without_save()
     giveExplosive(self.data, 'item143', 2)
-    lu.assertTrue(self.mgr:Handle(self.player, { action = 'throw', slot = 1, seq = 1 }))
+    local slot = barSlotOf(self.data, 'item143')
+    lu.assertNotNil(slot)
+    lu.assertTrue(self.mgr:Handle(self.player, { action = 'throw', slot = slot, seq = 1 }))
     lu.assertEquals(self.data:ItemCount('item143'), 1)
     lu.assertEquals(#self.launches, 1)
     lu.assertEquals(self.launches[1].itemId, 'item143')
@@ -448,17 +467,23 @@ function TestMgrWeaponThrow:test_throw_replay_does_not_consume_or_launch_again()
             local draft = PlayerData.New({ UserId = 77, SetAttribute = function() end })
             draft:Init(); draft:ApplySave(data:Serialize())
             local result = transform(draft)
-            if result then done(true, result) else done(false, 'rejected') end
+            if result then
+                data:ApplySave(draft:Serialize()) -- 模拟真实 Execute 的写回
+                done(true, result)
+            else
+                done(false, 'rejected')
+            end
             executions = executions + 1
             return true
         end,
     }
     giveExplosive(self.data, 'item143', 2)
-    self.mgr:Handle(self.player, { action = 'throw', slot = 1, seq = 7 })
+    local slot = barSlotOf(self.data, 'item143')
+    self.mgr:Handle(self.player, { action = 'throw', slot = slot, seq = 7 })
     lu.assertEquals(self.data:ItemCount('item143'), 1)
     lu.assertEquals(#self.launches, 1)
     self.replayed = true
-    self.mgr:Handle(self.player, { action = 'throw', slot = 1, seq = 7 }) -- 同 seq 重放
+    self.mgr:Handle(self.player, { action = 'throw', slot = slot, seq = 7 }) -- 同 seq 重放
     lu.assertEquals(self.data:ItemCount('item143'), 1) -- 不重复扣
     lu.assertEquals(#self.launches, 1)                -- 不再发射
     lu.assertEquals(executions, 1)                    -- 新结算只一次
@@ -468,8 +493,10 @@ function TestMgrWeaponThrow:test_throw_rejects_non_explosive_and_bad_slot()
     giveExplosive(self.data, 'item143', 1)
     lu.assertTrue(self.mgr:Handle(self.player, { action = 'throw', slot = 9, seq = 1 }))
     lu.assertEquals(self.replies[#self.replies].reason, 'bad-slot')
-    giveExplosive(self.data, 'carp', 1)
-    lu.assertTrue(self.mgr:Handle(self.player, { action = 'throw', slot = 2, seq = 2 }))
+    -- 非爆炸物用初始道具栏里的新手鱼竿验证（鱼会进背包，占不到道具栏格）
+    local rodSlot = barSlotOf(self.data, GameCfg.Items.Id.StarterRod)
+    lu.assertNotNil(rodSlot)
+    lu.assertTrue(self.mgr:Handle(self.player, { action = 'throw', slot = rodSlot, seq = 2 }))
     lu.assertEquals(self.replies[#self.replies].reason, 'bad-throwable')
     lu.assertEquals(self.data:ItemCount('item143'), 1)
 end
@@ -492,7 +519,7 @@ function TestMgrWeaponThrow:test_water_detonation_spawns_3_to_5_fish_before_dama
     end
     self.mgr:Detonate(self.player, 'item143', landing, zone)
     lu.assertEquals(#self.spawnedFish, GameCfg.Ability.Throw.FishMax)
-    lu.assertGreaterThanOrEquals(#self.spawnedFish, GameCfg.Ability.Throw.FishMin)
+    lu.assertTrue(#self.spawnedFish >= GameCfg.Ability.Throw.FishMin)
     for _, f in ipairs(self.spawnedFish) do
         lu.assertEquals(f.owner, self.player)
         lu.assertEquals(f.mult, 1)
@@ -500,24 +527,26 @@ function TestMgrWeaponThrow:test_water_detonation_spawns_3_to_5_fish_before_dama
         lu.assertEquals(species.Grade, 'normal') -- 普通投掷召唤不出首领/精英/极品
         lu.assertEquals(species.RodLevel, 1)
         -- 保底鱼在伤害之前生成
-        for _, a in ipairs(self.applied) do lu.assertGreaterThan(a.order, f.order) end
+        for _, a in ipairs(self.applied) do lu.assertTrue(a.order > f.order) end
     end
     lu.assertEquals(#self.applied > 0, true) -- 随后按 5 米半径结算爆炸
 end
 
 function TestMgrWeaponThrow:test_blast_candidates_exclude_boss_elite_rare_and_high_rod()
     local pondRows = GameCfg.Casting.Zones.WaterCircle2
-    for _, id in ipairs(self.mgr:BlastCandidates(pondRows)) do
-        lu.assertEquals(GameCfg.Fish[id].Grade, 'normal')
+    for _, c in ipairs(self.mgr:BlastCandidates(pondRows)) do
+        lu.assertEquals(GameCfg.Fish[c.id].Grade, 'normal')
     end
     local shrimpRows = GameCfg.Casting.Zones.ShrimpPool
     local picked = self.mgr:BlastCandidates(shrimpRows)
-    for _, id in ipairs(picked) do
-        lu.assertEquals(GameCfg.Fish[id].Grade, 'normal')
-        lu.assertEquals(GameCfg.Fish[id].RodLevel, 1)
+    for _, c in ipairs(picked) do
+        lu.assertEquals(GameCfg.Fish[c.id].Grade, 'normal')
+        lu.assertEquals(GameCfg.Fish[c.id].RodLevel, 1)
     end
     lu.assertFalse((function()
-        for _, id in ipairs(picked) do if id:match('rare') or id:match('Lobster') then return true end end
+        for _, c in ipairs(picked) do
+            if c.id:match('rare') or c.id:match('Lobster') then return true end
+        end
         return false
     end)())
 end
@@ -551,6 +580,8 @@ end
 
 function TestMgrWeaponThrow:test_projectile_flies_then_detonates_in_water()
     giveExplosive(self.data, 'item143', 1)
+    -- 20 米钳制是票面规则：站近水边投，选点才够得到 WaterCircle2 中心
+    self.player.Character.Position = { x = -11.75, y = 2, z = 12 }
     local waterLanding = { x = -11.75, y = 2.183, z = 27.75 }
     self.mgr.Random = function(a, b) if a and b then return a end return 0.5 end -- 数量 3
     self.mgr:Launch(self.player, 'item143', waterLanding)

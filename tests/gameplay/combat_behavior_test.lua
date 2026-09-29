@@ -74,7 +74,7 @@ function TestMeleeHitEntry:setUp()
 			return unit
 		end, CreateAsset = function() return {} end } end
 		if name == 'Players' then return { GetPlayerFromCharacter = function(_, unit)
-			return unit == env.owner and env.ownerPlayer or nil
+			return env.ownerPlayer.Character == unit and env.ownerPlayer or nil
 		end } end
 		if name == 'PhysicsService' then return { GetPartsInPart = function() return {} end } end
 		if name == 'TimerService' then return { CreateTimer = function() end } end
