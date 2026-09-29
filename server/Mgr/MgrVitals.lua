@@ -35,6 +35,18 @@ function Mgr:IsDead(player)
     return state ~= nil and state.dead
 end
 
+-- #128 统一伤害：每个服务端判定段由 NewHit 颁发一次命中身份；同一身份对同一目标只结算一次，
+-- 同帧重复碰撞 / 回调重放不会双扣。DOT 的下一 tick 或下一次范围判定必须重新 NewHit。
+function Mgr:NewHit(source, category)
+    self.NextHitId = (self.NextHitId or 0) + 1
+    return { id = self.NextHitId, source = source, category = category, targets = {} }
+end
+
+local function validAmount(amount)
+    return type(amount) == 'number' and amount > 0 and amount == amount
+        and amount ~= math.huge and amount ~= -math.huge
+end
+
 local function controllerOf(state)
     local character = state.player.Character
     return character and character.Controller
@@ -172,17 +184,38 @@ function Mgr:Revive(state, source)
         'hunger=' .. tostring(state.hunger))
 end
 
--- 掉血单点；扣成功返回 true
+-- 掉血单点；扣成功返回 true 与实际扣血量（过量伤害只计剩余生命）
 function Mgr:ApplyDamage(player, amount)
     local state = self:GetState(player)
-    if not state or state.dead or type(amount) ~= 'number' or amount <= 0 then return false end
+    if not state or state.dead or not validAmount(amount) then return false end
     local controller = controllerOf(state)
     if not controller then return false end
+    local before = healthOf(state)
     local ok = pcall(function() controller:TakeDamage(amount) end)
-    self:WriteHealth(state)
     local health = healthOf(state)
+    self:WriteHealth(state)
     if health and health <= 0 then self:OnDied(state) end
-    return ok
+    if not ok or not before or not health or health >= before then return false end
+    return true, before - health
+end
+
+-- 目标可以是玩家或角色；结算的是角色 Controller，仇恨键始终用 Player 身份。
+-- 返回已结算、实际扣血量；同一命中重复 / 目标死亡 / 非法数值一律 false 且不通知。
+function Mgr:ApplyHit(hit, target, amount)
+    if type(hit) ~= 'table' or type(hit.id) ~= 'number' or type(hit.targets) ~= 'table' then return false end
+    if not validAmount(amount) then return false end
+    local character = target
+    local player = target
+    if not self:GetState(player) and player and player.Character then
+        for _, candidate in pairs(self.States) do
+            if candidate.player.Character == player.Character then player = candidate.player break end
+        end
+    end
+    if player and player.Character then character = player.Character end
+    if not self:GetState(player) or character ~= player.Character then return false end
+    local ok, actual = self:ApplyDamage(player, amount)
+    if ok then hit.targets[player.UserId] = true end
+    return ok, actual
 end
 
 function Mgr:CanEat(player, itemId)
