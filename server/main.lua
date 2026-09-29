@@ -59,6 +59,23 @@ MgrMap.MgrShop.Save = MgrMap.MgrSave
 MgrMap.MgrFerry.Save = MgrMap.MgrSave
 MgrMap.MgrSave.PlayerData = MgrMap.MgrPlayerData
 
+-- #128 战斗接线：统一伤害入口的依赖单向注入在这里完成。
+-- Vitals 需要鱼受击体解析（ApplyHit 的鱼分支）；Ability / FishUnit / Cast 需要玩家生命状态
+-- （施法守卫、追咬结算、动作互斥）；鱼受击体的有效伤害经 DamageListener 回报仇恨。
+-- 契约：DamageListener(carrier, actual, hit) 中 hit.sourcePlayer 是服务端登记的玩家来源身份，
+-- 只有玩家武器伤害才累计仇恨；鱼攻击（fishAttack）来源不是玩家，自然不记。
+MgrMap.MgrAbility.Vitals = MgrMap.MgrVitals
+MgrMap.MgrFishUnit.Vitals = MgrMap.MgrVitals
+MgrMap.MgrVitals.FishCarrier = MgrMap.MgrFishCarrier
+MgrMap.MgrCast.Vitals = MgrMap.MgrVitals
+MgrMap.MgrFishCarrier.DamageListener = function(carrier, actual, hit)
+    local fish = carrier and MgrMap.MgrFishUnit:FindByCarrier(carrier)
+    local attacker = hit and hit.sourcePlayer
+    if fish and attacker and type(actual) == 'number' and actual > 0 then
+        MgrMap.MgrFishUnit:NoteDamage(fish, attacker, actual)
+    end
+end
+
 -- 存档就绪前不创建 Vitals/Ability 等玩家状态；退出先撤销就绪标记，再清理管理器。
 local ActivePlayers = {}
 local Started = false

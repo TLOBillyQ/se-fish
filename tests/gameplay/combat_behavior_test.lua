@@ -107,6 +107,27 @@ function TestMeleeHitEntry:test_fish_hit_uses_one_hit_identity_and_never_direct_
     lu.assertEquals(self.hits[1][3], 25)
 end
 
+-- #128：server/main.lua 必须完成战斗接线，否则运行时各管理器拿不到统一入口。
+TestMainCombatWiring = {}
+local function readSource(path)
+    local parts = {}
+    for line in io.lines(path) do
+        parts[#parts + 1] = line
+    end
+    return table.concat(parts, "\n")
+end
+function TestMainCombatWiring:test_combat_managers_are_wired_to_unified_entry()
+    local src = readSource('server/main.lua')
+    lu.assertStrContains(src, 'MgrMap.MgrAbility.Vitals = MgrMap.MgrVitals')
+    lu.assertStrContains(src, 'MgrMap.MgrFishUnit.Vitals = MgrMap.MgrVitals')
+    lu.assertStrContains(src, 'MgrMap.MgrVitals.FishCarrier = MgrMap.MgrFishCarrier')
+    lu.assertStrContains(src, 'MgrMap.MgrCast.Vitals = MgrMap.MgrVitals')
+    lu.assertStrContains(src, 'MgrMap.MgrFishCarrier.DamageListener')
+    -- 有效鱼受击伤害要回报仇恨：监听里必须经 FindByCarrier 找回鱼并 NoteDamage
+    lu.assertStrContains(src, 'FindByCarrier')
+    lu.assertStrContains(src, 'NoteDamage')
+end
+
 TestEelDischargeEntry = {}
 function TestEelDischargeEntry:setUp()
     self.saved = { game = rawget(_G, 'game'),
