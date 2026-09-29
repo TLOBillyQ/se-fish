@@ -222,6 +222,36 @@ GameCfg.Save = {
     AutosaveSec = 60,
 }
 
+-- 全服纪录（#149 T28）。CONTEXT「纪录」= 某种鱼在所有玩家中的最大重量及其保持者，
+-- 与「个人最大重量」（图鉴收集口径，extra.collection.weights，归 #133）是两套数据。
+-- 存储口径：重量按两位小数放大成整数（Scale）；保持者身份与重量写进**同一条记录**
+-- （{ w = 放大整数, u = UserID, n = 显示名 }），一次 UpdateAsync CAS 同时落地——
+-- 从结构上排除「重量更新了、名字还是旧的」这种错配，读出一律读整条三元组。
+-- 权威数据放普通 DataStore 的单键三元组；OrderedDataStore 的整数范围、限流与跨服可见性
+-- 在编辑器内不可实测，排行索引等 T27 实测通过再加（本轮没有排行消费者，不建派生索引）。
+-- [未查证] OrderedDataStore 整数范围、DataStore 限流速率与错误码文本（技术难点 §5/§6 只有错误码，无阈值）。
+-- 上限用 MaxScaled 挡：超出按 overflow 拒绝并留日志，不截断、不四舍五入（鱼种表里
+-- fish56Boss 的 BaseWeight 是 50000000 的占位值，放大后会越界，正好被这条挡住）。
+GameCfg.Records = {
+    Store = 'sefish_records_v1',
+    KeyPrefix = 'rec:',
+    Scale = 100,                 -- 定标因子：两位小数放大为整数
+    MaxScaled = 1e9,             -- 合法上限（= 1000 万 kg）
+    MaxNameLength = 32,          -- 显示名长度上限，超长按缺失处理
+    HolderFallback = '玩家%s',   -- 显示名缺失/改名未同步时的兜底（代入 UserID）
+    HolderCacheTtlSec = 30,      -- 读到的纪录缓存有效期
+    MissCacheTtlSec = 5,         -- 读失败与「暂无纪录」的负缓存，避免连续请求打爆读频
+    FlushIntervalSec = 5,        -- 合并写入窗口：窗口内同鱼种的上岸只产生一次写
+    MaxRetries = 3,              -- 写失败重试次数（重试走 CAS，过期候选不会盖掉更新的纪录）
+    RetryDelaySec = 1,           -- 重试退避（秒）
+    RequestCooldownSec = 0.2,    -- 单玩家纪录查询限频
+    Texts = {
+        Format = '全服纪录：%.2f kg（%s）',
+        Missing = '全服纪录：暂无',
+        Unavailable = '全服纪录：暂不可用',
+    },
+}
+
 -- 固定点位鱼饵（#45，#27 规格）：每个点位同时最多一份，复用鱼获的 2 米拾取与服务端复验，
 -- 拾取成功后 RespawnSec 秒在原位刷新；鱼饵进 Bait 计数库存，不占道具栏格。鱼获不刷新、不消失。
 -- Spots 的 Position 只用 x/z，y 由向下探地决定（Position.y 是探地起点参考）。
