@@ -25,3 +25,110 @@ function TestSurvivalConfig:test_values_match_design_doc()
     lu.assertEquals(cfg.WeakSpeedScale, 0.5)       -- 策划案：移动速度下降 50%
     lu.assertEquals(cfg.AdrenalineItemId, 'item171') -- 物品表 R172 肾上腺素（自救道具）
 end
+
+-- 假玩家 / 假 Controller（沿用 combat_base_test 模式）；WalkSpeed 供虚弱半速断言
+local function signal()
+    local s = { handlers = {} }
+    function s:Connect(fn)
+        self.handlers[#self.handlers + 1] = fn
+        return { Disconnect = function() end }
+    end
+    function s:Fire(...) for _, fn in ipairs(self.handlers) do fn(...) end end
+    return s
+end
+
+local function newPlayer(id)
+    local c = { Health = 300, MaxHealth = 300, WalkSpeed = 10, HealthChanged = signal(),
+        Died = signal(), OnReborn = signal(), diedCount = 0, reborns = 0 }
+    function c:TakeDamage(n)
+        self.Health = math.max(0, self.Health - n)
+        self.HealthChanged:Fire(self.Health)
+        if self.Health <= 0 then self.diedCount = self.diedCount + 1 self.Died:Fire() end
+    end
+    function c:Reborn() self.reborns = self.reborns + 1 self.Health = self.MaxHealth self.OnReborn:Fire() end
+    local p = { UserId = id, Name = 'p' .. id, attrs = {}, CharacterAdded = signal(),
+        Character = { Controller = c, Position = { x = id, y = 0, z = 0 }, Size = { y = 2 } } }
+    function p:SetAttribute(k, v) self.attrs[k] = v end
+    return p
+end
+
+TestSurvivalDowned = {}
+
+function TestSurvivalDowned:setUp()
+    local env = self
+    self.now = 100
+    self.messages = {}
+    self.savedRE = package.loaded['common.REUtil']
+    package.loaded['common.REUtil'] = {
+        GetRE = function(_, name)
+            self.messages[name] = self.messages[name] or {}
+            return { FireClient = function(_, player, value)
+                table.insert(self.messages[name], { player = player, value = value })
+            end, FireAllClients = function(_, value)
+                table.insert(self.messages[name], { player = 'all', value = value })
+            end, OnServerEvent = signal() }
+        end,
+        CheckRECD = function() return false end,
+    }
+    self.v = assert(loadfile('server/Mgr/MgrVitals.lua'))()
+    self.v.Now = function() return env.now end
+    self.s = assert(loadfile('server/Mgr/MgrSurvival.lua'))()
+    self.s.Now = function() return env.now end
+    self.s.Vitals = self.v
+    self.v:SetLifeHooks(self.s:Hooks())
+    self.a, self.b = newPlayer(1), newPlayer(2)
+    self.v:OnPlayerAdded(self.a)
+    self.v:OnPlayerAdded(self.b)
+    self.s:OnPlayerAdded(self.a)
+    self.s:OnPlayerAdded(self.b)
+end
+
+function TestSurvivalDowned:tearDown()
+    package.loaded['common.REUtil'] = self.savedRE
+end
+
+function TestSurvivalDowned:ctrl(p) return (p or self.a).Character.Controller end
+
+function TestSurvivalDowned:enterDowned()
+    self:ctrl().Health = 50
+    local ok, actual = self.v:ApplyHit(self.v:NewHit(self.b, 'fishAttack'), self.a, 100)
+    lu.assertTrue(ok)
+    lu.assertEquals(actual, 49)
+end
+
+function TestSurvivalDowned:test_lethal_damage_locks_one_health_and_enters_downed()
+    self:enterDowned()
+    lu.assertEquals(self:ctrl().Health, 1)
+    lu.assertTrue(self.v:IsDowned(self.a))
+    lu.assertFalse(self.v:CanAct(self.a))
+    lu.assertEquals(self:ctrl().diedCount, 0) -- 锁血拦截，引擎死亡未发生
+    lu.assertFalse(self.v:GetState(self.a).dead) -- 旧死亡流程未介入
+    lu.assertFalse(self.v:IsDowned(self.b)) -- 不泄漏到其他玩家
+end
+
+function TestSurvivalDowned:test_downed_is_invincible_to_repeated_attacks()
+    self:enterDowned()
+    for _ = 1, 3 do
+        lu.assertFalse(self.v:ApplyHit(self.v:NewHit(self.b, 'fishAttack'), self.a, 50))
+    end
+    lu.assertEquals(self:ctrl().Health, 1)
+    -- 饥饿伤害同样不能越过锁血
+    local state = self.v:GetState(self.a)
+    state.hunger = 0
+    state.lastSec = math.floor(self.now) - 1
+    self.v:UpdateState(state, self.now)
+    lu.assertEquals(self:ctrl().Health, 1)
+end
+
+function TestSurvivalDowned:test_downed_turns_dead_exactly_after_15_seconds()
+    self:enterDowned()
+    self.now = 114.9
+    self.s:Update()
+    lu.assertTrue(self.v:IsDowned(self.a))
+    self.now = 115
+    self.s:Update()
+    lu.assertEquals(self.v:LifeStatus(self.a), 'dead')
+    lu.assertFalse(self.v:CanAct(self.a))
+    lu.assertFalse(self.v:ApplyHit(self.v:NewHit(self.b, 'fishAttack'), self.a, 50))
+    lu.assertEquals(self:ctrl().Health, 1)
+end
