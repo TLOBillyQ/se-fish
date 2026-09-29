@@ -111,7 +111,8 @@ function TestHoldOperate:test_weapon_inventory_and_boss_bait_location_rules()
     local ids = GameCfg.Items.ContainerId
     while self.data:AddItem('carp', 1.37) do end
     local before = self.data:GetItemBarSnapshot()
-    lu.assertFalse(self.data:CanGrant('item134', 1))
+    -- #130：武器不占格，满格也可购买/授予（与 GrantWeapon 行为一致）
+    lu.assertTrue(self.data:CanGrant('item134', 1))
     lu.assertTrue(self.data:GrantWeapon('item134', 1))
     local granted = self.data:GetItemBarSnapshot()
     lu.assertEquals(granted.slots, before.slots)

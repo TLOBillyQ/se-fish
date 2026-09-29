@@ -176,6 +176,18 @@ function PlayerData:Migrate(snapshot)
             if not def or def.Type ~= '近战武器' and def.Type ~= '远程武器'
                 or not integer(count, 1) then return nil, '武器库存损坏' end
         end
+        -- #130 成长字段：强化等级不超上限、购买次数为整数（键统一为行编号字符串）
+        local growth = extra.growth
+        if type(growth.upgrades) ~= 'table' or type(growth.purchases) ~= 'table' then
+            return nil, '成长字段损坏'
+        end
+        for kind, level in pairs(growth.upgrades) do
+            local spec = GameCfg.Shop.UpgradeKinds[kind]
+            if not spec or not integer(level, 0, spec.MaxLevel) then return nil, '强化等级损坏' end
+        end
+        for key, count in pairs(growth.purchases) do
+            if type(key) ~= 'string' or not integer(count, 0) then return nil, '购买次数损坏' end
+        end
         local last = meta.floor
         for _, op in ipairs(meta.operations) do
             if type(op) ~= 'table' or not integer(op.sequence, last + 1, meta.sequence)
@@ -428,6 +440,65 @@ local function isWeapon(itemId)
     return definition ~= nil and (definition.Type == '近战武器' or definition.Type == '远程武器')
 end
 
+-- 商店强化等级（#130）：背包沿用 Data.UpgradeLevel，其余按种类存 extra.growth.upgrades；
+-- 读取侧永不报错，未初始化/损坏一律按 0 级处理。
+function PlayerData:ShopUpgradeLevel(kind)
+    if kind == 'backpack' then
+        return self.Inited and self.Data.UpgradeLevel or 0
+    end
+    if not self.Inited then return 0 end
+    local level = self.Extra.growth.upgrades[kind]
+    return integer(level, 0) and level or 0
+end
+
+-- 商店行已购次数（#130，extra.growth.purchases 以行编号字符串为键）；未初始化按 0 次。
+function PlayerData:PurchaseCount(number)
+    if not self.Inited or not integer(number, 1) then return 0 end
+    return self.Extra.growth.purchases[tostring(number)] or 0
+end
+
+function PlayerData:NotePurchase(number)
+    if not self.Inited or not integer(number, 1) then return false end
+    local key = tostring(number)
+    self.Extra.growth.purchases[key] = (self.Extra.growth.purchases[key] or 0) + 1
+    return true
+end
+
+-- 逐级校验（#130）：必须恰好升一级；满级后返回 'max'，越级/重复返回 'level'，未知行返回 'bad'。
+-- 只校验不生效；生效走 ApplyShopUpgrade，由 MgrShop 与扣款同一事务编排。
+function PlayerData:CanShopUpgrade(upgrade)
+    if type(upgrade) ~= 'table' or type(upgrade.kind) ~= 'string' then return false, 'bad' end
+    local spec = GameCfg.Shop.UpgradeKinds[upgrade.kind]
+    if not spec or not integer(upgrade.level, 1, spec.MaxLevel) then return false, 'bad' end
+    local current = self:ShopUpgradeLevel(upgrade.kind)
+    if current >= spec.MaxLevel then return false, 'max' end
+    if upgrade.level ~= current + 1 then return false, 'level' end
+    return true
+end
+
+-- 生效：调用方须先过 CanShopUpgrade；结果与扣款/计数同一次落账（MgrShop 编排）。
+function PlayerData:ApplyShopUpgrade(upgrade)
+    local ok = self:CanShopUpgrade(upgrade)
+    if not ok then return false end
+    if upgrade.kind == 'backpack' then
+        self.Data.UpgradeLevel = upgrade.level
+    else
+        self.Extra.growth.upgrades[upgrade.kind] = upgrade.level
+    end
+    return true
+end
+
+-- 武器加成查询（#130，按基础线性叠加；弹容/未知种类返回基础值）
+function PlayerData:WeaponDamageScale(kind)
+    if not self.Inited then return 1 end
+    return GameCfg.Shop.DamageScale(kind, self:ShopUpgradeLevel(kind)) or 1
+end
+
+function PlayerData:MagazineSize(base)
+    if not self.Inited or type(base) ~= 'number' then return base end
+    return GameCfg.Shop.MagazineSize(base, self:ShopUpgradeLevel('magazine'))
+end
+
 -- 武器独立计数，不占普通格；只收物品表里的近战/远程武器。
 function PlayerData:GrantWeapon(itemId, count)
     if not self.Inited or not isWeapon(itemId)
@@ -664,6 +735,8 @@ function PlayerData:CanGrant(itemId, count)
     if not self.Inited or not definition or type(count) ~= 'number' or count < 1
         or count ~= math.floor(count) then return false, 'bad' end
     if definition.Container == GameCfg.Items.ContainerId.Bait then return true end
+    -- 武器走独立库存不占格（#124），满格也能购买
+    if isWeapon(itemId) then return true end
     local free = 0
     for _, container in ipairs({
         { GameCfg.Items.ContainerId.ItemBar, self:ItemBarCapacity() },

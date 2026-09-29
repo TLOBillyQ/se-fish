@@ -152,3 +152,162 @@ function TestShopCatalog:test_max_level_results_match_ticket()
     lu.assertAlmostEquals(ability.Explosives.item144.Damage * shop.DamageScale('explosive', 3), 160, 1e-9)
     lu.assertAlmostEquals(ability.Explosives.item145.Damage * shop.DamageScale('explosive', 3), 240, 1e-9)
 end
+
+-- ===== PlayerData 成长与限购状态（#130 持久字段）=====
+-- 失败方式：强化等级/购买次数不走持久字段（重进丢失）；越级或重复强化生效；满级继续扣钱；
+-- 武器购买被背包满格误拒（武器独立库存不占格）；损坏的 growth 存档被静默接受。
+local PlayerData = require('server.Data.PlayerData')
+
+TestShopGrowth = {}
+
+local function newData(userId)
+    local data = PlayerData.New({ UserId = userId, SetAttribute = function() end })
+    data:Init()
+    return data
+end
+
+local function upgradeRow(number)
+    for _, row in ipairs(GameCfg.Shop.Goods) do
+        if row.Number == number then return row end
+    end
+    lu.fail('缺商店行 ' .. tostring(number))
+end
+
+function TestShopGrowth:test_upgrade_levels_start_at_zero()
+    local data = newData(101)
+    for _, kind in ipairs({ 'melee', 'ranged', 'explosive', 'magazine', 'backpack' }) do
+        lu.assertEquals(data:ShopUpgradeLevel(kind), 0, kind)
+    end
+    lu.assertEquals(data:WeaponDamageScale('melee'), 1)
+    lu.assertEquals(data:MagazineSize(5), 5)
+end
+
+function TestShopGrowth:test_apply_upgrade_is_one_level_at_a_time()
+    local data = newData(102)
+    local melee1, melee2 = upgradeRow(51).Upgrade, upgradeRow(50).Upgrade -- 近战 1/2 级
+    lu.assertEquals(melee1.kind, 'melee')
+    -- 越级：0 级直接买 2 级拒绝
+    local ok, reason = data:CanShopUpgrade(melee2)
+    lu.assertFalse(ok)
+    lu.assertEquals(reason, 'level')
+    -- 逐级：1 级生效
+    lu.assertTrue(data:CanShopUpgrade(melee1))
+    lu.assertTrue(data:ApplyShopUpgrade(melee1))
+    lu.assertEquals(data:ShopUpgradeLevel('melee'), 1)
+    lu.assertAlmostEquals(data:WeaponDamageScale('melee'), 1.1, 1e-9)
+    -- 重复：再买 1 级拒绝
+    local okRepeat, reasonRepeat = data:CanShopUpgrade(melee1)
+    lu.assertFalse(okRepeat)
+    lu.assertEquals(reasonRepeat, 'level')
+    -- 2 级生效后伤害 1.2
+    lu.assertTrue(data:ApplyShopUpgrade(melee2))
+    lu.assertAlmostEquals(data:WeaponDamageScale('melee'), 1.2, 1e-9)
+end
+
+function TestShopGrowth:test_max_level_reports_max()
+    local data = newData(103)
+    for level = 1, 3 do
+        lu.assertTrue(data:ApplyShopUpgrade(upgradeRow(({ 41, 40, 39 })[level]).Upgrade)) -- 弹容 1/2/3
+    end
+    lu.assertEquals(data:ShopUpgradeLevel('magazine'), 3)
+    lu.assertEquals(data:MagazineSize(5), 13)
+    local ok, reason = data:CanShopUpgrade({ kind = 'magazine', level = 3, increment = 0.5 })
+    lu.assertFalse(ok)
+    lu.assertEquals(reason, 'max')
+end
+
+function TestShopGrowth:test_backpack_upgrade_drives_storage_level()
+    local data = newData(104)
+    lu.assertTrue(data:ApplyShopUpgrade(upgradeRow(33).Upgrade)) -- 背包升级 1
+    lu.assertEquals(data:ShopUpgradeLevel('backpack'), 1)
+    lu.assertEquals(data.Data.UpgradeLevel, 1)
+    lu.assertEquals(data:ItemBarCapacity(), 3)
+    lu.assertEquals(data:BackpackCapacity(), 10)
+    -- 跳级买背包 3 拒绝
+    local ok, reason = data:CanShopUpgrade(upgradeRow(31).Upgrade)
+    lu.assertFalse(ok)
+    lu.assertEquals(reason, 'level')
+end
+
+function TestShopGrowth:test_unknown_or_bad_upgrade_rejected()
+    local data = newData(105)
+    local ok, reason = data:CanShopUpgrade({ kind = 'gold', level = 1 })
+    lu.assertFalse(ok)
+    lu.assertEquals(reason, 'bad')
+    lu.assertFalse(data:CanShopUpgrade(nil))
+end
+
+function TestShopGrowth:test_purchase_count_persists_across_save()
+    local data = newData(106)
+    lu.assertEquals(data:PurchaseCount(13), 0)
+    data:NotePurchase(13)
+    data:NotePurchase(13)
+    data:NotePurchase(51)
+    lu.assertEquals(data:PurchaseCount(13), 2)
+    local restored = newData(106)
+    lu.assertTrue(restored:ApplySave(data:Serialize()))
+    lu.assertEquals(restored:PurchaseCount(13), 2)
+    lu.assertEquals(restored:PurchaseCount(51), 1)
+    lu.assertEquals(restored:PurchaseCount(14), 0)
+end
+
+function TestShopGrowth:test_upgrade_levels_persist_across_save()
+    local data = newData(107)
+    lu.assertTrue(data:ApplyShopUpgrade(upgradeRow(51).Upgrade)) -- 近战 1
+    lu.assertTrue(data:ApplyShopUpgrade(upgradeRow(50).Upgrade)) -- 近战 2
+    lu.assertTrue(data:ApplyShopUpgrade(upgradeRow(33).Upgrade)) -- 背包 1
+    local restored = newData(107)
+    lu.assertTrue(restored:ApplySave(data:Serialize()))
+    lu.assertEquals(restored:ShopUpgradeLevel('melee'), 2)
+    lu.assertEquals(restored:ShopUpgradeLevel('backpack'), 1)
+    lu.assertAlmostEquals(restored:WeaponDamageScale('melee'), 1.2, 1e-9)
+    lu.assertEquals(restored:ItemBarCapacity(), 3)
+end
+
+-- 武器进独立库存（#124），购买不受道具栏/背包满格影响
+function TestShopGrowth:test_weapon_purchase_not_blocked_by_full_slots()
+    local data = newData(108)
+    while data:AddItem('carp') do end -- 填满道具栏与背包
+    lu.assertTrue(data:CanGrant('item134', 1), '武器不占格，满格不应拒绝')
+    lu.assertTrue(data:GrantItem('item134', 1))
+    lu.assertEquals(data:WeaponCount('item134'), 1)
+    -- 普通物品仍受满格限制
+    local ok, reason = data:CanGrant('starterRod', 1)
+    lu.assertFalse(ok)
+    lu.assertEquals(reason, 'full')
+end
+
+function TestShopGrowth:test_migrate_rejects_corrupt_growth()
+    local data = newData(109)
+    data:NotePurchase(13)
+    lu.assertTrue(data:ApplyShopUpgrade(upgradeRow(51).Upgrade))
+    local snapshot = data:Serialize()
+    -- 强化等级超上限
+    local corrupt1 = data:Migrate(snapshot)
+    lu.assertNotNil(corrupt1)
+    corrupt1.extra.growth.upgrades.melee = 99
+    local restored = newData(109)
+    lu.assertFalse(restored:ApplySave(corrupt1))
+    -- 购买次数非整数
+    local corrupt2 = data:Migrate(snapshot)
+    corrupt2.extra.growth.purchases['13'] = 1.5
+    lu.assertFalse(restored:ApplySave(corrupt2))
+    -- upgrades/purchases 子表缺失
+    local corrupt3 = data:Migrate(snapshot)
+    corrupt3.extra.growth.upgrades = nil
+    lu.assertFalse(restored:ApplySave(corrupt3))
+    -- 完好快照仍能恢复
+    lu.assertTrue(restored:ApplySave(data:Migrate(snapshot)))
+    lu.assertEquals(restored:ShopUpgradeLevel('melee'), 1)
+    lu.assertEquals(restored:PurchaseCount(13), 1)
+end
+
+-- 未初始化/未知种类的兜底：不加成、不取整
+function TestShopGrowth:test_uninitialized_data_returns_base()
+    local data = PlayerData.New({ UserId = 110, SetAttribute = function() end })
+    lu.assertEquals(data:ShopUpgradeLevel('melee'), 0)
+    lu.assertEquals(data:WeaponDamageScale('melee'), 1)
+    lu.assertEquals(data:WeaponDamageScale('gold'), 1)
+    lu.assertEquals(data:MagazineSize(5), 5)
+    lu.assertEquals(data:PurchaseCount(13), 0)
+end
