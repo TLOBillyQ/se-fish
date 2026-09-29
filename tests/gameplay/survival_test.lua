@@ -356,6 +356,28 @@ function TestSurvivalFishing:test_entering_downed_releases_fish_and_breaks_fishi
     lu.assertEquals(self.reelCalls, { self.a })
 end
 
+function TestSurvivalDowned:test_second_death_during_weak_does_not_compound_slow()
+    self:enterDowned() -- 100 进濒死
+    self.now = 115
+    self.s:Update() -- 死亡
+    self.now = 145
+    self.s:Update() -- 虚弱复活：半速，weakUntil=205
+    lu.assertEquals(self:ctrl().WalkSpeed, 5)
+    self.now = 150
+    self:ctrl().Health = 30 -- 虚弱中可被攻击
+    lu.assertTrue(self.v:ApplyHit(self.v:NewHit(self.b, 'fishAttack'), self.a, 100))
+    lu.assertTrue(self.v:IsDowned(self.a))
+    self.now = 165
+    self.s:Update() -- 第二轮死亡
+    self.now = 195
+    self.s:Update() -- 第二轮虚弱复活：baseSpeed 必须仍是全速基准，不能叠成 2.5
+    lu.assertEquals(self:ctrl().WalkSpeed, 5)
+    lu.assertEquals(self.s:GetState(self.a).weakUntil, 255)
+    self.now = 255
+    self.s:Update() -- 虚弱结束恢复全速
+    lu.assertEquals(self:ctrl().WalkSpeed, 10)
+end
+
 TestSurvivalRescue = {}
 
 function TestSurvivalRescue:setUp()
@@ -618,6 +640,18 @@ function TestSurvivalAdrenaline:test_persist_failure_keeps_item_and_does_not_res
     lu.assertNil(self.s:GetState(self.a).adrenalineFlying)
     lu.assertEquals(self:ctrl().Health, 1)
     lu.assertTrue(self.v:IsDowned(self.a)) -- 失败不救起
+end
+
+function TestSurvivalAdrenaline:test_replay_after_successful_rescue_answers_replay_not_precheck()
+    self:give(1)
+    TestSurvivalDowned.enterDowned(self)
+    self:use(1)
+    self:drain() -- 自救落账成功，已救起回活动
+    lu.assertEquals(self.v:LifeStatus(self.a), 'alive')
+    self:use(1) -- 同一请求号重放：只回 'replay'，不能被 'not-downed' 预检拦截
+    lu.assertEquals(self:result().reason, 'replay')
+    lu.assertEquals(self.data:ItemCount('item171'), 0) -- 不重复扣物
+    lu.assertEquals(#self.data:Serialize().meta.operations, 1)
 end
 
 TestSurvivalHelp = {}

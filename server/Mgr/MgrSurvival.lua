@@ -39,6 +39,7 @@ local function healthOf(player)
 end
 
 -- 状态下发（客户端蒙版，ScreenSurvival）：phase + 倒计时终点；endsAt 用服务器时刻。
+-- 注意副作用：每次下发同时把离线标记镜像进存档（Mirror），改名时不要丢掉这半个职责。
 function Mgr:SendState(state)
     local c = cfg()
     local payload = { phase = state.phase }
@@ -130,7 +131,7 @@ function Mgr:Hooks()
         Rescue = function(vitalState)
             local state = self.States[vitalState.player.UserId]
             if state and state.adrenalineFlying then return false end -- 自救落账中让位
-            return self:RescueDowned(self.States[vitalState.player.UserId], vitalState)
+            return self:RescueDowned(state, vitalState)
         end,
         -- 漏网死亡（绕过致命拦截的引擎死亡）：纳入状态机按死亡处理。断开放鱼由
         -- MgrFishUnit / MgrReelIn 既有的 Controller.Died 订阅负责，这里不重复。
@@ -154,8 +155,10 @@ function Mgr:ApplyWeakSpeed(state)
     if not controller then return end
     local ok, speed = pcall(function() return controller.WalkSpeed end)
     if ok and type(speed) == 'number' then
-        state.baseSpeed = speed
-        pcall(function() controller.WalkSpeed = speed * cfg().WeakSpeedScale end)
+        -- baseSpeed 是「进虚弱前的全速基准」，整段虚弱期只捕获一次：虚弱中再次虚弱
+        -- （虚弱期可被攻击致死）不能把已减半的速度当基准，否则结束后永久回不去全速。
+        if state.baseSpeed == nil then state.baseSpeed = speed end
+        pcall(function() controller.WalkSpeed = state.baseSpeed * cfg().WeakSpeedScale end)
     end
 end
 
@@ -200,7 +203,12 @@ function Mgr:TryRecover(state)
     local data = self.PlayerData and self.PlayerData:GetDataInst(player)
     if not data or not self.Save then return end
     local operation, mode = self.Save:ResolveRequest(player, data, 'survival:recover', state.recoverId)
-    if not operation or mode == 'replay' then return end
+    if not operation then return end
+    if mode == 'replay' then -- 同键已落账：恢复事实已持久，直接放行，不再每 tick 重试
+        state.recovering = nil
+        print('[MgrSurvival] 离线恢复重放命中', player.UserId)
+        return
+    end
     state.recoverFlying = true
     local accepted = self.Save:Execute(player, data, operation, function(draft)
         local mark = draft.Extra.survival
@@ -240,7 +248,7 @@ function Mgr:OnPlayerAdded(player)
         self:SendState(state)
         self:TryRecover(state)
     elseif type(mark.weakRemaining) == 'number' and mark.weakRemaining > 0 then
-        self:ApplyWeak(state, mark.weakRemaining)
+        self:ApplyWeak(state, math.min(mark.weakRemaining, cfg().WeakSec)) -- 损坏存档不能造永久虚弱
         print('[MgrSurvival] 离线虚弱剩余', player.UserId, mark.weakRemaining)
         self:SendState(state)
     end
@@ -291,20 +299,22 @@ function Mgr:Reply(player, payload)
 end
 
 -- 肾上腺素自救（策划案：消耗一个恢复 10%；没有则拉起平台购买入口）。
--- 预检（濒死 / 无在飞 / 有物品）→ #123 持久操作：物品扣除与操作日志同键落账，落账确认后才救起。
--- 在飞期间濒死倒计时冻结、队友抢救让位，避免「已扣物品却被转死亡 / 抢先救起」；
--- 回调按 state 对象与 episode 双重核对，旧请求不会落到重进或再次濒死的新状态上。
+-- 先 ResolveRequest 再预检（范本 MgrPlayerData.Operate）：同请求号重放只回 'replay'，
+-- 不能被救起后的 'not-downed'、物品耗尽后的 'no-adrenaline' 等中间态拦截。落账确认后才救起；
+-- 在飞期间濒死倒计时冻结、队友抢救让位；回调按 state 对象与 episode 双重核对。
 function Mgr:UseAdrenaline(player, payload)
     local seq = type(payload) == 'table' and payload.seq or nil
     local function fail(reason)
         self:Reply(player, { seq = seq, ok = false, reason = reason })
         return false
     end
+    local data = self.PlayerData and self.PlayerData:GetDataInst(player)
+    if not data or not self.Save then return fail('unavailable') end
+    local operation, mode = self.Save:ResolveRequest(player, data, 'survival:adrenaline', seq)
+    if mode == 'replay' then return fail('replay') end -- 同请求号只回放记录，不再扣物、不再救起
     local state = self:GetState(player)
     if not state or state.phase ~= 'downed' then return fail('not-downed') end
     if state.adrenalineFlying then return fail('busy') end
-    local data = self.PlayerData and self.PlayerData:GetDataInst(player)
-    if not data or not self.Save then return fail('unavailable') end
     local itemId = cfg().AdrenalineItemId
     if data:ItemCount(itemId) < 1 then
         if self.Platform and self.Platform.OpenAdrenalineShop then
@@ -313,9 +323,7 @@ function Mgr:UseAdrenaline(player, payload)
         end
         return fail('no-adrenaline')
     end
-    local operation, mode = self.Save:ResolveRequest(player, data, 'survival:adrenaline', seq)
-    if not operation then return fail(mode) end
-    if mode == 'replay' then return fail('replay') end -- 同请求号只回放记录，不再扣物、不再救起
+    if not operation then return fail(tostring(mode)) end -- 排队中 / 会话不可用等，预检已过仍失败
     local episode = state.episode
     state.adrenalineFlying = true
     local accepted, why = self.Save:Execute(player, data, operation, function(draft)

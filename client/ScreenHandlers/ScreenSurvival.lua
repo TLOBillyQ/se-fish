@@ -60,6 +60,7 @@ end
 
 function Panel:SetPhase(state)
     local phase = state and state.phase or 'alive'
+    local enteringDead = phase == 'dead' and self.Phase ~= 'dead' -- 呼救提示只进死亡相位时发一次
     self.Phase = phase
     self.EndsAt = tonumber(state and state.endsAt) or nil
     self.WeakUntil = tonumber(state and state.weakUntil) or nil
@@ -72,7 +73,7 @@ function Panel:SetPhase(state)
         end)
     end
     if self.AdrenalineBtn then pcall(function() self.AdrenalineBtn.Visible = phase == 'downed' end) end
-    if phase == 'dead' then notice(GameCfg.Survival.CallHelpText) end
+    if enteringDead then notice(GameCfg.Survival.CallHelpText) end
     self:Tick() -- 立即渲染一次，不空一个心跳帧
 end
 
@@ -82,7 +83,10 @@ function Panel:OnResult(result)
         if result.reason then notice(result.reason) end
         return
     end
-    notice(RESULT_TEXT[result.reason] or GameCfg.Survival.AdrenalineText)
+    -- 未映射的 reason（pending/unavailable/invalid 等）给通用失败文案；映射为空串的安静跳过
+    local text = RESULT_TEXT[result.reason]
+    if text == nil then text = GameCfg.Survival.UnavailableText end
+    if text ~= '' then notice(text) end
 end
 
 function Panel:Start()

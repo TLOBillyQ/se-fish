@@ -130,6 +130,7 @@ GameCfg.Survival = {
     NoAdrenalineText = '没有肾上腺素，可前往地图商店购买',
     PlatformPendingText = '平台复活即将开放，请等待倒计时虚弱复活',
     WeakText = '虚弱中：移动速度减半',
+    UnavailableText = '操作暂时不可用，请稍后再试',
 }
 
 -- 调试开关（#47 / #49，#28 规格）：开发阶段默认开启，发布或开放地图前关闭。开启后服务端接受 GM 发放
