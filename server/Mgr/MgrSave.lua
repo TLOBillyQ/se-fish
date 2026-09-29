@@ -116,6 +116,10 @@ function Mgr:EstimateSize(value)
     for k, v in pairs(value) do total = total + self:EstimateSize(k) + self:EstimateSize(v) + 2 end
     return total
 end
+function Mgr:WithinBudget(snapshot)
+    -- 粗估不是精确 JSON 字节数；留足余量，实际平台上限仍以真 DataStore 回包为准。
+    return self:EstimateSize(snapshot) <= 256 * 1024
+end
 function Mgr:NoteWrite(userId, snapshot, reason)
     local ledger = self.Ledger[userId] or { Writes = 0 }
     ledger.Writes, ledger.Bytes = ledger.Writes + 1, self:EstimateSize(snapshot)
@@ -165,6 +169,7 @@ function Mgr:LoadInto(player, data)
                 candidate, reason = data:Migrate(loaded)
             end
             if not candidate then self:Fail(userId, s, reason) return end
+            if not self:WithinBudget(candidate) then self:Fail(userId, s, '存档容量超预算') return end
             local ok, claimed = self:WithRetry('认领会话 ' .. userId, function()
                 return store:UpdateAsync(s.Key, function(current)
                     if not self:IsCurrent(userId, s, data) then return nil end
@@ -273,7 +278,8 @@ end
 function Mgr:Enqueue(userId, snapshot, reason, done)
     local s = self.Sessions[userId]
     if not s or s.State ~= 'ready' or s.Paused or s.Transition or not self:GetStore()
-        or not snapshot or not s.Data:IsValidSave(snapshot) or snapshot.meta.session ~= s.Token then return false end
+        or not snapshot or not s.Data:IsValidSave(snapshot) or not self:WithinBudget(snapshot)
+        or snapshot.meta.session ~= s.Token then return false end
     local job = { Session = s, Key = s.Key, Snapshot = copy(snapshot), Reason = reason or 'save', Done = done,
         NoRetry = reason == 'gm' }
     self.Pending[userId] = appendJob(self.Pending[userId], job)
@@ -368,9 +374,9 @@ function Mgr:Execute(player, data, operation, transform, done)
         while #nextValue.meta.operations > 64 do
             nextValue.meta.floor = table.remove(nextValue.meta.operations, 1).sequence
         end
-        if not data:IsValidSave(nextValue) then
+        if not data:IsValidSave(nextValue) or not self:WithinBudget(nextValue) then
             s.Transition = false
-            done(false, 'invalid-result')
+            callback('结算容量拒绝', userId, done, false, 'invalid-result-or-budget')
             return
         end
         data.Inited = false
