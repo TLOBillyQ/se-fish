@@ -85,3 +85,35 @@ function TestReelClient:test_heartbeat_collects_after_hundred_ms()
     lu.assertEquals(self.sent[1], { name = 'ReelInRE',
         payload = { s = 's1', n = 1, q = 1 } })
 end
+
+-- #133：界面被遮挡只影响表现——不主动收线、不重置计时，待发批次先送出去
+function TestReelClient:test_suspend_flushes_pending_and_keeps_the_session()
+    self.client:SetSession('s1')
+    self.client:Click()
+    self.client:Suspend()
+    lu.assertEquals(self.sent, { { name = 'ReelInRE', payload = { s = 's1', n = 1, q = 1 } } })
+    lu.assertEquals(self.client.SessionId, 's1')
+    lu.assertNotNil(self.client.Display)
+    lu.assertTrue(self.client.Suspended)
+end
+
+function TestReelClient:test_started_while_suspended_is_kept_and_usable_after_resume()
+    self.client:Suspend()
+    self.events.ReelInRE.OnClientEvent:Fire({ action = 'started', session = 's1', progress = 50 })
+    lu.assertEquals(#self.sent, 0)
+    lu.assertEquals(self.client.SessionId, 's1')
+    self.client:Resume()
+    self.client:Click()
+    self.now = 0.1
+    self.heartbeat:Fire()
+    lu.assertEquals(self.sent[#self.sent], { name = 'ReelInRE',
+        payload = { s = 's1', n = 1, q = 1 } })
+end
+
+-- 会话真结束后，迟到的 started 回声不能再把界面拉回收线中
+function TestReelClient:test_ended_session_ignores_late_started_echo()
+    self.client:SetSession('s1')
+    self.client:Clear('s1')
+    self.events.ReelInRE.OnClientEvent:Fire({ action = 'started', session = 's1', progress = 50 })
+    lu.assertNil(self.client.SessionId)
+end

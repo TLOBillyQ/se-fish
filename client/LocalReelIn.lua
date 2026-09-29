@@ -7,7 +7,7 @@ local LocalReelIn = { SessionId = nil }
 LocalReelIn.CHANNEL = 'ReelInRE'
 
 function LocalReelIn:SetSession(id)
-    if type(id) ~= 'string' or id == '' or self.Suspended or self.ClosedSession == id then return false end
+    if type(id) ~= 'string' or id == '' or self.ClosedSession == id then return false end
     if self.SessionId == id then return true end
     self.SessionId = id
     self.Aggregator = RateLimit.NewAggregator({ SessionId = id,
@@ -52,9 +52,11 @@ function LocalReelIn:Close(id)
     self.CloseRE:FireServer({ session = session })
 end
 
-function LocalReelIn:Suspend(id)
+-- #133 界面被遮挡只是表现：待发批次先送出去（C-10），会话、序号与本地进度原样保留。
+-- 不主动收线——服务端照常按权威时钟衰减，到 0 由服务端判脱钩，重开界面接着显示同一个进度。
+function LocalReelIn:Suspend()
+    if self.Aggregator then self:Flush() end
     self.Suspended = true
-    self:Close(id)
 end
 
 function LocalReelIn:Resume()
@@ -88,7 +90,6 @@ function LocalReelIn:Start()
     self.Connection = self.RE.OnClientEvent:Connect(function(payload)
         if type(payload) ~= 'table' or type(payload.session) ~= 'string' then return end
         if payload.action == 'started' then
-            if self.Suspended then self:Close(payload.session) end
             if not self:SetSession(payload.session) then return end
         elseif self.SessionId ~= payload.session then return end
         self.LastResult = payload

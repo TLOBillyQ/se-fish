@@ -335,7 +335,8 @@ end
 
 local function castActionEnabled(self, phase, rod, drop, active)
     return self.IsOpen == true
-        and ((rod and phase == 'idle') or drop or phase == 'cast' or active == true) or false
+        and ((rod and phase == 'idle') or drop or phase == 'cast'
+            or phase == 'escaped' or active == true) or false
 end
 
 local function castActionColor(phase, now, alert)
@@ -357,8 +358,8 @@ local function showCastAction(self, phase, rod, drop, active, alertNow)
     self.BtnItemAction.TouchEnabled = castActionEnabled(self, phase, rod, drop, active)
     self.BtnItemAction.ButtonNormalColor = castActionColor(phase, alertNow, GameCfg.HookAlert)
     self.BtnItemActionLabel.Text = phase == 'hooked' and '点击收线'
-        or phase == 'landed' and '已上岸' or phase == 'cast' and '收竿' or drop and '放下'
-        or rod and '抛竿' or '使用'
+        or phase == 'landed' and '已上岸' or (phase == 'cast' or phase == 'escaped') and '收竿'
+        or drop and '放下' or rod and '抛竿' or '使用'
 end
 
 local function castProgress(self, reel, active)
@@ -946,7 +947,7 @@ function ScreenHandler:Init()
             and _G.LocalReelIn.SessionId == self.CastState.reelSession then
             _G.LocalReelIn:Click()
             self:ShowCast()
-        elseif phase == 'cast' then
+        elseif phase == 'cast' or phase == 'escaped' then
             _G.REUtil:GetRE('CastAction'):FireServer({ action = 'Reel' })
         elseif phase == 'idle' and self.CastState and self.CastState.holding then
             _G.REUtil:GetRE('CastAction'):FireServer({ action = 'Drop' })
@@ -1029,11 +1030,11 @@ function ScreenHandler:Init()
             return
         end
         if state.phase ~= 'idle' and state.phase ~= 'cast'
-            and state.phase ~= 'hooked' and state.phase ~= 'landed' then return end
-        if not self.IsOpen then
-            if state.phase == 'hooked' then _G.LocalReelIn:Close(state.reelSession) end
-            return
-        end
+            and state.phase ~= 'hooked' and state.phase ~= 'landed'
+            and state.phase ~= 'escaped' then return end
+        -- #133：界面被别的界面盖住只是表现问题——收线继续由服务端权威推进，回流后照旧显示，
+        -- 所以这里不再因为「界面没开」就去取消收线会话。
+        if not self.IsOpen then return end
         if waitingCast(state) then
             if self.AlertedCastId and state.castId < self.AlertedCastId then return end
             self.FailureUntil = nil
@@ -1124,9 +1125,8 @@ function ScreenHandler:CloseScreen()
     self.FailureLanding = nil
     self:EndAim()
     LocalAttackButton:SetOpen(false)
-    if _G.LocalReelIn then
-        _G.LocalReelIn:Suspend(self.CastState and self.CastState.reelSession)
-    end
+    -- #133 遮挡只影响表现：不主动收线，待发点击先 flush，会话与进度留给重开时接着显示
+    if _G.LocalReelIn then _G.LocalReelIn:Suspend() end
     self.CastState = nil
     self.SplashUntil = nil
     self:ShowCast()

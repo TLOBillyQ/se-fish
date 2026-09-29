@@ -120,63 +120,91 @@ function TestReelUI:test_click_feedback_and_smooth_chase_on_the_bar()
     lu.assertAlmostEquals(self.nodes.ReelProgress.Percent, 39, 1e-9)
 end
 
-function TestReelUI:test_close_flush_and_stale_echo_cannot_reopen()
+-- #133：关界面（被商店/背包盖住）只影响表现——待发批次先 flush，但不收线、不重置；
+-- 重开界面接着显示同一个进度，而不是跳回 50。
+function TestReelUI:test_close_flushes_pending_without_reeling_in_and_reopen_keeps_progress()
     self.events.ItemBarState.OnClientEvent:Fire({ slots = {
         [1] = { itemId = 'starterRod', count = 1 },
     }, bait = { worm = 1 }, selectedSlot = 1 })
     self.events.CastState.OnClientEvent:Fire({ phase = 'hooked', reelSession = 's1' })
+    self.events.ReelInRE.OnClientEvent:Fire({ action = 'started', session = 's1', progress = 50 })
     lu.assertEquals(self.reel.SessionId, 's1')
-    lu.assertEquals(self.nodes.ReelProgress.Kind, 'EUILoadingBar')
     lu.assertFalse(self.nodes.ReelProgress.TouchEnabled)
     lu.assertFalse(self.nodes.ReelProgress.SwallowTouchEnabled)
-    lu.assertEquals(self.nodes.ReelProgress.Percent, 50)
-    self.events.ReelInRE.OnClientEvent:Fire({ action = 'progress', session = 's1', progress = 37.25 })
-    lu.assertEquals(self.nodes.ReelProgress.Percent, 50)
-    self:settle()
-    lu.assertEquals(self.nodes.ReelProgress.Percent, 36)
-    self.nodes.ReelProgress.OnClicked:Fire()
-    lu.assertEquals(self.reel.Aggregator:PendingCount(), 0)
     self.nodes.ItemAction2.OnClicked:Fire()
+    lu.assertEquals(self.nodes.ReelProgress.Percent, 55)
     self.ui:CloseScreen('ScreenMain')
-    lu.assertEquals(self.sent[#self.sent - 1], {
-        name = 'ReelInRE', payload = { s = 's1', n = 1, q = 1 } })
     lu.assertEquals(self.sent[#self.sent], {
-        name = 'CloseReelIn', payload = { session = 's1' } })
+        name = 'ReelInRE', payload = { s = 's1', n = 1, q = 1 } })
+    lu.assertEquals(self.reel.SessionId, 's1')
     lu.assertFalse(self.nodes.ReelProgress.Visible)
     lu.assertFalse(self.nodes.ItemAction2.TouchEnabled)
-    local sent = #self.sent
-    self.nodes.ItemAction2.OnClicked:Fire()
-    self.events.ReelInRE.OnClientEvent:Fire({ action = 'started', session = 's1', progress = 50 })
-    self.events.CastState.OnClientEvent:Fire({ phase = 'hooked', reelSession = 's1' })
-    lu.assertNil(self.reel.SessionId)
-    lu.assertEquals(#self.sent, sent)
+    -- 遮挡期间服务端照常衰减到 30，本地追平；没有点击就不再上行（进度条不可见，只看本地显示值）
+    self.now = 0.5
+    self.events.ReelInRE.OnClientEvent:Fire({ action = 'progress', session = 's1', progress = 30, accepted = 0, q = 1 })
+    self:settle()
+    lu.assertAlmostEquals(self.reel:DisplayProgress(), 28.75, 1e-9)
     self.ui:OpenScreen('ScreenMain')
-    lu.assertNil(self.reel.SessionId)
-    self.events.CastState.OnClientEvent:Fire({ phase = 'hooked', reelSession = 's1' })
-    lu.assertNil(self.reel.SessionId)
-    lu.assertFalse(self.nodes.ReelProgress.Visible)
-    self.events.CastState.OnClientEvent:Fire({ phase = 'hooked', reelSession = 's2' })
-    lu.assertEquals(self.reel.SessionId, 's2')
+    self.events.CastState.OnClientEvent:Fire({ phase = 'hooked', reelSession = 's1', snapshot = true })
+    lu.assertEquals(self.reel.SessionId, 's1')
     lu.assertTrue(self.nodes.ItemAction2.TouchEnabled)
     lu.assertTrue(self.nodes.ReelProgress.Visible)
-    self.events.ReelInRE.OnClientEvent:Fire({ action = 'progress', session = 's2', progress = 0 })
-    self:settle()
-    lu.assertEquals(self.nodes.ReelProgress.Percent, 0)
-    self.events.ReelInRE.OnClientEvent:Fire({ action = 'progress', session = 's2', progress = 100 })
-    self:settle()
-    lu.assertEquals(self.nodes.ReelProgress.Percent, 98.75)
+    lu.assertAlmostEquals(self.nodes.ReelProgress.Percent, 28.75, 1e-9)
+    -- 全程只有一次上行（关界面前那批），从头到尾没有 CloseReelIn
+    local batches, closes = 0, 0
+    for _, message in ipairs(self.sent) do
+        if message.name == 'ReelInRE' then batches = batches + 1
+        elseif message.name == 'CloseReelIn' then closes = closes + 1 end
+    end
+    lu.assertEquals(batches, 1)
+    lu.assertEquals(closes, 0)
 end
 
-function TestReelUI:test_started_during_closed_screen_is_cancelled_without_opening()
+-- #133：界面被遮挡期间上钩：不取消收线、也不自动开界面；重开后接着显示
+function TestReelUI:test_hook_while_screen_is_hidden_is_kept_and_shown_on_reopen()
+    self.events.ItemBarState.OnClientEvent:Fire({ slots = {
+        [1] = { itemId = 'starterRod', count = 1 },
+    }, bait = { worm = 1 }, selectedSlot = 1 })
     self.ui:CloseScreen('ScreenMain')
-    self.events.ReelInRE.OnClientEvent:Fire({ action = 'started', session = 'late', progress = 50 })
-    lu.assertEquals(self.sent[#self.sent], {
-        name = 'CloseReelIn', payload = { session = 'late' } })
-    lu.assertNil(self.reel.SessionId)
-    self.ui:OpenScreen('ScreenMain')
+    local sent = #self.sent
     self.events.CastState.OnClientEvent:Fire({ phase = 'hooked', reelSession = 'late' })
-    lu.assertNil(self.reel.SessionId)
+    self.events.ReelInRE.OnClientEvent:Fire({ action = 'started', session = 'late', progress = 50 })
+    lu.assertEquals(self.reel.SessionId, 'late')
+    lu.assertEquals(#self.sent, sent)
+    for _, message in ipairs(self.sent) do lu.assertNotEquals(message.name, 'CloseReelIn') end
     lu.assertFalse(self.nodes.ItemAction2.TouchEnabled)
+    self.now = 0.5
+    self.events.ReelInRE.OnClientEvent:Fire({ action = 'progress', session = 'late', progress = 45, accepted = 0, q = 1 })
+    self:settle()
+    lu.assertFalse(self.nodes.ReelProgress.Visible)
+    self.ui:OpenScreen('ScreenMain')
+    self.events.CastState.OnClientEvent:Fire({ phase = 'hooked', reelSession = 'late', snapshot = true })
+    lu.assertTrue(self.nodes.ItemAction2.TouchEnabled)
+    lu.assertEquals(self.nodes.BtnItemActionLabel.Text, '点击收线')
+    -- 重开接着遮挡时的进度（50 - 3.75），不是新建会话跳回 50
+    lu.assertAlmostEquals(self.nodes.ReelProgress.Percent, 46.25, 1e-9)
+end
+
+-- #133：脱钩后按钮变「收竿」且可点；收竿回包 idle 后恢复「抛竿」
+function TestReelUI:test_escaped_phase_reels_back_without_showing_the_bar()
+    self.events.ItemBarState.OnClientEvent:Fire({ slots = {
+        [1] = { itemId = 'starterRod', count = 1 },
+    }, bait = { worm = 1 }, selectedSlot = 1 })
+    self.events.CastState.OnClientEvent:Fire({ phase = 'hooked', reelSession = 'e1' })
+    self.events.ReelInRE.OnClientEvent:Fire({ action = 'started', session = 'e1', progress = 50 })
+    self.events.ReelInRE.OnClientEvent:Fire({ action = 'unhooked', session = 'e1' })
+    self.events.CastState.OnClientEvent:Fire({ phase = 'escaped', reelSession = 'e1' })
+    lu.assertNil(self.reel.SessionId)
+    lu.assertEquals(self.nodes.BtnItemActionLabel.Text, '收竿')
+    lu.assertTrue(self.nodes.ItemAction2.TouchEnabled)
+    lu.assertFalse(self.nodes.ReelProgress.Visible)
+    local sent = #self.sent
+    self.nodes.ItemAction2.OnClicked:Fire()
+    lu.assertEquals(#self.sent, sent + 1)
+    lu.assertEquals(self.sent[#self.sent], { name = 'CastAction', payload = { action = 'Reel' } })
+    self.events.CastState.OnClientEvent:Fire({ phase = 'idle' })
+    lu.assertEquals(self.nodes.BtnItemActionLabel.Text, '抛竿')
+    lu.assertTrue(self.nodes.ItemAction2.TouchEnabled)
 end
 
 -- #37：上岸瞬间「收线」按钮灰化且不可点，回到 idle 后恢复成抛竿
