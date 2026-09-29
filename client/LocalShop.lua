@@ -11,13 +11,17 @@ local LocalShop = { Bubbles = {} }
 local World = game:GetService('World')
 local Players = game:GetService('Players')
 
-local FailText = {
-    coin = '金币不足',
+-- 失败提示（#130 扩展 limit/level 与金币页引导）；服务端 reason 为准，未知原因兜底通用文案
+LocalShop.FailText = {
+    coin = '金币不足，可切到商店金币页购买金币（平台商店）',
     full = '背包已满',
-    max = '道具栏和背包已升至上限',
+    max = '已升至上限',
     range = '离钓场老板太远了',
     item = '这件商品暂不出售',
+    limit = '该商品已达购买次数上限',
+    level = '需要先购买前一级强化',
 }
+local FailText = LocalShop.FailText
 
 local function notice(msg)
     if _G.LocalMsgNotice then _G.LocalMsgNotice(msg) end
@@ -113,7 +117,8 @@ function LocalShop:Start()
                 .. ' 格，背包 ' .. tostring((result.level == #GameCfg.Items.UpgradePrices and GameCfg.Items.MaxBackpackSlots
                     or GameCfg.Items.InitialBackpackSlots + result.level * GameCfg.Items.BackpackSlotsPerUpgrade)) .. ' 格')
         elseif result.ok then
-            notice('购买成功：' .. (definition and definition.Name or tostring(result.itemId))
+            -- 升级行无 itemKey，名称以服务端回包为准（#130）
+            notice('购买成功：' .. tostring(result.name or definition and definition.Name or result.itemId)
                 .. '，花费 ' .. tostring(result.price) .. ' 金币')
         else
             notice(FailText[result.reason] or '购买失败')

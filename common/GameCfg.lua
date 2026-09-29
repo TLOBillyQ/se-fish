@@ -369,11 +369,12 @@ end
 
 -- 某摊位某页的上架行：MinShopLevel <= level 且 Page 匹配；当地新品（MinShopLevel == level）置顶，
 -- 同组按原表编号 Number 升序（排序键唯一，不依赖 table.sort 稳定性；GameSpec §7 新品置顶口径）。
-function GameCfg.Shop.ListForPage(level, page)
+-- includeLocked 时等级不够的行也返回（客户端灰显「锁定」用），排序口径不变。
+function GameCfg.Shop.ListForPage(level, page, includeLocked)
     local rows = {}
     if type(level) ~= 'number' or type(page) ~= 'string' then return rows end
     for _, row in ipairs(GameCfg.Shop.Goods) do
-        if row.Page == page and row.MinShopLevel <= level then rows[#rows + 1] = row end
+        if row.Page == page and (includeLocked or row.MinShopLevel <= level) then rows[#rows + 1] = row end
     end
     table.sort(rows, function(a, b)
         local aNew = a.MinShopLevel == level and 0 or 1
