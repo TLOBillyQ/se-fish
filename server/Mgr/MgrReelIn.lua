@@ -73,6 +73,12 @@ function Mgr:Close(player, payload)
     self:Finish(session, session.Progress.Result or 'unhooked')
 end
 
+-- T10（#131）：濒死/死亡打断收线，与 Died / CharacterRemoving 同语义（unhooked）
+function Mgr:Interrupt(player)
+    local session = player and self.Sessions[player.UserId]
+    if session and session.Player == player then self:Finish(session, 'unhooked') end
+end
+
 function Mgr:OnPlayerAdded(player)
     local prior = self.Connections[player.UserId]
     if prior and prior.Player == player then return end

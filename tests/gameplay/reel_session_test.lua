@@ -87,6 +87,18 @@ function TestReelSession:test_update_does_not_change_delayed_batch_result()
     lu.assertAlmostEquals(progress.Progress, direct.Progress, 0.5)
 end
 
+function TestReelSession:test_interrupt_breaks_hooked_session()
+    -- #131：濒死/死亡打断收线；与 Died / CharacterRemoving 同语义（unhooked），幂等且不波及他人
+    self.mgr:Interrupt(self.a)
+    lu.assertEquals(self.a.results, { 'unhooked' })
+    lu.assertNil(self.mgr.Sessions[1])
+    lu.assertNotNil(self.mgr.Sessions[2])
+    self.mgr:Interrupt(self.a)
+    lu.assertEquals(#self.a.results, 1)
+    self.mgr:Interrupt(nil)
+    lu.assertNotNil(self.mgr.Sessions[2])
+end
+
 function TestReelSession:test_grace_never_extends_past_two_hundred_ms()
     self.now = 10.179
     self.mgr:Update()

@@ -259,3 +259,26 @@ function TestSurvivalTakeover:test_engine_revive_during_dead_is_corrected_once()
     self:tick(60) -- 虚弱结束恢复全速
     lu.assertEquals(self:ctrl().WalkSpeed, 10)
 end
+
+TestSurvivalFishing = {}
+
+function TestSurvivalFishing:setUp()
+    TestSurvivalDowned.setUp(self)
+    self.fishCalls = {}
+    self.reelCalls = {}
+    self.s.FishUnit = { OnDied = function(_, p) self.fishCalls[#self.fishCalls + 1] = p end }
+    self.s.ReelIn = { Interrupt = function(_, p) self.reelCalls[#self.reelCalls + 1] = p end }
+end
+
+function TestSurvivalFishing:ctrl(p) return (p or self.a).Character.Controller end
+
+function TestSurvivalFishing:tearDown()
+    TestSurvivalDowned.tearDown(self)
+end
+
+function TestSurvivalFishing:test_entering_downed_releases_fish_and_breaks_fishing()
+    TestSurvivalDowned.enterDowned(self)
+    -- 释放举鱼 + 断抛竿会话复用 MgrFishUnit:OnDied；收线会话走 MgrReelIn:Interrupt
+    lu.assertEquals(self.fishCalls, { self.a })
+    lu.assertEquals(self.reelCalls, { self.a })
+end
