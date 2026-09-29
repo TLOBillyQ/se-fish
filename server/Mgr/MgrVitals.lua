@@ -9,6 +9,7 @@
 -- 仍没复活，兜底调一次 Controller:Reborn()。死亡时松手放鱼、断开收线由 MgrFishUnit / MgrReelIn 既有的 Died 订阅负责。
 local GameCfg = require('common.GameCfg')
 local Vitals = require('common.Vitals')
+local DamageNotice = require('common.DamageNotice')
 
 local Mgr = { States = {} }
 
@@ -45,6 +46,25 @@ local function healthOf(state)
     return ok and tonumber(health) or nil
 end
 
+local function isBadNumber(v)
+    return type(v) ~= 'number' or v ~= v or v == math.huge or v == -math.huge
+end
+
+local function readPosition(unit)
+    if not unit then return nil end
+    local ok, pos = pcall(function() return unit.Position end)
+    if ok and pos and not isBadNumber(pos.x) and not isBadNumber(pos.y) and not isBadNumber(pos.z) then
+        return pos
+    end
+end
+
+local function characterHeight(state)
+    local ok, size = pcall(function() return state.player.Character.Size end)
+    if ok and size and type(size.y) == 'number' and size.y > 0 and size.y < math.huge then
+        return size.y
+    end
+end
+
 local function write(player, key, value)
     pcall(function() player:SetAttribute(key, value) end)
 end
@@ -60,10 +80,36 @@ function Mgr:WriteHunger(state)
     write(state.player, 'MaxHunger', cfg().MaxHunger)
 end
 
+-- 跳字观察（#118）：以 state.baseline 为结算前血量，HealthChanged / Died 两路统一走这里。
+-- 引擎致命一击可能只发 Died 不发 HealthChanged（鱼侧实测），所以 OnDied 也要记录；
+-- 同一次伤害两路都到时，第一路记录后同步基线，第二路差额为 0 自然去重。
+function Mgr:RecordHealth(state)
+    if not state.bound then return end
+    local health = healthOf(state)
+    if not health then return end
+    local previous = state.baseline
+    local position = readPosition(state.player.Character)
+    if position then
+        state.LastPosition = { x = position.x, y = position.y, z = position.z }
+    else
+        position = state.LastPosition
+    end
+    state.baseline = health
+    if not previous or health >= previous or not position then return end
+    local payload = DamageNotice.FromHealth(state.player.UserId, previous, health, position,
+        nil, 'player', characterHeight(state))
+    if payload then
+        print('[MgrVitals] 实际扣血', state.player.UserId, previous, health, payload.amount)
+        local sent, err = pcall(self.DamagePublisher or DamageNotice.Publish, payload)
+        if not sent then print('[MgrVitals] 伤害通知失败', state.player.UserId, tostring(err)) end
+    end
+end
+
 function Mgr:SetControllerHealth(state, value)
     local controller = controllerOf(state)
     if not controller then return false end
     local ok = pcall(function() controller.Health = value end)
+    state.baseline = healthOf(state)
     self:WriteHealth(state)
     return ok
 end
@@ -86,9 +132,13 @@ function Mgr:Bind(state, character)
         if not state.bound then controller.Health = cfg().MaxHealth end
     end)
     state.bound = true
+    state.baseline = healthOf(state)
     local links = state.controllerLinks
     if controller.HealthChanged then
-        links.HealthChanged = controller.HealthChanged:Connect(function() self:WriteHealth(state) end)
+        links.HealthChanged = controller.HealthChanged:Connect(function()
+            self:RecordHealth(state)
+            self:WriteHealth(state)
+        end)
     end
     if controller.Died then
         links.Died = controller.Died:Connect(function() self:OnDied(state) end)
@@ -101,6 +151,7 @@ end
 
 function Mgr:OnDied(state)
     if state.dead or self.States[state.player.UserId] ~= state then return end
+    self:RecordHealth(state)
     state.dead = true
     state.deadAt = self:Now()
     state.rebornCalled = false

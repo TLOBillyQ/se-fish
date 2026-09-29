@@ -303,3 +303,138 @@ function TestEatSlot:test_eat_slot_only_fish_and_clears_slot()
     lu.assertNil(d.Data.SelectedSlot)
     lu.assertNil(d:EatSlot(2))
 end
+
+-- #118 玩家受伤跳字通知：HealthChanged / Died 双路观察基线差额，只在正扣血时各发一条。
+-- 失败方式：只在 ApplyDamage 接入漏掉直接 Controller 扣血；致命一击只发 Died 漏报；
+-- 两路重复上报；初始化 / 绑定 / 复活 / 治疗误报；目标位置读取失败时用失效对象。
+TestDamageNotice = {}
+
+local function newCharacter(x, y, z)
+    return { Controller = newController(), Position = { x = x, y = y, z = z }, Size = { y = 2 } }
+end
+
+local function newDamagePlayer(id, x, y, z)
+    local p = { UserId = id, Name = 'p' .. id, attrs = {}, writes = {}, CharacterAdded = signal() }
+    p.Character = newCharacter(x, y, z)
+    function p:SetAttribute(k, v)
+        self.attrs[k] = v
+        self.writes[k] = (self.writes[k] or 0) + 1
+    end
+    return p
+end
+
+function TestDamageNotice:setUp()
+    self.mgr = assert(loadfile('server/Mgr/MgrVitals.lua'))()
+    self.mgr.Now = function() return 100 end
+    self.notices = {}
+    local notices = self.notices
+    self.mgr.DamagePublisher = function(payload) notices[#notices + 1] = payload end
+    self.a = newDamagePlayer(1, 3, 4, 5)
+    self.mgr:OnPlayerAdded(self.a)
+end
+
+function TestDamageNotice:test_binding_and_healing_never_report()
+    lu.assertEquals(self.notices, {}) -- 绑定回满 300 不报
+    self.mgr:SetHealth(self.a, 200)
+    lu.assertEquals(#self.notices, 1)
+    self.mgr:SetHealth(self.a, 300) -- 调高不报
+    lu.assertEquals(#self.notices, 1)
+    self.mgr:Eat(self.a, 'goldfish') -- 已在满血，治疗方向不报
+    lu.assertEquals(#self.notices, 1)
+end
+
+function TestDamageNotice:test_apply_damage_and_direct_controller_paths_both_report_once()
+    self.mgr:ApplyDamage(self.a, 2.7)
+    self:ctrlDirect(2.4) -- 电鳗 / 首领直接走 Controller
+    lu.assertEquals(#self.notices, 2)
+    lu.assertAlmostEquals(self.notices[1].amount, 2.7, 0.00001)
+    lu.assertAlmostEquals(self.notices[2].amount, 2.4, 0.00001)
+    lu.assertEquals(self.notices[1].targetType, 'player')
+    lu.assertEquals(self.notices[1].targetId, 1)
+    lu.assertEquals(self.notices[1].position, { x = 3, y = 4, z = 5 })
+    lu.assertEquals(self.notices[1].height, 2)
+end
+
+function TestDamageNotice:test_lethal_hit_reported_once_when_only_died_fires()
+    self.mgr:SetHealth(self.a, 4)
+    local notices = self.notices
+    while #notices > 0 do table.remove(notices) end
+    local c = self:ctrlDirect()
+    c.Health = 0
+    c.Died:Fire() -- 引擎致死不一定发 HealthChanged
+    c.HealthChanged:Fire(0) -- 即使补发也不重复
+    lu.assertEquals(#notices, 1)
+    lu.assertEquals(notices[1].amount, 4)
+    lu.assertTrue(self.mgr:IsDead(self.a))
+end
+
+-- 另一种引擎时序：HealthChanged(0) 先到、Died 随后，同样只报一次
+function TestDamageNotice:test_lethal_hit_reported_once_when_health_changed_comes_first()
+    self.mgr:SetHealth(self.a, 4)
+    local notices = self.notices
+    while #notices > 0 do table.remove(notices) end
+    local c = self:ctrlDirect()
+    c.Health = 0
+    c.HealthChanged:Fire(0)
+    c.Died:Fire()
+    lu.assertEquals(#notices, 1)
+    lu.assertEquals(notices[1].amount, 4)
+    lu.assertTrue(self.mgr:IsDead(self.a))
+end
+
+function TestDamageNotice:test_overkill_reports_only_remaining_health()
+    self.mgr:SetHealth(self.a, 4)
+    local notices = self.notices
+    while #notices > 0 do table.remove(notices) end
+    self:ctrlDirect(10)
+    lu.assertEquals(#notices, 1)
+    lu.assertEquals(notices[1].amount, 4)
+end
+
+function TestDamageNotice:test_starving_reports_each_settled_tick()
+    self.mgr:SetHunger(self.a, 0)
+    local notices = self.notices
+    while #notices > 0 do table.remove(notices) end
+    local now = 100
+    self.mgr.Now = function() return now end
+    now = 101.5
+    self.mgr:Update() -- 跨一秒：饥饿 0，结算一次 5 点
+    lu.assertEquals(#notices, 1)
+    lu.assertEquals(notices[1].amount, 5)
+    now = 102.5
+    self.mgr:Update()
+    lu.assertEquals(#notices, 2)
+    lu.assertEquals(notices[2].amount, 5) -- 每秒实际扣血各自成一条
+end
+
+function TestDamageNotice:test_revive_refills_without_notice()
+    self.mgr:SetHealth(self.a, 0)
+    local notices = self.notices
+    while #notices > 0 do table.remove(notices) end
+    self:ctrlDirect().Health = 100 -- 引擎复活
+    self.mgr:Update()
+    lu.assertEquals(notices, {}) -- 复活回满不误报
+    lu.assertFalse(self.mgr:IsDead(self.a))
+end
+
+function TestDamageNotice:test_position_read_failure_uses_last_known_position()
+    self.a.Character.Position = nil
+    self:ctrlDirect(3)
+    lu.assertEquals(#self.notices, 0) -- 首次受伤且读不到位置，缺定位不报
+    self.a.Character.Position = { x = 7, y = 8, z = 9 }
+    self:ctrlDirect(3)
+    lu.assertEquals(#self.notices, 1)
+    self.a.Character.Position = nil
+    self:ctrlDirect(3)
+    lu.assertEquals(#self.notices, 2)
+    lu.assertEquals(self.notices[2].position, { x = 7, y = 8, z = 9 }) -- 用上一次的定位
+end
+
+function TestDamageNotice:ctrlDirect(damage)
+    local c = self.a.Character.Controller
+    if damage then
+        c.Health = math.max(0, c.Health - damage)
+        c.HealthChanged:Fire(c.Health)
+    end
+    return c
+end
