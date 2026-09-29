@@ -5,6 +5,23 @@ local AbilityPackageAPI = require("server.packages.ability_system.api")
 
 local AbilityAPI = AbilityAPIBase.build(AbilityPackageAPI, AbilityAPIBase.SERVER_API)
 
+-- #128 服务端动作闸门：技能包 RemoteEvent 只转发到包内 CastAbility，玩家死亡 / 濒死等状态不能由客户端绕过。
+-- 业务侧由 MgrAbility 注入；守卫失败必须拒绝，不进入 vendor。
+local packageCastAbility = AbilityAPI.CastAbility
+local castGuard
+function AbilityAPI.SetCastGuard(guard)
+    if guard ~= nil and type(guard) ~= 'function' then error('[AbilityAPI] CastGuard 必须是函数', 2) end
+    castGuard = guard
+end
+function AbilityAPI.CastAbility(unit, abilityIndex, releasePoint, releaseDir, releaseTarget)
+    if castGuard then
+        local ok, allowed = pcall(castGuard, unit, abilityIndex)
+        if not ok then print('[AbilityAPI] 施法守卫失败', tostring(allowed)) end
+        if not ok or allowed ~= true then return false end
+    end
+    return packageCastAbility(unit, abilityIndex, releasePoint, releaseDir, releaseTarget)
+end
+
 -- 锚点挂接（本图补充，不属于包内 api.lua 的导出）
 -- 官方流程把锚点预设作为技能预设的子预设，靠锚点预设自己的壳源码调 anchor_logic.Attach；
 -- 但本编辑器不认包内的 ---@export_prefab_type 自定义预设类型，锚点预设壳的编译代码为空、

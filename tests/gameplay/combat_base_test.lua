@@ -82,3 +82,23 @@ function TestCombatBase:test_source_alias_life_hook_and_zone_filter_stay_in_entr
     lu.assertTrue(self.v:Rescue(self.a, self.b))
     lu.assertEquals(rescued, { { self.a, self.b } })
 end
+
+TestAbilityCastGuard = {}
+function TestAbilityCastGuard:test_root_api_applies_server_guard_before_package_cast()
+    local impl = {}
+    for _, name in ipairs(require('common.AbilityAPIBase').SERVER_API) do impl[name] = function() return false end end
+    local calls = {}
+    impl.CastAbility = function(unit, index) calls[#calls + 1] = { unit, index } return true end
+    package.preload['server.packages.ability_system.api'] = function() return impl end
+    local api = assert(loadfile('server/AbilityAPI.lua'))()
+    local allowed, unit = false, {}
+    api.SetCastGuard(function(candidate, index)
+        lu.assertEquals({ candidate, index }, { unit, 2 })
+        return allowed
+    end)
+    lu.assertFalse(api.CastAbility(unit, 2))
+    lu.assertEquals(calls, {})
+    allowed = true
+    lu.assertTrue(api.CastAbility(unit, 2))
+    lu.assertEquals(#calls, 1)
+end
