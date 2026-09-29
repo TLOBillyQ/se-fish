@@ -282,3 +282,80 @@ function TestSurvivalFishing:test_entering_downed_releases_fish_and_breaks_fishi
     lu.assertEquals(self.fishCalls, { self.a })
     lu.assertEquals(self.reelCalls, { self.a })
 end
+
+TestSurvivalRescue = {}
+
+function TestSurvivalRescue:setUp()
+    TestSurvivalDowned.setUp(self)
+end
+
+function TestSurvivalRescue:tearDown()
+    TestSurvivalDowned.tearDown(self)
+end
+
+function TestSurvivalRescue:ctrl(p) return (p or self.a).Character.Controller end
+
+function TestSurvivalRescue:test_rescue_restores_ten_percent_health_without_weak()
+    TestSurvivalDowned.enterDowned(self) -- now=100 进濒死
+    self.now = 105
+    lu.assertTrue(self.v:Rescue(self.a, self.b))
+    lu.assertEquals(self:ctrl().Health, 30) -- 10% × 300
+    lu.assertEquals(self.a.attrs.Health, 30) -- 客户端 HUD 属性同步
+    lu.assertEquals(self.v:LifeStatus(self.a), 'alive')
+    lu.assertTrue(self.v:CanAct(self.a))
+    lu.assertEquals(self:ctrl().WalkSpeed, 10) -- 抢救不带虚弱（虚弱只属于死亡后的虚弱复活）
+    lu.assertEquals(self:ctrl().diedCount, 0)
+    local sent = self.messages.SurvivalState
+    lu.assertEquals(sent[#sent].value.phase, 'alive') -- 客户端撤掉濒死蒙版
+end
+
+function TestSurvivalRescue:test_rescue_only_works_while_downed()
+    lu.assertFalse(self.v:Rescue(self.a, self.b)) -- 活动中不能被「救」成 30 血
+    lu.assertEquals(self:ctrl().Health, 300)
+    TestSurvivalDowned.enterDowned(self)
+    self.now = 115
+    self.s:Update() -- 15 秒到转死亡，抢救窗口关闭
+    lu.assertFalse(self.v:Rescue(self.a, self.b))
+    lu.assertEquals(self.v:LifeStatus(self.a), 'dead')
+    lu.assertEquals(self:ctrl().Health, 1)
+end
+
+function TestSurvivalRescue:test_rescue_does_not_touch_other_players()
+    TestSurvivalDowned.enterDowned(self)
+    lu.assertFalse(self.v:Rescue(self.b, self.a)) -- b 没濒死
+    lu.assertEquals(self:ctrl(self.b).Health, 300)
+    lu.assertTrue(self.v:IsDowned(self.a))
+    lu.assertEquals(self:ctrl().Health, 1)
+end
+
+function TestSurvivalRescue:test_hunger_resumes_from_rescue_second_without_catching_up()
+    local state = self.v:GetState(self.a)
+    state.hunger = 100
+    state.lastSec = math.floor(self.now)
+    TestSurvivalDowned.enterDowned(self)
+    self.now = 108
+    self.v:Update()
+    lu.assertEquals(state.hunger, 100) -- 濒死期间暂停
+    lu.assertTrue(self.v:Rescue(self.a, self.b))
+    self.now = 109
+    self.v:Update()
+    lu.assertEquals(state.hunger, 99) -- 只走救起后的 1 秒，不补濒死期间的 8 秒
+end
+
+function TestSurvivalRescue:test_old_deadline_never_applies_to_rescued_or_redowned_player()
+    TestSurvivalDowned.enterDowned(self) -- 100 进濒死，旧截止点 115
+    self.now = 105
+    lu.assertTrue(self.v:Rescue(self.a, self.b))
+    self.now = 110
+    lu.assertTrue(self.v:ApplyHit(self.v:NewHit(self.b, 'fishAttack'), self.a, 100)) -- 30 血再次致命
+    lu.assertTrue(self.v:IsDowned(self.a))
+    self.now = 115 -- 第一次濒死的旧截止点：新一轮濒死不能被旧计时结束
+    self.s:Update()
+    lu.assertTrue(self.v:IsDowned(self.a))
+    self.now = 124.9
+    self.s:Update()
+    lu.assertTrue(self.v:IsDowned(self.a))
+    self.now = 125 -- 新一轮从 110 起算满 15 秒
+    self.s:Update()
+    lu.assertEquals(self.v:LifeStatus(self.a), 'dead')
+end

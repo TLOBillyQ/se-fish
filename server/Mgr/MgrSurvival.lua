@@ -66,6 +66,20 @@ function Mgr:EnterDowned(state, vitalState)
     self:SendState(state)
 end
 
+-- 抢救（濒死中被救起；队友抢救接缝与肾上腺素自救共用）：恢复 ReviveHealthPercent% 血量回到活动，
+-- 不带虚弱（虚弱只属于死亡后的虚弱复活）。饥饿沿用——濒死期间已暂停，ApplyRevive 让它从这一秒
+-- 重新计时，不补濒死期间的秒数。结算经 MgrVitals:ApplyRevive 单点，phase 守卫保证每轮濒死只结算一次。
+function Mgr:RescueDowned(state, vitalState)
+    if not state or state.phase ~= 'downed' or not self.Vitals then return false end
+    local health = math.floor(GameCfg.Vitals.MaxHealth * cfg().ReviveHealthPercent / 100)
+    if not self.Vitals:ApplyRevive(vitalState, health) then return false end
+    state.phase = 'alive'
+    state.downedAt = nil
+    print('[MgrSurvival] 抢救', state.player.UserId, 'health=' .. tostring(health))
+    self:SendState(state)
+    return true
+end
+
 -- #128 生命接缝：状态查询 / 锁血 / 致命拦截 / 抢救 / 漏网死亡通知。
 function Mgr:Hooks()
     return {
@@ -85,6 +99,9 @@ function Mgr:Hooks()
             if not health or health - amount > 0 then return false end
             self:EnterDowned(state, vitalState)
             return true
+        end,
+        Rescue = function(vitalState)
+            return self:RescueDowned(self.States[vitalState.player.UserId], vitalState)
         end,
         -- 漏网死亡（绕过致命拦截的引擎死亡）：纳入状态机按死亡处理。断开放鱼由
         -- MgrFishUnit / MgrReelIn 既有的 Controller.Died 订阅负责，这里不重复。
