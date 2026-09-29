@@ -79,6 +79,11 @@ function Mgr:Cast(player, payload)
         self:SendFailure(player, 'unavailable')
         return
     end
+    -- #128 动作互斥：濒死等不能行动的状态由服务端 Vitals 权威判定，不依赖客户端界面是否打开
+    if self.Vitals and not self.Vitals:CanAct(player) then
+        self:SendFailure(player, 'cannotAct')
+        return
+    end
     if self.FishUnit and not self.FishUnit:CanCast(player) then
         self:SendFailure(player, 'holding')
         return

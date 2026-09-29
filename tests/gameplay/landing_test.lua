@@ -289,6 +289,15 @@ function TestLanding:spyQuest()
     end }
 end
 
+function TestLanding:test_downed_player_cannot_cast()
+    -- #128 动作互斥：濒死（不能行动）的玩家不能发起抛竿，服务端直接拒绝，不依赖客户端界面
+    self.cast.Vitals = { CanAct = function() return false end }
+    self.player.Character.Position = vec(-11.75, 2, 22.75)
+    self.cast:Cast(self.player, { slot = 1, itemId = 'starterRod' })
+    lu.assertNil(self.cast.Sessions[self.player.UserId])
+    lu.assertEquals(self:lastState().result.reason, 'cannotAct')
+end
+
 function TestLanding:test_only_valid_water_cast_notifies_quest()
     self:spyQuest()
     self.player.Character.Position = vec(10, 2, 20)
