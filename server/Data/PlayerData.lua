@@ -162,10 +162,13 @@ function PlayerData:Migrate(snapshot)
         for name in pairs(defaults(saved.zone)) do
             if type(extra[name]) ~= 'table' then return nil, '扩展字段缺失 ' .. name end
         end
+        if type(extra.inventory.selection) ~= 'table' or type(extra.travel.arrived) ~= 'table'
+            or type(extra.travel.safePoint) ~= 'table' then return nil, '扩展字段损坏' end
         local last = meta.floor
         for _, op in ipairs(meta.operations) do
             if type(op) ~= 'table' or not integer(op.sequence, last + 1, meta.sequence)
-                or type(op.id) ~= 'string' or type(op.kind) ~= 'string' or type(op.result) ~= 'table' then
+                or type(op.id) ~= 'string' or type(op.kind) ~= 'string' or type(op.result) ~= 'table'
+                or op.requestKey ~= nil and type(op.requestKey) ~= 'string' then
                 return nil, '操作日志损坏'
             end
             last = op.sequence
@@ -198,6 +201,9 @@ function PlayerData:Serialize()
     end
     local bait = {}
     for itemId, count in pairs(self.Data.Bait) do bait[itemId] = count end
+    self.Extra.inventory.selection.slot = self.Data.SelectedSlot
+    self.Extra.inventory.selection.bait = self.Data.SelectedBait
+    self.Extra.travel.zone = GameCfg.ResolveZoneId(self.Data.Zone)
     return {
         v = 2,
         extra = copy(self.Extra),

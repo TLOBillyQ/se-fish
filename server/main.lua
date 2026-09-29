@@ -55,10 +55,14 @@ MgrMap.MgrFerry.Interact = MgrMap.MgrInteract
 MgrMap.MgrPlayerData.Save = MgrMap.MgrSave
 MgrMap.MgrInteract.Save = MgrMap.MgrSave
 MgrMap.MgrFerry.Save = MgrMap.MgrSave
+MgrMap.MgrShop.Save = MgrMap.MgrSave
+MgrMap.MgrFerry.Save = MgrMap.MgrSave
 MgrMap.MgrSave.PlayerData = MgrMap.MgrPlayerData
 
 -- 存档就绪前不创建 Vitals/Ability 等玩家状态；退出先撤销就绪标记，再清理管理器。
 local ActivePlayers = {}
+local Started = false
+local ReadyQueue = {}
 local function invoke(name, mgr, method, ...)
     if not mgr[method] then return end
     local ok, err = pcall(mgr[method], mgr, ...)
@@ -66,6 +70,7 @@ local function invoke(name, mgr, method, ...)
 end
 MgrMap.MgrSave.OnReady = function(player, data)
     if MgrMap.MgrPlayerData:GetDataInst(player) ~= data or ActivePlayers[player.UserId] == player then return end
+    if not Started then ReadyQueue[player.UserId] = { player, data } return end
     ActivePlayers[player.UserId] = player
     for name, mgr in pairs(MgrMap) do
         if name ~= 'MgrPlayerData' then invoke(name, mgr, 'OnPlayerAdded', player) end
@@ -76,6 +81,7 @@ local function HandlePlayerAdded(player)
 end
 
 local function HandlePlayerRemoving(player)
+    ReadyQueue[player.UserId] = nil
     local active = ActivePlayers[player.UserId] == player
     if active then ActivePlayers[player.UserId] = nil end
     invoke('MgrPlayerData', MgrMap.MgrPlayerData, 'OnPlayerRemoving', player)
@@ -95,10 +101,11 @@ local function HandleTimeUpdate(deltaTime)
 end 
 
 local function GameStart()
-    for k, mgr in pairs(MgrMap) do
-        if mgr.Start then
-            pcall(function() mgr:Start() end)
-        end
+    for name, mgr in pairs(MgrMap) do invoke(name, mgr, 'Start') end
+    Started = true
+    for userId, entry in pairs(ReadyQueue) do
+        ReadyQueue[userId] = nil
+        MgrMap.MgrSave.OnReady(entry[1], entry[2])
     end
 end
 

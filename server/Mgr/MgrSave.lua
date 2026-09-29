@@ -17,6 +17,11 @@ local function equal(a, b)
     for k in pairs(b) do if a[k] == nil then return false end end
     return true
 end
+local function callback(label, userId, fn, ...)
+    if not fn then return end
+    local ok, err = pcall(fn, ...)
+    if not ok then print('[MgrSave] 回调失败', label, userId, tostring(err)) end
+end
 local function validSlot(slot)
     return type(slot) == 'string' and #slot >= 1 and #slot <= 40 and slot:match('^[%w_-]+$') ~= nil
 end
@@ -59,16 +64,21 @@ function Mgr:Fail(userId, session, reason)
     print('[MgrSave] 读写屏障关闭', userId, tostring(session.Token), reason)
 end
 function Mgr:AfterIdle(userId, fn)
-    if not self.Flying[userId] and not self.Pending[userId] then fn() return end
+    if not self.Flying[userId] and not self.Pending[userId] then callback('AfterIdle', userId, fn) return end
     self.Waiters[userId] = self.Waiters[userId] or {}
     table.insert(self.Waiters[userId], fn)
 end
 function Mgr:Finish(userId)
     self.Flying[userId] = nil
-    if self.Pending[userId] then return end
+    if self.Pending[userId] then
+        -- 仅重试等待才会留下队首；失败后的显式请求仍需收到结果。
+        if self.Pending[userId].RetryRounds then return end
+        self:Drain(userId)
+        return
+    end
     local callbacks = self.Waiters[userId] or {}
     self.Waiters[userId] = nil
-    for _, fn in ipairs(callbacks) do fn() end
+    for _, fn in ipairs(callbacks) do callback('AfterIdle', userId, fn) end
 end
 function Mgr:GetStore()
     if self.StoreChecked then return self.Store end
@@ -219,6 +229,14 @@ function Mgr:WriteJob(userId, job)
     self:NoteWrite(userId, value, job.Reason)
     return true, value
 end
+local function appendJob(current, job)
+    if not current then return job end
+    if not current.BaseRevision and not current.Done and not current.After then return job end
+    local last = current
+    while last.After do last = last.After end
+    last.After = job
+    return current
+end
 function Mgr:Drain(userId)
     if self.Flying[userId] then return end
     self.Flying[userId] = true
@@ -228,13 +246,26 @@ function Mgr:Drain(userId)
             self.Pending[userId] = nil
             local ok, result = self:WriteJob(userId, job)
             if not ok and result == 'retry' and not job.NoRetry then
-                -- 不丢身份或回调；下一轮 Update 重试，较新普通快照排在它后面。
-                if self.Pending[userId] then job.After = self.Pending[userId] end
-                self.Pending[userId] = job
+                job.RetryRounds = (job.RetryRounds or 0) + 1
+                if job.RetryRounds <= 3 then
+                    if self.Pending[userId] then job.After = appendJob(job.After, self.Pending[userId]) end
+                    self.Pending[userId] = job
+                    break
+                end
+                print('[MgrSave] 写档重试耗尽，关闭会话', userId, job.Reason)
+                self:Fail(userId, job.Session, '写档重试耗尽')
+            end
+            callback('写入结果', userId, job.Done, ok, result)
+            if not ok and result == 'retry' and job.Session.State == 'failed' then
+                local current = job.After
+                while current do
+                    callback('后续写入取消', userId, current.Done, false, '写档失败')
+                    current = current.After
+                end
+                self.Pending[userId] = nil
                 break
             end
-            if job.Done then job.Done(ok, result) end
-            if job.After and not self.Pending[userId] then self.Pending[userId] = job.After end
+            if job.After then self.Pending[userId] = appendJob(job.After, self.Pending[userId]) end
         end
         self:Finish(userId)
     end)
@@ -245,15 +276,45 @@ function Mgr:Enqueue(userId, snapshot, reason, done)
         or not snapshot or not s.Data:IsValidSave(snapshot) or snapshot.meta.session ~= s.Token then return false end
     local job = { Session = s, Key = s.Key, Snapshot = copy(snapshot), Reason = reason or 'save', Done = done,
         NoRetry = reason == 'gm' }
-    local pending = self.Pending[userId]
-    if pending and (pending.BaseRevision or pending.Done) then pending.After = job
-    else self.Pending[userId] = job end
+    self.Pending[userId] = appendJob(self.Pending[userId], job)
     self:Drain(userId)
     return true
 end
 function Mgr:Save(userId, snapshot, reason) return self:Enqueue(userId, snapshot, reason) end
 -- 兼容旧调用点：只承诺快照 CAS，不把事后快照包装成跨会话幂等结算。
 function Mgr:Commit(userId, snapshot, reason) return self:Enqueue(userId, snapshot, reason) end
+
+function Mgr:ResolveRequest(player, data, kind, requestId)
+    local userId = player and player.UserId
+    local s = userId and self.Sessions[userId]
+    if not s or not self:IsCurrent(userId, s, data) or s.State ~= 'ready'
+        or type(kind) ~= 'string' or #kind < 1 or #kind > 80 then return nil, 'invalid' end
+    local requestKey
+    if type(requestId) == 'number' and requestId == math.floor(requestId)
+        and requestId >= 1 and requestId <= 2147483647 then
+        requestKey = s.Token .. ':' .. kind .. ':' .. requestId
+    elseif type(requestId) == 'table' and type(requestId.requestKey) == 'string'
+        and type(requestId.id) == 'string' and type(requestId.sequence) == 'number'
+        and requestId.kind == kind then
+        requestKey = requestId.requestKey
+    else return nil, 'invalid' end
+    for _, recorded in ipairs(data.SaveMeta.operations) do
+        if recorded.requestKey == requestKey then
+            if type(requestId) == 'table' and (requestId.id ~= recorded.id
+                or requestId.sequence ~= recorded.sequence or requestId.kind ~= recorded.kind) then
+                return nil, 'identity-conflict'
+            end
+            return { id = recorded.id, sequence = recorded.sequence, kind = kind,
+                requestKey = recorded.requestKey }, 'replay'
+        end
+    end
+    if type(requestId) == 'table' then return nil, 'expired' end
+    if self:IsPaused(userId) then return nil, 'pending' end
+    local operation = self:NextOperation(player, kind)
+    if not operation then return nil, 'pending' end
+    operation.requestKey = requestKey
+    return operation, 'new'
+end
 
 -- 身份由服务端颁发，调用者必须保留原身份重试；不能把客户端自报 id 当凭证。
 function Mgr:NextOperation(player, kind)
@@ -273,12 +334,14 @@ function Mgr:Execute(player, data, operation, transform, done)
         or operation.sequence ~= math.floor(operation.sequence) or operation.sequence < 1
         or operation.id ~= tostring(userId) .. ':' .. operation.sequence
         or type(operation.kind) ~= 'string' or #operation.kind < 1 or #operation.kind > 80
+        or operation.requestKey ~= nil and type(operation.requestKey) ~= 'string'
         or type(transform) ~= 'function' or type(done) ~= 'function' then return false, 'invalid' end
     local meta = data.SaveMeta
     for _, recorded in ipairs(meta.operations) do
         if recorded.id == operation.id then
-            if recorded.kind ~= operation.kind then return false, 'identity-conflict' end
-            done(true, copy(recorded.result))
+            if recorded.kind ~= operation.kind or operation.requestKey ~= nil
+                and recorded.requestKey ~= operation.requestKey then return false, 'identity-conflict' end
+            callback('结果重放', userId, done, true, copy(recorded.result))
             return true
         end
     end
@@ -295,13 +358,13 @@ function Mgr:Execute(player, data, operation, transform, done)
         if not ok or type(result) ~= 'table' then
             s.Transition = false
             print('[MgrSave] 结算拒绝', userId, operation.id, operation.kind, tostring(result), tostring(reason))
-            done(false, ok and reason or tostring(result))
+            callback('结算拒绝', userId, done, false, ok and reason or tostring(result))
             return
         end
         local nextValue = draft:Serialize()
         nextValue.meta.sequence = operation.sequence
         table.insert(nextValue.meta.operations, { id = operation.id, sequence = operation.sequence,
-            kind = operation.kind, result = copy(result) })
+            kind = operation.kind, requestKey = operation.requestKey, result = copy(result) })
         while #nextValue.meta.operations > 64 do
             nextValue.meta.floor = table.remove(nextValue.meta.operations, 1).sequence
         end
@@ -322,10 +385,10 @@ function Mgr:Execute(player, data, operation, transform, done)
                     print('[MgrSave] operation', userId, operation.id, operation.kind,
                         'coinBefore=' .. snapshot.coin, 'coinAfter=' .. value.coin,
                         'bar=' .. #value.bar, 'bp=' .. #value.bp)
-                    done(true, copy(result))
+                    callback('结算完成', userId, done, true, copy(result))
                 else
                     self:Fail(userId, s, '结算未确认 ' .. tostring(value))
-                    done(false, value)
+                    callback('结算失败', userId, done, false, value)
                 end
             end }
         self.Pending[userId] = job
@@ -336,7 +399,9 @@ end
 
 function Mgr:ApplyTemporary(userId, data, patch, done)
     local s = self:Session(userId)
-    if s.Transition or s.State ~= 'ready' then return false, '存档尚未就绪' end
+    if s.Transition or s.State ~= 'ready' or not self:IsCurrent(userId, s, data) then
+        return false, '存档尚未就绪'
+    end
     s.Transition = true
     local accepted, failure = true, nil
     self:AfterIdle(userId, function()
@@ -345,7 +410,7 @@ function Mgr:ApplyTemporary(userId, data, patch, done)
         accepted, failure = ok, reason
         if ok then s.Paused = true end
         s.Transition = false
-        done(ok, reason)
+        callback('GM 临时状态', userId, done, ok, reason)
     end)
     return accepted, failure
 end
@@ -357,11 +422,15 @@ function Mgr:SaveExplicit(userId, data, done)
         if not self:IsCurrent(userId, s, data) then return end
         local snapshot = data:Serialize()
         s.Transition, s.Paused = false, false
-        self:Enqueue(userId, snapshot, 'gm', function(ok, result)
+        local accepted = self:Enqueue(userId, snapshot, 'gm', function(ok, result)
             if not self:IsCurrent(userId, s, data) then return end
             s.Paused = not ok
-            done(ok, ok and nil or result)
+            callback('GM 保存', userId, done, ok, ok and nil or result)
         end)
+        if not accepted then
+            s.Paused = true
+            callback('GM 保存拒绝', userId, done, false, '存档写入未受理')
+        end
     end)
     return true
 end
@@ -379,7 +448,8 @@ function Mgr:ReadExplicit(userId, data, done)
                 and value.meta and value.meta.session == s.Token and value.meta.revision == s.Revision
             if valid then data:ApplySave(value) end
             s.Transition = false
-            done(valid or false, not valid and '读取失败、状态已变化或存档无效' or nil)
+            callback('GM 读取', userId, done, valid or false,
+                not valid and '读取失败、状态已变化或存档无效' or nil)
         end)
     end)
     return true
@@ -397,8 +467,9 @@ function Mgr:SelectNextSlot(userId, slot, done)
         s.SlotChoosing = false
         local waiters = s.SlotWaiters or {}
         s.SlotWaiters = nil
-        for _, callback in ipairs(waiters) do callback() end
-        if self.Sessions[userId] == s then done(ok, not ok and '存档槽选择未保存' or nil) end
+        for _, fn in ipairs(waiters) do callback('槽选择', userId, fn) end
+        if self.Sessions[userId] == s then callback('槽选择结果', userId, done, ok,
+            not ok and '存档槽选择未保存' or nil) end
     end)
     return true
 end

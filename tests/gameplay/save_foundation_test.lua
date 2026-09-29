@@ -138,6 +138,42 @@ function TestSaveFoundation:test_log_is_bounded_and_cleaned_identity_cannot_repl
     lu.assertEquals(reason, 'expired')
 end
 
+function TestSaveFoundation:test_resolve_request_replays_only_exact_identity_after_rejoin()
+    local player, data = self:join(60)
+    self:drain()
+    local op, mode = self.save:ResolveRequest(player, data, 'shop', 7)
+    lu.assertEquals(mode, 'new')
+    local result
+    lu.assertTrue(self.save:Execute(player, data, op, function(draft)
+        draft:AddCoin(9)
+        return { awarded = 9 }
+    end, function(ok, value) result = value end))
+    self:drain()
+    lu.assertEquals(result.awarded, 9)
+    local nextPlayer, nextData = self:join(60)
+    self:drain()
+    local replay, replayMode = self.save:ResolveRequest(nextPlayer, nextData, 'shop', op)
+    lu.assertEquals(replayMode, 'replay')
+    lu.assertEquals(replay.requestKey, op.requestKey)
+    op.id = '60:999'
+    lu.assertNil(self.save:ResolveRequest(nextPlayer, nextData, 'shop', op))
+end
+
+function TestSaveFoundation:test_callback_failure_does_not_block_following_write()
+    local player, data = self:join(61)
+    self:drain()
+    local op = self.save:NextOperation(player, 'bonus')
+    lu.assertTrue(self.save:Execute(player, data, op, function(draft)
+        draft:AddCoin(1)
+        return { paid = 1 }
+    end, function() error('回包失败') end))
+    self:drain()
+    lu.assertTrue(data:AddCoin(1))
+    lu.assertTrue(self.save:Save(61, data:Serialize(), 'next'))
+    self:drain()
+    lu.assertEquals(self.values.u61.coin, 2)
+end
+
 function TestSaveFoundation:test_pending_rejects_mutation_and_snapshot_until_explicit_new_save()
     local data = PlayerData.New({ UserId = 123, SetAttribute = function() end })
     data:Init(true)
