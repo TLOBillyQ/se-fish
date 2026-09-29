@@ -88,7 +88,8 @@ local function HandlePlayerAdded(player)
 end
 
 local function HandlePlayerRemoving(player)
-    ReadyQueue[player.UserId] = nil
+    local queued = ReadyQueue[player.UserId]
+    if queued and queued[1] == player then ReadyQueue[player.UserId] = nil end
     local active = ActivePlayers[player.UserId] == player
     if active then ActivePlayers[player.UserId] = nil end
     invoke('MgrPlayerData', MgrMap.MgrPlayerData, 'OnPlayerRemoving', player)

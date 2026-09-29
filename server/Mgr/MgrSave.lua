@@ -278,8 +278,8 @@ end
 function Mgr:Enqueue(userId, snapshot, reason, done)
     local s = self.Sessions[userId]
     if not s or s.State ~= 'ready' or s.Paused or s.Transition or not self:GetStore()
-        or not snapshot or not s.Data:IsValidSave(snapshot) or not self:WithinBudget(snapshot)
-        or snapshot.meta.session ~= s.Token then return false end
+        or not s.Data or not s.Data.Inited or not snapshot or not s.Data:IsValidSave(snapshot)
+        or not self:WithinBudget(snapshot) or snapshot.meta.session ~= s.Token then return false end
     local job = { Session = s, Key = s.Key, Snapshot = copy(snapshot), Reason = reason or 'save', Done = done,
         NoRetry = reason == 'gm' }
     self.Pending[userId] = appendJob(self.Pending[userId], job)
@@ -479,14 +479,16 @@ function Mgr:SelectNextSlot(userId, slot, done)
     end)
     return true
 end
-function Mgr:ReleaseSession(userId)
+function Mgr:ReleaseSession(userId, player)
     local s = self.Sessions[userId]
-    if not s then return end
+    if not s or player and s.Player ~= player then return end
     -- 离场快照先排空，仍保留会话 fencing；重进替换会话后旧 job 自动失效。
     s.Leaving = true
     self:AfterIdle(userId, function() if self.Sessions[userId] == s then self.Sessions[userId] = nil end end)
 end
 function Mgr:SaveLeaving(player, data)
+    local s = self.Sessions[player.UserId]
+    if not s or s.Player ~= player or s.Data ~= data then return end
     if data and data.Inited then self:Save(player.UserId, data:Serialize(), 'leave') end
 end
 function Mgr:Update()

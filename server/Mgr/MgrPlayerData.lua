@@ -105,7 +105,7 @@ function Mgr:OnPlayerRemoving(player)
         DataMap[player.UserId] = nil
         if self.Save then self.Save:SaveLeaving(player, data) end
         data:Destroy()
-        if self.Save then self.Save:ReleaseSession(player.UserId) end
+        if self.Save then self.Save:ReleaseSession(player.UserId, player) end
     end
 end
 
