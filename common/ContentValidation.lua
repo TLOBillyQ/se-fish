@@ -56,7 +56,7 @@ function Validate.Check(cfg)
     end
     local goods, lottery, blindbox = cfg.Content.Shop.Goods, cfg.Content.Lottery.Patterns, cfg.Content.Blindbox.Entries
     local shopNumbers, activeGoods = {}, {}
-    for _, row in ipairs(cfg.Shop.Goods or {}) do activeGoods[row.ItemId] = row end
+    for _, row in ipairs(cfg.Shop.Goods or {}) do activeGoods[row.Number] = row end
     for _, row in ipairs(goods) do
         if shopNumbers[row.number] then fail(row.source, '商品编号重复 ' .. tostring(row.number) .. '（' .. shopNumbers[row.number] .. '）') end
         shopNumbers[row.number] = row.source
@@ -69,7 +69,7 @@ function Validate.Check(cfg)
             or not nonnegative(row.purchaseLimit) or not integer(row.purchaseLimit) then fail(row.source, '商品价格/商店等级/限购无效') end
         if row.implemented ~= true and row.implemented ~= false then fail(row.source, '未标记可用状态') end
         if row.implemented == true then
-            local active = activeGoods[row.itemKey]
+            local active = activeGoods[row.number]
             if not active or active.Price ~= row.price or active.MinShopLevel ~= row.minShopLevel then
                 fail(row.source, '标为可用但现有商店未上架该商品或价格/等级不同')
             end

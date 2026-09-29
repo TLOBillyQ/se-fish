@@ -54,10 +54,15 @@ end
 
 function TestShop:test_prices_come_from_shop_table()
     local prices = {}
-    for _, goods in ipairs(self.cfg.Shop.Goods) do prices[goods.ItemId] = goods.Price end
+    for _, goods in ipairs(self.cfg.Shop.Goods) do
+        if goods.ItemId then prices[goods.ItemId] = goods.Price end -- 升级行无物品，按编号购买（#130）
+    end
     -- #84 七级鱼竿统一进商店表；钓虾竿起的六级竿要求商店等级 ≥ 竿级；#90 香肠 2 金 2 级起售
     lu.assertEquals(prices, { starterRod = 5, worm = 1, sausage = 2, shrimpRod = 12, crabRod = 24, normalRod = 50,
-        proRod = 100, airforceRod = 200, unscientificRod = 500 })
+        proRod = 100, airforceRod = 200, unscientificRod = 500,
+        item115 = 3, item116 = 4, item117 = 5, item118 = 6, item119 = 7,
+        item134 = 24, item135 = 50, item136 = 100, item137 = 150, item138 = 200, item139 = 500,
+        item140 = 1000, item141 = 2000, item142 = 5000, item143 = 24, item144 = 50, item145 = 100 })
 end
 
 function TestShop:test_rod_table_unified_seven_levels()

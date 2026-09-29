@@ -308,10 +308,11 @@ GameCfg.Interact = {
     },
 }
 
--- 钓场商店（#48，#28 规格）：价格真源是 design 商店表（渔力全开--商店表.xlsx）的「商店售价」列，
--- Goods 每行照抄表列：物品、商店售价 Price、所属分页 Page、最低商店等级 MinShopLevel、每人购买次数上限 PurchaseLimit。
--- MVP 白名单上架「钓具」分页的新手鱼竿（表编号 14）与蚯蚓（表编号 13）；#90 虾池起售香肠（2 金）。
--- M1（#84）鱼竿表按七级统一：竿级 = 商店表七支竿的顺序，第 N 钓鱼区起售竿级 N 的竿（MinShopLevel = 竿级）。
+-- 钓场商店（#48/#90 起，#130 全量落地）：价格真源是 design 商店表（渔力全开--商店表.xlsx）的
+-- 「商店售价」列。Goods 是 common/cfg/Shop.lua 全量 50 行有效商品（编号 27 作废除外）的规范化货架：
+-- 购买键是原表编号 Number（升级行没有物品 id）；有物品的行保留 ItemId 兼容旧调用。
+-- 分页 Pages 固定四页：钓具/武器/升级（金币定价）与金币（平台购买入口，汇率与真实商品 ID 是
+-- 后台交付参数，不编造；平台不可用时金币页降级提示、可返回、不伪成功）。
 -- 摊位 Stands（#90）：每个钓鱼区一个摊位，Level = 钓鱼区序号；商品按 MinShopLevel <= 摊位 Level 上架，
 -- 所以虾池摊（2 级）比一区摊（1 级）多香肠与钓虾竿。玩家站在哪个摊位旁就按哪个摊位的等级结算，
 -- 范围复验用共享的 Radius / Slack。入口复用场景触发器与旧入口用过的文字泡预设；
@@ -327,21 +328,81 @@ GameCfg.Shop = {
     HintText = '看看有什么可买的',
     Radius = 5,
     Slack = 0.5,
-    Goods = {
-        { ItemId = 'starterRod', Price = 5, Page = '钓具', MinShopLevel = 1, PurchaseLimit = 0 },
-        { ItemId = 'worm', Price = 1, Page = '钓具', MinShopLevel = 1, PurchaseLimit = 0 },
-        { ItemId = 'sausage', Price = 2, Page = '钓具', MinShopLevel = 2, PurchaseLimit = 0 },
-        { ItemId = 'shrimpRod', Price = 12, Page = '钓具', MinShopLevel = 2, PurchaseLimit = 0 },
-        { ItemId = 'crabRod', Price = 24, Page = '钓具', MinShopLevel = 3, PurchaseLimit = 0 },
-        { ItemId = 'normalRod', Price = 50, Page = '钓具', MinShopLevel = 4, PurchaseLimit = 0 },
-        { ItemId = 'proRod', Price = 100, Page = '钓具', MinShopLevel = 5, PurchaseLimit = 0 },
-        { ItemId = 'airforceRod', Price = 200, Page = '钓具', MinShopLevel = 6, PurchaseLimit = 0 },
-        { ItemId = 'unscientificRod', Price = 500, Page = '钓具', MinShopLevel = 7, PurchaseLimit = 0 },
-    },
+    Pages = ContentShop.Pages,
+    Goods = {},
 }
 
--- 完整商品、抽奖、盲盒表是目标内容；Shop.Goods 仍为已接入商店的白名单。
--- 后续 #130/#138/#147 按 implemented 状态接入购买/结算，不能把内容行当作当前可用。
+-- 货架行规范化（#130）：原表小写列名映射为运行端字段；升级行（无 itemKey）以 Number 为购买键。
+for _, row in ipairs(ContentShop.Goods) do
+    GameCfg.Shop.Goods[#GameCfg.Shop.Goods + 1] = {
+        Number = row.number,
+        ItemId = row.itemKey,
+        Name = row.itemName,
+        Desc = row.description,
+        Price = row.price,
+        Page = row.page,
+        MinShopLevel = row.minShopLevel,
+        PurchaseLimit = row.purchaseLimit,
+        Upgrade = row.upgrade,
+        source = row.source,
+    }
+end
+
+-- 强化参数由商店表升级行派生（#130，GameSpec §6.2）：逐级一次、按基础线性叠加。
+-- melee 7 级 +10%/级（满级 +70%）、ranged 5 级 +10%/级（+50%）、explosive 3 级 +20%/级（+60%）、
+-- magazine 3 级 +50%/级向上取整（+150%）；backpack 6 级沿用 Items.UpgradePrices 同源价格。
+-- 火箭筒直击与溅射都只归 ranged（不双加成），消费点在 server/Mgr/MgrWeapon.lua。
+GameCfg.Shop.UpgradeKinds = {}
+for _, row in ipairs(ContentShop.Goods) do
+    local upgrade = row.upgrade
+    if upgrade then
+        local kind = GameCfg.Shop.UpgradeKinds[upgrade.kind]
+        if not kind then
+            kind = { Increment = upgrade.increment, MaxLevel = 0,
+                RoundUp = upgrade.roundUp == true, Prices = {} }
+            GameCfg.Shop.UpgradeKinds[upgrade.kind] = kind
+        end
+        kind.MaxLevel = math.max(kind.MaxLevel, upgrade.level)
+        kind.Prices[upgrade.level] = row.price
+    end
+end
+
+-- 某摊位某页的上架行：MinShopLevel <= level 且 Page 匹配；当地新品（MinShopLevel == level）置顶，
+-- 同组按原表编号 Number 升序（排序键唯一，不依赖 table.sort 稳定性；GameSpec §7 新品置顶口径）。
+function GameCfg.Shop.ListForPage(level, page)
+    local rows = {}
+    if type(level) ~= 'number' or type(page) ~= 'string' then return rows end
+    for _, row in ipairs(GameCfg.Shop.Goods) do
+        if row.Page == page and row.MinShopLevel <= level then rows[#rows + 1] = row end
+    end
+    table.sort(rows, function(a, b)
+        local aNew = a.MinShopLevel == level and 0 or 1
+        local bNew = b.MinShopLevel == level and 0 or 1
+        if aNew ~= bNew then return aNew < bNew end
+        return a.Number < b.Number
+    end)
+    return rows
+end
+
+-- 伤害加成：1 + Increment × level，按基础线性叠加（非复利）；等级钳到 [0, MaxLevel]。
+-- 弹容不是伤害加成（RoundUp 种类返回 nil，用 MagazineSize）。
+function GameCfg.Shop.DamageScale(kind, level)
+    local spec = GameCfg.Shop.UpgradeKinds[kind]
+    if not spec or not spec.Increment or spec.RoundUp or type(level) ~= 'number' then return nil end
+    level = math.max(0, math.min(spec.MaxLevel, math.floor(level)))
+    return 1 + spec.Increment * level
+end
+
+-- 弹容 = ceil(base × (1 + 50% × level))：向上取整（商店表弹容升级行 roundUp 标记）。
+function GameCfg.Shop.MagazineSize(base, level)
+    local spec = GameCfg.Shop.UpgradeKinds.magazine
+    if type(base) ~= 'number' or base ~= base or not spec then return nil end
+    level = math.max(0, math.min(spec.MaxLevel, math.floor(level or 0)))
+    return math.ceil(base * (1 + spec.Increment * level))
+end
+
+-- 完整商品、抽奖、盲盒表是内容基线；Shop.Goods 货架（#130 起）即商店表全量 50 行的规范化，
+-- 抽奖/盲盒行为尚待 #138/#147 接入，不能把内容行当作当前可用。
 GameCfg.Content = { Shop = ContentShop, Lottery = ContentLottery, Blindbox = ContentBlindbox }
 -- 七区信物链按已确认 GameSpec §8.1；行为尚待 #127 实装。
 GameCfg.Content.Exchanges = {
