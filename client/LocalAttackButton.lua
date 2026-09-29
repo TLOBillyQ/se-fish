@@ -1,25 +1,39 @@
 -- 右手武器的 1 号操作位，由 ScreenMain 持有，独立于道具操作位。
+-- #129：点按 / 连发 / 换弹全部经服务端 MgrWeapon 权威结算（WeaponAction 通道）。
+-- 客户端不再直接 RequestCast：伤害由服务端按 GameCfg 表登记挥砍，伪造客户端包不产生伤害。
 local Players = game:GetService("Players")
 local World = game:GetService("World")
 local GameCfg = require("common.GameCfg")
-local AbilityAPI = require("client.AbilityAPI")
+local Gesture = require("client.PressGesture")
 local LocalAttackButton = {}
 
-local function findMeleeSlot()
-    for _, entry in ipairs(GameCfg.Ability.InitialAbilities or {}) do
-        if entry.AnchorBehavior == "melee_hit" then return entry.Index end
+-- ScreenMain 每次快照刷新时同步装备状态：决定点按语义（攻击/连发）与长按语义（换弹）
+function LocalAttackButton:SetEquipped(state)
+    self.EquippedId = nil
+    self.EquippedGun = nil
+    self.AutoFireGun = nil
+    local weapons = state and state.weapons or {}
+    local held = state and state.held
+    if held and held.kind == "weapon" and (weapons[held.id] or 0) > 0 then
+        self.EquippedId = held.id
+    elseif state and state.selectedWeapon and (weapons[state.selectedWeapon] or 0) > 0 then
+        self.EquippedId = state.selectedWeapon
+    end
+    local gcfg = self.EquippedId and GameCfg.Ability.Guns[self.EquippedId] or nil
+    if gcfg then
+        self.EquippedGun = gcfg
+        if gcfg.Auto then self.AutoFireGun = gcfg end
+    end
+    if self.Label then
+        self.Label.Text = self.EquippedGun and "射击" or "攻击"
     end
 end
 
 function LocalAttackButton:Start(parent, resolution)
     if self.Root == parent and self.Container then return end
     self:Destroy()
-    self.Slot = findMeleeSlot()
-    if not self.Slot then
-        print("[LocalAttackButton] 配置里没有挥砍技能，不建按钮")
-        return
-    end
     self.Root = parent
+    self.Gesture = Gesture.New({ LongPressSec = GameCfg.Ability.Throw.LongPressSec })
     -- 左下原点：位于原生大按钮上方，并避开上方的道具操作位。
     local container = World:CreateUnit("EUILayout", {
         Parent = parent, Name = "AttackControl",
@@ -52,7 +66,19 @@ function LocalAttackButton:Start(parent, resolution)
     label.LocalZOrder = 1
     label.TouchEnabled = false
     label.SwallowTouchEnabled = false
-    self.ClickConn = btn.OnClicked:Connect(function() self:RequestMelee() end)
+    self.Label = label
+    self.PressConns = {}
+    if btn.OnTouchBegan and btn.OnTouchEnded then
+        self.PressConns[#self.PressConns + 1] = btn.OnTouchBegan:Connect(function() self:OnPressBegin() end)
+        self.PressConns[#self.PressConns + 1] = btn.OnTouchEnded:Connect(function() self:OnPressEnd() end)
+    else
+        -- 触摸信号缺失时退回点按（连发/长按换弹不可用）
+        self.ClickConn = btn.OnClicked:Connect(function() self:RequestAttack() end)
+    end
+    local runService = game:GetService("RunService")
+    if runService and runService.Heartbeat then
+        self.HeartConn = runService.Heartbeat:Connect(function() self:Tick() end)
+    end
     _G.MgrGameUI:SetCustomControlUI(container, true)
     self:SetOpen(false)
 end
@@ -61,34 +87,83 @@ function LocalAttackButton:SetOpen(open)
     self.IsOpen = open == true
     if self.Container then self.Container.Visible = self.IsOpen end
     if self.BtnAttack then self.BtnAttack.TouchEnabled = self.IsOpen end
+    if not self.IsOpen then self.Pressing = false end
 end
 
--- 隐藏主界面或操作区时，探针与按钮点击均不得发起攻击。
-function LocalAttackButton:RequestMelee()
-    if not self.Slot or not self.IsOpen or not self.Container or not self.Container.Visible
-        or not self.Root or not self.Root.Visible then return end
-    local character = Players.LocalPlayer and Players.LocalPlayer.Character
-    local manager = character and AbilityAPI.GetManagerForUnit(character)
-    if not manager then
-        print("[LocalAttackButton] 技能管理器未就绪，忽略本次点击")
-        return
+function LocalAttackButton:Visible()
+    return self.IsOpen and self.Container and self.Container.Visible
+        and self.Root and self.Root.Visible
+end
+
+-- 隐藏主界面或操作区时，不得发起攻击/换弹
+function LocalAttackButton:CanOperate()
+    return self:Visible() and Players.LocalPlayer and Players.LocalPlayer.Character
+end
+
+function LocalAttackButton:OnPressBegin()
+    self.Pressing = true
+    self.AutoFired = false
+    self.NextAutoFire = 0
+    if self.Gesture then self.Gesture:Begin(World:GetServerTime()) end
+end
+
+function LocalAttackButton:OnPressEnd()
+    self.Pressing = false
+    if not self.Gesture then return end
+    local result = self.Gesture:End(World:GetServerTime())
+    if result == "tap" then
+        -- 连发枪按住期间已由 Tick 开火，点按不再补一枪
+        if not self.AutoFired then self:RequestAttack() end
+    elseif result == "long" and self.EquippedGun and not self.AutoFireGun then
+        -- 长按=手动换弹（连发枪靠空匣自动换弹，长按不抢）
+        self:RequestReload()
     end
-    print("[LocalAttackButton] 请求挥砍 slot=" .. tostring(self.Slot))
-    return AbilityAPI.RequestCast(manager, self.Slot)
+end
+
+-- 按住连发：Auto 枪按票面射速持续请求，射速/弹量以服务端为准
+function LocalAttackButton:Tick()
+    if not self.Pressing or not self:CanOperate() then return end
+    local now = World:GetServerTime()
+    if self.Gesture then self.Gesture:Update(now) end
+    if self.AutoFireGun and now >= (self.NextAutoFire or 0) then
+        self.NextAutoFire = now + (self.AutoFireGun.IntervalSec or 0.2)
+        self.AutoFired = true
+        self:RequestAttack()
+    end
+end
+
+function LocalAttackButton:RequestAttack()
+    if not self:CanOperate() then return end
+    print("[LocalAttackButton] 请求攻击 equipped=" .. tostring(self.EquippedId))
+    _G.REUtil:GetRE("WeaponAction"):FireServer({ action = "attack" })
+end
+
+function LocalAttackButton:RequestReload()
+    if not self:CanOperate() then return end
+    print("[LocalAttackButton] 请求换弹 equipped=" .. tostring(self.EquippedId))
+    _G.REUtil:GetRE("WeaponAction"):FireServer({ action = "reload" })
 end
 
 function LocalAttackButton:Destroy()
     self.IsOpen = false
+    self.Pressing = false
     if self.ClickConn then self.ClickConn:Disconnect() end
+    if self.HeartConn then self.HeartConn:Disconnect() end
+    for _, conn in ipairs(self.PressConns or {}) do conn:Disconnect() end
     if self.Container then
         _G.MgrGameUI:SetCustomControlUI(self.Container, nil)
         self.Container:Destroy()
     end
     self.ClickConn = nil
+    self.HeartConn = nil
+    self.PressConns = nil
     self.Container = nil
     self.BtnAttack = nil
+    self.Label = nil
     self.Root = nil
-    self.Slot = nil
+    self.EquippedId = nil
+    self.EquippedGun = nil
+    self.AutoFireGun = nil
 end
 
 return LocalAttackButton

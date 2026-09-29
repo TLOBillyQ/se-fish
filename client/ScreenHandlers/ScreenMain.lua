@@ -1,6 +1,7 @@
 local World = game:GetService('World')
 local GameCfg = require('common.GameCfg')
 local LocalAttackButton = require('client.LocalAttackButton')
+local PressGesture = require('client.PressGesture')
 local DamageFloat = require('client.DamageFloat')
 
 local ScreenHandler = { UINodes = {}, UINodeMap = {} }
@@ -58,9 +59,122 @@ function ScreenHandler:SlotAtPosition(pos)
     end
     return nil
 end
+
+-- ===== #129 投掷（爆炸物槽位手势：点按=直接投 20 米，长按=瞄准选点） =====
+-- 墙钟兜底 os.clock：手势只关心相对时长，部分环境（测试/早期加载）World 无 GetServerTime
+local function nowSec()
+    if World.GetServerTime then return World:GetServerTime() end
+    return os.clock()
+end
+
+function ScreenHandler:SlotDefinition(index)
+    local entry = self.Snapshot and self.Snapshot.slots[index]
+    return entry and GameCfg.Items.Definitions[entry.itemId] or nil
+end
+
+function ScreenHandler:IsExplosiveSlot(index)
+    local definition = self:SlotDefinition(index)
+    return definition ~= nil and definition.Type == '爆炸物'
+end
+
+-- 槽位按压手势：OnClicked 与手势都会响应一次点按，用标志位保证只消费一次
+function ScreenHandler:BindSlotGesture(btn, index)
+    if not btn.OnTouchBegan or not btn.OnTouchEnded then return end
+    self:Listen(btn.OnTouchBegan, function(touch)
+        self.SlotPress = { index = index, gesture = PressGesture.New({
+            LongPressSec = GameCfg.Ability.Throw.LongPressSec }) }
+        self.SlotPress.gesture:Begin(nowSec(),
+            touch and touch.BeganPosition or nil)
+    end)
+    self:Listen(btn.OnTouchEnded, function(touch)
+        local press = self.SlotPress
+        if not press or press.index ~= index then return end
+        self.SlotPress = nil
+        if not self:IsExplosiveSlot(index) then return end
+        local result = press.gesture:End(nowSec(),
+            touch and touch.EndedPosition or nil)
+        if result == 'tap' then
+            self.ThrowHandled = { index = index, valid = true }
+            self:ThrowExplosive(index, nil) -- 直接投：朝向前方票面 20 米
+        elseif result == 'long' then
+            self.ThrowHandled = { index = index, valid = true }
+            self:BeginAim(index)
+        end
+    end)
+end
+
+function ScreenHandler:ConsumeThrowClick(index)
+    local handled = self.ThrowHandled
+    if handled and handled.index == index and handled.valid then
+        handled.valid = false
+        return true
+    end
+    return false
+end
+
+-- 投掷消耗持久物，走 #124 同款单调 seq：服务端按 #123 协议幂等去重
+function ScreenHandler:ThrowExplosive(slot, target)
+    self.WeaponSeq = (self.WeaponSeq or 0) + 1
+    local payload = { action = 'throw', slot = slot, seq = self.WeaponSeq }
+    if type(target) == 'table' then payload.target = target end
+    print('[ScreenMain] 投掷 slot=' .. tostring(slot) .. ' seq=' .. tostring(self.WeaponSeq))
+    _G.REUtil:GetRE('WeaponAction'):FireServer(payload)
+end
+
+-- 长按进入瞄准：全屏拾取层，点哪里投哪里（落点服务端再钳到 20 米内）
+function ScreenHandler:BeginAim(slot)
+    self:EndAim()
+    if not self.UIRoot or not self.EuiResolution then return end
+    self.AimSlot = slot
+    local resolution = self.EuiResolution
+    local overlay = World:CreateUnit('EUIButton', {
+        Parent = self.UIRoot, Name = 'ThrowAimOverlay',
+        Position = Vector2.New(resolution.x / 2, resolution.y / 2),
+        Size = Vector2.New(resolution.x, resolution.y),
+    })
+    if not overlay then self.AimSlot = nil return end
+    overlay.ButtonText = ''
+    pcall(function() overlay.ButtonNormalColor = Color.New(30, 40, 30, 40) end)
+    pcall(function() overlay.ButtonPressColor = Color.New(30, 40, 30, 60) end)
+    self.AimOverlay = overlay
+    if _G.LocalMsgNotice then _G.LocalMsgNotice('点击屏幕选择投掷落点') end
+    self:Listen(overlay.OnTouchEnded, function(touch) self:PickAim(touch) end)
+end
+
+function ScreenHandler:PickAim(touch)
+    local pos = touch and touch.EndedPosition
+    local slot = self.AimSlot
+    self:EndAim()
+    if not slot or not pos then return end
+    -- [未查证：ScreenPointToRay 的 depth 语义按射线长度处理]，无命中时回退直接投掷
+    local target
+    local ok, ray = pcall(function()
+        local camera = game:GetService('CameraService')
+        return camera and camera:ScreenPointToRay(pos.x, pos.y,
+            GameCfg.Ability.Throw.Range * 2)
+    end)
+    if ok and ray and ray.Origin and ray.Direction then
+        local physics = game:GetService('PhysicsService')
+        local hit = physics and physics.Raycast
+            and physics:Raycast(ray.Origin, ray.Direction, nil)
+        local p = hit and hit.Position
+        if p then target = { x = p.x, y = p.y, z = p.z } end
+    end
+    self:ThrowExplosive(slot, target)
+end
+
+function ScreenHandler:EndAim()
+    if self.AimOverlay then
+        pcall(function() self.AimOverlay:Destroy() end)
+    end
+    self.AimOverlay = nil
+    self.AimSlot = nil
+end
+
 function ScreenHandler:Show(state)
     if type(state) ~= 'table' or type(state.slots) ~= 'table' then return end
     self.Snapshot = state
+    LocalAttackButton:SetEquipped(state) -- #129：攻击按钮语义随装备走（攻击/射击/连发/换弹）
     local capacity = state.slotCount or GameCfg.Items.ItemBarSlots
     for index, slot in ipairs(self.Slots or {}) do
         local entry = state.slots[index]
@@ -423,7 +537,7 @@ function ScreenHandler:ShowDynamicBait(state)
 end
 
 -- #124 武器独立库存：快照驱动的武器按钮（武器不占普通格），点击走 Operate 两步——
--- 首次切手持，再次攻击（战斗结算归 #128）。
+-- 首次切手持，再次由 #129 客户端回包转成 WeaponAction 攻击（结算在 MgrWeapon，服务端权威）。
 function ScreenHandler:ShowDynamicWeapons(state)
     self.WeaponBtns = self.WeaponBtns or {}
     for _, entry in pairs(self.WeaponBtns) do
@@ -733,7 +847,11 @@ function ScreenHandler:Init()
         self.Slots[index] = { Background = background, Icon = icon, Label = label, Count = amount }
         self.ItemBarSlotPos[index] = { x = x, y = y }
         self:bindDrag(background, GameCfg.Items.ContainerId.ItemBar, index)
-        self:Listen(background.OnClicked, function() self:Action('SelectSlot', index) end)
+        self:BindSlotGesture(background, index)
+        self:Listen(background.OnClicked, function()
+            if self:ConsumeThrowClick(index) then return end -- 爆炸物已由手势消费本次点击
+            self:Action('SelectSlot', index)
+        end)
     end
     self.UIRoot = root
     self:BuildBackpack(root, resolution)
@@ -870,12 +988,29 @@ function ScreenHandler:Init()
     self:Listen(_G.REUtil:GetRE('ItemBarResult').OnClientEvent, function(result)
         if type(result) ~= 'table' or result.ok ~= false then return end
         self.LastOperateOperation = result.operation or self.LastOperateOperation
+        -- #129：武器已手持时再点武器列表=出击（结算在 MgrWeapon，伤害以服务端为准）
+        if result.reason == 'combat-pending' then
+            _G.REUtil:GetRE('WeaponAction'):FireServer({ action = 'attack' })
+            return
+        end
         local hints = { empty = '物品已不在格子里', ['cannot-eat'] = '现在不能吃',
             ['drop-unavailable'] = '丢弃通道未就绪（地面物品）', ['drop-rejected'] = '这里丢不下',
             ['potion-capped'] = '这类药水已到上限', ['combat-pending'] = '战斗结算未接入（#128）',
             ['bad-weapon'] = '没有这件武器', ['bad-slot'] = '格子不存在', ['unknown-op'] = '未知操作' }
         if _G.LocalMsgNotice then
             _G.LocalMsgNotice(hints[result.reason] or ('操作失败 ' .. tostring(result.reason)))
+        end
+    end)
+    -- #129 武器结算回包：换弹/空匣/冷却/投掷校验失败给具体提示
+    self:Listen(_G.REUtil:GetRE('WeaponResult').OnClientEvent, function(result)
+        if type(result) ~= 'table' or result.ok ~= false then return end
+        local hints = { ['cannot-act'] = '现在不能攻击', unavailable = '武器未就绪',
+            cooldown = '出手太快', reloading = '换弹中', empty = '弹匣已空，自动换弹',
+            ['not-a-gun'] = '手持的不是枪械', ['mag-full'] = '弹匣是满的',
+            ['bad-slot'] = '格子不存在', ['bad-throwable'] = '这个不能投掷',
+            ['bad-target'] = '落点无效', ['bad-weapon'] = '武器未配置' }
+        if _G.LocalMsgNotice then
+            _G.LocalMsgNotice(hints[result.reason] or ('武器操作失败 ' .. tostring(result.reason)))
         end
     end)
     self:Listen(_G.REUtil:GetRE('CastState').OnClientEvent, function(state)
@@ -987,6 +1122,7 @@ function ScreenHandler:CloseScreen()
     self.IsOpen = false
     self.FailureUntil = nil
     self.FailureLanding = nil
+    self:EndAim()
     LocalAttackButton:SetOpen(false)
     if _G.LocalReelIn then
         _G.LocalReelIn:Suspend(self.CastState and self.CastState.reelSession)
