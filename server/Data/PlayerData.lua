@@ -599,6 +599,30 @@ function PlayerData:ExchangeSlot(slot, product)
     return true
 end
 
+-- 双向拖拽只接受两个合法格位；交换同一实例，保留倍率和未识别的存档字段。
+function PlayerData:MoveSlot(from, index, target, slot)
+    if not self.Inited then return false end
+    local ids = GameCfg.Items.ContainerId
+    local function capacity(id)
+        return id == ids.ItemBar and self:ItemBarCapacity() or id == ids.Backpack and self:BackpackCapacity()
+    end
+    local sourceMax, targetMax = capacity(from), capacity(target)
+    if not sourceMax or not targetMax or not integer(index, 1, sourceMax)
+        or not integer(slot, 1, targetMax) or from == target and index == slot then return false end
+    local source, destination = self.Data.Containers[from], self.Data.Containers[target]
+    if not source[index] then return false end
+    self:UpdateData(function()
+        source[index], destination[slot] = destination[slot], source[index]
+        if source[index] then source[index].containerId = from end
+        destination[slot].containerId = target
+        if from == ids.ItemBar and self.Data.SelectedSlot == index
+            or target == ids.ItemBar and self.Data.SelectedSlot == slot then
+            self.Data.SelectedSlot = nil
+        end
+    end, true)
+    return true
+end
+
 function PlayerData:MoveToItemBar(index)
     if not self.Inited or type(index) ~= 'number' or index ~= math.floor(index)
         or index < 1 or index > self:BackpackCapacity() then return false end
