@@ -134,6 +134,21 @@ function TestGarCombat:test_threat_target_and_override_reselect_legal_targets()
     lu.assertNil(fish.Threat[self.player])
 end
 
+function TestGarCombat:test_bite_is_skipped_when_vitals_entry_is_not_wired()
+    -- #128 健壮性：Vitals 未接线（如独立测试或接线遗漏）时追咬不得报错，只停住不咬
+    self:prepare()
+    armPlayer(self.player, 300)
+    local fish = self:heldFish(self.player, 'alligatorGar')
+    self.mgr:Drop(self.player)
+    self.mgr.Vitals = nil
+    local body = fish.Carrier.Body
+    self.player.Character.Position = vec(body.Position.x, 2, body.Position.z)
+    local cd = require('common.GameCfg').FishCombat.gar.BiteCooldownSec
+    self.now = cd
+    self.mgr:Update()
+    lu.assertEquals(self.player.Character.Controller.Health, 300)
+end
+
 function TestGarCombat:test_flee_deadline_switches_to_straight_escape()
     self:prepare()
     armPlayer(self.player, 300)
