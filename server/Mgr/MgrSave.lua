@@ -336,7 +336,7 @@ end
 -- 扣费、发奖、恢复记录和结果一次落在同键，失败时 draft 不向玩家发布。
 function Mgr:Execute(player, data, operation, transform, done)
     local userId, s = player.UserId, self.Sessions[player.UserId]
-    if not s or not self:IsCurrent(userId, s, data) or self:IsPaused(userId) or not data.Inited
+    if not s or not self:IsCurrent(userId, s, data) or s.State ~= 'ready' or not data.Inited
         or type(operation) ~= 'table' or type(operation.sequence) ~= 'number'
         or operation.sequence ~= math.floor(operation.sequence) or operation.sequence < 1
         or operation.id ~= tostring(userId) .. ':' .. operation.sequence
@@ -353,6 +353,7 @@ function Mgr:Execute(player, data, operation, transform, done)
         end
     end
     if operation.sequence <= meta.sequence then return false, 'expired' end
+    if self:IsPaused(userId) then return false, 'pending' end
     if operation.sequence ~= meta.sequence + 1 then return false, 'out-of-order' end
     s.Transition = true
     self:AfterIdle(userId, function()
