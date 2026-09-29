@@ -378,3 +378,107 @@ function TestEconomyPersistence:test_buy_waits_for_persistence_and_retries_witho
     lu.assertEquals(restored.Data.FishCoin, 9)
     lu.assertEquals(restored.Data.Bait.worm, 1)
 end
+
+-- #130 升级行购买走 Save 协议：先持久后生效、同键重放不重复、限购与强化重进保持
+function TestEconomyPersistence:test_upgrade_row_persists_and_replays_without_double_charge()
+    self.data:AddCoin(1000)
+    self:persistSetup()
+    local request = { action = 'Buy', number = 51, seq = 1 } -- 近战武器升级1，50 金
+    lu.assertTrue(self.shop:Handle(self.player, request))
+    lu.assertEquals(self.data:ShopUpgradeLevel('melee'), 0) -- 落账前不生效
+    lu.assertEquals(self.events, {})
+    self:drain()
+    lu.assertEquals(self.data.Data.FishCoin, 950)
+    lu.assertEquals(self.data:ShopUpgradeLevel('melee'), 1)
+    lu.assertEquals(self.data:PurchaseCount(51), 1)
+    local result = self:messages('ShopResult')[1]
+    lu.assertTrue(result.ok)
+    lu.assertEquals(result.name, '近战武器升级1')
+    lu.assertEquals(result.kind, 'melee')
+    lu.assertNotNil(result.operation)
+    -- 同身份重放：只回历史结果，不重复扣款/升级/计数
+    self:clearEvents()
+    lu.assertTrue(self.shop:Handle(self.player, { action = 'Buy', number = 51, seq = 1 }))
+    lu.assertEquals(self:messages('ShopResult'), { result })
+    lu.assertEquals(self:messages('ItemBarState'), {})
+    lu.assertEquals(self.data.Data.FishCoin, 950)
+    lu.assertEquals(self.data:ShopUpgradeLevel('melee'), 1)
+    lu.assertEquals(self.data:PurchaseCount(51), 1)
+    -- 重进保持：强化等级与购买计数都在存档里
+    self:join()
+    self:drain()
+    local restored = self.players:GetDataInst(self.player)
+    lu.assertEquals(restored:ShopUpgradeLevel('melee'), 1)
+    lu.assertEquals(restored:PurchaseCount(51), 1)
+    lu.assertEquals(restored.Data.FishCoin, 950)
+    -- 重进后重复购买：限购拒绝且不扣钱
+    self:clearEvents()
+    lu.assertFalse(self.shop:Handle(self.player, { action = 'Buy', number = 51, seq = 2 }))
+    lu.assertEquals(self:messages('ShopResult')[1].reason, 'limit')
+    lu.assertEquals(restored.Data.FishCoin, 950)
+    lu.assertEquals(restored:ShopUpgradeLevel('melee'), 1)
+end
+
+-- #130 写失败：金币、等级、计数都不变；恢复后重试只结算一次，重进保持
+function TestEconomyPersistence:test_upgrade_write_failure_keeps_state_and_single_settlement_after_retry()
+    self.data:AddCoin(1000)
+    self:persistSetup()
+    self.writeFailure = true
+    local request = { action = 'Buy', number = 51, seq = 1 }
+    lu.assertTrue(self.shop:Handle(self.player, request))
+    lu.assertEquals(self.data.Data.FishCoin, 1000)
+    lu.assertEquals(self.data:ShopUpgradeLevel('melee'), 0)
+    self:drain()
+    lu.assertEquals(self.events, {})
+    lu.assertFalse(self.shop:Handle(self.player, request))
+    self.writeFailure, self.loseReply = false, true
+    self.save:Update()
+    self:drain()
+    lu.assertEquals(self.data.Data.FishCoin, 950)
+    lu.assertEquals(self.data:ShopUpgradeLevel('melee'), 1)
+    lu.assertEquals(self.data:PurchaseCount(51), 1)
+    lu.assertEquals(#self:messages('ShopResult'), 1)
+    lu.assertTrue(self:messages('ShopResult')[1].ok)
+    self:join()
+    self:drain()
+    local restored = self.players:GetDataInst(self.player)
+    lu.assertEquals(restored:ShopUpgradeLevel('melee'), 1)
+    lu.assertEquals(restored:PurchaseCount(51), 1)
+    lu.assertEquals(restored.Data.FishCoin, 950)
+end
+
+-- #130 背包升级行（编号 33）并入升级页：走 Save 协议并复用 Data.UpgradeLevel
+function TestEconomyPersistence:test_backpack_upgrade_row_drives_storage_level_and_persists()
+    self.data:AddCoin(1000)
+    self:persistSetup()
+    lu.assertTrue(self.shop:Handle(self.player, { action = 'Buy', number = 33, seq = 1 })) -- 背包升级1，100 金
+    self:drain()
+    lu.assertEquals(self.data.Data.FishCoin, 900)
+    lu.assertEquals(self.data.Data.UpgradeLevel, 1)
+    lu.assertEquals(self.data:ItemBarCapacity(), 3)
+    lu.assertEquals(self.data:BackpackCapacity(), 10)
+    lu.assertEquals(self.data:PurchaseCount(33), 1)
+    self:join()
+    self:drain()
+    local restored = self.players:GetDataInst(self.player)
+    lu.assertEquals(restored.Data.UpgradeLevel, 1)
+    lu.assertEquals(restored:ShopUpgradeLevel('backpack'), 1)
+    lu.assertEquals(restored:ItemBarCapacity(), 3)
+    lu.assertEquals(restored:PurchaseCount(33), 1)
+end
+
+-- #130 越级购买在持久前被拒绝：不产生操作、不扣钱、计数为零
+function TestEconomyPersistence:test_skip_level_rejected_before_persisting()
+    local oldStands = GameCfg.Shop.Stands
+    GameCfg.Shop.Stands = { { AnchorName = 'TGUnitShop', Level = 7 } }
+    self.data:AddCoin(1000)
+    self:persistSetup()
+    self.shop:Handle(self.player, { action = 'Buy', number = 50, seq = 1 }) -- 近战 2 级，未买过 1 级
+    lu.assertEquals(self:messages('ShopResult')[1].reason, 'level')
+    self:drain()
+    lu.assertEquals(self.data.Data.FishCoin, 1000)
+    lu.assertEquals(self.data:ShopUpgradeLevel('melee'), 0)
+    lu.assertEquals(self.data:PurchaseCount(50), 0)
+    lu.assertEquals(self.data:Serialize().meta.sequence, 0)
+    GameCfg.Shop.Stands = oldStands
+end
