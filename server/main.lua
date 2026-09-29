@@ -68,6 +68,8 @@ MgrMap.MgrSave.PlayerData = MgrMap.MgrPlayerData
 -- 只有玩家武器伤害才累计仇恨；鱼攻击（fishAttack）来源不是玩家，自然不记。
 MgrMap.MgrAbility.Vitals = MgrMap.MgrVitals
 MgrMap.MgrFishUnit.Vitals = MgrMap.MgrVitals
+-- #132 T11 三倍体型：吃药水成功后由 MgrPlayerData 就地重算体型（唯一消费口，幂等）。
+MgrMap.MgrPlayerData.Ability = MgrMap.MgrAbility
 MgrMap.MgrVitals.FishCarrier = MgrMap.MgrFishCarrier
 MgrMap.MgrCast.Vitals = MgrMap.MgrVitals
 -- #131 生存恢复：经 #128 预留的 LifeHooks 接管濒死/死亡，依赖单向注入在这里完成。

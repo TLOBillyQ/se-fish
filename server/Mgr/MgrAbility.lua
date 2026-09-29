@@ -7,6 +7,7 @@ local World = game:GetService("World")
 local Task = game:GetService("Task")
 
 local GameCfg = require("common.GameCfg")
+local BodyScale = require("common.BodyScale")
 local AbilityAPI = require("server.AbilityAPI")
 
 local Mgr = { PendingFishCleanup = {} }
@@ -212,6 +213,40 @@ function Mgr:CanCast(unit)
 	if not player then return true end -- 鱼等服务端单位的技能不受玩家动作互斥影响
 	if not self.Vitals then return true end
 	return self.Vitals:CanAct(player)
+end
+
+-- #132 T11 原型：三倍体型的装配口。数值与派生量在 common/BodyScale.lua，落地在 AbilityAPI.SetBodyScale，
+-- 这里只负责「从玩家存档读药水数 → 应用到角色」。
+-- 边界（本单未做，见 issue #132 待办清单）：
+--   * 血量上限随药水成长（300→900）需要 MgrVitals 支持按玩家 MaxHealth（现为全局 cfg().MaxHealth），
+--     属 #128/#131 的改动面，本原型只把 plan.Health 作为数据契约返回、不改生命系统；
+--   * 交互距离/相机距离先用角色属性发布，客户端是否读取、三倍碰撞体是否真的能拾取/钓鱼/摆渡要真机试玩。
+---按玩家已吃的变大药水算体型计划（读不到存档时按 0 个处理）
+---@return table { Scale, Health, Potions, Capped, MaxScale, MaxHealth }
+function Mgr:BodyPlan(player)
+	local count = 0
+	local itemId = GameCfg.Ability.BodyScale.PotionItem
+	local ok, value = pcall(function() return player.Data.Extra.growth.potions[itemId] end)
+	if ok and type(value) == 'number' then count = value end
+	return BodyScale.Plan(count)
+end
+
+---把体型计划落到角色上：SetScale + 派生量属性。倍率非法由 BodyScale 净化，不会写入 NaN。
+---@return table { Ok, Scale?, Health?, Capped?, Derived?, Error? }
+function Mgr:ApplyBodyScale(player)
+	local character = player and player.Character
+	if not character then return { Ok = false, Error = 'no-character' } end
+	local plan = self:BodyPlan(player)
+	local applied = AbilityAPI.SetBodyScale(character, plan.Scale)
+	if not applied.Ok then return { Ok = false, Error = applied.Error, Plan = plan } end
+	local derived = applied.Derived or {}
+	pcall(function()
+		character:SetAttribute('CameraDistance', derived.CameraDistance)
+		character:SetAttribute('InteractRange', derived.InteractRange)
+		character:SetAttribute('BodyScaleCapped', plan.Capped)
+	end)
+	print('[MgrAbility] 体型', player.UserId, plan.Potions, applied.Scale, 'health=' .. tostring(plan.Health))
+	return { Ok = true, Scale = applied.Scale, Health = plan.Health, Capped = plan.Capped, Derived = derived }
 end
 
 function Mgr:Start()

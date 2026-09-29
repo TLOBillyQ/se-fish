@@ -629,6 +629,8 @@ GameCfg.Ability = {
         -- 1 倍体型下的基准量：胶囊高 2 米（与 MgrVitals.characterHeight 读到的角色 Height 同口径）、
         -- 相机距离 6 米、交互距离 2 米（GameSpec §8.3「2 米内显示拾取」）。
         CapsuleHeight = 2, CameraDistance = 6, InteractRange = 2,
+        -- 消费口：变大药水（common/cfg/Items.lua item168「吃掉增加体型和血量，最多吃 10 个」）
+        PotionItem = 'item168',
     },
     Flight = {
         -- GameSpec §12：白头鹰 飞行移速 20 / 每 20 秒俯冲 / 基础攻击 30；风神翼龙 移速 20 /
@@ -645,6 +647,8 @@ GameCfg.Ability = {
         DiveDamage = 30,     -- 俯冲伤害兜底（表内白头鹰基础攻击 30）
         LeapHeight = 8,      -- 沧龙跃起高度（暂取）
         LeapSec = 1.5,       -- 沧龙跃起滞空时间（暂取）
+        AggroRange = 60,     -- 飞行时的索敌半径（暂取）
+        DiveRadius = 5,      -- 俯冲砸击的命中半径（暂取）
         -- 按鱼种 Id 的飞行档案；Bounds 由鱼所在钓鱼区的 Scene.Boundary 提供，缺省用下面的 FallbackBounds。
         Species = {
             fish47Elite = { CruiseHeight = 12, DiveIntervalSec = 20, DiveDamage = 30 },
@@ -669,6 +673,8 @@ GameCfg.Ability = {
         FollowTolerance = 3,                  -- 携带跟随容差（米）：超出即整段钳回挂点
         DropHeight = 1.5, DropForward = 2,    -- 释放落点（暂取）
         MaxCarrySec = 20,                     -- 单次叼走的最长携带时间（暂取）
+        ContactIntervalSec = 1, ContactDamage = 150, -- 叼走过程的接触伤害节奏与数值（伤害取自正文 150）
+        FallDamage = 0,                       -- 落地额外伤害（正文未给，先 0）
     },
     BossPhase = {
         -- 哥斯拉（fish56Boss，GameSpec §12）：低于 60% 入水、切沧龙式攻击（咬中 1000）；
@@ -691,6 +697,11 @@ GameCfg.Ability = {
             breath = { IntervalSec = 30, Range = 10, OneShot = true, WindupSec = 1.5 }, -- 正前 10 米秒杀
             bite = { IntervalSec = 2 },                -- 入水后的咬击：伤害取阶段条目的 BiteDamage
         },
+        -- 走阶段机的鱼种（键为 GameCfg.Fish 的 Id）。本单只登记哥斯拉；
+        -- 正式接入由 #144 决定是加 Combat 标签还是建「首领」注册表（本单不改 common/cfg/Fish.lua）。
+        Species = { fish56Boss = true },
+        -- 阶段首领的追击口径（与 #88 的 GameCfg.FishCombat 同字段；此处不依赖鱼的 Combat 标签）
+        Chase = { BiteRange = 4, BiteCooldownSec = 2 },
     },
 }
 
