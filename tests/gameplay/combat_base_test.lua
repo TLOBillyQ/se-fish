@@ -43,3 +43,42 @@ function TestCombatBase:test_same_hit_is_once_per_target_and_actual_damage_match
     lu.assertEquals({ #self.notices, self.notices[1].amount, self.notices[2].amount }, { 2, 25, 25 })
     lu.assertFalse(self.v:ApplyHit(hit, self.a, 0 / 0))
 end
+function TestCombatBase:test_source_alias_life_hook_and_zone_filter_stay_in_entry()
+    local hit = self.v:NewHit(self.b.Character, 'weapon')
+    lu.assertEquals(self.v:ResolveHitSource(hit), self.b)
+    local filtered = 0
+    self.v.DamageFilter = function(incoming, target)
+        filtered = filtered + 1
+        lu.assertEquals(incoming.sourcePlayer, self.b)
+        lu.assertEquals(target, self.a)
+        return incoming.category ~= 'weapon'
+    end
+    lu.assertFalse(self.v:ApplyHit(hit, self.a, 10))
+    lu.assertEquals(self.a.Character.Controller.Health, 300)
+    self.v.DamageFilter = nil
+    lu.assertTrue(self.v:ApplyHit(hit, self.a.Character, 10))
+
+    local rescued = {}
+    self.v:SetLifeHooks({
+        LifeStatus = function(state) return state.player.attrs.Health <= 1 and 'downed' or 'alive' end,
+        CanTakeDamage = function(state) return state.player.attrs.Health > 1 end,
+        OnBeforeDamage = function(state)
+            if state.player.attrs.Health - 10 <= 0 then state.player.Character.Controller.Health = 1 return true end
+        end,
+        Rescue = function(state, rescuer)
+            rescued[#rescued + 1] = { state.player, rescuer }
+            state.player.Character.Controller.Health = 30
+            return true
+        end,
+    })
+    self.a.Character.Controller.Health = 5
+    self.a.attrs.Health = 5
+    local lethal = self.v:NewHit(self.b, 'fishAttack')
+    local ok, actual = self.v:ApplyHit(lethal, self.a, 10)
+    lu.assertTrue(ok)
+    lu.assertEquals(actual, 4)
+    lu.assertTrue(self.v:IsDowned(self.a))
+    lu.assertFalse(self.v:ApplyHit(self.v:NewHit(self.b, 'fishAttack'), self.a, 1))
+    lu.assertTrue(self.v:Rescue(self.a, self.b))
+    lu.assertEquals(rescued, { { self.a, self.b } })
+end

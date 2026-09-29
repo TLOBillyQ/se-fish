@@ -35,16 +35,69 @@ function Mgr:IsDead(player)
     return state ~= nil and state.dead
 end
 
+function Mgr:PlayerFromUnit(unit)
+    for _, state in pairs(self.States) do
+        if state.player == unit or state.player.Character == unit then return state.player end
+    end
+end
+
 -- #128 统一伤害：每个服务端判定段由 NewHit 颁发一次命中身份；同一身份对同一目标只结算一次，
 -- 同帧重复碰撞 / 回调重放不会双扣。DOT 的下一 tick 或下一次范围判定必须重新 NewHit。
+-- source 接受玩家、角色或权威鱼记录；玩家来源在这里落成服务端登记身份，不能由客户端自报。
 function Mgr:NewHit(source, category)
     self.NextHitId = (self.NextHitId or 0) + 1
-    return { id = self.NextHitId, source = source, category = category, targets = {} }
+    return { id = self.NextHitId, source = source, category = category,
+        sourcePlayer = self:PlayerFromUnit(source), targets = {} }
+end
+
+function Mgr:ResolveHitSource(hit)
+    return type(hit) == 'table' and hit.sourcePlayer or nil
 end
 
 local function validAmount(amount)
     return type(amount) == 'number' and amount > 0 and amount == amount
         and amount ~= math.huge and amount ~= -math.huge
+end
+
+-- T08 接缝：后续濒死模块在这里接管致命伤害、濒死状态与抢救；本单默认语义保持原死亡流程。
+function Mgr:SetLifeHooks(hooks)
+    self.LifeHooks = type(hooks) == 'table' and hooks or nil
+end
+
+function Mgr:LifeStatus(player)
+    local state = self:GetState(player)
+    if not state then return nil end
+    local hooks = self.LifeHooks
+    if hooks and type(hooks.LifeStatus) == 'function' then
+        local ok, status = pcall(hooks.LifeStatus, state)
+        if ok and type(status) == 'string' then return status end
+    end
+    return state.dead and 'dead' or 'alive'
+end
+
+function Mgr:IsDowned(player)
+    return self:LifeStatus(player) == 'downed'
+end
+
+function Mgr:CanTakeDamage(player, hit)
+    local state = self:GetState(player)
+    if not state then return false end
+    local hooks = self.LifeHooks
+    if hooks and type(hooks.CanTakeDamage) == 'function' then
+        local ok, allowed = pcall(hooks.CanTakeDamage, state, hit)
+        if ok then return allowed == true end
+    end
+    return not state.dead
+end
+
+function Mgr:Rescue(player, rescuer)
+    local state = self:GetState(player)
+    local hooks = self.LifeHooks
+    if not state or not self:IsDowned(player) or not hooks or type(hooks.Rescue) ~= 'function' then return false end
+    local ok, result = pcall(hooks.Rescue, state, rescuer)
+    if not ok then print('[MgrVitals] 抢救接缝失败', player.UserId, tostring(result)) return false end
+    if result == true then self:WriteHealth(state) end
+    return result == true
 end
 
 local function controllerOf(state)
@@ -185,17 +238,25 @@ function Mgr:Revive(state, source)
 end
 
 -- 掉血单点；扣成功返回 true 与实际扣血量（过量伤害只计剩余生命）
-function Mgr:ApplyDamage(player, amount)
+function Mgr:ApplyDamage(player, amount, hit)
     local state = self:GetState(player)
-    if not state or state.dead or not validAmount(amount) then return false end
+    if not state or not self:CanTakeDamage(player, hit) or not validAmount(amount) then return false end
     local controller = controllerOf(state)
     if not controller then return false end
     local before = healthOf(state)
-    local ok = pcall(function() controller:TakeDamage(amount) end)
+    local intercepted = false
+    local hooks = self.LifeHooks
+    if hooks and type(hooks.OnBeforeDamage) == 'function' then
+        local ok, handled = pcall(hooks.OnBeforeDamage, state, amount, hit)
+        if ok then intercepted = handled == true
+        else print('[MgrVitals] 生命接缝失败', player.UserId, tostring(handled)) end
+    end
+    local applied = true
+    if not intercepted then applied = pcall(function() controller:TakeDamage(amount) end) end
     local health = healthOf(state)
     self:WriteHealth(state)
-    if health and health <= 0 then self:OnDied(state) end
-    if not ok or not before or not health or health >= before then return false end
+    if health and health <= 0 and not intercepted then self:OnDied(state) end
+    if not applied or not before or not health or health >= before then return false end
     return true, before - health
 end
 
@@ -204,16 +265,17 @@ end
 function Mgr:ApplyHit(hit, target, amount)
     if type(hit) ~= 'table' or type(hit.id) ~= 'number' or type(hit.targets) ~= 'table' then return false end
     if not validAmount(amount) then return false end
-    local character = target
     local player = target
-    if not self:GetState(player) and player and player.Character then
-        for _, candidate in pairs(self.States) do
-            if candidate.player.Character == player.Character then player = candidate.player break end
-        end
+    if not self:GetState(player) then player = self:PlayerFromUnit(target) or player end
+    if not self:GetState(player) or hit.targets[player.UserId] then return false end
+    local sourceState = hit.sourcePlayer and self:GetState(hit.sourcePlayer)
+    if hit.sourcePlayer and (not sourceState or sourceState.player ~= hit.sourcePlayer) then return false end
+    if self.DamageFilter then
+        local filterOk, allowed = pcall(self.DamageFilter, hit, player)
+        if not filterOk then print('[MgrVitals] 伤害过滤失败', player.UserId, tostring(allowed)) end
+        if not filterOk or allowed ~= true then return false end
     end
-    if player and player.Character then character = player.Character end
-    if not self:GetState(player) or character ~= player.Character then return false end
-    local ok, actual = self:ApplyDamage(player, amount)
+    local ok, actual = self:ApplyDamage(player, amount, hit)
     if ok then hit.targets[player.UserId] = true end
     return ok, actual
 end
