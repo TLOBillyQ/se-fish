@@ -519,6 +519,42 @@ GameCfg.Ability = {
             },
         },
     },
+    -- T08 武器系统（#129）：伤害/射速/弹匣/投掷数值集中在此，与商店表（common/cfg/Shop.lua
+    -- 武器页 R16—R27）逐行对应；票面参数（射程、换弹、爆炸半径、保底鱼）来自 #129 任务说明。
+    -- 暂取值（原表未给，待策划确认）：火箭筒 IntervalSec、GunShared.Range、Throw.FlightSec /
+    -- FishTtlSec / LongPressSec / ArcHeight。
+    Unarmed = { Damage = 5, IntervalSec = 0.5, Range = 2 }, -- 票面：空手 5 伤害 / 0.5 秒 / 2 米
+    MeleeWeapons = {
+        item134 = { Damage = 10, IntervalSec = 0.5, Range = 2 },  -- 指虎 商店表!R27
+        item135 = { Damage = 15, IntervalSec = 0.5, Range = 3 },  -- 匕首 商店表!R26
+        item136 = { Damage = 40, IntervalSec = 1.0, Range = 4 },  -- 斧头 商店表!R25
+    },
+    -- 枪械公共：手动/自动换弹均 2 秒（票面）；备弹无限、弹匣有限；射程暂取 30 米
+    GunShared = { ReloadSec = 2, Range = 30, ActionCooldownSec = 0.1 },
+    Guns = {
+        item137 = { Damage = 10, IntervalSec = 1.0, Magazine = 10 },              -- 手枪 商店表!R24
+        item138 = { Damage = 20, Pellets = 5, IntervalSec = 1.5, Magazine = 2 },  -- 霰弹枪 商店表!R23
+        item139 = { Damage = 13, IntervalSec = 0.15, Magazine = 30, Auto = true }, -- 冲锋枪 商店表!R22
+        item140 = { Damage = 20, IntervalSec = 0.2, Magazine = 30, Auto = true }, -- 自动步枪 商店表!R21
+        item141 = { Damage = 200, IntervalSec = 1.5, Magazine = 5 },              -- 狙击枪 商店表!R20
+        item142 = { Damage = 500, IntervalSec = 2.0, Magazine = 1,               -- 火箭筒 商店表!R19（射速暂取 2 秒）
+                    Splash = { Damage = 100, Radius = 5 } },                      -- 周围 5 米 100（票面/原表一致）
+    },
+    Explosives = {
+        item143 = { Damage = 50 },   -- 鞭炮 商店表!R18
+        item144 = { Damage = 100 },  -- 手雷 商店表!R17
+        item145 = { Damage = 150 },  -- 炸药 商店表!R16
+    },
+    Throw = {
+        Range = 20,          -- 直接投掷 20 米（票面）
+        ExplosionRadius = 5, -- 5 米爆炸（票面）
+        FishMin = 3, FishMax = 5, -- 水中保底当地鱼（票面）
+        FishRodLevel = 1,    -- 保底鱼只要当地 1 级（票面，按钓表 RodLevel + Grade='normal' 过滤）
+        FishTtlSec = 60,     -- 保底鱼存活时间（暂取）
+        FlightSec = 0.8,     -- 投掷飞行时间（暂取）
+        ArcHeight = 3,       -- 飞行弧线高度（暂取，表现参数）
+        LongPressSec = 0.35, -- 长按进入选点（暂取，UI 参数）
+    },
 }
 
 -- 水判定：同一钓鱼区可用多条正方形拼接。Center 只用到 x/z（y 留作场景溯源），HalfXZ 是水平半宽（米），
