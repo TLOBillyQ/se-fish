@@ -166,12 +166,17 @@ function Mgr:EndSession(player, current, notify, reason)
     end
 end
 
--- 收竿：cast（还没上钩）与 escaped（脱钩后线还在水里）都靠它回到可抛竿的 idle
+-- 线还在水里的阶段：还没上钩的 cast，与鱼已脱钩但没收竿的 unhooked（#133）。
+-- 这两个阶段都按「收竿」一次回到可抛竿的 idle，期间不允许再抛竿。
+local function lineStillOut(phase)
+    return phase == 'cast' or phase == 'unhooked'
+end
+
+-- 收竿：cast（还没上钩）与 unhooked（脱钩后线还在水里）都靠它回到可抛竿的 idle
 function Mgr:Reel(player)
     local current = self.Sessions[player.UserId]
     if not current or current.player ~= player then return end
-    local phase = current.session.phase
-    if phase ~= 'cast' and phase ~= 'escaped' then return end
+    if not lineStillOut(current.session.phase) then return end
     if REUtil:CheckRECD(player, 'CastAction', GameCfg.Casting.ActionCooldownSec) then return end
     self:EndSession(player, current)
     print('[MgrCast] 收竿', player.UserId)
@@ -188,13 +193,12 @@ end
 function Mgr:Abort(player)
     local current = self.Sessions[player.UserId]
     if not current or current.player ~= player then return end
-    local phase = current.session.phase
-    if phase ~= 'cast' and phase ~= 'escaped' then return end
+    if not lineStillOut(current.session.phase) then return end
     self:EndSession(player, current)
     print('[MgrCast] 死亡断线', player.UserId)
 end
 
--- lineOut：线还在水里（鱼脱钩但没收回竿）。会话停在 escaped，等玩家按「收竿」回 idle；
+-- lineOut：线还在水里（鱼脱钩但没收回竿）。会话停在 unhooked，等玩家按「收竿」回 idle；
 -- 其余结束方式（主动收竿 / 死亡 / 离线）照旧一次收竿到底。
 function Mgr:FinishReel(player, sessionId, outcome, notify, lineOut)
     local current = self.Sessions[player.UserId]
@@ -216,8 +220,8 @@ function Mgr:FinishReel(player, sessionId, outcome, notify, lineOut)
             self.Quest:Notify('Land', player, { itemId = session.fishId, eventId = 'reel:' .. tostring(sessionId) })
         end
     elseif lineOut then
-        -- #133 脱钩：鱼没了但线还在水里，会话停在 escaped 等玩家收竿，收竿后才回到可抛竿的 idle
-        current.session.phase = 'escaped'
+        -- #133 脱钩：鱼没了但线还在水里，会话停在 unhooked 等玩家收竿，收竿后才回到可抛竿的 idle
+        current.session.phase = 'unhooked'
         if notify ~= false then self:SendState(player, current.session) end
     else
         self:EndSession(player, current, notify)
@@ -226,12 +230,16 @@ end
 
 -- 上岸结算：phase 已从 hooked 切到 landed，这里只会走一次；活鱼落在玩家正前方，交给活鱼单位管理器
 function Mgr:Land(player, session)
-    -- #133 图鉴：成功上岸是一次性领域事件。幂等键取收线会话序号（同一存档会话内单调、一次上岸
-    -- 只发一个），所以重放 / 写档重试 / 断线重连都不会把同一条鱼记两次。活鱼生成失败只影响
-    -- 场上的鱼，改不了「这条鱼上岸过」的事实，因此放在生成之前。
+    -- #133 图鉴：成功上岸是一次性领域事件。幂等键取收线会话序号（同一次存档会话内单调、一次上岸
+    -- 只发一个），所以同一存档会话内的重放 / 写档重试不会把同一条鱼记两次。活鱼生成失败只影响
+    -- 场上的鱼，改不了「这条鱼上岸过」的事实，因此放在生成之前；记不上（写档忙 / 存档不可用）
+    -- 只留日志，不挡上岸本身。
     if self.Compendium then
-        self.Compendium:RecordLanding(player, { fishId = session.fishId, mult = session.mult,
-            reelSerial = session.reelSerial })
+        local recorded, reason = self.Compendium:RecordLanding(player, { fishId = session.fishId,
+            mult = session.mult, reelSerial = session.reelSerial })
+        if not recorded and reason ~= 'replay' then
+            print('[MgrCast] 图鉴未入账', player.UserId, session.fishId, tostring(reason))
+        end
     end
     local character = player.Character
     local origin, rotation = character and character.Position, character and character.Rotation

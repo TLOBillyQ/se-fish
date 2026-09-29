@@ -1,12 +1,12 @@
 -- #133 脱钩→收竿→可再抛竿。失败方式（先列后写）：
 --   1. 收线到 0 脱钩后直接回到 idle（线还没收，玩家能立刻再抛竿）；
 --   2. 脱钩时把鱼竿归位 / 生成活鱼 / 报「上岸」事实；
---   3. escaped 阶段按收竿不生效，或收竿后仍不能再次抛竿；
---   4. 死亡 / 离线打断走成 escaped，把「收竿」留给一个已经没线的玩家；
---   5. escaped 阶段重复收竿回包两次、或再次抛竿被受理。
+--   3. unhooked 阶段按收竿不生效，或收竿后仍不能再次抛竿；
+--   4. 死亡 / 离线打断走成 unhooked，把「收竿」留给一个已经没线的玩家；
+--   5. unhooked 阶段重复收竿回包两次、或再次抛竿被受理。
 local lu = require('luaunit')
 
-TestReelEscape = {}
+TestReelUnhook = {}
 
 local function signal()
     local callbacks = {}
@@ -23,7 +23,7 @@ local function vec(x, y, z)
     return { x = x, y = y, z = z }
 end
 
-function TestReelEscape:setUp()
+function TestReelUnhook:setUp()
     local env = self
     self.saved = { game = rawget(_G, 'game'), Vector3 = rawget(_G, 'Vector3') }
     self.modules = {}
@@ -79,7 +79,7 @@ function TestReelEscape:setUp()
     self.reel:OnPlayerAdded(self.player)
 end
 
-function TestReelEscape:tearDown()
+function TestReelUnhook:tearDown()
     self.reel:Stop()
     self.cast:Stop()
     for name, value in pairs(self.modules) do package.loaded[name] = value end
@@ -92,7 +92,7 @@ function TestReelEscape:tearDown()
 end
 
 -- 直接摆一个已上钩的会话，省掉抛竿与抽签
-function TestReelEscape:hook(fishId, mult)
+function TestReelUnhook:hook(fishId, mult)
     local id = 'r' .. tostring(#self.spawned) .. ':' .. tostring(self.now)
     self.cast.Sessions[self.player.UserId] = { player = self.player, session = {
         phase = 'hooked', fishId = fishId, mult = mult, reelSession = id, reelSerial = 1, slot = 1,
@@ -101,7 +101,7 @@ function TestReelEscape:hook(fishId, mult)
     return id
 end
 
-function TestReelEscape:lastState()
+function TestReelUnhook:lastState()
     local last
     for _, message in ipairs(self.player.messages) do
         if message.name == 'CastState' then last = message.value end
@@ -109,15 +109,15 @@ function TestReelEscape:lastState()
     return last
 end
 
-function TestReelEscape:test_progress_zero_leaves_the_line_out_until_reeled()
+function TestReelUnhook:test_progress_zero_leaves_the_line_out_until_reeled()
     local id = self:hook('bass', 1.2)
     self.data.Data.SelectedSlot = nil
     self.now = 30
     self.reel:Update()
     local current = self.cast.Sessions[self.player.UserId]
     lu.assertNotNil(current, '脱钩后会话不该被清掉：线还在水里')
-    lu.assertEquals(current.session.phase, 'escaped')
-    lu.assertEquals(self:lastState().phase, 'escaped')
+    lu.assertEquals(current.session.phase, 'unhooked')
+    lu.assertEquals(self:lastState().phase, 'unhooked')
     lu.assertNil(self.reel.Sessions[self.player.UserId])
     lu.assertEquals(#self.spawned, 0)
     lu.assertNil(self.data.Data.SelectedSlot)
@@ -125,19 +125,19 @@ function TestReelEscape:test_progress_zero_leaves_the_line_out_until_reeled()
     lu.assertEquals(id, current.session.reelSession)
 end
 
-function TestReelEscape:test_escaped_blocks_casting_until_reeled_back()
+function TestReelUnhook:test_unhooked_blocks_casting_until_reeled_back()
     self:hook('bass', 1.2)
     self.now = 30
     self.reel:Update()
-    lu.assertEquals(self.cast.Sessions[self.player.UserId].session.phase, 'escaped')
+    lu.assertEquals(self.cast.Sessions[self.player.UserId].session.phase, 'unhooked')
     self.events.CastAction.OnServerEvent:Fire(self.player, {
         action = 'Cast', slot = 1, itemId = 'starterRod' })
     lu.assertEquals(self:lastState().result.reason, 'alreadyCasting')
-    lu.assertEquals(self.cast.Sessions[self.player.UserId].session.phase, 'escaped')
+    lu.assertEquals(self.cast.Sessions[self.player.UserId].session.phase, 'unhooked')
     lu.assertEquals(#self.spawned, 0)
 end
 
-function TestReelEscape:test_reel_back_returns_to_idle_and_allows_casting_again()
+function TestReelUnhook:test_reel_back_returns_to_idle_and_allows_casting_again()
     self:hook('bass', 1.2)
     self.now = 30
     self.reel:Update()
@@ -156,7 +156,7 @@ function TestReelEscape:test_reel_back_returns_to_idle_and_allows_casting_again(
     lu.assertEquals(self:lastState().phase, 'cast')
 end
 
-function TestReelEscape:test_interrupt_and_offline_end_the_session_instead_of_leaving_a_line_out()
+function TestReelUnhook:test_interrupt_and_offline_end_the_session_instead_of_leaving_a_line_out()
     local id = self:hook('bass', 1.2)
     self.reel:Interrupt(self.player)
     lu.assertNil(self.cast.Sessions[self.player.UserId])
@@ -167,25 +167,25 @@ function TestReelEscape:test_interrupt_and_offline_end_the_session_instead_of_le
     lu.assertNil(self.cast.Sessions[self.player.UserId])
 end
 
--- 重复 / 迟到事件不跳状态：脱钩后再收到「上岸」或又一次「脱钩」都停在 escaped
-function TestReelEscape:test_repeated_events_after_escape_do_not_jump_state()
+-- 重复 / 迟到事件不跳状态：脱钩后再收到「上岸」或又一次「脱钩」都停在 unhooked
+function TestReelUnhook:test_repeated_events_after_unhooking_do_not_jump_state()
     local id = self:hook('bass', 1.2)
     self.now = 30
     self.reel:Update()
     local sent = #self.player.messages
     self.cast:FinishReel(self.player, id, 'landed')
     self.cast:FinishReel(self.player, id, 'unhooked', nil, true)
-    lu.assertEquals(self.cast.Sessions[self.player.UserId].session.phase, 'escaped')
+    lu.assertEquals(self.cast.Sessions[self.player.UserId].session.phase, 'unhooked')
     lu.assertEquals(#self.player.messages, sent)
     lu.assertEquals(#self.spawned, 0)
     lu.assertEquals(#self.facts, 0)
 end
 
-function TestReelEscape:test_death_while_line_is_out_reels_it_back()
+function TestReelUnhook:test_death_while_line_is_out_reels_it_back()
     local id = self:hook('bass', 1.2)
     self.now = 30
     self.reel:Update()
-    lu.assertEquals(self.cast.Sessions[self.player.UserId].session.phase, 'escaped')
+    lu.assertEquals(self.cast.Sessions[self.player.UserId].session.phase, 'unhooked')
     -- MgrFishUnit:OnDied 的入口：死亡不该给玩家留下一条只能靠按按钮收回的线
     self.cast:Abort(self.player)
     lu.assertNil(self.cast.Sessions[self.player.UserId])

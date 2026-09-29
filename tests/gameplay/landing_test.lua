@@ -175,8 +175,8 @@ function TestLanding:test_unhook_and_manual_reel_spawn_nothing()
     local id = self:hook('bass', 1.2)
     self.now = 30
     self.reel:Update()
-    -- #133：脱钩不再直接回 idle，而是停在 escaped（线还在水里）等玩家收竿
-    lu.assertEquals(self:lastState().phase, 'escaped')
+    -- #133：脱钩不再直接回 idle，而是停在 unhooked（线还在水里）等玩家收竿
+    lu.assertEquals(self:lastState().phase, 'unhooked')
     lu.assertEquals(#self.spawned, 0)
     local closed = self:hook('carp', 1.1)
     self.reel:Close(self.player, { session = closed })
@@ -391,7 +391,7 @@ function TestLanding:test_landed_records_compendium_and_unhook_does_not()
     lu.assertEquals(self.cast.Sessions[self.player.UserId].session.phase, 'hooked')
     self.now = self.now + 30
     self.reel:Update()
-    lu.assertEquals(self:lastState().phase, 'escaped')
+    lu.assertEquals(self:lastState().phase, 'unhooked')
     self.events.CastAction.OnServerEvent:Fire(self.player, { action = 'Reel' })
     lu.assertEquals(#self.landings, 1)
 end

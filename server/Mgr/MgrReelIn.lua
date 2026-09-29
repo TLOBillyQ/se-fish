@@ -38,7 +38,8 @@ function Mgr:Reply(session, action, accepted, q)
         progress = session.Progress.Progress, accepted = accepted, q = q })
 end
 
--- lineOut：自然脱钩（收线到 0）时线还在水里，交给 Cast 停在 escaped；主动收竿 / 打断照旧直接结束
+-- lineOut：自然脱钩（收线到 0、进度归零）时线还在水里，交给 Cast 停在 unhooked；主动收竿 / 打断
+-- 走的是同一个 outcome 名（都是「脱钩」），区别只在收不收竿，所以由调用方显式给出，不能由 outcome 推。
 function Mgr:Finish(session, outcome, notify, lineOut)
     if self.Sessions[session.Player.UserId] ~= session then return end
     self.Sessions[session.Player.UserId] = nil

@@ -333,10 +333,18 @@ function ScreenHandler:ShowQuest(state)
     if type(state.notice) == 'string' and _G.LocalMsgNotice then _G.LocalMsgNotice(state.notice) end
 end
 
+-- 服务端会发的抛竿阶段（#133 增补 unhooked：脱钩后线还在水里）。白名单外的回包一律丢弃，
+-- 免得迟到 / 旧回包把界面拉回一个不存在的状态。
+local CAST_PHASES = { idle = true, cast = true, hooked = true, landed = true, unhooked = true }
+
+-- 线还在水里的阶段：还没上钩的 cast，与鱼已脱钩但没收竿的 unhooked；都按「收竿」一次收回
+local function lineStillOut(phase)
+    return phase == 'cast' or phase == 'unhooked'
+end
+
 local function castActionEnabled(self, phase, rod, drop, active)
     return self.IsOpen == true
-        and ((rod and phase == 'idle') or drop or phase == 'cast'
-            or phase == 'escaped' or active == true) or false
+        and ((rod and phase == 'idle') or drop or lineStillOut(phase) or active == true) or false
 end
 
 local function castActionColor(phase, now, alert)
@@ -358,7 +366,7 @@ local function showCastAction(self, phase, rod, drop, active, alertNow)
     self.BtnItemAction.TouchEnabled = castActionEnabled(self, phase, rod, drop, active)
     self.BtnItemAction.ButtonNormalColor = castActionColor(phase, alertNow, GameCfg.HookAlert)
     self.BtnItemActionLabel.Text = phase == 'hooked' and '点击收线'
-        or phase == 'landed' and '已上岸' or (phase == 'cast' or phase == 'escaped') and '收竿'
+        or phase == 'landed' and '已上岸' or lineStillOut(phase) and '收竿'
         or drop and '放下' or rod and '抛竿' or '使用'
 end
 
@@ -947,7 +955,7 @@ function ScreenHandler:Init()
             and _G.LocalReelIn.SessionId == self.CastState.reelSession then
             _G.LocalReelIn:Click()
             self:ShowCast()
-        elseif phase == 'cast' or phase == 'escaped' then
+        elseif lineStillOut(phase) then
             _G.REUtil:GetRE('CastAction'):FireServer({ action = 'Reel' })
         elseif phase == 'idle' and self.CastState and self.CastState.holding then
             _G.REUtil:GetRE('CastAction'):FireServer({ action = 'Drop' })
@@ -1029,9 +1037,7 @@ function ScreenHandler:Init()
             self:ShowCastFailure(state.result)
             return
         end
-        if state.phase ~= 'idle' and state.phase ~= 'cast'
-            and state.phase ~= 'hooked' and state.phase ~= 'landed'
-            and state.phase ~= 'escaped' then return end
+        if not CAST_PHASES[state.phase] then return end
         -- #133：界面被别的界面盖住只是表现问题——收线继续由服务端权威推进，回流后照旧显示，
         -- 所以这里不再因为「界面没开」就去取消收线会话。
         if not self.IsOpen then return end
@@ -1107,7 +1113,7 @@ function ScreenHandler:OpenScreen()
     DamageFloat:Bind(self.RootNode, self.EuiResolution)
     self.IsOpen = true
     LocalAttackButton:SetOpen(true)
-    _G.LocalReelIn:Resume()
+    -- #133 重开界面不需要通知收线客户端：会话与进度一直在，界面只是重新显示
     self:ShowCast()
     self:ShowCoin()
     self:ShowVitals()

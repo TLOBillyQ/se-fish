@@ -186,14 +186,14 @@ function TestReelUI:test_hook_while_screen_is_hidden_is_kept_and_shown_on_reopen
 end
 
 -- #133：脱钩后按钮变「收竿」且可点；收竿回包 idle 后恢复「抛竿」
-function TestReelUI:test_escaped_phase_reels_back_without_showing_the_bar()
+function TestReelUI:test_unhooked_phase_reels_back_without_showing_the_bar()
     self.events.ItemBarState.OnClientEvent:Fire({ slots = {
         [1] = { itemId = 'starterRod', count = 1 },
     }, bait = { worm = 1 }, selectedSlot = 1 })
     self.events.CastState.OnClientEvent:Fire({ phase = 'hooked', reelSession = 'e1' })
     self.events.ReelInRE.OnClientEvent:Fire({ action = 'started', session = 'e1', progress = 50 })
     self.events.ReelInRE.OnClientEvent:Fire({ action = 'unhooked', session = 'e1' })
-    self.events.CastState.OnClientEvent:Fire({ phase = 'escaped', reelSession = 'e1' })
+    self.events.CastState.OnClientEvent:Fire({ phase = 'unhooked', reelSession = 'e1' })
     lu.assertNil(self.reel.SessionId)
     lu.assertEquals(self.nodes.BtnItemActionLabel.Text, '收竿')
     lu.assertTrue(self.nodes.ItemAction2.TouchEnabled)

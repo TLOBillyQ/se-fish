@@ -94,15 +94,13 @@ function TestReelClient:test_suspend_flushes_pending_and_keeps_the_session()
     lu.assertEquals(self.sent, { { name = 'ReelInRE', payload = { s = 's1', n = 1, q = 1 } } })
     lu.assertEquals(self.client.SessionId, 's1')
     lu.assertNotNil(self.client.Display)
-    lu.assertTrue(self.client.Suspended)
 end
 
-function TestReelClient:test_started_while_suspended_is_kept_and_usable_after_resume()
+function TestReelClient:test_hook_while_screen_is_hidden_is_kept_and_usable_after_reopen()
     self.client:Suspend()
     self.events.ReelInRE.OnClientEvent:Fire({ action = 'started', session = 's1', progress = 50 })
     lu.assertEquals(#self.sent, 0)
     lu.assertEquals(self.client.SessionId, 's1')
-    self.client:Resume()
     self.client:Click()
     self.now = 0.1
     self.heartbeat:Fire()

@@ -1,8 +1,8 @@
 -- #133 图鉴写入基础：把「成功上岸」当成一次性领域事件记进图鉴。
 -- 落点两处：内存快照（Snapshot，给后续图鉴 UI / 纪录读）与存档（extra.collection），
 -- 后者走 #123 持久化操作协议（ResolveRequest + Execute），所以写入与结果同键落账、重进保留。
--- 幂等键 = 收线会话序号（同一存档会话内单调、一次上岸只发一个），重复投递（重放、写档重试、
--- 断线重连）不会记第二次。
+-- 幂等键 = 收线会话序号（同一存档会话内单调、一次上岸只发一个），重复投递（协议重放、写档重试、
+-- 结果回调重放）不会记第二次；幂等范围限于同一次存档会话（跨会话序号会重新开始计数）。
 -- 边界：盲盒/抽奖在 extra.lottery，击杀与三份掉落走 MgrLoot —— 都不经过这里，
 -- 钓取次数与个人最大重量只由「上岸」推进。
 local GameCfg = require('common.GameCfg')
@@ -10,6 +10,7 @@ local FishCatch = require('common.FishCatch')
 
 local Mgr = { Queues = {}, KIND = 'compendium-land', MaxQueue = 16 }
 
+-- 浅拷贝：图鉴字段的值都是数字 / 布尔，没有嵌套表
 local function copy(value)
     local out = {}
     for k, v in pairs(value or {}) do out[k] = v end
@@ -52,11 +53,14 @@ local function apply(draft, event, weight)
     if record then bag.weights[event.fishId] = weight end
     bag.total = bag.total + 1
     return { fishId = event.fishId, weight = weight, best = bag.weights[event.fishId],
-        first = previous == nil, record = record, count = bag.catches[event.fishId],
-        total = bag.total }
+        record = record, count = bag.catches[event.fishId], total = bag.total }
 end
 
--- 上岸事实先入队，落账尽量当场完成；挡在别人写档中途的只是一次「晚一点记」，不会丢。
+-- 上岸事实先入队，落账尽量当场完成。被别的写档挡住的只是一次「晚一点记」：事件留在队里，
+-- 下一次 Update 补记（返回 true）。真正的拒收只有三种，都返回 false 并给原因：重放（同一条
+-- 上岸已经落过账）、队列满（写档长时间不恢复）、存档不可用（宁可不记也不伪造）。
+-- 玩家离线时队里还没落账的事件会丢：那是「上岸后写档被挡 + 同一瞬间断线」的窄窗口，
+-- 已落账的部分由协议的操作日志去重，不会重复也不会回滚。
 function Mgr:RecordLanding(player, event)
     if not player or type(event) ~= 'table' then return false, 'invalid' end
     local weight = self:Weight(event.fishId, event.mult)
@@ -90,18 +94,18 @@ function Mgr:Drain(player)
     if not queue or queue.player ~= player or #queue.events == 0 then return end
     local data = self.PlayerData and self.PlayerData:GetDataInst(player)
     if not data then return end
-    local solo = #queue.events == 1
+    local onlyEvent = #queue.events == 1
     local event = queue.events[1]
     local operation, mode = self.Save:ResolveRequest(player, data, self.KIND, event.reelSerial)
     if not operation then
         if mode ~= 'pending' then
             table.remove(queue.events, 1)
-            return solo and mode or nil
+            return onlyEvent and mode or nil
         end
         return
     end
     table.remove(queue.events, 1)
-    if mode == 'replay' then return solo and 'replay' or nil end
+    if mode == 'replay' then return onlyEvent and 'replay' or nil end
     local weight = self:Weight(event.fishId, event.mult)
     self.Save:Execute(player, data, operation, function(draft)
         return apply(draft, event, weight)

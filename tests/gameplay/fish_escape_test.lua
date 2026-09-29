@@ -131,6 +131,29 @@ function TestFishEscape:test_turns_every_three_seconds_and_ninety_degrees_on_wal
     lu.assertAlmostEquals(speed(after), 3, 1e-6)
 end
 
+-- #133 验收「普通鱼每 3 秒重新朝最近水区」：位置换了，3 秒整点朝的是换过之后的最近水区
+function TestFishEscape:test_reheads_toward_the_nearest_zone_after_moving()
+    self:prepare()
+    local fish = self:heldFish()
+    self.mgr:Drop(self.player)
+    local body = fish.Carrier.Body
+    -- 虾池水面中心 (105,106)，半宽 3：这里两个落点都在水区之外、离虾池最近
+    body.Position = vec(105, 1, 112)
+    self.now = self.now + 3.05
+    self.mgr:Update()
+    lu.assertAlmostEquals(body.LinearVelocity.x, 0, 1e-6)
+    lu.assertAlmostEquals(body.LinearVelocity.z, -3, 1e-6)
+    -- 挪到虾池另一侧：同一个 3 秒整点重算，方位从正南翻成正北
+    body.Position = vec(105, 1, 100)
+    self.now = self.now + 2.9
+    self.mgr:Update()
+    lu.assertAlmostEquals(body.LinearVelocity.z, -3, 1e-6)
+    self.now = self.now + 0.2
+    self.mgr:Update()
+    lu.assertAlmostEquals(body.LinearVelocity.x, 0, 1e-6)
+    lu.assertAlmostEquals(body.LinearVelocity.z, 3, 1e-6)
+end
+
 function TestFishEscape:test_ray_rate_is_capped_and_non_walls_are_ignored()
     self:prepare()
     local fish = self:heldFish()
