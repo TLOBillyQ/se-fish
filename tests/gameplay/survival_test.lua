@@ -259,6 +259,23 @@ end
 
 function TestSurvivalTakeover:ctrl(p) return (p or self.a).Character.Controller end
 
+-- 接线守卫（#128 同款源码断言）：运行时依赖在 server/main.lua 里完成，缺一条 LifeHooks 就不接管
+function TestSurvivalTakeover:test_server_main_wires_survival()
+    local f = assert(io.open('server/main.lua', 'r'))
+    local src = f:read('*a')
+    f:close()
+    lu.assertStrContains(src, 'MgrSurvival = require("server.Mgr.MgrSurvival")')
+    lu.assertStrContains(src, 'MgrMap.MgrSurvival.Vitals = MgrMap.MgrVitals')
+    lu.assertStrContains(src, 'MgrMap.MgrSurvival.FishUnit = MgrMap.MgrFishUnit')
+    lu.assertStrContains(src, 'MgrMap.MgrSurvival.ReelIn = MgrMap.MgrReelIn')
+    lu.assertStrContains(src, 'MgrMap.MgrSurvival.PlayerData = MgrMap.MgrPlayerData')
+    lu.assertStrContains(src, 'MgrMap.MgrSurvival.Save = MgrMap.MgrSave')
+    lu.assertStrContains(src, 'MgrMap.MgrVitals:SetLifeHooks(MgrMap.MgrSurvival:Hooks())')
+    -- 就绪批次与离开顺序：Survival 紧随 Vitals；终镜像先于 SaveLeaving 序列化
+    lu.assertStrContains(src, "'MgrPlayer', 'MgrVitals', 'MgrSurvival', 'MgrAbility', 'MgrFishUnit'")
+    lu.assertStrContains(src, [[invoke('MgrSurvival', MgrMap.MgrSurvival, 'BeforeLeave', player)]])
+end
+
 function TestSurvivalTakeover:tick(seconds, step)
     step = step or 0.5
     local target = self.now + seconds

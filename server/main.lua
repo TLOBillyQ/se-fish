@@ -26,6 +26,7 @@ local MgrMap = {
     MgrStory = require("server.Mgr.MgrStory"),
     MgrFerry = require("server.Mgr.MgrFerry"),
     MgrSave = require("server.Mgr.MgrSave"),
+    MgrSurvival = require("server.Mgr.MgrSurvival"),
 }
 
 MgrMap.MgrCast.ReelIn = MgrMap.MgrReelIn
@@ -68,6 +69,13 @@ MgrMap.MgrAbility.Vitals = MgrMap.MgrVitals
 MgrMap.MgrFishUnit.Vitals = MgrMap.MgrVitals
 MgrMap.MgrVitals.FishCarrier = MgrMap.MgrFishCarrier
 MgrMap.MgrCast.Vitals = MgrMap.MgrVitals
+-- #131 生存恢复：经 #128 预留的 LifeHooks 接管濒死/死亡，依赖单向注入在这里完成。
+MgrMap.MgrSurvival.Vitals = MgrMap.MgrVitals
+MgrMap.MgrSurvival.FishUnit = MgrMap.MgrFishUnit
+MgrMap.MgrSurvival.ReelIn = MgrMap.MgrReelIn
+MgrMap.MgrSurvival.PlayerData = MgrMap.MgrPlayerData
+MgrMap.MgrSurvival.Save = MgrMap.MgrSave
+MgrMap.MgrVitals:SetLifeHooks(MgrMap.MgrSurvival:Hooks())
 MgrMap.MgrFishCarrier.DamageListener = function(carrier, actual, hit)
     local fish = carrier and MgrMap.MgrFishUnit:FindByCarrier(carrier)
     local attacker = hit and hit.sourcePlayer
@@ -90,12 +98,13 @@ MgrMap.MgrSave.OnReady = function(player, data)
     if not Started then ReadyQueue[player.UserId] = { player, data } return end
     ActivePlayers[player.UserId] = player
     -- 这些管理器直接操作角色与生命状态，先于依赖它们的其他管理器初始化。
-    for _, name in ipairs({ 'MgrPlayer', 'MgrVitals', 'MgrAbility', 'MgrFishUnit' }) do
+    -- MgrSurvival 紧随 MgrVitals：离线恢复要读 Vitals 状态并把控制器血量锁回 1。
+    for _, name in ipairs({ 'MgrPlayer', 'MgrVitals', 'MgrSurvival', 'MgrAbility', 'MgrFishUnit' }) do
         invoke(name, MgrMap[name], 'OnPlayerAdded', player)
     end
     for name, mgr in pairs(MgrMap) do
         if name ~= 'MgrPlayerData' and name ~= 'MgrPlayer' and name ~= 'MgrVitals'
-            and name ~= 'MgrAbility' and name ~= 'MgrFishUnit' then
+            and name ~= 'MgrSurvival' and name ~= 'MgrAbility' and name ~= 'MgrFishUnit' then
             invoke(name, mgr, 'OnPlayerAdded', player)
         end
     end
@@ -109,6 +118,8 @@ local function HandlePlayerRemoving(player)
     if queued and queued[1] == player then ReadyQueue[player.UserId] = nil end
     local active = ActivePlayers[player.UserId] == player
     if active then ActivePlayers[player.UserId] = nil end
+    -- 终镜像必须先于 MgrPlayerData 的 SaveLeaving 序列化，离线标记才是最新的
+    if active then invoke('MgrSurvival', MgrMap.MgrSurvival, 'BeforeLeave', player) end
     invoke('MgrPlayerData', MgrMap.MgrPlayerData, 'OnPlayerRemoving', player)
     if active then
         for name, mgr in pairs(MgrMap) do
