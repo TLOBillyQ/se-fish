@@ -140,55 +140,100 @@ end
 
 -- #124 统一分发：吃/药水/丢弃/攻击经同一入口。切手持与实际使用分两次——
 -- 首次只切手持（held），手持匹配才算再次并执行真实行为；重复点击、空格都有明确回包。
+-- 有 Save 时走持久操作协议（ResolveRequest+Execute，两步语义整体落在隔离 draft）；
 -- 丢弃依赖地面物品接口（T05 PrepareDrop/CommitDrop）：未接入时拒绝且不扣物。
 function Mgr:Operate(player, data, payload)
-    local function reply(result) _G.REUtil:GetRE('ItemBarResult'):FireClient(player, result) end
+    local function finish(result, operation)
+        if operation then result.operation = operation end
+        _G.REUtil:GetRE('ItemBarResult'):FireClient(player, result)
+    end
     local op = payload.op
     local slot = payload.slot
     if op ~= 'eat' and op ~= 'discard' then
-        reply({ ok = false, reason = 'unknown-op' })
+        finish({ ok = false, reason = 'unknown-op' })
         return
     end
     if type(slot) ~= 'number' or slot ~= math.floor(slot)
         or slot < 1 or slot > data:ItemBarCapacity() then
-        reply({ ok = false, reason = 'bad-slot' })
+        finish({ ok = false, reason = 'bad-slot' })
         return
     end
-    local held = data.Extra.inventory.selection.held
-    if held.kind ~= 'slot' or held.slot ~= slot then
-        -- 首次：只切手持，不消费
-        if not data:HoldSlot(slot) then
-            reply({ ok = false, reason = 'empty' })
-            return
-        end
-        reply({ ok = true, op = op, held = true })
-        return
-    end
-    -- 再次：实际使用
     local items = data.Data.Containers[GameCfg.Items.ContainerId.ItemBar]
     local entry = items[slot]
-    if not entry or entry.count <= 0 then
-        reply({ ok = false, reason = 'empty' })
+    -- 预检（新请求才做，重放不得被中间态拦截）：格空与禁食直接回包
+    local function precheck()
+        if not entry or entry.count <= 0 then
+            finish({ ok = false, reason = 'empty' })
+            return false
+        end
+        if op == 'eat' and self.Vitals and not self.Vitals:CanEat(player, entry.itemId) then
+            finish({ ok = false, reason = 'cannot-eat' })
+            return false
+        end
+        return true
+    end
+    local function transform(target)
+        local held = target.Extra.inventory.selection.held
+        if held.kind ~= 'slot' or held.slot ~= slot then
+            -- 首次：只切手持，不消费
+            if not target:HoldSlot(slot) then return nil, 'empty' end
+            return { ok = true, op = op, held = true }
+        end
+        -- 再次：实际使用
+        local heldEntry = target.Data.Containers[GameCfg.Items.ContainerId.ItemBar][slot]
+        if not heldEntry or heldEntry.count <= 0 then return nil, 'empty' end
+        if op == 'discard' then
+            -- 地面物品接口未接入（T05）：拒绝且不扣物
+            return nil, 'drop-unavailable'
+        end
+        -- EatSlot 只吃选中格（#53）：分发已验槽位有效，先切选中再吃掉整格
+        target:SelectSlot(slot)
+        local itemId = target:EatSlot(slot)
+        if not itemId then return nil, 'empty' end
+        return { ok = true, op = 'eat', held = false, itemId = itemId }
+    end
+    if self.Save then
+        local requestId = payload.operation
+        if requestId ~= nil and type(requestId) ~= 'table' then
+            finish({ ok = false, reason = 'bad-operation' })
+            return
+        end
+        if requestId == nil then requestId = payload.seq end
+        local operation, mode = self.Save:ResolveRequest(player, data, 'operate:' .. op, requestId)
+        if not operation then
+            finish({ ok = false, reason = tostring(mode) })
+            return
+        end
+        if mode ~= 'replay' and not precheck() then return end
+        if mode == 'replay' then
+            -- 同键重放：Execute 按操作日志回原结果，不再执行 transform
+            self.Save:Execute(player, data, operation, function() return nil, 'expired' end,
+                function(written, result)
+                    if written then finish(result) else finish({ ok = false, reason = tostring(result) }) end
+                end)
+            return
+        end
+        local accepted, failure = self.Save:Execute(player, data, operation, transform,
+            function(written, result)
+                if not written then
+                    finish({ ok = false, reason = tostring(result) })
+                    return
+                end
+                -- 世界内副作用（恢复）只在持久成功回调结算，失败无副作用
+                if result.itemId and self.Vitals then self.Vitals:Eat(player, result.itemId) end
+                finish(result)
+            end)
+        if not accepted then finish({ ok = false, reason = tostring(failure) }) end
         return
     end
-    if op == 'discard' then
-        -- 地面物品接口未接入（T05）：拒绝且不扣物，回明确错误
-        reply({ ok = false, op = 'discard', reason = 'drop-unavailable' })
+    if not precheck() then return end
+    local result, reason = transform(data)
+    if not result then
+        finish({ ok = false, op = op, reason = reason })
         return
     end
-    if self.Vitals and not self.Vitals:CanEat(player, entry.itemId) then
-        reply({ ok = false, reason = 'cannot-eat' })
-        return
-    end
-    -- EatSlot 只吃选中格（#53）：分发已验槽位有效，先切选中再吃掉整格
-    data:SelectSlot(slot)
-    local itemId = data:EatSlot(slot)
-    if not itemId then
-        reply({ ok = false, reason = 'empty' })
-        return
-    end
-    if self.Vitals then self.Vitals:Eat(player, itemId) end
-    reply({ ok = true, op = 'eat', held = false })
+    if result.itemId and self.Vitals then self.Vitals:Eat(player, result.itemId) end
+    finish(result)
 end
 
 local function notifyEquippedBait(mgr, player, method, value)

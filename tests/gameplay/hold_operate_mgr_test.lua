@@ -49,6 +49,7 @@ end
 function TestHoldOperateMgr:tearDown()
     Mgr:OnPlayerRemoving(self.player)
     Mgr.Vitals = nil
+    Mgr.Save = nil
     _G.REUtil = self.oldREUtil
     GameCfg.Debug = self.debug
 end
@@ -66,7 +67,7 @@ function TestHoldOperateMgr:test_operate_eat_first_hold_then_eat()
     lu.assertEquals(#self.eaten, 0)
     lu.assertEquals(self.data:GetItemBarSnapshot().held, { kind = 'slot', id = 'carp', slot = 1 })
     local second = self:operate({ action = 'Operate', op = 'eat', slot = 1 })
-    lu.assertEquals(second, { ok = true, op = 'eat', held = false })
+    lu.assertEquals(second, { ok = true, op = 'eat', held = false, itemId = 'carp' })
     lu.assertEquals(#self.eaten, 1)
     lu.assertEquals(self.eaten[1].itemId, 'carp')
     lu.assertNil(self.data:GetItemBarSnapshot().held.kind)
@@ -98,3 +99,68 @@ function TestHoldOperateMgr:test_discard_rejected_without_ground_item_api()
     lu.assertEquals(snapshot.slots[1].itemId, 'carp')
     lu.assertEquals(snapshot.slots[1].count, 1)
 end
+
+-- 持久模式：走 MgrSave 的 ResolveRequest+Execute；两步语义整体落在隔离 draft 上。
+function TestHoldOperateMgr:test_operate_persistent_path_resolves_and_executes()
+    local resolvedKinds = {}
+    Mgr.Save = {
+        ResolveRequest = function(_, player, data, kind, requestId)
+            resolvedKinds[#resolvedKinds + 1] = kind
+            return { id = '34010:' .. tostring(#resolvedKinds), sequence = #resolvedKinds,
+                kind = kind, requestKey = 'k' .. tostring(#resolvedKinds) }, 'new'
+        end,
+        Execute = function(_, player, data, operation, transform, done)
+            local result, reason = transform(data)
+            if result == nil then done(false, reason) return false end
+            done(true, result)
+            return true
+        end,
+    }
+    lu.assertTrue(self.data:AddItem('carp', 1.37))
+    local first = self:operate({ action = 'Operate', op = 'eat', slot = 1, seq = 1 })
+    lu.assertEquals(resolvedKinds, { 'operate:eat' })
+    lu.assertEquals(first, { ok = true, op = 'eat', held = true })
+    lu.assertEquals(#self.eaten, 0)
+    local second = self:operate({ action = 'Operate', op = 'eat', slot = 1, seq = 2 })
+    lu.assertEquals(second, { ok = true, op = 'eat', held = false, itemId = 'carp' })
+    lu.assertEquals(#self.eaten, 1)
+    lu.assertEquals(self.eaten[1].itemId, 'carp')
+    Mgr.Save = nil
+end
+
+-- 持久模式重放：同 seq 重试只回原结果，不重复扣食。
+function TestHoldOperateMgr:test_operate_persistent_replay_returns_recorded_result()
+    local recorded = {}
+    Mgr.Save = {
+        ResolveRequest = function(_, player, data, kind, requestId)
+            if recorded[requestId] then return recorded[requestId], 'replay' end
+            local operation = { id = '34010:' .. tostring(requestId), sequence = requestId,
+                kind = kind, requestKey = 'k' .. tostring(requestId) }
+            recorded[requestId] = operation
+            return operation, 'new'
+        end,
+        Execute = function(_, player, data, operation, transform, done)
+            for _, rec in pairs(recorded) do
+                if rec == operation and rec.result then
+                    done(true, rec.result)
+                    return true
+                end
+            end
+            local result, reason = transform(data)
+            if result == nil then done(false, reason) return false end
+            operation.result = result
+            done(true, result)
+            return true
+        end,
+    }
+    lu.assertTrue(self.data:AddItem('carp', 1.37))
+    self:operate({ action = 'Operate', op = 'eat', slot = 1, seq = 1 })
+    lu.assertTrue(self:operate({ action = 'Operate', op = 'eat', slot = 1, seq = 2 }).ok)
+    lu.assertEquals(#self.eaten, 1)
+    -- 同 seq 重放：原结果回包，不再吃
+    local replayed = self:operate({ action = 'Operate', op = 'eat', slot = 1, seq = 2 })
+    lu.assertEquals(replayed, { ok = true, op = 'eat', held = false, itemId = 'carp' })
+    lu.assertEquals(#self.eaten, 1)
+    Mgr.Save = nil
+end
+
