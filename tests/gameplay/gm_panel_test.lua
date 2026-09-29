@@ -128,3 +128,19 @@ function TestGMPanel:test_page_bounds_and_existing_buttons()
     self.nodes['GM操作_金币1'].OnClicked:Fire()
     lu.assertEquals(self.requests[#self.requests], { action = 'Coin', amount = 100 })
 end
+
+function TestGMPanel:test_state_page_acknowledges_refresh_and_apply()
+    self.nodes['GM入口'].OnClicked:Fire()
+    self.nodes['GM操作_状态与存档1'].OnClicked:Fire()
+    lu.assertEquals(self.requests[#self.requests], { action = 'GetState' })
+    lu.assertEquals(self.panel.Feedback.Text, '等待服务端确认…')
+    self.events.GMResult.OnClientEvent:Fire({ action = 'GetState', ok = true,
+        status = { currentSlot = '', nextSlot = '', autosavePaused = false } })
+    lu.assertStrContains(self.panel.Feedback.Text, '状态已同步')
+    self.panel.Fields.coin.Text = '0'
+    self.nodes['GM应用'].OnClicked:Fire()
+    lu.assertEquals(self.requests[#self.requests], { action = 'ApplyState', coin = 0 })
+    self.events.GMResult.OnClientEvent:Fire({ action = 'ApplyState', ok = true,
+        status = { currentSlot = '', nextSlot = '', autosavePaused = true } })
+    lu.assertStrContains(self.panel.Feedback.Text, '已应用到本局')
+end

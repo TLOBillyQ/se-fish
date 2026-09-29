@@ -195,8 +195,8 @@ function Panel:SendState(action, clear)
     elseif action == 'SelectSaveSlot' then
         payload.slot = value(self.Fields.slot) or ''
     end
-    REUtil:GetRE('GMAction'):FireServer(payload)
     self.Feedback.Text = '等待服务端确认…'
+    REUtil:GetRE('GMAction'):FireServer(payload)
 end
 
 function Panel:ShowPage(state)
@@ -427,11 +427,12 @@ function Panel:Build(root, resolution, player)
             and boundedInt(result.damage, math.maxinteger) then
             self.AttackLabel.Text = '当前挥砍伤害：' .. tostring(result.damage)
         end
-        if (result.action == 'GetAttack' or result.action == 'GetState') and result.ok then return end
+        if result.action == 'GetAttack' and result.ok then return end
         self.Feedback.Text = result.ok and (result.action == 'ApplyState' and '已应用到本局；自动保存暂停'
             or result.action == 'SaveState' and '存档写入成功；自动保存恢复'
             or result.action == 'ReadState' and '已读取并替换本局进度'
             or result.action == 'SelectSaveSlot' and '下次进图切槽已保存'
+            or result.action == 'GetState' and '状态已同步；填写后点击应用到本局'
             or result.action == 'NextFish' and '服务端确认：下一次上岸鱼种已设置'
             or result.action == 'AddAttack' and '服务端确认：挥砍伤害已增加'
             or ('服务端确认：' .. (result.action == 'Coin' and '金币' or '物品') .. '发放成功'))
