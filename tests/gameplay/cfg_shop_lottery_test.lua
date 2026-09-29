@@ -18,6 +18,7 @@ function TestContentCfg:test_shop_rows_and_source_prices()
         lu.assertTrue(goods.minShopLevel >= 1 and goods.minShopLevel <= 7)
         lu.assertNotEquals(goods.itemName, '夜明珠')
         lu.assertNotEquals(goods.itemName, '背包升级7')
+        lu.assertEquals(goods.implemented, false, goods.source .. ' 尚未接入全量商店消费端')
     end
     lu.assertNil(seen[27])
     lu.assertEquals(shop.Goods[14].itemName, '新手鱼竿')
