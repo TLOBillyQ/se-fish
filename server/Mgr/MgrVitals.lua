@@ -241,6 +241,20 @@ function Mgr:Revive(state, source)
         'hunger=' .. tostring(state.hunger))
 end
 
+-- T10（#131）复活结算入口：MgrSurvival 状态机的复活/离线恢复都经这里落地。清死亡标记
+-- （漏网死亡时 state.dead 可能为 true）、血量设为 health、饥饿至少 minHunger 并从这一秒重新计时。
+-- 与 Revive（引擎路径，满血满饥饿）语义分开；不影响 ApplyDamage/ApplyHit 单点。
+function Mgr:ApplyRevive(state, health, minHunger)
+    if not state or self.States[state.player.UserId] ~= state then return false end
+    if not isInt(health) or health < 1 or health > cfg().MaxHealth then return false end
+    state.dead, state.deadAt, state.rebornCalled = false, nil, false
+    if isInt(minHunger) and state.hunger < minHunger then state.hunger = minHunger end
+    state.lastSec = math.floor(self:Now())
+    self:SetControllerHealth(state, health)
+    self:WriteHunger(state)
+    return true
+end
+
 -- 掉血单点；扣成功返回 true 与实际扣血量（过量伤害只计剩余生命）
 function Mgr:ApplyDamage(player, amount, hit)
     local state = self:GetState(player)

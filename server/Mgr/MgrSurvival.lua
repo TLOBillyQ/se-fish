@@ -44,6 +44,7 @@ function Mgr:SendState(state)
     local payload = { phase = state.phase }
     if state.phase == 'downed' then payload.endsAt = state.downedAt + c.DownedSec
     elseif state.phase == 'dead' then payload.endsAt = state.deadAt + c.DeadSec end
+    if state.weakUntil then payload.weakUntil = state.weakUntil end
     REUtil:GetRE('SurvivalState'):FireClient(state.player, payload)
 end
 
@@ -88,6 +89,45 @@ function Mgr:Hooks()
     }
 end
 
+-- 虚弱（策划案：虚弱复活后 1 分钟移速减半）：进入时记当前 WalkSpeed 为基准并乘 WeakSpeedScale，
+-- 结束恢复基准值。与加速技能（speed_add 锚点）叠加时的恢复顺序是已知边界，见 issue 评论。
+function Mgr:ApplyWeak(state, seconds)
+    state.weakUntil = self:Now() + seconds
+    local controller = controllerOf(state.player)
+    if not controller then return end
+    local ok, speed = pcall(function() return controller.WalkSpeed end)
+    if ok and type(speed) == 'number' then
+        state.baseSpeed = speed
+        pcall(function() controller.WalkSpeed = speed * cfg().WeakSpeedScale end)
+    end
+end
+
+function Mgr:ClearWeak(state)
+    local controller = controllerOf(state.player)
+    if controller and state.baseSpeed then
+        pcall(function() controller.WalkSpeed = state.baseSpeed end)
+    end
+    state.weakUntil, state.baseSpeed = nil, nil
+end
+
+-- 虚弱复活（死亡倒计时结束或引擎抢先复活的修正）：10% 血、饥饿至少 10%、60 秒虚弱；
+-- 原地结算，不调引擎 Reborn（位置不动）。结算经 MgrVitals:ApplyRevive 单点落地。
+function Mgr:WeakRevive(state)
+    if state.phase ~= 'dead' then return end
+    local vitalState = self.Vitals and self.Vitals:GetState(state.player)
+    if not vitalState then return end
+    local c = cfg()
+    local health = math.floor(GameCfg.Vitals.MaxHealth * c.ReviveHealthPercent / 100)
+    local minHunger = math.floor(GameCfg.Vitals.MaxHunger * c.ReviveHungerPercent / 100)
+    if not self.Vitals:ApplyRevive(vitalState, health, minHunger) then return end
+    state.phase = 'alive'
+    state.deadAt = nil
+    self:ApplyWeak(state, c.WeakSec)
+    print('[MgrSurvival] 虚弱复活', state.player.UserId, 'health=' .. tostring(health),
+        'hunger=' .. tostring(vitalState.hunger))
+    self:SendState(state)
+end
+
 function Mgr:OnPlayerAdded(player)
     if not player or self.States[player.UserId] then return end
     self.States[player.UserId] = { player = player, phase = 'alive' }
@@ -99,7 +139,9 @@ function Mgr:OnPlayerRemoving(player)
     self.States[player.UserId] = nil
 end
 
--- 状态推进：濒死倒计时到转死亡。
+-- 状态推进：濒死倒计时到转死亡；死亡倒计时到按虚弱复活结算一次。
+-- 引擎抢先复活修正：仅当真死过（MgrVitals state.dead=true 的漏网死亡）且血量回正才提前结算——
+-- 锁血路径下 Controller 停在 1 血，health>0 不等于复活，不能误判。
 function Mgr:Update()
     local now = self:Now()
     local c = cfg()
@@ -109,6 +151,15 @@ function Mgr:Update()
             state.downedAt = nil
             state.deadAt = now
             print('[MgrSurvival] 死亡', state.player.UserId)
+            self:SendState(state)
+        elseif state.phase == 'dead' then
+            local vitalState = self.Vitals and self.Vitals:GetState(state.player)
+            local health = vitalState and vitalState.dead and healthOf(state.player) or nil
+            if (health and health > 0) or now - state.deadAt >= c.DeadSec then
+                self:WeakRevive(state)
+            end
+        elseif state.phase == 'alive' and state.weakUntil and now >= state.weakUntil then
+            self:ClearWeak(state)
             self:SendState(state)
         end
     end

@@ -132,3 +132,61 @@ function TestSurvivalDowned:test_downed_turns_dead_exactly_after_15_seconds()
     lu.assertFalse(self.v:ApplyHit(self.v:NewHit(self.b, 'fishAttack'), self.a, 50))
     lu.assertEquals(self:ctrl().Health, 1)
 end
+
+TestSurvivalRevive = {}
+
+function TestSurvivalRevive:setUp()
+    TestSurvivalDowned.setUp(self)
+end
+
+function TestSurvivalRevive:tearDown()
+    TestSurvivalDowned.tearDown(self)
+end
+
+function TestSurvivalRevive:ctrl(p) return (p or self.a).Character.Controller end
+
+function TestSurvivalRevive:enterDead()
+    TestSurvivalDowned.enterDowned(self) -- now=100 进濒死
+    self.now = 115
+    self.s:Update()
+    lu.assertEquals(self.v:LifeStatus(self.a), 'dead')
+end
+
+function TestSurvivalRevive:test_dead_revives_in_place_after_30_seconds_with_weak()
+    self:enterDead()
+    self.v:GetState(self.a).hunger = 10 -- 复活前饥饿低于下限
+    self.now = 144.9
+    self.s:Update()
+    lu.assertEquals(self.v:LifeStatus(self.a), 'dead')
+    self.now = 145
+    self.s:Update()
+    lu.assertEquals(self.v:LifeStatus(self.a), 'alive')
+    lu.assertTrue(self.v:CanAct(self.a))
+    lu.assertEquals(self:ctrl().Health, 30) -- 10% × 300
+    lu.assertEquals(self.v:GetState(self.a).hunger, 30) -- 饥饿至少 10% × 300
+    lu.assertEquals(self:ctrl().WalkSpeed, 5) -- 虚弱半速（10 × 0.5）
+    lu.assertEquals(self:ctrl().reborns, 0) -- 原地复活：不走引擎 Reborn
+    lu.assertEquals(self.a.Character.Position, { x = 1, y = 0, z = 0 }) -- 位置不动
+end
+
+function TestSurvivalRevive:test_revive_keeps_higher_hunger()
+    self:enterDead()
+    self.v:GetState(self.a).hunger = 200
+    self.now = 145
+    self.s:Update()
+    lu.assertEquals(self.v:GetState(self.a).hunger, 200)
+    lu.assertEquals(self:ctrl().Health, 30)
+end
+
+function TestSurvivalRevive:test_weak_recovers_full_speed_exactly_after_60_seconds()
+    self:enterDead()
+    self.now = 145
+    self.s:Update()
+    lu.assertEquals(self:ctrl().WalkSpeed, 5)
+    self.now = 204.9
+    self.s:Update()
+    lu.assertEquals(self:ctrl().WalkSpeed, 5)
+    self.now = 205
+    self.s:Update()
+    lu.assertEquals(self:ctrl().WalkSpeed, 10)
+end
