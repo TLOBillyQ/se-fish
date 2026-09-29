@@ -33,10 +33,6 @@ tmp/
 build/
 .toolcache/
 
-# BEGIN UML-VIEWER
-.uml-viewer/
-uml-viewer-log.txt
-# END UML-VIEWER
 
 # 本地 viewer 安装与验收产物；policy 保留可提交
 /uml
@@ -45,3 +41,9 @@ uml-viewer-log.txt
 /examples/*.edn
 !/examples/*.policy.edn
 /luacov.stats.out
+
+# BEGIN UML-VIEWER
+.uml-viewer/
+uml-viewer-log.txt
+.metrics/
+# END UML-VIEWER
