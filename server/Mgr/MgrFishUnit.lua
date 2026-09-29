@@ -841,11 +841,6 @@ function Mgr:ReleaseCarried(fish, dropPoint, reason)
     return true
 end
 
----鱼被打死时释放被叼走的玩家（生命系统回调，见 MgrFishCarrier 的死亡单点）。
-function Mgr:ReleaseCarryOnDeath(fish)
-    if fish and fish.Carry then self:ReleaseCarried(fish, nil, 'died') end
-end
-
 function Mgr:FindByCarrier(carrier)
     for _, fish in pairs(self.Fish) do
         if fish.Carrier == carrier then return fish end
