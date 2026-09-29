@@ -248,12 +248,32 @@ function M.Attach(anchor_script)
 			return
 		end
 
+		-- #129：玩家挥砍只认服务端登记（MgrWeapon 按 GameCfg 表登记伤害/射程）；
+		-- 未登记（伪造 RequestCast）不建命中盒、不结算伤害，只播表现。非玩家单位（鱼类施法）
+		-- 没有登记概念，沿用预设属性。
+		local player = game:GetService("Players"):GetPlayerFromCharacter(owner)
+		local swing = nil
+		if player then
+			swing = require("server.AbilityAPI").TakeSwing(player.UserId)
+			if not swing then
+				print("[melee_hit] 玩家挥砍缺少服务端登记，只播表现不结算伤害 uid=" .. tostring(player.UserId))
+			end
+		end
+
 		local hit_box_offset = anchor_script:GetAttribute("ABILITY_ANOSTATE_HITBOX_OFFSET")
 			or Vector3.New(0, 1, 0)
 		local hit_box_scale =
 			_safeScale(anchor_script:GetAttribute("ABILITY_ANOSTATE_HITBOX_SCALE"), Vector3.New(2, 2, 2))
 		local hit_damage = anchor_script:GetAttribute("ABILITY_ANOSTATE_BULLET_DAMAGE") or 0.0
-		local player = game:GetService("Players"):GetPlayerFromCharacter(owner)
+		if player then
+			if not swing then
+				return
+			end
+			-- 命中盒随登记射程：offset z=range/2（盒中心在面前半程），scale z=range，宽/高 2 米
+			hit_box_offset = Vector3.New(0, 1, swing.range / 2)
+			hit_box_scale = Vector3.New(2, 2, swing.range)
+			hit_damage = swing.damage
+		end
 		if player then
 			hit_damage = require("server.Mgr.MgrGM"):GetMeleeDamage(player, hit_damage)
 		end
@@ -374,6 +394,8 @@ function M.Attach(anchor_script)
 			end
 			-- 命中：先经统一入口结算；被安全区 / 状态规则拦下时不击退也不播命中特效
 			if _applyDamage(target, hit_damage, owner, state and state.hit) then
+				print("[melee_hit] 命中 uid=" .. tostring(player and player.UserId or owner.UnitId),
+					"target=" .. tostring(tid), "damage=" .. tostring(hit_damage))
 				_applyHitPower(target, hit_power, owner)
 				_createHitSfx(anchor_script, target)
 			end

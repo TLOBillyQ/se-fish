@@ -42,7 +42,7 @@ function TestMeleeHitEntry:setUp()
 	-- #129：玩家挥砍只认 AbilityAPI 登记值；测试用假登记模块，不经真实包链
 	self.swingStaged = {}
 	package.loaded['server.AbilityAPI'] = {
-		TakeSwing = function(_, userId)
+		TakeSwing = function(userId)
 			local s = self.swingStaged[userId]
 			self.swingStaged[userId] = nil
 			return s
