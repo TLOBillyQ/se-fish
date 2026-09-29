@@ -179,7 +179,7 @@ function Mgr:Operate(player, data, payload)
     local dropApi = op == 'discard' and self.Loot
         and type(self.Loot.PrepareDrop) == 'function' and type(self.Loot.CommitDrop) == 'function'
     local drop = op == 'discard' and entry
-        and { itemId = entry.itemId, mult = entry.mult, slot = slot } or nil
+        and { itemId = entry.itemId, mult = entry.mult, cooked = entry.cooked, slot = slot } or nil
     -- 预检（新请求才做，重放不得被中间态拦截）：格空与禁食直接回包
     local function precheck()
         if op == 'attack' then return true end
@@ -207,8 +207,21 @@ function Mgr:Operate(player, data, payload)
         end
         return true, reservation
     end
+    -- 丢弃上屏：CommitDrop 生成失败（实例已失）时它已把物品按原属性退回库存，这里回明确的丢弃失败，
+    -- 不谎报成功；幂等重入与「已取消」不算失败。
+    local function commitDrop(reservation)
+        if not reservation then return true end
+        local committed, failure = self.Loot:CommitDrop(player, reservation, drop)
+        if committed then return true end
+        if tostring(failure) == 'spawn-failed' then
+            print('[MgrPlayerData] 丢弃落物未上屏，物品已退回', player.UserId, tostring(drop.itemId))
+            return false
+        end
+        return true
+    end
     local function settleEffects(result)
-        if result.itemId and result.action ~= 'potion' and self.Vitals then
+        -- 只有「吃」结算进食；丢弃同样带 itemId，但它不带 action，按 op 判定避免丢弃也喂饱玩家
+        if op == 'eat' and result.itemId and result.action ~= 'potion' and self.Vitals then
             self.Vitals:Eat(player, result.itemId)
         end
     end
@@ -288,10 +301,9 @@ function Mgr:Operate(player, data, payload)
                     return
                 end
                 -- 世界副作用只在持久成功回调结算，失败无副作用
-                if reservation then
-                    if not self.Loot:CommitDrop(player, reservation, drop) then
-                        print('[MgrPlayerData] 丢弃落物生成失败', player.UserId, tostring(drop.itemId))
-                    end
+                if not commitDrop(reservation) then
+                    finish({ ok = false, op = 'discard', reason = 'drop-rejected' })
+                    return
                 end
                 settleEffects(result)
                 finish(result)
@@ -311,10 +323,9 @@ function Mgr:Operate(player, data, payload)
         finish({ ok = false, op = op, reason = reason })
         return
     end
-    if reservation then
-        if not self.Loot:CommitDrop(player, reservation, drop) then
-            print('[MgrPlayerData] 丢弃落物生成失败', player.UserId, tostring(drop.itemId))
-        end
+    if not commitDrop(reservation) then
+        finish({ ok = false, op = 'discard', reason = 'drop-rejected' })
+        return
     end
     settleEffects(result)
     finish(result)

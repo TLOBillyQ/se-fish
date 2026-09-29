@@ -177,8 +177,8 @@ GameCfg.FishUnit = {
     GlobalEscapePerPlayer = 2,
 }
 
--- 鱼获（#43，#27 规格）：鱼死亡时在它的位置（举着时在持有者脚下）向下探地，贴地生成一份
--- 不参与物理、不消失的鱼获；PickupRadius 米内客户端显示「拾取」文字泡（策划案 line 151 的 2 米），
+-- 鱼获与共享地面实例（#43、#126 T05，#27 规格）：鱼死亡时在它的位置（举着时在持有者脚下）向下探地，
+-- 贴地生成一份不参与物理、不消失的鱼获；PickupRadius 米内客户端显示「拾取」文字泡（策划案 line 151 的 2 米），
 -- 服务端复验时多给 PickupSlack 米容差（网络延迟下角色位置两端不一致）[未查证：容差取值待 #55 实测]
 GameCfg.Loot = {
     PickupRadius = 2,
@@ -188,10 +188,22 @@ GameCfg.Loot = {
     Height = 0.2,
     BubbleHeight = 1.2,
     DropSpacing = 1, -- 多份部位鱼获横向间距，避免模型与拾取泡完全重叠
-    -- 分区上限回收（#91，GameSpec §6.5）：每个钓鱼区场上鱼获总量上限，超限最旧的先闪烁
-    -- FlashBeforeRecycleSec 秒再销毁；待回收期间仍可拾取，拾取即取消回收。上限进配置供压测校准。
+    -- 分区上限回收（#91/#126，GameSpec §6.5）：场上掉落/丢弃物总量按**钓鱼区**（Water.Zones[*].ZoneId，
+    -- 如 fishPond/shrimpPond）计数——同区的多块水域共用一份预算；超限最旧的先闪烁 FlashBeforeRecycleSec
+    -- 秒再销毁；待回收期间仍可拾取，拾取即取消回收。上限进配置供压测校准。
     PerZoneCap = 200,
     FlashBeforeRecycleSec = 30,
+    FlashIntervalSec = 0.5, -- 待回收闪烁的可见性切换间隔（服务端驱动模型、客户端同节奏闪文字泡）
+    -- 预警期（待回收）上限（#126）：待回收件不计入 PerZoneCap，若不封顶，「活跃 200 + 无限预警」仍会涨；
+    -- 超过 PendingCap 时立刻回收最旧的预警件（跳过剩余预警），单区总量恒 ≤ PerZoneCap + PendingCap。
+    -- 暂取 PerZoneCap 的 20% [未查证：取值待压测校准]
+    PendingCap = 40,
+    -- 主动丢弃落点（#126）：角色正前方 DropOffset 米，沿用 MgrFishUnit 放下鱼的口径
+    DropOffset = 1.5,
+    -- 非鱼物品（信物/首领饵/船票/普通饵/武器等）没有专用模型：借用 #45 点位鱼饵已在用的官方资产
+    -- 「飘逸尾鳍」（official://mesh/7000571）作通用落物外观，缩放同点位鱼饵 [未查证：观感待 #55 截图]
+    ItemMesh = 'official://mesh/7000571',
+    ItemScale = 0.3,
 }
 
 -- 存档（#92）：DataStore 集合名与键前缀、限流重试策略。写失败只记日志不动内存态（内存比存档新），

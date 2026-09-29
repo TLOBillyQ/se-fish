@@ -145,7 +145,9 @@ function PlayerData:Migrate(snapshot)
             local def = GameCfg.Items.Definitions[slot.id]
             if not def or def.Container == GameCfg.Items.ContainerId.Bait
                 or not integer(slot.i, 1, max) or seen[slot.i] or not integer(slot.n, 1, 1)
-                or slot.m ~= nil and (type(slot.m) ~= 'number' or slot.m < 1 or slot.m > 2) then
+                or slot.m ~= nil and (type(slot.m) ~= 'number' or slot.m < 1 or slot.m > 2)
+                or slot.k ~= nil and (type(slot.k) ~= 'number' or slot.k < 1 or slot.k ~= slot.k
+                    or slot.k >= math.huge) then
                 return nil, '物品实例损坏'
             end
             seen[slot.i] = true
@@ -254,7 +256,7 @@ function PlayerData:ApplySave(snapshot)
     local function unpack(packed, containerId)
         local items = {}
         for _, slot in ipairs(packed) do
-            items[slot.i] = { itemId = slot.id, count = slot.n, mult = slot.m,
+            items[slot.i] = { itemId = slot.id, count = slot.n, mult = slot.m, cooked = slot.k,
                 containerId = containerId, saved = copy(slot) }
         end
         return items
@@ -358,7 +360,7 @@ local function copySlots(items, capacity)
         local entry = items[index]
         if entry and entry.count > 0 then
             slots[index] = { itemId = entry.itemId, count = entry.count,
-                containerId = entry.containerId, mult = entry.mult }
+                containerId = entry.containerId, mult = entry.mult, cooked = entry.cooked }
         end
     end
     return slots
@@ -698,7 +700,9 @@ function PlayerData:ConsumeSelectedBait()
 end
 
 -- 优先填道具栏，再填背包；满格时不改动库存。
-function PlayerData:AddItem(itemId, mult)
+-- cooked 是烤制状态（#126 落物实例属性，技术难点 §5「个体倍率与烤制倍率」）：随物品实例走，
+-- 打包进存档槽位的 k 字段（Serialize 复用 entry.saved），拾回/移动/读档都不丢。
+function PlayerData:AddItem(itemId, mult, cooked)
     if not self.Inited or type(itemId) ~= 'string' then return false end
     for _, container in ipairs({
         { GameCfg.Items.ContainerId.ItemBar, self:ItemBarCapacity() },
@@ -709,7 +713,8 @@ function PlayerData:AddItem(itemId, mult)
             local entry = items[index]
             if not entry or entry.count <= 0 then
                 self:UpdateData(function()
-                    items[index] = { itemId = itemId, count = 1, containerId = container[1], mult = mult }
+                    items[index] = { itemId = itemId, count = 1, containerId = container[1], mult = mult,
+                        cooked = cooked, saved = cooked and { k = cooked } or nil }
                 end, true)
                 return true
             end
