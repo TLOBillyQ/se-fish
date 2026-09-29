@@ -167,6 +167,20 @@ function TestReelEscape:test_interrupt_and_offline_end_the_session_instead_of_le
     lu.assertNil(self.cast.Sessions[self.player.UserId])
 end
 
+-- 重复 / 迟到事件不跳状态：脱钩后再收到「上岸」或又一次「脱钩」都停在 escaped
+function TestReelEscape:test_repeated_events_after_escape_do_not_jump_state()
+    local id = self:hook('bass', 1.2)
+    self.now = 30
+    self.reel:Update()
+    local sent = #self.player.messages
+    self.cast:FinishReel(self.player, id, 'landed')
+    self.cast:FinishReel(self.player, id, 'unhooked', nil, true)
+    lu.assertEquals(self.cast.Sessions[self.player.UserId].session.phase, 'escaped')
+    lu.assertEquals(#self.player.messages, sent)
+    lu.assertEquals(#self.spawned, 0)
+    lu.assertEquals(#self.facts, 0)
+end
+
 function TestReelEscape:test_death_while_line_is_out_reels_it_back()
     local id = self:hook('bass', 1.2)
     self.now = 30

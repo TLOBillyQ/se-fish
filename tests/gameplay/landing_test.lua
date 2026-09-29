@@ -8,6 +8,7 @@
 --   6. 上岸加金币，旧等级字段、旧鱼管理链仍在；
 --   7. 鱼生成失败或玩家离线时会话残留。
 local lu = require('luaunit')
+local GameCfg = require('common.GameCfg')
 
 TestLanding = {}
 
@@ -268,6 +269,15 @@ function TestLandingRetired:test_fish_unit_is_registered()
     lu.assertStrContains(read('server/main.lua'), 'MgrFishUnit = require')
 end
 
+-- #133：图鉴管理器注册进 MgrMap，且只有 MgrCast 拿到它（击杀与掉落不经此路）
+function TestLandingRetired:test_compendium_is_registered_and_wired_to_cast()
+    local main = read('server/main.lua')
+    lu.assertStrContains(main, 'MgrCompendium = require')
+    lu.assertStrContains(main, 'MgrMap.MgrCompendium.Save = MgrMap.MgrSave')
+    lu.assertStrContains(main, 'MgrMap.MgrCompendium.PlayerData = MgrMap.MgrPlayerData')
+    lu.assertStrContains(main, 'MgrMap.MgrCast.Compendium = MgrMap.MgrCompendium')
+end
+
 function TestLandingRetired:test_every_catchable_fish_has_species_values()
     local cfg = assert(loadfile('common/GameCfg.lua'))()
     for zone, rows in pairs(cfg.Casting.Zones) do
@@ -336,4 +346,52 @@ function TestLanding:test_landed_notifies_land_once_and_unhook_does_not()
     lu.assertEquals(self.facts[1].player, self.player)
     lu.assertTrue(tostring(self.facts[1].eventId):find(id, 1, true) ~= nil)
     lu.assertNotEquals(lost, id)
+end
+
+-- #133 图鉴接线：上岸才记一次（带幂等键），脱钩 / 收竿 / 二次结算都不记
+function TestLanding:spyCompendium()
+    local env = self
+    env.landings = {}
+    self.cast.Compendium = { RecordLanding = function(_, player, event)
+        env.landings[#env.landings + 1] = { player = player, fishId = event.fishId,
+            mult = event.mult, reelSerial = event.reelSerial }
+        return true
+    end }
+end
+
+function TestLanding:test_landed_records_compendium_and_unhook_does_not()
+    self:spyCompendium()
+    self.player.Character.Position = vec(-11.75, 2, 22.75)
+
+    -- 走真实流程抛竿 → 上钩，拿到服务端分配的收线会话序号
+    self.cast:Cast(self.player, { slot = 1, itemId = 'starterRod' })
+    self.now = GameCfg.Casting.HookDelaySec + 0.1
+    self.cast:Update()
+    local landed = self.cast.Sessions[self.player.UserId].session
+    lu.assertEquals(landed.phase, 'hooked')
+    lu.assertNotNil(landed.reelSerial)
+    self:reelIn(landed.reelSession, 10, 1)
+    lu.assertEquals(#self.landings, 1)
+    lu.assertEquals(self.landings[1].player, self.player)
+    lu.assertEquals(self.landings[1].fishId, landed.fishId)
+    lu.assertEquals(self.landings[1].mult, landed.mult)
+    lu.assertEquals(self.landings[1].reelSerial, landed.reelSerial)
+
+    -- 同一次上岸的重复结算与迟到批次不再记
+    self.cast:FinishReel(self.player, landed.reelSession, 'landed')
+    self:reelIn(landed.reelSession, 5, 2)
+    lu.assertEquals(#self.landings, 1)
+
+    -- 脱钩（线还在水里）与随后的收竿都不算上岸
+    self.now = self.now + GameCfg.Casting.LandedHoldSec + 1
+    self.cast:Update()
+    self.cast:Cast(self.player, { slot = 1, itemId = 'starterRod' })
+    self.now = self.now + GameCfg.Casting.HookDelaySec + 0.1
+    self.cast:Update()
+    lu.assertEquals(self.cast.Sessions[self.player.UserId].session.phase, 'hooked')
+    self.now = self.now + 30
+    self.reel:Update()
+    lu.assertEquals(self:lastState().phase, 'escaped')
+    self.events.CastAction.OnServerEvent:Fire(self.player, { action = 'Reel' })
+    lu.assertEquals(#self.landings, 1)
 end

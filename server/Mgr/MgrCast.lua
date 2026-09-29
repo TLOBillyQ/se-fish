@@ -226,6 +226,13 @@ end
 
 -- 上岸结算：phase 已从 hooked 切到 landed，这里只会走一次；活鱼落在玩家正前方，交给活鱼单位管理器
 function Mgr:Land(player, session)
+    -- #133 图鉴：成功上岸是一次性领域事件。幂等键取收线会话序号（同一存档会话内单调、一次上岸
+    -- 只发一个），所以重放 / 写档重试 / 断线重连都不会把同一条鱼记两次。活鱼生成失败只影响
+    -- 场上的鱼，改不了「这条鱼上岸过」的事实，因此放在生成之前。
+    if self.Compendium then
+        self.Compendium:RecordLanding(player, { fishId = session.fishId, mult = session.mult,
+            reelSerial = session.reelSerial })
+    end
     local character = player.Character
     local origin, rotation = character and character.Position, character and character.Rotation
     if not origin or not rotation then
@@ -311,6 +318,8 @@ function Mgr:Update()
                 session.forcedFishSerial = forced and forced.serial
                 session.mult = FishCatch.Multiplier(math.random)
                 self.NextReelId = (self.NextReelId or 0) + 1
+                -- reelSerial 是图鉴写入的幂等键（#133）：同一条鱼的两次上岸事实必须是两个序号
+                session.reelSerial = self.NextReelId
                 session.reelSession = tostring(self.NextReelId) .. ':' .. tostring(current.player.UserId)
                 if self.ReelIn:Begin(current.player, session.reelSession, now)
                     and self.Sessions[current.player.UserId] == current and session.phase == 'hooked' then

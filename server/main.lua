@@ -28,6 +28,7 @@ local MgrMap = {
     MgrSave = require("server.Mgr.MgrSave"),
     MgrSurvival = require("server.Mgr.MgrSurvival"),
     MgrWeapon = require("server.Mgr.MgrWeapon"),
+    MgrCompendium = require("server.Mgr.MgrCompendium"),
 }
 
 MgrMap.MgrCast.ReelIn = MgrMap.MgrReelIn
@@ -60,6 +61,11 @@ MgrMap.MgrFerry.Save = MgrMap.MgrSave
 MgrMap.MgrShop.Save = MgrMap.MgrSave
 MgrMap.MgrFerry.Save = MgrMap.MgrSave
 MgrMap.MgrSave.PlayerData = MgrMap.MgrPlayerData
+--- #133 图鉴写入：上岸事实经 MgrCompendium 记进 extra.collection，写入走 #123 持久操作协议，
+--- 所以条目与个人最大重量和操作日志同键落账、重进保留；只有上岸这一个写入口（击杀与掉落走 MgrLoot）。
+MgrMap.MgrCompendium.Save = MgrMap.MgrSave
+MgrMap.MgrCompendium.PlayerData = MgrMap.MgrPlayerData
+MgrMap.MgrCast.Compendium = MgrMap.MgrCompendium
 
 -- #128 战斗接线：统一伤害入口的依赖单向注入在这里完成。
 -- Vitals 需要鱼受击体解析（ApplyHit 的鱼分支）；Ability / FishUnit / Cast 需要玩家生命状态
