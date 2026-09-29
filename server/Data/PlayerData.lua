@@ -15,6 +15,44 @@ local function integer(n, min, max)
         and n == math.floor(n) and n >= min and n <= (max or math.maxinteger)
 end
 
+-- #123：平台在列表型 table 跨越引擎边界（DataStore 回读、引擎 API 返回）时附加 __count 长度键，
+-- 真机证据见 tests/gameplay/save_array_meta_test.lua 首部与 #123 评论：同一份回包里列表 bar/bp 带 __count、
+-- 字典型 bait 不带。这个键不是玩家数据，必须在校验之前剥掉。
+-- 只认「键名恰为 ARRAY_MARKER_KEY 且值为非负整数」的形态；其它同名形态原样保留，继续被严格校验当损坏拒绝。
+local ARRAY_MARKER_KEY = '__count'
+
+local function isArrayMarker(key, value)
+    return key == ARRAY_MARKER_KEY and integer(value, 0)
+end
+
+-- 深拷贝并剥离列表长度标记：长度一律以剥离后实际整数键个数为准，绝不信任 __count；
+-- 两者不一致时记一行日志（标记被篡改或数据被截断都要留痕），随后仍按实际条数走原有严格校验。
+-- seen 按递归栈进出（同 serializable）：共享子表照常复制，只有真循环才退回原引用——
+-- Migrate 的入参已先过 serializable 拒绝循环，MgrSave 侧入参是 DataStore 解码树，这里只是防御。
+local function stripArrayMeta(value, path, seen)
+    if type(value) ~= 'table' then return value end
+    seen = seen or {}
+    if seen[value] then return value end
+    seen[value] = true
+    local out, declared, actual = {}, nil, 0
+    for key, child in pairs(value) do
+        if isArrayMarker(key, child) then
+            declared = child
+        else
+            if integer(key, 1) then actual = actual + 1 end
+            local childPath = path and path .. '.' .. tostring(key) or nil
+            out[key] = stripArrayMeta(child, childPath, seen)
+        end
+    end
+    if declared ~= nil and declared ~= actual then
+        print('[PlayerData] 数组长度标记不一致，按实际条数继续', path or '?',
+            '标记=' .. declared, '实际=' .. actual)
+    end
+    seen[value] = nil
+    return out
+end
+PlayerData.StripArrayMeta = stripArrayMeta
+
 -- 扩展字段仅承载持久状态；库存、成长、任务等系统由各子单接入。
 local function defaults(zone)
     return {
@@ -117,7 +155,8 @@ end
 function PlayerData:Migrate(snapshot)
     if type(snapshot) ~= 'table' or (snapshot.v ~= 1 and snapshot.v ~= 2)
         or not serializable(snapshot, {}, 0) then return nil, '未知版本或不可序列化数据' end
-    local saved = copy(snapshot)
+    -- 平台列表标记先剥离再校验；剥掉的只有 __count，下面的严格校验一条不放松。
+    local saved = stripArrayMeta(snapshot, 'save')
     if not integer(saved.coin, 0) or not integer(saved.up, 0, #GameCfg.Items.UpgradePrices)
         or type(saved.zone) ~= 'string' or saved.zone == '' or type(saved.bait) ~= 'table' then
         return nil, '基础字段损坏'

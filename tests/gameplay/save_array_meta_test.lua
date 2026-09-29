@@ -176,6 +176,21 @@ function TestSaveArrayMeta:test_markerless_old_snapshot_and_migration_output_unc
     lu.assertEquals(upstream.v, 1)
 end
 
+function TestSaveArrayMeta:test_strip_export_is_a_deep_copy_that_drops_only_the_marker()
+    -- Migrate 会对副本原地改写（LegacyIdMap 改名、bait 合并），剥离必须走深拷贝、不与入参共享子表。
+    local shared = { a = 1 }
+    local input = { bar = { { i = 1, id = 'shrimpRod' }, __count = 1 }, p = shared, q = shared, keep = 7 }
+    local out = PlayerData.StripArrayMeta(input, 'save')
+    lu.assertNil(out.bar.__count)
+    lu.assertEquals(out.bar[1].id, 'shrimpRod')
+    lu.assertEquals(out.keep, 7)
+    lu.assertFalse(rawequal(out.p, input.p))
+    lu.assertFalse(rawequal(out.q, input.q))
+    out.p.a = 2
+    lu.assertEquals(input.p.a, 1)
+    lu.assertFalse(hasCountKey(out))
+end
+
 function TestSaveArrayMeta:test_v2_meta_operations_marker_is_stripped_from_memory_and_write()
     local source = fresh(99)
     local snapshot = source:Serialize()
