@@ -1,4 +1,27 @@
 local GameCfg = {}
+local ContentItems = require('common.cfg.Items')
+local ContentFish = require('common.cfg.Fish')
+local ContentShop = require('common.cfg.Shop')
+local ContentLottery = require('common.cfg.Lottery')
+local ContentBlindbox = require('common.cfg.Blindbox')
+
+-- 钓鱼区 ID 用于内容与后续场景锚点；存档旧值在 LegacyZoneIdMap 中解析。
+-- WaterId 是内容层稳定 ID，现场 Water.Zones[*].Id 保留已有编辑器单位名称。
+GameCfg.Zones = {
+    { Id = 'fishPond', Name = '鱼塘', WaterId = 'fishPond.water', BaitItemId = 'worm', source = '钓鱼表!R2' },
+    { Id = 'shrimpPond', Name = '虾池', WaterId = 'shrimpPond.water', BaitItemId = 'sausage', source = '钓鱼表!R16' },
+    { Id = 'crabLake', Name = '蟹湖', WaterId = 'crabLake.water', BaitItemId = 'item115', source = '钓鱼表!R30' },
+    { Id = 'forestIsland', Name = '树林岛', WaterId = 'forestIsland.water', BaitItemId = 'item116', source = '钓鱼表!R44' },
+    { Id = 'beachIsland', Name = '沙滩岛', WaterId = 'beachIsland.water', BaitItemId = 'item117', source = '钓鱼表!R58' },
+    { Id = 'reefIsland', Name = '礁石岛', WaterId = 'reefIsland.water', BaitItemId = 'item118', source = '钓鱼表!R72' },
+    { Id = 'volcanoIsland', Name = '火山岛', WaterId = 'volcanoIsland.water', BaitItemId = 'item119', source = '钓鱼表!R86' },
+}
+GameCfg.LegacyZoneIdMap = { fishPond1 = 'fishPond', shrimpPond = 'shrimpPond' }
+
+function GameCfg.ResolveZoneId(id)
+    return GameCfg.LegacyZoneIdMap[id] or id
+end
+
 
 -- 场景交互气泡：参考 GM 的独立白字层，显式设置字号，避免按钮默认文字过小。
 GameCfg.InteractionBubble = {
@@ -40,50 +63,9 @@ GameCfg.Items = {
         Socket = 'l_weapon',
         Scale = { x = 0.2, y = 0.25, z = 0.2 },
     },
-    Definitions = {
-        tilapia = { Name = '罗非鱼', EatPercent = 15, Icon = 'official://image/11164' },
-        carp = { Name = '鲤鱼', EatPercent = 20, Icon = 'official://image/11164' },
-        knifeFish = { Name = '刀鱼', EatPercent = 20, Icon = 'official://image/11164' },
-        bass = { Name = '鲈鱼', EatPercent = 25, Icon = 'official://image/11164' },
-        catfish = { Name = '鲶鱼', EatPercent = 25, Icon = 'official://image/11164' },
-        goldfish = { Name = '金鱼', EatPercent = 30, Icon = 'official://image/11164' },
-        worm = { Name = '蚯蚓', EatPercent = 5, Icon = 'official://image/14066', Container = 'bait', BasePrice = 1 },
-        -- 香肠（#90，虾池鱼饵）：进 Bait 计数不占格，虾池商店 2 金上架
-        sausage = { Name = '香肠', Icon = 'official://image/14066', Container = 'bait', BasePrice = 2 }, -- [未查证：图标占位，待 #55 校准]
-        starterRod = { Name = '新手鱼竿', Icon = 'official://image/12024', Level = 1, BasePrice = 3 },
-        -- 虾池鱼获（#84，GameSpec §5.2 / 物品表 17-28；售价在 GameCfg.Fish 对应鱼种行）
-        shrimp = { Name = '虾米', EatPercent = 15, Icon = 'official://image/11164' },
-        riverShrimp = { Name = '沼虾', EatPercent = 20, Icon = 'official://image/11164' },
-        crayfish = { Name = '小龙虾', EatPercent = 20, Icon = 'official://image/11164' },
-        bostonLobster = { Name = '波龙', EatPercent = 25, Icon = 'official://image/11164' },
-        aussieLobster = { Name = '澳龙', EatPercent = 25, Icon = 'official://image/11164' },
-        milkLobster = { Name = '奶龙', EatPercent = 30, Icon = 'official://image/11164' },
-        -- 极品鱼获同属极品食物，可投抽奖机（CONTEXT.md「信物」「抽奖机」）
-        rareShrimp = { Name = '极品虾米', EatPercent = 15, Icon = 'official://image/11164' },
-        rareRiverShrimp = { Name = '极品沼虾', EatPercent = 20, Icon = 'official://image/11164' },
-        rareCrayfish = { Name = '极品小龙虾', EatPercent = 20, Icon = 'official://image/11164' },
-        rareBostonLobster = { Name = '极品波龙', EatPercent = 25, Icon = 'official://image/11164' },
-        rareAussieLobster = { Name = '极品澳龙', EatPercent = 25, Icon = 'official://image/11164' },
-        rareMilkLobster = { Name = '极品奶龙', EatPercent = 30, Icon = 'official://image/11164' },
-        -- 精英/首领掉落部位（#84，物品表 13-16）：电鳗头 = 精英信物，鳄雀鳝鱼头 = 首领信物（GameSpec §5.1 注）
-        eelMeat = { Name = '电鳗肉', EatPercent = 50, Icon = 'official://image/13008', BasePrice = 10 },
-        eelHead = { Name = '电鳗头', EatPercent = 50, Icon = 'official://image/11164', BasePrice = 10 },
-        garMeat = { Name = '鳄雀鳝鱼肉', EatPercent = 100, Icon = 'official://image/13008', BasePrice = 15 },
-        garHead = { Name = '鳄雀鳝鱼头', EatPercent = 100, Icon = 'official://image/11164', BasePrice = 20 },
-        -- 首领饵「鸭子」（物品表 120）：按 #85 占道具栏/背包格；挂饵走 SelectBait 通道、
-        -- 抛竿必出鳄雀鳝（#88，映射见 GameCfg.Casting.BossBait）
-        duck = { Name = '鸭子', EatPercent = 10, Icon = 'official://image/11154', BasePrice = 10 },
-        -- 船票（过关道具，不能吃）：交给摆渡 NPC 去虾池（#89 落地）；物品表原名「虾池车票」，
-        -- 按 CONTEXT.md 术语定名「虾池船票」，后续钓鱼区各有一张
-        shrimpTicket = { Name = '虾池船票', Icon = 'official://image/14105', BasePrice = 1 },
-        -- 七级鱼竿（#84，GameSpec §4.5/§7.2；商店售价在 GameCfg.Shop.Goods）
-        shrimpRod = { Name = '钓虾竿', Icon = 'official://image/12024', Level = 2, BasePrice = 6 },
-        crabRod = { Name = '捕蟹竿', Icon = 'official://image/12024', Level = 3, BasePrice = 13 },
-        normalRod = { Name = '普通鱼竿', Icon = 'official://image/12024', Level = 4, BasePrice = 25 },
-        proRod = { Name = '专业鱼竿', Icon = 'official://image/12024', Level = 5, BasePrice = 50 },
-        airforceRod = { Name = '空军之竿', Icon = 'official://image/12024', Level = 6, BasePrice = 100 },
-        unscientificRod = { Name = '不科学鱼竿', Icon = 'official://image/12024', Level = 7, BasePrice = 250 },
-    },
+    Definitions = ContentItems.Definitions,
+    SourceIdMap = ContentItems.SourceIdMap,
+    LegacyIdMap = ContentItems.LegacyIdMap,
 }
 -- 血量与饥饿（#53，#40 规格；设计案「玩家属性」）：上限各 300，饥饿每秒 −HungerPerSec，归零后的下一秒起
 -- 每秒经 MgrVitals:ApplyDamage 掉 StarveDamagePerSec 血；按 World:GetServerTime() 的整秒推进，
@@ -127,46 +109,10 @@ GameCfg.Debug = {
     },
 }
 
--- 鱼种基础值（design 钓鱼表 / 物品表）：Health=血量，BaseWeight=基础重量 kg，
--- BasePrice=基础出售价，Model=GameCfg.FishCarrier.Models 的模型号，Speed=逃脱移动速度（米/秒）。
--- 个体重量 = BaseWeight × 倍率、售价 = BasePrice × 倍率，由 common/FishCatch.lua 派生，不存快照。
--- Grade 品级（CONTEXT.md）：normal=普通鱼 / rare=极品鱼 / elite=精英鱼 / boss=首领。
--- 精英/首领另配 Attack=攻击力、EscapeSec=逃跑时限（秒）、Drops=击杀掉落——它们不掉自身鱼获，
--- 所以没有同名物品定义，BasePrice 记 0（电鳗在 #86 入表，首领随 #88 接入）；
--- 普通/极品没有 Drops，鱼获即自身（物品定义同名）。
--- M1（#84）：鱼塘加精英电鳗、首领鳄雀鳝；虾池 6 普通 + 6 极品（GameSpec §5.2），
--- 极品数值与普通版相同（规格「同上」），虾池模型先用鱼塘鱼占位（已知差异不算 bug，正式模型随 #90）。
-GameCfg.Fish = {
-    -- 鱼塘（第一钓鱼区）普通鱼
-    tilapia = { Name = '罗非鱼', Grade = 'normal', Health = 5, BaseWeight = 1, BasePrice = 3, Model = '7000557', Speed = 3 },
-    carp = { Name = '鲤鱼', Grade = 'normal', Health = 10, BaseWeight = 5, BasePrice = 4, Model = '7000552', Speed = 3 },
-    knifeFish = { Name = '刀鱼', Grade = 'normal', Health = 15, BaseWeight = 0.5, BasePrice = 5, Model = '7000545', Speed = 3 },
-    bass = { Name = '鲈鱼', Grade = 'normal', Health = 20, BaseWeight = 2, BasePrice = 6, Model = '7000551', Speed = 3 },
-    catfish = { Name = '鲶鱼', Grade = 'normal', Health = 25, BaseWeight = 5, BasePrice = 7, Model = '7000553', Speed = 3 },
-    goldfish = { Name = '金鱼', Grade = 'normal', Health = 3, BaseWeight = 0.1, BasePrice = 8, Model = '7000559', Speed = 3 },
-    -- 鱼塘精英/首领（GameSpec §5.1 第 7/8 行；模型占位：电鳗用 7000545「旗鱼」（与刀鱼同模型）、
-    -- 鳄雀鳝用 7000546「鲨鱼」，正式模型随 #86/#88；鱼饵/权重是抽签表行字段，随 #86/#88 一并入表）
-    eel = { Name = '电鳗', Grade = 'elite', Health = 300, Attack = 10, BaseWeight = 5, BasePrice = 0, Model = '7000545', Speed = 6, EscapeSec = 180,
-        Combat = 'eel',
-        Drops = { { ItemId = 'eelMeat', Count = 2 }, { ItemId = 'eelHead', Count = 1 } } },
-    alligatorGar = { Name = '鳄雀鳝', Grade = 'boss', Health = 600, Attack = 30, BaseWeight = 5, BasePrice = 0, Model = '7000546', Speed = 6, EscapeSec = 300,
-        Combat = 'gar',
-        Drops = { { ItemId = 'garMeat', Count = 2 }, { ItemId = 'garHead', Count = 1 } } },
-    -- 虾池（第二钓鱼区）普通鱼（#84，GameSpec §5.2；模型按鱼塘六鱼顺次占位）
-    shrimp = { Name = '虾米', Grade = 'normal', Health = 20, BaseWeight = 0.02, BasePrice = 4, Model = '7000557', Speed = 3 },
-    riverShrimp = { Name = '沼虾', Grade = 'normal', Health = 30, BaseWeight = 0.05, BasePrice = 10, Model = '7000552', Speed = 3 },
-    crayfish = { Name = '小龙虾', Grade = 'normal', Health = 40, BaseWeight = 0.1, BasePrice = 12, Model = '7000545', Speed = 3 },
-    bostonLobster = { Name = '波龙', Grade = 'normal', Health = 50, BaseWeight = 1, BasePrice = 15, Model = '7000551', Speed = 4 },
-    aussieLobster = { Name = '澳龙', Grade = 'normal', Health = 60, BaseWeight = 2, BasePrice = 18, Model = '7000553', Speed = 4 },
-    milkLobster = { Name = '奶龙', Grade = 'normal', Health = 70, BaseWeight = 10, BasePrice = 21, Model = '7000559', Speed = 4 },
-    -- 虾池极品鱼：数值与普通版相同，模型跟随各自的普通版
-    rareShrimp = { Name = '极品虾米', Grade = 'rare', Health = 20, BaseWeight = 0.02, BasePrice = 4, Model = '7000557', Speed = 3 },
-    rareRiverShrimp = { Name = '极品沼虾', Grade = 'rare', Health = 30, BaseWeight = 0.05, BasePrice = 10, Model = '7000552', Speed = 3 },
-    rareCrayfish = { Name = '极品小龙虾', Grade = 'rare', Health = 40, BaseWeight = 0.1, BasePrice = 12, Model = '7000545', Speed = 3 },
-    rareBostonLobster = { Name = '极品波龙', Grade = 'rare', Health = 50, BaseWeight = 1, BasePrice = 15, Model = '7000551', Speed = 4 },
-    rareAussieLobster = { Name = '极品澳龙', Grade = 'rare', Health = 60, BaseWeight = 2, BasePrice = 18, Model = '7000553', Speed = 4 },
-    rareMilkLobster = { Name = '极品奶龙', Grade = 'rare', Health = 70, BaseWeight = 10, BasePrice = 21, Model = '7000559', Speed = 4 },
-}
+-- 鱼种原表与物品引用在 common/cfg/Fish.lua；部分实体模型、招式尚待后续子单接入。
+GameCfg.Fish = ContentFish.Definitions
+GameCfg.FishSourceIdMap = ContentFish.SourceIdMap
+GameCfg.LegacyFishIdMap = ContentFish.LegacyIdMap
 
 -- 活鱼（#41 起，server/Mgr/MgrFishUnit.lua）。来源：M0 试玩验证台账（issue #25 评论 9865）§1 V2 与 #27 规格。
 GameCfg.FishUnit = {
@@ -359,6 +305,24 @@ GameCfg.Shop = {
     },
 }
 
+-- 完整商品、抽奖、盲盒表是目标内容；Shop.Goods 仍为已接入商店的白名单。
+-- 后续 #130/#138/#147 按 implemented 状态接入购买/结算，不能把内容行当作当前可用。
+GameCfg.Content = { Shop = ContentShop, Lottery = ContentLottery, Blindbox = ContentBlindbox }
+-- 七区信物链按已确认 GameSpec §8.1；行为尚待 #127 实装。
+GameCfg.Content.Exchanges = {
+    { ZoneId = 'fishPond', EliteFish = 'eel', EliteToken = 'eelHead', BossBait = 'duck', BossFish = 'alligatorGar', BossToken = 'garHead', Result = 'shrimpTicket', source = 'GameSpec.md#8.1-鱼塘' },
+    { ZoneId = 'shrimpPond', EliteFish = 'fish15Elite', EliteToken = 'item31', BossBait = 'item121', BossFish = 'fish16Boss', BossToken = 'item32', Result = 'item147', source = 'GameSpec.md#8.1-虾池' },
+    { ZoneId = 'crabLake', EliteFish = 'fish23Elite', EliteToken = 'item47', BossBait = 'item122', BossFish = 'fish24Boss', BossToken = 'item48', Result = 'item148', source = 'GameSpec.md#8.1-蟹湖' },
+    { ZoneId = 'forestIsland', EliteFish = 'fish31Elite', EliteToken = 'item63', BossBait = 'item123', BossFish = 'fish32Boss', BossToken = 'item64', Result = 'item149', source = 'GameSpec.md#8.1-树林岛' },
+    { ZoneId = 'beachIsland', EliteFish = 'fish39Elite', EliteToken = 'item79', BossBait = 'item124', BossFish = 'fish40Boss', BossToken = 'item80', Result = 'item150', source = 'GameSpec.md#8.1-沙滩岛' },
+    { ZoneId = 'reefIsland', EliteFish = 'fish47Elite', EliteToken = 'item95', BossBait = 'item125', BossFish = 'fish48Boss', BossToken = 'item96', Result = 'item151', source = 'GameSpec.md#8.1-礁石岛' },
+    { ZoneId = 'volcanoIsland', EliteFish = 'fish55Elite', EliteToken = 'item111', BossBait = 'item126', BossFish = 'fish56Boss', BossToken = 'item112', Result = 'achievement.final', source = 'GameSpec.md#8.1-火山岛' },
+}
+GameCfg.Shop.Catalog = ContentShop.Goods
+GameCfg.Shop.Excluded = ContentShop.Excluded
+GameCfg.Lottery = ContentLottery
+GameCfg.Blindbox = ContentBlindbox
+
 -- 摆渡（#89，GameSpec §8.3 已确认细则）：去程一人在船边交 1 张船票，倒计时 CountdownSec 秒后
 -- 带走 BoatRange 米内（只看 x/z）所有玩家到虾池落点，无票同行者搭便船合法；倒计时中再交票拒绝且不扣。
 -- 返程在虾池侧锚点按人付 Price 金币、立即传送回第一钓鱼区。船与虾池都是占位表现（#90 才铺虾池内容）；
@@ -433,6 +397,28 @@ GameCfg.Casting = {
     -- 抛竿一刻从道具栏（优先）或背包扣 1 只，钓出首领后消耗，脱钩 / 逃脱不返还。
     BossBait = { duck = 'alligatorGar' },
 }
+
+-- 源表抽鱼行按钓鱼区分组；水域/钓鱼区映射见下文 Water.ZoneIdByWater。
+-- BossBait 沿用当前鸭子映射；其余首领饵待后续区域内容可运行时再启用。
+local sourceCastRows = {}
+local bossBaitCatalog = {}
+for _, species in pairs(GameCfg.Fish) do
+    if species.Grade == 'boss' then
+        bossBaitCatalog[species.Bait] = species.Id
+    else
+        local rows = sourceCastRows[species.ZoneId] or {}
+        rows[#rows + 1] = { Id = species.Id, Bait = species.Bait,
+            RodLevel = species.RodLevel, DrawWeight = species.DrawWeight, source = species.source }
+        sourceCastRows[species.ZoneId] = rows
+    end
+end
+for _, rows in pairs(sourceCastRows) do
+    table.sort(rows, function(a, b)
+        return tonumber(a.source:match('R(%d+)$')) < tonumber(b.source:match('R(%d+)$'))
+    end)
+end
+GameCfg.Casting.Catalog = sourceCastRows
+GameCfg.Casting.BossBaitCatalog = bossBaitCatalog
 
 -- 首领近战（#88，占位）：Combat='gar' 的鱼上岸放下后 Kinematic 追最近的活着的玩家，
 -- BiteRange 米内按 BiteCooldownSec 冷却咬出鱼种 Attack 伤害；移速取鱼种 Speed，
@@ -563,6 +549,18 @@ addWaterStrip('PondEast', 21.75, 31.25, 10.75, 70.75)
 addWaterStrip('PondSouth', -24.25, 21.75, 10.75, 16.25)
 addWaterStrip('PondNorth', -24.25, 21.75, 61.25, 70.75)
 addWaterStrip('PondNotch', -24.25, -4.982, 16.25, 35.268)
+
+-- 仅列已在编辑器配置过并可实际抛竿的水域；新五区水域留给 #125 场景实施。
+GameCfg.Water.ZoneIdByWater = {
+    WaterCircle1 = 'fishPond', WaterCircle2 = 'fishPond', ShrimpPool = 'shrimpPond',
+}
+for _, zone in ipairs(GameCfg.Water.Zones) do
+    GameCfg.Water.ZoneIdByWater[zone.Id] = GameCfg.Water.ZoneIdByWater[zone.Id] or 'fishPond'
+end
+GameCfg.Water.ContentWaterIds = {}
+for _, zone in ipairs(GameCfg.Zones) do
+    GameCfg.Water.ContentWaterIds[zone.WaterId] = zone.Id
+end
 
 -- 高频输入契约（M0-V5）：窗口与次数上限的常量，逻辑见 common/RateLimit.lua，
 -- 载荷字段固定 {s=会话 id, n=窗口内点击数, q=单调序号}（C-3）。

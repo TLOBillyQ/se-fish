@@ -225,19 +225,26 @@ function TestFishLoot:test_fish_table_matches_m1_spec()
         rareBostonLobster = 'rare', rareAussieLobster = 'rare', rareMilkLobster = 'rare',
     }
     local count = 0
-    for id, species in pairs(cfg.Fish) do
+    for id, grade in pairs(expected) do
+        lu.assertEquals(cfg.Fish[id].Grade, grade, id)
         count = count + 1
-        lu.assertEquals(species.Grade, expected[id], id)
     end
     lu.assertEquals(count, 20)
-    -- 极品版数值与普通版一致（GameSpec §5.2「同上」），防双写漂移
+    lu.assertEquals(#cfg.Zones, 7)
+    local total = 0
+    for _ in pairs(cfg.Fish) do total = total + 1 end
+    lu.assertEquals(total, 98)
+    -- 原表极品奶龙的基础重量与普通版不同，只核对其余字段。
     for _, pair in ipairs({ { 'shrimp', 'rareShrimp' }, { 'riverShrimp', 'rareRiverShrimp' }, { 'crayfish', 'rareCrayfish' },
         { 'bostonLobster', 'rareBostonLobster' }, { 'aussieLobster', 'rareAussieLobster' }, { 'milkLobster', 'rareMilkLobster' } }) do
         local base, rare = cfg.Fish[pair[1]], cfg.Fish[pair[2]]
-        lu.assertEquals({ rare.Health, rare.BaseWeight, rare.BasePrice, rare.Model, rare.Speed },
-            { base.Health, base.BaseWeight, base.BasePrice, base.Model, base.Speed }, pair[2])
+        lu.assertEquals({ rare.Health, rare.BasePrice, rare.Model, rare.Speed },
+            { base.Health, base.BasePrice, base.Model, base.Speed }, pair[2])
+        if pair[1] ~= 'milkLobster' then lu.assertEquals(rare.BaseWeight, base.BaseWeight, pair[2]) end
         lu.assertEquals(rare.Name, '极品' .. base.Name, pair[2])
     end
+    -- 原表极品奶龙的基础重量为 50 kg，其普通版为 10 kg；按资料优先级保留。
+    lu.assertEquals(cfg.Fish.rareMilkLobster.BaseWeight, 50)
     -- 普通/极品的鱼获即自身（同名物品定义）；精英/首领不掉自身，Drops 逐项落到已有物品定义
     for id, species in pairs(cfg.Fish) do
         if species.Drops then
