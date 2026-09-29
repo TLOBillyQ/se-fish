@@ -42,12 +42,20 @@ end
 function Mgr:Snapshot()
     local list = {}
     for _, loot in pairs(self.Loots) do
-        list[#list + 1] = { id = loot.Id, kind = loot.Kind, fishId = loot.FishId, itemId = loot.ItemId,
-            x = loot.Position.x, y = loot.Position.y, z = loot.Position.z,
-            warn = self.Recycling[loot.Id] ~= nil or nil }
+        local row = { id = loot.Id, kind = loot.Kind, fishId = loot.FishId, itemId = loot.ItemId,
+            x = loot.Position.x, y = loot.Position.y, z = loot.Position.z }
+        if self.Recycling[loot.Id] then row.warn = true end
+        list[#list + 1] = row
     end
     table.sort(list, function(a, b) return a.id < b.id end)
     return list
+end
+
+-- 销毁世界单位：失败只记日志，不改变业务结果（回收另有重试路径）
+local function destroyUnit(unit, why, id)
+    local ok, err = pcall(function() unit:Destroy() end)
+    if not ok then print('[MgrLoot] 实例销毁失败', why, tostring(id), tostring(err)) end
+    return ok
 end
 
 -- 从 pos 上方往下探地；探不到就用原高度
@@ -182,13 +190,14 @@ function Mgr:EnforcePending(zoneId)
     while pending and cap and #pending > cap do
         local id = table.remove(pending, 1)
         if self.Recycling[id] then
-            self:Stats(zoneId).RecycledEarly = self:Stats(zoneId).RecycledEarly + 1
+            local stat = self:Stats(zoneId)
+            stat.RecycledEarly = stat.RecycledEarly + 1
             self:Recycle(id, '预警超限即回收')
         end
     end
 end
 
--- 回收一件：销毁世界单位、摘记录与计时；销毁失败保留记录 5 秒后重试，不报成功
+-- 回收一件：销毁世界单位、摘记录与计时；销毁失败保留记录、按 RecycleRetrySec 后重试，不报成功
 function Mgr:Recycle(id, why)
     local loot = self.Loots[id]
     if not loot then
@@ -199,7 +208,7 @@ function Mgr:Recycle(id, why)
     if not ok then
         print('[MgrLoot] 回收销毁失败', id, tostring(err))
         local entry = self.Recycling[id]
-        if entry then entry.At = self:Now() + 5 end
+        if entry then entry.At = self:Now() + cfg().RecycleRetrySec end
         return false
     end
     self.Loots[id] = nil
@@ -389,7 +398,7 @@ function Mgr:Refund(player, reservation)
         print('[MgrLoot] 丢弃补偿失败，物品未退回', player.UserId, loot.ItemId, 'loot=' .. tostring(loot.Id))
         return false, 'spawn-failed'
     end
-    pcall(function() loot.Unit:Destroy() end)
+    destroyUnit(loot.Unit, '丢弃补偿', loot.Id)
     self.PlayerData:SendItemBar(player)
     print('[MgrLoot] 丢弃落物生成失败，已退回物品', player.UserId, loot.ItemId, 'loot=' .. tostring(loot.Id))
     return false, 'spawn-failed'
@@ -429,7 +438,7 @@ function Mgr:CancelDrop(player, reservation, drop)
     if self.Reserved[player.UserId] == reservation then self.Reserved[player.UserId] = nil end
     if reservation.Done then return false end
     reservation.Done, reservation.Outcome = true, 'cancelled'
-    pcall(function() reservation.Loot.Unit:Destroy() end)
+    destroyUnit(reservation.Loot.Unit, '取消预留', reservation.Loot.Id)
     print('[MgrLoot] 丢弃预留取消', player.UserId, reservation.Loot.ItemId, 'loot=' .. tostring(reservation.Loot.Id))
     return true
 end
@@ -458,7 +467,7 @@ function Mgr:Pickup(player, id)
         return false
     end
     self:Untrack(loot)
-    pcall(function() loot.Unit:Destroy() end)
+    destroyUnit(loot.Unit, '拾取', id)
     print('[MgrLoot] 拾取', player.UserId, loot.ItemId, loot.Mult, 'loot=' .. tostring(id))
     self.PlayerData:SendItemBar(player)
     self:Reply(player, { ok = true, id = id })
@@ -472,7 +481,7 @@ function Mgr:GiveBait(player, data, loot)
         return false
     end
     self:Untrack(loot)
-    pcall(function() loot.Unit:Destroy() end)
+    destroyUnit(loot.Unit, '拾饵', loot.Id)
     local spot = self.Spots[loot.SpotId]
     if spot then
         spot.LootId = nil
@@ -586,7 +595,7 @@ function Mgr:Update()
                     print('[MgrLoot] 闪烁失败', id, tostring(err))
                 end
             end
-            entry.NextFlash = now + cfg().FlashIntervalSec
+            entry.NextFlash = now + (cfg().FlashIntervalSec or 0.5)
         end
     end
     if not expired then return end

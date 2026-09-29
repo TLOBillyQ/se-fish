@@ -193,6 +193,7 @@ GameCfg.Loot = {
     -- 秒再销毁；待回收期间仍可拾取，拾取即取消回收。上限进配置供压测校准。
     PerZoneCap = 200,
     FlashBeforeRecycleSec = 30,
+    RecycleRetrySec = 5, -- 销毁失败（单位已被别的路径收走等）后的重试间隔
     FlashIntervalSec = 0.5, -- 待回收闪烁的可见性切换间隔（服务端驱动模型、客户端同节奏闪文字泡）
     -- 预警期（待回收）上限（#126）：待回收件不计入 PerZoneCap，若不封顶，「活跃 200 + 无限预警」仍会涨；
     -- 超过 PendingCap 时立刻回收最旧的预警件（跳过剩余预警），单区总量恒 ≤ PerZoneCap + PendingCap。
