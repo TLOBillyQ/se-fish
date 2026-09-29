@@ -205,7 +205,8 @@ function Mgr:CanCast(unit)
 		local players = game:GetService("Players")
 		if players and players.GetPlayerFromCharacter then
 			local ok, found = pcall(players.GetPlayerFromCharacter, players, unit)
-			if ok then player = found end
+			if ok then player = found
+			else print('[MgrAbility] 玩家解析失败', tostring(found)) end
 		end
 	end
 	if not player then return true end -- 鱼等服务端单位的技能不受玩家动作互斥影响

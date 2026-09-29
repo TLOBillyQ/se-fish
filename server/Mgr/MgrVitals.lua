@@ -255,8 +255,11 @@ function Mgr:ApplyDamage(player, amount, hit)
         if ok then intercepted = handled == true
         else print('[MgrVitals] 生命接缝失败', player.UserId, tostring(handled)) end
     end
-    local applied = true
-    if not intercepted then applied = pcall(function() controller:TakeDamage(amount) end) end
+    local applied, applyErr = true, nil
+    if not intercepted then
+        applied, applyErr = pcall(function() controller:TakeDamage(amount) end)
+        if not applied then print('[MgrVitals] 扣血失败', player.UserId, tostring(applyErr)) end
+    end
     local health = healthOf(state)
     self:WriteHealth(state)
     if health and health <= 0 and not intercepted then self:OnDied(state) end
@@ -275,9 +278,15 @@ function Mgr:ApplyHit(hit, target, amount)
         if ok then carrier = found else print('[MgrVitals] 鱼目标解析失败', tostring(found)) end
     end
     if carrier then
-        local key = target and target.Carrier == carrier and target.Id and ('fish:' .. tostring(target.Id))
-            or carrier.Body and carrier.Body.UnitId and ('carrier:' .. tostring(carrier.Body.UnitId))
-            or tostring(carrier)
+        -- 去重键：活鱼记录用鱼 Id，裸受击体用载体身体 UnitId，最后兜底表地址
+        local key
+        if target and target.Carrier == carrier and target.Id then
+            key = 'fish:' .. tostring(target.Id)
+        elseif carrier.Body and carrier.Body.UnitId then
+            key = 'carrier:' .. tostring(carrier.Body.UnitId)
+        else
+            key = tostring(carrier)
+        end
         if hit.targets[key] then return false end
         local ok, actual = self.FishCarrier:Damage(carrier, amount, hit)
         if ok then hit.targets[key] = true end

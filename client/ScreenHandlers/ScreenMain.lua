@@ -280,6 +280,7 @@ local castFailureText = {
     baitUnavailable = '鱼饵不足，请重新挂饵',
     unavailable = '暂时无法抛竿，请稍后重试',
     alreadyCasting = '正在钓鱼，请先收竿',
+    cannotAct = '现在无法行动，等恢复后再试',
 }
 
 function ScreenHandler:ShowCastFailure(result)

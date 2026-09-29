@@ -389,7 +389,7 @@ end
 
 -- 首领追咬（#88 / #128）：目标优先取本场累计有效伤害最高的玩家，无记录时取最近目标；
 -- 濒死 / 死亡 / 离线目标立即从仇恨与特殊覆盖里清掉。咬人经 MgrVitals 命中入口，不直接碰 Controller。
-function Mgr:IsTargetValid(fish, player, pos, params)
+function Mgr:IsTargetValid(player, pos, params)
     if not player or not self.Vitals or not self.Vitals:CanTakeDamage(player) then return false end
     local character = player.Character
     local controller = character and character.Controller
@@ -419,14 +419,14 @@ end
 function Mgr:ChooseTarget(fish, pos, params)
     local override = fish.TargetOverride
     if override then
-        local valid, cp = self:IsTargetValid(fish, override, pos, params)
+        local valid, cp = self:IsTargetValid(override, pos, params)
         if valid then return override, cp end
         fish.TargetOverride = nil
     end
     local target, tpos, bestThreat = nil, nil, -1
     if fish.Threat then
         for player, total in pairs(fish.Threat) do
-            local valid, cp = self:IsTargetValid(fish, player, pos, params)
+            local valid, cp = self:IsTargetValid(player, pos, params)
             if valid then
                 if total > bestThreat or (total == bestThreat and target and player.UserId < target.UserId) then
                     bestThreat, target, tpos = total, player, cp
@@ -439,7 +439,7 @@ function Mgr:ChooseTarget(fish, pos, params)
     if target then return target, tpos end
     local bestDistance
     for _, player in ipairs(self:Players()) do
-        local valid, cp = self:IsTargetValid(fish, player, pos, params)
+        local valid, cp = self:IsTargetValid(player, pos, params)
         if valid then
             local d = (cp.x - pos.x) * (cp.x - pos.x) + (cp.z - pos.z) * (cp.z - pos.z)
             if not bestDistance or d < bestDistance then bestDistance, target, tpos = d, player, cp end
