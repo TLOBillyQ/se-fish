@@ -627,7 +627,10 @@ GameCfg.Ability = {
         Base = 1, Step = 0.2, Max = 3, MaxPotions = 10,
         HealthBase = 300, HealthStepPercent = 20, HealthMax = 900,
         -- 1 倍体型下的基准量：胶囊高 2 米（与 MgrVitals.characterHeight 读到的角色 Height 同口径）、
-        -- 相机距离 6 米、交互距离 2 米（GameSpec §8.3「2 米内显示拾取」）。
+        -- 相机距离 6 米、交互距离 2 米（同 GameCfg.Loot.PickupRadius，GameSpec §8.3「2 米内显示拾取」）。
+        -- 本单只把派生量发布到角色属性（MgrAbility.ApplyBodyScale），**没有**改
+        -- MgrLoot/LocalLoot 的 PickupRadius 判定与 MgrInteract 的 Fisherman.Radius（5 米）——
+        -- 「三倍角色能拾取/钓鱼/摆渡」是否成立必须在编辑器窗口实测。
         CapsuleHeight = 2, CameraDistance = 6, InteractRange = 2,
         -- 消费口：变大药水（common/cfg/Items.lua item168「吃掉增加体型和血量，最多吃 10 个」）
         PotionItem = 'item168',

@@ -637,7 +637,7 @@ function Mgr:StartFlight(fish, now)
     fish.FlightAt = now
     fish.State = Mgr.State.Flying
     fish.DiveActive = false
-    -- 飞行期间由脚本给速度驱动：Kinematic 不受重力影响（与在逃鱼同口径）
+    -- 飞行期间由脚本给速度驱动：Kinematic 不受重力影响（与在逃鱼同口径，BodyType=2 见本文件 280 行注释）
     pcall(function() fish.Carrier.Body.BodyType = 2 end)
     print('[MgrFishUnit] 起飞', fish.FishId, 'fish=' .. tostring(fish.Id))
     return true
@@ -684,8 +684,15 @@ function Mgr:UpdateFlying(fish, now)
     local dt = math.max(0, now - (fish.FlightAt or now))
     fish.FlightAt = now
     local events = FlightPath.Step(state, now, dt)
-    pcall(function()
+    -- 位置写回是飞行能不能动的关键：写失败只打一次日志（每帧打会刷屏），速度是只读镜像，失败就算了
+    local moved, moveErr = pcall(function()
         body.Position = Vector3.New(state.Pos.x, state.Pos.y, state.Pos.z)
+    end)
+    if not moved and not fish.MoveWarned then
+        fish.MoveWarned = true
+        print('[MgrFishUnit] 飞行位置写回失败', fish.FishId, tostring(moveErr))
+    end
+    pcall(function()
         body.LinearVelocity = Vector3.New(state.Vel.x, state.Vel.y, state.Vel.z)
     end)
     if events.dive then
