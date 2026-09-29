@@ -174,6 +174,18 @@ function TestSaveFoundation:test_callback_failure_does_not_block_following_write
     lu.assertEquals(self.values.u61.coin, 2)
 end
 
+function TestSaveFoundation:test_corrupt_selection_and_oversized_save_never_claim_ready()
+    local player, data = self:join(70)
+    self:drain()
+    local save = data:Serialize()
+    save.extra.inventory.selection = nil
+    lu.assertFalse(data:ApplySave(save))
+    lu.assertEquals(data.LoadState, 'ready')
+    data.Extra.story.read.huge = string.rep('中', 90000)
+    lu.assertFalse(self.save:Save(70, data:Serialize(), 'oversized'))
+    lu.assertNil(self.values.u70.extra.story.read.huge)
+end
+
 function TestSaveFoundation:test_pending_rejects_mutation_and_snapshot_until_explicit_new_save()
     local data = PlayerData.New({ UserId = 123, SetAttribute = function() end })
     data:Init(true)
