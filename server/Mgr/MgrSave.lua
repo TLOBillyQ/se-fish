@@ -137,6 +137,7 @@ function Mgr:LoadInto(player, data)
         previous.Data.Inited, previous.Data.LoadState = false, 'stale'
     end
     self.Counter = (self.Counter or 0) + 1
+    -- 会话 token 仅用于 fencing/请求命名空间，不作为鉴权秘密；存储回读仍须核对 epoch/revision。
     local s = { Current = self.AcceptanceSlot, Next = self.AcceptanceSlot, Paused = false,
         State = 'pending', Player = player, Data = data,
         Token = tostring(userId) .. ':' .. tostring(self.Counter) .. ':' .. tostring({}) .. ':' .. tostring(math.random()) }
