@@ -128,3 +128,26 @@ function TestMgrAbilityActionGuard:test_player_cast_is_blocked_by_vitals_state()
     lu.assertTrue(mgr:CanCast(free))
     lu.assertTrue(guard(free, 0))
 end
+
+function TestCombatBase:test_fish_damage_uses_same_hit_identity_and_reports_actual_amount()
+    local carrier = { Body = { UnitId = 91 }, Receiver = {}, Controller = {} }
+    local damageCalls = {}
+    self.v.FishCarrier = {
+        ResolveCarrier = function(_, target)
+            if target == carrier or target == carrier.Receiver then return carrier, 'fish:91' end
+        end,
+        Damage = function(_, target, amount, hit)
+            damageCalls[#damageCalls + 1] = { target, amount, hit }
+            return true, math.min(amount, 7)
+        end,
+    }
+    local hit = self.v:NewHit(self.a.Character, 'weapon')
+    local ok, actual = self.v:ApplyHit(hit, carrier, 10)
+    lu.assertTrue(ok)
+    lu.assertEquals(actual, 7)
+    lu.assertFalse(self.v:ApplyHit(hit, carrier.Receiver, 10))
+    lu.assertEquals(#damageCalls, 1)
+    lu.assertEquals(damageCalls[1][2], 10)
+    lu.assertEquals(damageCalls[1][3].sourcePlayer, self.a)
+    lu.assertEquals(self.a.Character.Controller.Health, 300)
+end

@@ -393,7 +393,7 @@ function TestFishCarrierEngine:test_damage_reports_effective_health_once_for_eve
     lu.assertAlmostEquals(notices[1].amount, 2.7, 0.00001)
     lu.assertEquals(notices[1].targetId, carrier.Body.UnitId)
     lu.assertEquals(notices[1].position.y, 2)
-    mgr:Damage(carrier, 2.4)
+    mgr:Damage(carrier, 2.4, { id = 1001 })
     lu.assertAlmostEquals(notices[2].amount, 2.4, 0.00001)
     carrier.Controller.Health = 4
     carrier.Controller.HealthChanged:Fire(4)
@@ -406,6 +406,28 @@ function TestFishCarrierEngine:test_damage_reports_effective_health_once_for_eve
     lu.assertEquals(carrier.Health, 0)
   end)
   mgr.DamagePublisher = nil
+end
+
+function TestFishCarrierEngine:test_business_damage_requires_hit_and_reports_actual_amount()
+  local mgr = freshManager()
+  local world = newFakeWorld()
+  withFakeEngine(world, function()
+    local carrier = mgr:Spawn(SPAWN_OPTS)
+    carrier.Controller.Health = 10
+    lu.assertEquals(mgr:ResolveCarrier(carrier.Receiver), carrier)
+    lu.assertFalse(mgr:Damage(carrier, 5))
+    lu.assertEquals(carrier.Controller.Health, 10)
+    local seen = {}
+    mgr.DamageListener = function(target, actual, hit)
+      seen[#seen + 1] = { target, actual, hit }
+    end
+    local hit = { id = 7, category = 'weapon' }
+    local ok, actual = mgr:Damage(carrier, 25, hit)
+    lu.assertTrue(ok)
+    lu.assertEquals(actual, 10)
+    lu.assertEquals(seen, { { carrier, 10, hit } })
+  end)
+  mgr.DamageListener = nil
 end
 
 function TestFishCarrierEngine:test_zero_damage_recovery_and_binding_never_report()

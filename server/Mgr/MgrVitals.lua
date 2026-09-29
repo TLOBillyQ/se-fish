@@ -269,6 +269,20 @@ end
 function Mgr:ApplyHit(hit, target, amount)
     if type(hit) ~= 'table' or type(hit.id) ~= 'number' or type(hit.targets) ~= 'table' then return false end
     if not validAmount(amount) then return false end
+    local carrier
+    if self.FishCarrier and type(self.FishCarrier.ResolveCarrier) == 'function' then
+        local ok, found = pcall(self.FishCarrier.ResolveCarrier, self.FishCarrier, target)
+        if ok then carrier = found else print('[MgrVitals] 鱼目标解析失败', tostring(found)) end
+    end
+    if carrier then
+        local key = target and target.Carrier == carrier and target.Id and ('fish:' .. tostring(target.Id))
+            or carrier.Body and carrier.Body.UnitId and ('carrier:' .. tostring(carrier.Body.UnitId))
+            or tostring(carrier)
+        if hit.targets[key] then return false end
+        local ok, actual = self.FishCarrier:Damage(carrier, amount, hit)
+        if ok then hit.targets[key] = true end
+        return ok, actual
+    end
     local player = target
     if not self:GetState(player) then player = self:PlayerFromUnit(target) or player end
     if not self:GetState(player) or hit.targets[player.UserId] then return false end

@@ -194,6 +194,16 @@ end
 
 -- 公开接口一律冒号调用（`Mgr:XXX(...)`），与本图其它 Mgr 一致；只有上面两个纯函数是点号
 -- （它们不碰 self，给单测直接调）。
+function Mgr:ResolveCarrier(target)
+    if not target then return nil end
+    for _, carrier in pairs(self.Carriers) do
+        if target == carrier or target == carrier.Body or target == carrier.Receiver
+            or target.Carrier == carrier then
+            return carrier
+        end
+    end
+end
+
 ---给一条鱼本体补伤害接口：建受击体、接血量与死亡信号
 ---@param body Unit 鱼本体（WorldUnit，举鱼要求 Liftable + Dynamic）
 ---@param opts? Table { MaxHealth, ReceiverOffset }
@@ -330,16 +340,32 @@ function Mgr:Spawn(opts)
 	return carrier
 end
 
----单点造成的伤害（业务侧要主动扣血时用；技能来源的扣血走包内 _applyDamage，不经这里）
-function Mgr:Damage(carrier, damage)
-	if not carrier or carrier.Dead or not carrier.Controller then
+---单点造成的伤害；业务调用必须带 MgrVitals 颁发的命中身份
+function Mgr:Damage(carrier, damage, hit)
+	if not carrier or carrier.Dead or not carrier.Controller
+		or type(hit) ~= 'table' or type(hit.id) ~= 'number' then
 		return false
 	end
 	if not isPositiveNumber(damage) then
 		return false
 	end
-	carrier.Controller:TakeDamage(damage)
-	return true
+	local beforeOk, before = pcall(function() return carrier.Controller.Health end)
+	if not beforeOk or type(before) ~= 'number' then return false end
+	local ok, err = pcall(function() carrier.Controller:TakeDamage(damage) end)
+	if not ok then
+		print('[MgrFishCarrier] 受击扣血失败', carrier.Body and carrier.Body.UnitId, tostring(err))
+		return false
+	end
+	self:RecordHealth(carrier)
+	local afterOk, after = pcall(function() return carrier.Controller.Health end)
+	if not afterOk or type(after) ~= 'number' or after >= before then return false end
+	if after <= 0 then self:NotifyDied(carrier) end
+	local actual = before - after
+	if self.DamageListener then
+		local notified, notifyErr = pcall(self.DamageListener, carrier, actual, hit)
+		if not notified then print('[MgrFishCarrier] 有效伤害通知失败', carrier.Body and carrier.Body.UnitId, tostring(notifyErr)) end
+	end
+	return true, actual
 end
 
 function Mgr:Despawn(carrier)
