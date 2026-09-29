@@ -7,6 +7,9 @@
 -- 命中盒与武器随锚点生命周期回收：Duration 到时 / 施法结束 / 施法打断 / 锚点销毁
 -- → 锚点 Duration 必须 > 0。
 
+local MgrVitals = require("server.Mgr.MgrVitals")
+local MgrFishCarrier = require("server.Mgr.MgrFishCarrier")
+
 local M = {}
 
 -- 硬编码常量
@@ -107,17 +110,21 @@ local function _isSelf(unit, owner)
 	return false
 end
 
-local function _applyDamage(target, damage, owner)
-	if not damage or damage == 0.0 then
-		return
+local function _applyDamage(target, damage, owner, hit)
+	if not damage or damage == 0.0 or not hit then
+		return false
 	end
-	if target.TakeDamage then
-		target:TakeDamage(damage)
-		return
+	-- #128：本图业务伤害不直接碰 Controller。鱼受击体与玩家角色都经根 Vitals 的命中身份结算；
+	-- 同一判定段对同一目标的重放由入口拒绝，未解析到业务目标时不做旧式直扣。
+	if MgrFishCarrier:ResolveCarrier(target) then
+		return (MgrVitals:ApplyHit(hit, target, damage))
 	end
-	if target.Controller and target.Controller.TakeDamage then
-		target.Controller:TakeDamage(damage)
+	local players = game:GetService("Players")
+	local targetPlayer = players and players.GetPlayerFromCharacter and players:GetPlayerFromCharacter(target)
+	if targetPlayer then
+		return (MgrVitals:ApplyHit(hit, targetPlayer, damage))
 	end
+	return false
 end
 
 local function _applyHitPower(target, power, owner)
@@ -250,6 +257,7 @@ function M.Attach(anchor_script)
 		if player then
 			hit_damage = require("server.Mgr.MgrGM"):GetMeleeDamage(player, hit_damage)
 		end
+		state.hit = MgrVitals:NewHit(player or owner, "weapon")
 		local hit_power = anchor_script:GetAttribute("ABILITY_ANOSTATE_HITPOWER") or 0.0
 		local weapon_prefab = anchor_script:GetAttribute("ABILITY_ANOSTATE_USE_PERFAB") or ""
 		local anim_id = anchor_script:GetAttribute("ABILITY_ANOSTATE_ANIMKEY") or ""
@@ -364,10 +372,11 @@ function M.Attach(anchor_script)
 			if tid then
 				hit_map[tid] = true
 			end
-			-- 命中：击退 → 伤害 → 命中特效
-			_applyHitPower(target, hit_power, owner)
-			_applyDamage(target, hit_damage, owner)
-			_createHitSfx(anchor_script, target)
+			-- 命中：先经统一入口结算；被安全区 / 状态规则拦下时不击退也不播命中特效
+			if _applyDamage(target, hit_damage, owner, state and state.hit) then
+				_applyHitPower(target, hit_power, owner)
+				_createHitSfx(anchor_script, target)
+			end
 		end
 
 		state.enter_conn = tu.OnTriggerEnter:Connect(function(other_unit)
