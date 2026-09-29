@@ -556,10 +556,133 @@ GameCfg.Water.ZoneIdByWater = {
 }
 for _, zone in ipairs(GameCfg.Water.Zones) do
     GameCfg.Water.ZoneIdByWater[zone.Id] = GameCfg.Water.ZoneIdByWater[zone.Id] or 'fishPond'
+    zone.ZoneId = GameCfg.Water.ZoneIdByWater[zone.Id]
 end
 GameCfg.Water.ContentWaterIds = {}
 for _, zone in ipairs(GameCfg.Zones) do
     GameCfg.Water.ContentWaterIds[zone.WaterId] = zone.Id
+end
+
+-- #125 七区场景合同。所有新增坐标/名字是待建计划，绝非现场存在性证据。
+-- 2026-09-29 只读盘点：已有鱼塘/虾池，后五区未建；编辑器有归属未明的未存改动，禁止自动启用。
+-- Scene 与 PlannedRoutes 不接入 Water.Zones、Shop.Stands、BaitSpots.Spots 或当前摆渡消费者。
+-- 创建、碰撞/落点实测、保存、sync 全通过后才可单独接入；State 不能由名称匹配自动提升。
+local sceneCenters = {
+    { x = 0, z = 40 }, { x = 100, z = 100 }, { x = 260, z = 100 },
+    { x = 460, z = 100 }, { x = 660, z = 100 }, { x = 880, z = 100 },
+    { x = 1160, z = 100 },
+}
+local existingScene = {
+    { LandName = '大地板', FishermanName = 'TGUnitFish', ShopName = 'TGUnitShop',
+      Land = { MinX = 0, MaxX = 18, MinZ = 25, MaxZ = 55 },
+      SafePoint = { x = 6.26, y = 5.01, z = 39.29 },
+      LandPosition = { x = -13.75, y = 0, z = 40.75 },
+      FishermanPosition = { x = -6.25, y = -1, z = 30.75 },
+      ShopPosition = { x = -8.75, y = 2.5, z = 55.25 } },
+    { LandName = '星光地板', FishermanName = 'TGUnitFishShrimp', ShopName = 'TGUnitShopShrimp',
+      Land = { MinX = 90, MaxX = 110, MinZ = 91, MaxZ = 109 },
+      SafePoint = { x = 100, y = 6, z = 100 },
+      LandPosition = { x = 100, y = -3, z = 100 },
+      FishermanPosition = { x = 94, y = -4, z = 100 },
+      ShopPosition = { x = 106, y = -0.5, z = 97 } },
+}
+for index, zone in ipairs(GameCfg.Zones) do
+    local center, old = sceneCenters[index], existingScene[index]
+    local prefix = 'Z' .. index .. '_'
+    local scene = {
+        State = 'planned', Entities = {}, Waters = {},
+        SafePoint = old and old.SafePoint or { x = center.x, y = 6, z = center.z },
+        Land = old and old.Land or { MinX = center.x - 40, MaxX = center.x + 40,
+            MinZ = center.z - 30, MaxZ = center.z + 30 },
+        Boundary = { MinX = center.x - (index == 2 and 25 or 60), MaxX = center.x + (index == 2 and 25 or 60),
+            MinZ = center.z - 50, MaxZ = center.z + 70, BottomY = -30, TopY = 40,
+            MaxFlightHeight = 20, CanClimb = false },
+        BaitSpots = { ItemId = zone.BaitItemId, RespawnSec = 15, Count = 1, Positions = {} },
+    }
+    zone.Scene = scene
+    local function entity(role, position, name, observed)
+        name = name or prefix .. role
+        scene.Entities[#scene.Entities + 1] = {
+            Name = name, Role = role, Position = position,
+            State = observed and 'observed' or 'planned',
+        }
+        return name
+    end
+    scene.LandName = entity('Land', old and old.LandPosition or { x = center.x, y = 0, z = center.z },
+        old and old.LandName, old ~= nil)
+    scene.SafePointName = entity('Safe', scene.SafePoint)
+    scene.FishermanName = entity('Fisherman', old and old.FishermanPosition
+        or { x = center.x - 20, y = 5, z = center.z }, old and old.FishermanName, old ~= nil)
+    scene.ShopName = entity('Shop', old and old.ShopPosition
+        or { x = center.x + 20, y = 5, z = center.z }, old and old.ShopName, old ~= nil)
+    scene.LotteryName = entity('Lottery', { x = center.x + 5, y = 5, z = center.z + 5 })
+    if index >= 3 then
+        scene.GrillName = entity('Grill', { x = center.x - 10, y = 5, z = center.z - 10 })
+    end
+    if index <= 2 then
+        for _, water in ipairs(GameCfg.Water.Zones) do
+            if water.ZoneId == zone.Id then scene.Waters[#scene.Waters + 1] = water end
+        end
+        if index == 1 then
+            entity('Water', { x = -11.75, y = 1.05, z = 27.75 }, 'WaterCircle2', true)
+        else
+            -- ShrimpPool 是既有数学水域 ID，尚未核实它的现场水面实体名。
+            entity('Water', { x = 105, y = 4.2, z = 106 })
+        end
+    else
+        local water = { Id = zone.WaterId, ZoneId = zone.Id,
+            Center = { x = center.x, y = 2, z = center.z + 44 },
+            HalfX = 40, HalfZ = 12, SurfaceY = 3 }
+        scene.Waters[1] = water
+        water.EntityName = entity('Water', water.Center)
+    end
+    local b = scene.Boundary
+    b.EntityNames = {
+        entity('BoundaryWest', { x = b.MinX, y = b.BottomY, z = center.z + 10 }),
+        entity('BoundaryEast', { x = b.MaxX, y = b.BottomY, z = center.z + 10 }),
+        entity('BoundarySouth', { x = center.x, y = b.BottomY, z = b.MinZ }),
+        entity('BoundaryNorth', { x = center.x, y = b.BottomY, z = b.MaxZ }),
+    }
+    if index == 1 then
+        for _, spot in ipairs(GameCfg.BaitSpots.Spots) do
+            scene.BaitSpots.Positions[#scene.BaitSpots.Positions + 1] = spot.Position
+        end
+    else
+        scene.BaitSpots.Positions = {
+            { x = center.x - 3, y = 6, z = center.z - 3 },
+            { x = center.x + 3, y = 6, z = center.z - 3 },
+        }
+    end
+    for n, point in ipairs(scene.BaitSpots.Positions) do entity('Bait' .. n, point) end
+    if index == 6 then
+        scene.AirCombat = { MinY = 5, MaxY = 30, Radius = 35, Center = center }
+    elseif index == 7 then
+        scene.CruiseWater = scene.Waters[1]
+        scene.BossArena = { Center = center, HalfX = 30, HalfZ = 25 }
+    end
+end
+GameCfg.Ferry.PlannedRoutes = {}
+local plannedReturnPrices = { 10, 30, 90, 270, 810, 2430 }
+for index = 1, 6 do
+    local from, to = GameCfg.Zones[index], GameCfg.Zones[index + 1]
+    local outName = index == 1 and 'FerryBoat' or ('Z' .. index .. '_FerryOut')
+    local returnName = index == 1 and 'FerryReturn' or ('Z' .. (index + 1) .. '_FerryReturn')
+    local function ferryEntity(zone, name, position, observed)
+        zone.Scene.Entities[#zone.Scene.Entities + 1] = {
+            Name = name, Role = 'Ferry', Position = position,
+            State = observed and 'observed' or 'planned',
+        }
+    end
+    ferryEntity(from, outName, index == 1 and { x = -8, y = 1.5, z = 25 }
+        or { x = sceneCenters[index].x + 15, y = 5, z = sceneCenters[index].z - 10 }, index == 1)
+    ferryEntity(to, returnName, index == 1 and { x = 100, y = 5, z = 103 }
+        or { x = sceneCenters[index + 1].x - 15, y = 5, z = sceneCenters[index + 1].z - 10 }, index == 1)
+    GameCfg.Ferry.PlannedRoutes[index] = {
+        State = 'planned', FromZoneId = from.Id, ToZoneId = to.Id,
+        Outbound = { AnchorName = outName, Ticket = GameCfg.Content.Exchanges[index].Result,
+            CountdownSec = 5, Destination = to.Scene.SafePoint },
+        Return = { AnchorName = returnName, Price = plannedReturnPrices[index], Destination = from.Scene.SafePoint },
+    }
 end
 
 -- 高频输入契约（M0-V5）：窗口与次数上限的常量，逻辑见 common/RateLimit.lua，
