@@ -27,6 +27,7 @@ local MgrMap = {
     MgrFerry = require("server.Mgr.MgrFerry"),
     MgrSave = require("server.Mgr.MgrSave"),
     MgrSurvival = require("server.Mgr.MgrSurvival"),
+    MgrWeapon = require("server.Mgr.MgrWeapon"),
 }
 
 MgrMap.MgrCast.ReelIn = MgrMap.MgrReelIn
@@ -83,6 +84,15 @@ MgrMap.MgrFishCarrier.DamageListener = function(carrier, actual, hit)
         MgrMap.MgrFishUnit:NoteDamage(fish, attacker, actual)
     end
 end
+
+-- #129 武器系统接线：近战/枪械/投掷结算经统一伤害入口（Vitals）与鱼受击体解析（FishCarrier）；
+-- 武器库存/装备读 PlayerData，投掷消耗走 Save 持久协议，爆炸保底鱼生成进 FishUnit。
+-- Update（投掷飞行物推进）由 HandleTimeUpdate 心跳统一驱动，Start 注册 WeaponAction 通道与挥砍施法守卫。
+MgrMap.MgrWeapon.Vitals = MgrMap.MgrVitals
+MgrMap.MgrWeapon.PlayerData = MgrMap.MgrPlayerData
+MgrMap.MgrWeapon.FishUnit = MgrMap.MgrFishUnit
+MgrMap.MgrWeapon.FishCarrier = MgrMap.MgrFishCarrier
+MgrMap.MgrWeapon.Save = MgrMap.MgrSave
 
 -- 存档就绪前不创建 Vitals/Ability 等玩家状态；退出先撤销就绪标记，再清理管理器。
 local ActivePlayers = {}
