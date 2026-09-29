@@ -213,7 +213,9 @@ function TestItemBar:test_chief_bait_occupies_storage_and_debug_grants_overflow_
     lu.assertEquals(other:GetItemBarSnapshot().backpack[1].itemId, 'bass')
     lu.assertTrue(other:AddItem('duck'))
     lu.assertEquals(other:GetItemBarSnapshot().backpack[2].itemId, 'duck')
-    -- #88 起鸭子作为首领饵进快照 bait 表（件数），驱动挂饵按钮
+    -- #124 起背包鸭子仍可展示，但 bait 只列道具栏可挂数；转入后才出现在快照 bait 表
+    lu.assertNil(other:GetItemBarSnapshot().bait.duck)
+    lu.assertTrue(other:MoveSlot('backpack', 2, 'itemBar', 1))
     lu.assertEquals(other:GetItemBarSnapshot().bait.duck, 1)
 end
 

@@ -18,7 +18,8 @@ end
 -- 扩展字段仅承载持久状态；库存、成长、任务等系统由各子单接入。
 local function defaults(zone)
     return {
-        inventory = { weapons = {}, magazines = {}, selection = {} },
+        inventory = { weapons = {}, magazines = {}, selection = { slot = nil, bait = nil,
+            weapon = nil, held = { kind = nil, id = nil, slot = nil } } },
         growth = { upgrades = {}, purchases = {}, potions = {} },
         survival = { health = GameCfg.Vitals.MaxHealth, hunger = GameCfg.Vitals.MaxHunger,
             weakRemaining = 0, dyingRemaining = 0, deadRemaining = 0, dying = false, dead = false },
@@ -86,8 +87,10 @@ function PlayerData:Init(waitForLoad)
         Containers = { [GameCfg.Items.ContainerId.ItemBar] = items, [GameCfg.Items.ContainerId.Backpack] = backpack },
         UpgradeLevel = 0,
         Bait = bait,
+        Weapons = {},
         SelectedSlot = nil,
         SelectedBait = nil,
+        SelectedWeapon = nil,
         Progress = {},
         -- 当前区域（#89 摆渡写入，#92 存档用）：开局在 HomeZone（第一钓鱼区）
         Zone = GameCfg.Ferry.HomeZone,
@@ -163,7 +166,12 @@ function PlayerData:Migrate(snapshot)
             if type(extra[name]) ~= 'table' then return nil, '扩展字段缺失 ' .. name end
         end
         if type(extra.inventory.selection) ~= 'table' or type(extra.travel.arrived) ~= 'table'
-            or type(extra.travel.safePoint) ~= 'table' then return nil, '扩展字段损坏' end
+            or type(extra.travel.safePoint) ~= 'table' or type(extra.inventory.weapons) ~= 'table' then return nil, '扩展字段损坏' end
+        for itemId, count in pairs(extra.inventory.weapons) do
+            local def = GameCfg.Items.Definitions[itemId]
+            if not def or def.Type ~= '近战武器' and def.Type ~= '远程武器'
+                or not integer(count, 1) then return nil, '武器库存损坏' end
+        end
         local last = meta.floor
         for _, op in ipairs(meta.operations) do
             if type(op) ~= 'table' or not integer(op.sequence, last + 1, meta.sequence)
@@ -203,6 +211,8 @@ function PlayerData:Serialize()
     for itemId, count in pairs(self.Data.Bait) do bait[itemId] = count end
     self.Extra.inventory.selection.slot = self.Data.SelectedSlot
     self.Extra.inventory.selection.bait = self.Data.SelectedBait
+    self.Extra.inventory.selection.weapon = self.Data.SelectedWeapon
+    self.Extra.inventory.weapons = copy(self.Data.Weapons)
     self.Extra.travel.zone = GameCfg.ResolveZoneId(self.Data.Zone)
     return {
         v = 2,
@@ -243,6 +253,8 @@ function PlayerData:ApplySave(snapshot)
     self.Extra, self.SaveMeta = saved.extra, saved.meta
     self.Data.SelectedSlot = self.Extra.inventory.selection.slot
     self.Data.SelectedBait = self.Extra.inventory.selection.bait
+    self.Data.SelectedWeapon = self.Extra.inventory.selection.weapon
+    self.Data.Weapons = copy(self.Extra.inventory.weapons)
     self.Revision = (self.Revision or 0) + 1
     self:Sync()
     return true
@@ -341,9 +353,12 @@ function PlayerData:GetItemBarSnapshot()
     for itemId, count in pairs(self.Data.Bait) do
         bait[itemId] = count
     end
-    -- 首领饵（#88）以件数挂进 bait 表，客户端挂饵按钮据此显示数量与可选态；没有就不列
-    for itemId in pairs(GameCfg.Casting.BossBait or {}) do
-        local count = self:ItemCount(itemId)
+    -- 首领饵（#88）只展示道具栏件数；背包中的首领饵提示先转入，不能直接挂饵（#124）
+    local bosses = {}
+    for itemId in pairs(GameCfg.Casting.BossBait or {}) do bosses[#bosses + 1] = itemId end
+    table.sort(bosses)
+    for _, itemId in ipairs(bosses) do
+        local count = self:ItemBarItemCount(itemId)
         if count >= 1 then bait[itemId] = count end
     end
     return {
@@ -356,6 +371,9 @@ function PlayerData:GetItemBarSnapshot()
         coin = self.Data.FishCoin,
         selectedSlot = self.Data.SelectedSlot,
         selectedBait = self.Data.SelectedBait,
+        weapons = copy(self.Data.Weapons),
+        selectedWeapon = self.Data.SelectedWeapon,
+        held = copy(self.Extra.inventory.selection.held),
     }
 end
 
@@ -364,6 +382,48 @@ function PlayerData:SelectSlot(index)
         or index < 1 or index > self:ItemBarCapacity() then return false end
     local entry = self.Data.Containers[GameCfg.Items.ContainerId.ItemBar][index]
     self.Data.SelectedSlot = self.Data.SelectedSlot ~= index and entry and entry.count > 0 and index or nil
+    return true
+end
+
+local function isWeapon(itemId)
+    local definition = type(itemId) == 'string' and GameCfg.Items.Definitions[itemId]
+    return definition ~= nil and (definition.Type == '近战武器' or definition.Type == '远程武器')
+end
+
+-- 武器独立计数，不占普通格；只收物品表里的近战/远程武器。
+function PlayerData:GrantWeapon(itemId, count)
+    if not self.Inited or not isWeapon(itemId)
+        or not integer(count, 1) then return false end
+    self:UpdateData(function(data)
+        data.Weapons[itemId] = (data.Weapons[itemId] or 0) + count
+    end, true)
+    return true
+end
+
+function PlayerData:WeaponCount(itemId)
+    return self.Inited and self.Data.Weapons[itemId] or 0
+end
+
+function PlayerData:ConsumeWeapon(itemId, count)
+    if not self.Inited or not integer(count, 1) or self:WeaponCount(itemId) < count then return false end
+    self:UpdateData(function(data)
+        data.Weapons[itemId] = data.Weapons[itemId] - count
+        if data.Weapons[itemId] == 0 then data.Weapons[itemId] = nil end
+        if data.SelectedWeapon == itemId and data.Weapons[itemId] == nil then data.SelectedWeapon = nil end
+    end, true)
+    return true
+end
+
+function PlayerData:SelectWeapon(itemId)
+    if not self.Inited then return false end
+    if itemId == nil then
+        self.Data.SelectedWeapon = nil
+        self:PublishItemBar()
+        return true
+    end
+    if not isWeapon(itemId) or self:WeaponCount(itemId) < 1 then return false end
+    self.Data.SelectedWeapon = self.Data.SelectedWeapon ~= itemId and itemId or nil
+    self:PublishItemBar()
     return true
 end
 
@@ -388,6 +448,16 @@ function PlayerData:SetZone(zone)
     return true
 end
 
+-- 道具栏里某物品的件数；首领饵只从这里使用（#124）
+function PlayerData:ItemBarItemCount(itemId)
+    if not self.Inited then return 0 end
+    local total = 0
+    for _, entry in pairs(self.Data.Containers[GameCfg.Items.ContainerId.ItemBar]) do
+        if entry.itemId == itemId and entry.count > 0 then total = total + entry.count end
+    end
+    return total
+end
+
 -- 道具栏 + 背包里某物品的总件数（每格一件，不堆叠）
 function PlayerData:ItemCount(itemId)
     if not self.Inited then return 0 end
@@ -400,7 +470,23 @@ function PlayerData:ItemCount(itemId)
     return total
 end
 
--- 从道具栏（优先）或背包扣 1 件某物品；用于首领饵这类占格鱼饵（#88）
+-- 从道具栏扣 1 件某物品；首领饵只接受道具栏（#124），其他系统另有明确例外时由调用方说明。
+function PlayerData:ConsumeItemBarItem(itemId)
+    if not self.Inited then return false end
+    local items = self.Data.Containers[GameCfg.Items.ContainerId.ItemBar]
+    for index = 1, self:ItemBarCapacity() do
+        local entry = items[index]
+        if entry and entry.itemId == itemId and entry.count > 0 then
+            self:UpdateData(function()
+                items[index] = nil
+            end, true)
+            return true
+        end
+    end
+    return false
+end
+
+-- 濒死自救例外：从道具栏（优先）或背包扣 1 件某物品；普通调用仍走 ConsumeItemBarItem。
 function PlayerData:ConsumeItem(itemId)
     if not self.Inited then return false end
     for _, container in ipairs({
@@ -421,12 +507,12 @@ function PlayerData:ConsumeItem(itemId)
     return false
 end
 
--- 可挂饵判定：Bait 计数 ≥1，或是首领饵（占格）且库存 ≥1（#88）
+-- 可挂饵判定：普通鱼饵 Bait 计数 ≥1；首领饵必须在道具栏有 1 件（#124）
 function PlayerData:HasBait(itemId)
     if not self.Inited or type(itemId) ~= 'string' then return false end
     if hasBait(self.Data, itemId) then return true end
     local bossBait = GameCfg.Casting.BossBait
-    return bossBait ~= nil and bossBait[itemId] ~= nil and self:ItemCount(itemId) >= 1
+    return bossBait ~= nil and bossBait[itemId] ~= nil and self:ItemBarItemCount(itemId) >= 1
 end
 
 function PlayerData:SelectBait(itemId)
@@ -465,10 +551,10 @@ function PlayerData:ConsumeSelectedBait()
     if not self.Inited then return false, nil end
     local itemId = self.Data.SelectedBait
     if not itemId then return true, nil end
-    -- 首领饵占道具栏/背包格（#88）：抛竿一刻扣 1 只，钓出首领后消耗，脱钩 / 逃脱不返还
+    -- 首领饵占道具栏格（#88）：抛竿一刻扣 1 只，钓出首领后消耗，脱钩 / 逃脱不返还
     local bossBait = GameCfg.Casting.BossBait
     if bossBait and bossBait[itemId] then
-        if self:ConsumeItem(itemId) then return true, itemId end
+        if self:ConsumeItemBarItem(itemId) then return true, itemId end
         self.Data.SelectedBait = nil
         self:PublishItemBar()
         return false, nil
@@ -536,8 +622,10 @@ function PlayerData:CanGrant(itemId, count)
     return true
 end
 
--- 按物品表的 Container 放进对应容器（#47）：鱼饵加计数，其余每件占一格；空格不够一件都不发
+-- 按物品表的 Container 放进对应容器（#47）：鱼饵加计数，武器进独立计数（#124），
+-- 其余每件占一格；空格不够一件都不发
 function PlayerData:GrantItem(itemId, count)
+    if isWeapon(itemId) then return self:GrantWeapon(itemId, count) end
     local ok, reason = self:CanGrant(itemId, count)
     if not ok then return false, reason end
     if GameCfg.Items.Definitions[itemId].Container == GameCfg.Items.ContainerId.Bait then
@@ -695,6 +783,8 @@ function PlayerData:Destroy()
     self.Data = nil
     self.OnItemBarChanged = nil
     self.Inited = false
+    self.SaveMeta = nil
+    self.Revision = nil
 end
 
 return PlayerData

@@ -39,3 +39,43 @@ function TestHoldOperate:test_all_capacity_levels_move_swap_cancel_keep_instance
         lu.assertEquals(d:GetItemBarSnapshot().slots[2].mult, 1.37)
     end
 end
+
+function TestHoldOperate:test_weapon_inventory_and_boss_bait_location_rules()
+    local ids = GameCfg.Items.ContainerId
+    while self.data:AddItem('carp', 1.37) do end
+    local before = self.data:GetItemBarSnapshot()
+    lu.assertFalse(self.data:CanGrant('item134', 1))
+    lu.assertTrue(self.data:GrantWeapon('item134', 1))
+    local granted = self.data:GetItemBarSnapshot()
+    lu.assertEquals(granted.slots, before.slots)
+    lu.assertEquals(granted.backpack, before.backpack)
+    lu.assertEquals(self.data:WeaponCount('item134'), 1)
+    lu.assertEquals(granted.weapons.item134, 1)
+    lu.assertTrue(self.data:SelectWeapon('item134'))
+    lu.assertEquals(self.data:GetItemBarSnapshot().selectedWeapon, 'item134')
+    lu.assertTrue(self.data:SelectWeapon('item134'))
+    lu.assertNil(self.data:GetItemBarSnapshot().selectedWeapon)
+    lu.assertFalse(self.data:MoveSlot(ids.Backpack, 1, 'weapon', 1))
+    lu.assertEquals(self.data:GetItemBarSnapshot(), granted)
+end
+
+function TestHoldOperate:test_boss_bait_must_be_selected_in_item_bar_before_use()
+    while self.data:AddItem('carp', 1.37) do end
+    lu.assertTrue(self.data:DiscardSlot(1))
+    lu.assertTrue(self.data:MoveSlot('backpack', 1, 'itemBar', 1))
+    lu.assertTrue(self.data:GrantItem('duck', 1))
+    lu.assertEquals(self.data:GetItemBarSnapshot().backpack[1].itemId, 'duck')
+    lu.assertFalse(self.data:SelectBait('duck'))
+    lu.assertFalse(self.data:HasBait('duck'))
+    local ok, bait = self.data:ConsumeSelectedBait()
+    lu.assertTrue(ok)
+    lu.assertNil(bait)
+    lu.assertEquals(self.data:ItemCount('duck'), 1)
+    lu.assertTrue(self.data:MoveSlot('backpack', 1, 'itemBar', 1))
+    lu.assertTrue(self.data:SelectBait('duck'))
+    local ok, bait = self.data:ConsumeSelectedBait()
+    lu.assertTrue(ok)
+    lu.assertEquals(bait, 'duck')
+    lu.assertEquals(self.data:ItemCount('duck'), 0)
+    lu.assertNil(self.data.Data.SelectedBait)
+end
