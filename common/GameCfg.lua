@@ -636,9 +636,15 @@ GameCfg.Ability = {
         -- 沧龙 移速 13 / 每 15 秒跃起砸击 / 绕岛咬最近岛中心玩家并叼走入海。
         -- 高度上限取 #125 场景合同的 Boundary.MaxFlightHeight = 20（票面「20 米飞行」）。
         MaxHeight = 20, MaxStepSec = 0.25, DriftTolerance = 4,
+        Speed = 20,          -- 巡航移速（GameSpec §12：白头鹰 / 风神翼龙 移速 20；也是漂移判定的基准）
         CruiseHeight = 12,   -- 巡航高度（暂取）
         DiveSpeed = 30,      -- 俯冲速度（暂取）
         ClimbSpeed = 8,      -- 爬升速度（暂取）
+        DiveSec = 3,         -- 单次俯冲的最长持续时间（暂取）
+        DiveIntervalSec = 20,-- 俯冲间隔兜底（GameSpec §12：每 20 秒俯冲一次）
+        DiveDamage = 30,     -- 俯冲伤害兜底（表内白头鹰基础攻击 30）
+        LeapHeight = 8,      -- 沧龙跃起高度（暂取）
+        LeapSec = 1.5,       -- 沧龙跃起滞空时间（暂取）
         -- 按鱼种 Id 的飞行档案；Bounds 由鱼所在钓鱼区的 Scene.Boundary 提供，缺省用下面的 FallbackBounds。
         Species = {
             fish47Elite = { CruiseHeight = 12, DiveIntervalSec = 20, DiveDamage = 30 },
