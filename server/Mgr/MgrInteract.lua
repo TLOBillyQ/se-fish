@@ -1,13 +1,36 @@
--- 交互点管理器（#44，#27 规格）：登记场景既有单位为交互目标，当前只有钓鱼佬与「喂食」（M3 复用于钓场老板）。
--- 客户端发 InteractAction{target, action, seq}；服务端复验身份、目标、距离（只看 x/z）与选中态，
--- 序号必须递增，重放与旧序号不结算。喂食即出售：选中格是鱼获就扣该格按 floor(基础售价 × mult) 入账，
--- 否则扣 1 只选中的鱼饵按 BaitPrice 入账；扣除与入账走 PlayerData:AddCoin 一次落地。
--- 选中格是信物（Exchange 表）时优先走 1:1 兑换（#87）：不给金币，满格拒绝且不消耗信物。
--- 吃动作是表现层，失败只记日志、不影响裁决。「对话」是纯客户端台词，不经服务端。
+-- 喂食按 floor(基础售价 × mult) 入账，信物优先走 1:1 兑换；先复验身份、目标、距离与选中态。
+-- 注入 Save 后只改隔离 draft，持久成功才回包、推库存、报任务与播动画（#123）。
+-- 同会话 seq 重放或携带响应中的完整 operation 重试只回原结果；旧身份淘汰后拒绝。
+-- 未注入 Save 的独立纯逻辑模式保留同步结算；「对话」是纯客户端台词。
 local GameCfg = require('common.GameCfg')
 local FishCatch = require('common.FishCatch')
 
 local Mgr = { LastSeq = {}, Anchors = {} }
+
+-- 同通道相同 seq 重放原结果；完整 operation 可跨重连重试，身份校验归 Save。
+local function resolve(mgr, player, data, payload)
+    local requestId = payload.operation
+    if requestId ~= nil and type(requestId) ~= 'table' then return nil, false end
+    if requestId == nil then requestId = payload.seq end
+    local operation, mode = mgr.Save:ResolveRequest(player, data, 'interact:fisherman', requestId)
+    if not operation then return nil, false end
+    if mode ~= 'replay' then return operation end
+    local accepted = mgr.Save:Execute(player, data, operation, function() return nil, 'expired' end,
+        function(ok, result)
+            if ok then result.operation = operation mgr:Reply(player, result) end
+        end)
+    return nil, accepted
+end
+local function execute(mgr, player, data, operation, transform, done)
+    if not operation then return false end
+    return mgr.Save:Execute(player, data, operation, transform, function(ok, result)
+        if ok then result.operation = operation end
+        done(ok, result, operation)
+    end)
+end
+local function itemCount(data, itemId)
+    return data.Data.Bait[itemId] or data:ItemCount(itemId)
+end
 
 local Points = {
     fisherman = { Cfg = function() return GameCfg.Interact.Fisherman end, Actions = { Feed = 'Feed' } },
@@ -88,10 +111,32 @@ end
 
 -- 信物兑换：扣除与发放由 PlayerData:ExchangeSlot 一次落地；满格拒绝且不消耗信物，
 -- 不给金币、不报任务事实。'bad' 只会是配置错误（产物 id 不在物品表），记错误日志
-function Mgr:Exchange(player, data, anchor, point, exchange)
+function Mgr:Exchange(player, data, anchor, point, exchange, operation)
     if self.Save and self.Save:IsPaused(player.UserId) then
         self:Reply(player, { ok = false, reason = '临时本局暂停信物兑换，请先保存到存档' })
         return false
+    end
+    if self.Save then
+        return execute(self, player, data, operation, function(draft)
+            local entry = draft.Data.Containers[GameCfg.Items.ContainerId.ItemBar][exchange.slot]
+            if not entry or entry.itemId ~= exchange.tokenId then return nil, 'nothing' end
+            local beforeToken, beforeProduct = itemCount(draft, exchange.tokenId), itemCount(draft, exchange.product)
+            local changed, failure = draft:ExchangeSlot(exchange.slot, exchange.product)
+            if not changed then return nil, failure end
+            return { ok = true, action = 'Feed', exchange = { from = exchange.tokenId, to = exchange.product },
+                coinBefore = draft.Data.FishCoin, coinAfter = draft.Data.FishCoin,
+                tokenBefore = beforeToken, tokenAfter = itemCount(draft, exchange.tokenId),
+                itemBefore = beforeProduct, itemAfter = itemCount(draft, exchange.product) }
+        end, function(written, result, operation)
+            if not written then self:Reply(player, { ok = false, reason = result }) return end
+            print('[MgrInteract] 兑换落账', player.UserId, operation.id, exchange.tokenId, exchange.product,
+                'coinBefore=' .. result.coinBefore, 'coinAfter=' .. result.coinAfter,
+                'tokenBefore=' .. result.tokenBefore, 'tokenAfter=' .. result.tokenAfter,
+                'itemBefore=' .. result.itemBefore, 'itemAfter=' .. result.itemAfter)
+            self.PlayerData:SendItemBar(player)
+            self:Reply(player, result)
+            self:PlayEat(anchor, point)
+        end)
     end
     local ok, reason = data:ExchangeSlot(exchange.slot, exchange.product)
     if not ok then
@@ -102,8 +147,6 @@ function Mgr:Exchange(player, data, anchor, point, exchange)
         return false
     end
     print('[MgrInteract] 信物兑换', player.UserId, exchange.tokenId, '->', exchange.product)
-    -- 关键状态转换立即 UpdateAsync 记账（#92）：断线重连不双份发奖
-    if self.Save then self.Save:Commit(player.UserId, data:Serialize(), 'exchange:' .. exchange.tokenId) end
     self.PlayerData:SendItemBar(player)
     self:Reply(player, { ok = true, action = 'Feed',
         exchange = { from = exchange.tokenId, to = exchange.product } })
@@ -111,13 +154,36 @@ function Mgr:Exchange(player, data, anchor, point, exchange)
     return true
 end
 
-function Mgr:Feed(player, data, anchor, point, seq)
+function Mgr:Feed(player, data, anchor, point, seq, operation)
     local exchange = exchangeable(data, point)
-    if exchange then return self:Exchange(player, data, anchor, point, exchange) end
+    if exchange then return self:Exchange(player, data, anchor, point, exchange, operation) end
     local coins, spend, what, itemId, category = feedable(data, point)
     if not coins then
         self:Reply(player, { ok = false, reason = 'nothing' })
         return false
+    end
+    if self.Save then
+        local selectedSlot, selectedBait = data.Data.SelectedSlot, data.Data.SelectedBait
+        return execute(self, player, data, operation, function(draft)
+            draft.Data.SelectedSlot, draft.Data.SelectedBait = selectedSlot, selectedBait
+            local earned, consume, _, id, kind = feedable(draft, point)
+            if not earned then return nil, 'nothing' end
+            local beforeCoin, beforeItem = draft.Data.FishCoin, itemCount(draft, id)
+            if not draft:AddCoin(earned, consume, 'feed') then return nil, 'nothing' end
+            return { ok = true, action = 'Feed', coins = earned, itemId = id, category = kind,
+                coinBefore = beforeCoin, coinAfter = draft.Data.FishCoin,
+                itemBefore = beforeItem, itemAfter = itemCount(draft, id) }
+        end, function(written, result, operation)
+            if not written then self:Reply(player, { ok = false, reason = result }) return end
+            print('[MgrInteract] 喂食落账', player.UserId, operation.id, result.itemId,
+                'coinBefore=' .. result.coinBefore, 'coinAfter=' .. result.coinAfter,
+                'itemBefore=' .. result.itemBefore, 'itemAfter=' .. result.itemAfter)
+            self.PlayerData:SendItemBar(player)
+            self:Reply(player, result)
+            self:PlayEat(anchor, point)
+            if self.Quest then self.Quest:Notify('Feed', player, { itemId = result.itemId,
+                category = result.category, eventId = operation.id }) end
+        end)
     end
     if not data:AddCoin(coins, spend, 'feed') then return false end
     print('[MgrInteract] 喂食', player.UserId, what, '+' .. tostring(coins), 'FishCoin=' .. tostring(data.Data.FishCoin))
@@ -133,22 +199,30 @@ function Mgr:Feed(player, data, anchor, point, seq)
     return true
 end
 
--- 处理一次交互请求；结算成功返回 true
+-- 处理一次交互请求；持久模式返回是否接收，最终结果经 InteractResult 回包。
 function Mgr:Handle(player, payload)
     if type(payload) ~= 'table' then return false end
     local entry = Points[payload.target]
     local method = entry and entry.Actions[payload.action]
     local seq = payload.seq
-    if not method or type(seq) ~= 'number' or seq ~= math.floor(seq) then return false end
+    if not method then return false end
+    if (not self.Save or payload.operation == nil)
+        and (type(seq) ~= 'number' or seq ~= math.floor(seq) or seq < 1 or seq > 2147483647) then return false end
     local data = self.PlayerData and self.PlayerData:GetDataInst(player)
     if not data then return false end
+    local operation
+    if self.Save then
+        local replayed
+        operation, replayed = resolve(self, player, data, payload)
+        if not operation then return replayed end
+    end
     local last = self.LastSeq[player.UserId]
     if last and seq <= last then return false end
     local point = entry.Cfg()
     local anchor = self:InRange(player, point)
     if not anchor then return false end
     self.LastSeq[player.UserId] = seq
-    return self[method](self, player, data, anchor, point, seq)
+    return self[method](self, player, data, anchor, point, seq, operation)
 end
 
 function Mgr:Start()
