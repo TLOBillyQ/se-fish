@@ -659,8 +659,12 @@ GameCfg.Ability = {
     Carry = {
         -- 巡航叼人（沧龙「咬最近岛中心玩家、叼走入海」，GameSpec §12）：咬中 300、过程接触 150。
         Socket = 'LiftSocket',                -- 与顶鱼挂点同名（MgrFishUnit.LiftSocket）
-        Offset = { x = 0, y = 1.2, z = 1.6 }, -- 1 倍体型下的嘴部挂点位移（暂取）
-        GrabRange = 2.5,                      -- 咬中判定距离（暂取）
+        -- 1 倍体型下的嘴部挂点位移：中心距 2.56 ≥ 宿主半高 1.2 + 玩家半高 1.0，整体在宿主体外
+        -- （「挂点不穿出」的判定见 common/CarryMount.lua，取值为暂取，真机是否穿模待试玩）。
+        Offset = { x = 0, y = 1.6, z = 2.0 },
+        HostHalfHeight = 1.2,                 -- 宿主（沧龙）半高（暂取）
+        CarriedHalfHeight = 1.0,              -- 携带物（玩家 2 米胶囊）半高，与 MgrVitals 的角色高同口径
+        GrabRange = 2.5,                      -- 咬中判定距离（水平，暂取）
         GrabDamage = 300,                     -- 咬中伤害（正文）
         FollowTolerance = 3,                  -- 携带跟随容差（米）：超出即整段钳回挂点
         DropHeight = 1.5, DropForward = 2,    -- 释放落点（暂取）
