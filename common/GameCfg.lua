@@ -100,6 +100,38 @@ GameCfg.Vitals = {
     FlashThickness = 40,
 }
 
+-- 生存恢复（#131，T10；策划案「濒死/复活」段原文数值，server/Mgr/MgrSurvival.lua）：
+-- 血量扣到 1 点锁血倒地进入濒死，DownedSec 秒倒计时内可被抢救或自用肾上腺素解除（恢复
+-- ReviveHealthPercent% 血量），否则死亡；死亡 DeadSec 秒倒计时结束原地虚弱复活（血量
+-- ReviveHealthPercent%、饥饿至少 ReviveHungerPercent%、虚弱 WeakSec 秒、移速 ×WeakSpeedScale）。
+-- 濒死/死亡暂停饥饿、无敌锁血、拒绝普通动作、断开钓鱼并释放举鱼；濒死或死亡退出重进按
+-- 虚弱复活处理（原地 10% 血 + 虚弱）；虚弱中退出记录剩余秒数，重进继续倒数（离线不计时）。
+-- 肾上腺素物品表 item171（R172 自救道具，购买获得）；无物时的平台购买入口与推广/金豆满血复活
+-- 是平台能力接缝，适配归 T26。
+GameCfg.Survival = {
+    DownedSec = 15,
+    DeadSec = 30,
+    ReviveHealthPercent = 10,
+    ReviveHungerPercent = 10,
+    WeakSec = 60,
+    WeakSpeedScale = 0.5,
+    AdrenalineItemId = 'item171',
+    -- 濒死呼救（策划案：两句随机冒，30 米内其他玩家可见）
+    HelpCries = { '要死啦！', '救救我！' },
+    HelpRadius = 30,
+    HelpCooldownSec = 1,
+    -- 蒙版文案（策划案原文）
+    DownedTitle = '你还能再抢救一下！',
+    DeadTitle = '你已经死了！倒计时结束后虚弱复活。',
+    AdrenalineText = '给自己一针肾上腺素',
+    CallHelpText = '向队友呼救',
+    FreeReviveText = '免费满血复活',
+    PaidReviveText = '5金豆满血复活',
+    NoAdrenalineText = '没有肾上腺素，可前往地图商店购买',
+    PlatformPendingText = '平台复活即将开放，请等待倒计时虚弱复活',
+    WeakText = '虚弱中：移动速度减半',
+}
+
 -- 调试开关（#47 / #49，#28 规格）：开发阶段默认开启，发布或开放地图前关闭。开启后服务端接受 GM 发放
 -- （server/Mgr/MgrGM.lua，客户端控制台 _G.GM.Coin / _G.GM.Item / _G.GM.SetHealth / _G.GM.SetHunger），进图时按 InitialGrants 白送（M1 的进图白送降级至此）。
 -- 关闭时正式获取路径只有拾饵、喂食换金币与商店购买。
