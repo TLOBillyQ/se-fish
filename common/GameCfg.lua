@@ -673,15 +673,23 @@ GameCfg.Ability = {
     BossPhase = {
         -- 哥斯拉（fish56Boss，GameSpec §12）：低于 60% 入水、切沧龙式攻击（咬中 1000）；
         -- 低于 20% 重新上岸、伤害 +50%、原子吐息改为每 10 秒。阈值优先于普通招式循环。
-        -- 阈值按百分比降序排列；一帧跨两个阈值只进最终合法阶段（见 common/BossPhase.lua）。
+        -- 阈值按百分比降序排列（= 阶段升级顺序）；一帧跨两个阈值只进最终合法阶段，
+        -- 中间被跳过的阶段记进 Skipped（见 common/BossPhase.lua）。
         Thresholds = {
             { Percent = 60, Phase = 'water', BiteDamage = 1000 },
             { Percent = 20, Phase = 'enraged', DamageBonusPercent = 50, BreathIntervalSec = 10 },
+        },
+        -- 各阶段的招式集合；同一帧多个招式到期时按 Attacks 的书写顺序取唯一一个，保证确定性。
+        AttackSets = {
+            normal = { 'claw', 'tail', 'breath' },
+            water = { 'bite' },
+            enraged = { 'claw', 'tail', 'breath' },
         },
         Attacks = {
             claw = { IntervalSec = 2, Damage = 50 },   -- 表内 2 秒爪击（基础攻击 50）
             tail = { IntervalSec = 6, Damage = 50 },   -- 表内每 6 秒甩尾
             breath = { IntervalSec = 30, Range = 10, OneShot = true, WindupSec = 1.5 }, -- 正前 10 米秒杀
+            bite = { IntervalSec = 2 },                -- 入水后的咬击：伤害取阶段条目的 BiteDamage
         },
     },
 }
