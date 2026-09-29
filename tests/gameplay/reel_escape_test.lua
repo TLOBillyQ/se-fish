@@ -155,3 +155,25 @@ function TestReelEscape:test_reel_back_returns_to_idle_and_allows_casting_again(
     lu.assertEquals(current.session.phase, 'cast')
     lu.assertEquals(self:lastState().phase, 'cast')
 end
+
+function TestReelEscape:test_interrupt_and_offline_end_the_session_instead_of_leaving_a_line_out()
+    local id = self:hook('bass', 1.2)
+    self.reel:Interrupt(self.player)
+    lu.assertNil(self.cast.Sessions[self.player.UserId])
+    lu.assertEquals(self:lastState().phase, 'idle')
+    lu.assertEquals(#self.spawned, 0)
+    self:hook('carp', 1.1)
+    self.reel:OnPlayerRemoving(self.player)
+    lu.assertNil(self.cast.Sessions[self.player.UserId])
+end
+
+function TestReelEscape:test_death_while_line_is_out_reels_it_back()
+    local id = self:hook('bass', 1.2)
+    self.now = 30
+    self.reel:Update()
+    lu.assertEquals(self.cast.Sessions[self.player.UserId].session.phase, 'escaped')
+    -- MgrFishUnit:OnDied 的入口：死亡不该给玩家留下一条只能靠按按钮收回的线
+    self.cast:Abort(self.player)
+    lu.assertNil(self.cast.Sessions[self.player.UserId])
+    lu.assertEquals(self:lastState().phase, 'idle')
+end

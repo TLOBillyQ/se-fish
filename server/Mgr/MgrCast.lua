@@ -184,10 +184,12 @@ function Mgr:Drop(player)
     self.FishUnit:Drop(player)
 end
 
--- 角色死亡（#42）：还在抛竿等上钩的会话直接结束；上钩后的断线由 MgrReelIn 处理
+-- 角色死亡（#42）：还在抛竿等上钩、或脱钩后没收竿的会话直接结束；上钩后的断线由 MgrReelIn 处理
 function Mgr:Abort(player)
     local current = self.Sessions[player.UserId]
-    if not current or current.player ~= player or current.session.phase ~= 'cast' then return end
+    if not current or current.player ~= player then return end
+    local phase = current.session.phase
+    if phase ~= 'cast' and phase ~= 'escaped' then return end
     self:EndSession(player, current)
     print('[MgrCast] 死亡断线', player.UserId)
 end
