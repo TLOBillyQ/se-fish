@@ -78,8 +78,110 @@ function TestWeaponConfig:test_weapon_ids_registered_in_shop_and_items()
     end
 end
 
+-- ===== #130 强化加成消费 =====
+-- 失败方式：加成买了不生效/生效错对象（火箭筒溅射双加成、空手被加成）、
+-- 弹容没向上取整、按复利算。
+TestMgrWeaponUpgrade = {}
+function TestMgrWeaponUpgrade:setUp() TestMgrWeapon.setUp(self) end
+function TestMgrWeaponUpgrade:tearDown() TestMgrWeapon.tearDown(self) end
+function TestMgrWeaponUpgrade:lastReply()
+    local r = self.replies[#self.replies]
+    return r and r.payload or nil
+end
+
+-- 近战满级 +70%：斧头 40→68 登记进挥砍；空手不吃武器加成
+function TestMgrWeaponUpgrade:test_melee_max_level_scales_staged_swing()
+    self.data.Extra.growth.upgrades.melee = 7
+    self.data:GrantWeapon('item136', 1)
+    self.data:HoldWeapon('item136')
+    self.mgr:Attack(self.player)
+    lu.assertAlmostEquals(self.swingStaged[42].damage, 68, 1e-9)
+    lu.assertEquals(self.swingStaged[42].range, 4)
+    self.data.Extra.inventory.selection.held = { kind = nil, id = nil, slot = nil } -- 回到空手
+    self.data.Extra.inventory.selection.weapon = nil
+    self.now = 1002 -- 过冷却
+    self.mgr:Attack(self.player)
+    lu.assertEquals(self.swingStaged[42].damage, 5) -- 空手不加成
+end
+
+-- 远程满级 +50%：每发弹丸乘算（霰弹 20→30）
+function TestMgrWeaponUpgrade:test_ranged_max_level_scales_each_pellet()
+    self.data.Extra.growth.upgrades.ranged = 5
+    self.data:GrantWeapon('item138', 1)
+    self.data:HoldWeapon('item138')
+    self.rayHit = { Instance = self.other.Character, Position = { x = 0, y = 2, z = 5 } }
+    self.mgr:Attack(self.player)
+    lu.assertEquals(#self.applied, 5)
+    for _, a in ipairs(self.applied) do lu.assertAlmostEquals(a.amount, 30, 1e-9) end
+end
+
+-- 火箭筒两段只归远程：直击 500→750；溅射 100→150，且不吃爆炸物加成（不双加成）
+function TestMgrWeaponUpgrade:test_rocket_two_stages_only_ranged_no_double_bonus()
+    self.data.Extra.growth.upgrades.ranged = 5
+    self.data.Extra.growth.upgrades.explosive = 3
+    self.data:GrantWeapon('item142', 1)
+    self.data:HoldWeapon('item142')
+    self.other.Character.Position = { x = 0, y = 2, z = 4 }
+    self.rayHit = { Instance = self.other.Character, Position = { x = 0, y = 2, z = 4 } }
+    self.mgr:Attack(self.player)
+    local direct = 0
+    for _, a in ipairs(self.applied) do
+        if a.target == self.other then
+            direct = direct + 1
+            lu.assertAlmostEquals(a.amount, 750, 1e-9) -- 直击只吃远程
+        else
+            lu.assertAlmostEquals(a.amount, 150, 1e-9) -- 溅射只吃远程：100×1.5，不乘爆炸物 1.6
+            lu.assertNotEquals(a.target, self.player)
+        end
+    end
+    lu.assertEquals(direct, 1)
+end
+
+-- 弹容满级 +150% 向上取整：狙击 5→13（7.5→8 逐级验证在配置层），第 14 发才空匣
+function TestMgrWeaponUpgrade:test_magazine_max_level_rounds_up_and_extends_ammo()
+    self.data.Extra.growth.upgrades.magazine = 3
+    self.data:GrantWeapon('item141', 1) -- 狙击 5 发
+    self.data:HoldWeapon('item141')
+    for i = 1, 13 do
+        self.now = 1000 + i * 2 -- 间隔 1.5 秒
+        lu.assertTrue(self.mgr:Attack(self.player).ok)
+    end
+    lu.assertEquals(self:lastReply().ammo, 0)
+    self.now = 1000 + 14 * 2
+    local reply = self.mgr:Attack(self.player)
+    lu.assertEquals(reply.reason, 'empty') -- 第 14 发才触发空匣换弹
+    lu.assertTrue(reply.autoReload)
+end
+
+-- 爆炸物满级 +60%：投掷爆炸伤害乘算（手雷 100→160）
+function TestMgrWeaponUpgrade:test_explosive_max_level_scales_detonation()
+    self.data.Extra.growth.upgrades.explosive = 3
+    local landing = { x = 0, y = 2, z = 10 }
+    self.other.Character.Position = { x = 0, y = 2, z = 14.9 }
+    self.mgr:Detonate(self.player, 'item144', landing, nil)
+    lu.assertTrue(#self.applied >= 1)
+    for _, a in ipairs(self.applied) do
+        lu.assertAlmostEquals(a.amount, 160, 1e-9)
+    end
+end
+
+-- 无强化时行为与 #129 基线完全一致（0 级不加成、弹容取基础值）
+function TestMgrWeaponUpgrade:test_zero_level_matches_129_baseline()
+    self.data:GrantWeapon('item136', 1)
+    self.data:HoldWeapon('item136')
+    self.mgr:Attack(self.player)
+    lu.assertEquals(self.swingStaged[42].damage, 40)
+    self.data:GrantWeapon('item141', 1)
+    self.data:HoldWeapon('item141')
+    self.now = 1002
+    lu.assertTrue(self.mgr:Attack(self.player).ok)
+    lu.assertEquals(self:lastReply().ammo, 4) -- 5 发基础弹匣
+end
+
 -- ===== 挥砍登记（AbilityAPI） =====
 TestAbilitySwingRegistry = {}
+
+
 function TestAbilitySwingRegistry:setUp()
     self.savedGame = rawget(_G, 'game')
     self.oldApi = package.loaded['server.AbilityAPI']

@@ -100,12 +100,12 @@ function Mgr:Attack(player)
     end
     local weaponId = self:EquippedWeapon(data)
     local guns, melee = acfg().Guns, acfg().MeleeWeapons
-    if weaponId and guns[weaponId] then return self:AttackGun(player, weaponId, guns[weaponId]) end
-    if weaponId and melee[weaponId] then return self:AttackMelee(player, weaponId) end
+    if weaponId and guns[weaponId] then return self:AttackGun(player, weaponId, guns[weaponId], data) end
+    if weaponId and melee[weaponId] then return self:AttackMelee(player, weaponId, data) end
     if weaponId then
         print('[MgrWeapon] 武器未配置攻击数值，回落空手', player.UserId, weaponId)
     end
-    return self:AttackMelee(player, nil)
+    return self:AttackMelee(player, nil, data)
 end
 
 function Mgr:CastMelee(player)
@@ -119,8 +119,9 @@ function Mgr:CastMelee(player)
     return cast == true
 end
 
--- 空手（weaponId=nil）与近战武器共用挥砍预设（纯表现），伤害/射程来自登记值
-function Mgr:AttackMelee(player, weaponId)
+-- 空手（weaponId=nil）与近战武器共用挥砍预设（纯表现），伤害/射程来自登记值；
+-- 近战武器吃近战强化（#130 按基础线性叠加），空手不加成
+function Mgr:AttackMelee(player, weaponId, data)
     local mcfg = weaponId and acfg().MeleeWeapons[weaponId] or acfg().Unarmed
     if not mcfg then return self:Fail(player, 'attack', 'bad-weapon', { weapon = weaponId }) end
     local now = self:Now()
@@ -129,14 +130,16 @@ function Mgr:AttackMelee(player, weaponId)
     if now - (state.meleeAt[key] or 0) < mcfg.IntervalSec then
         return self:Fail(player, 'attack', 'cooldown', { weapon = weaponId })
     end
+    local scale = weaponId and data and data.WeaponDamageScale and data:WeaponDamageScale('melee') or 1
+    local damage = mcfg.Damage * scale
     state.meleeAt[key] = now
-    AbilityAPI.StageSwing(player.UserId, { damage = mcfg.Damage, range = mcfg.Range })
+    AbilityAPI.StageSwing(player.UserId, { damage = damage, range = mcfg.Range })
     local cast = self:CastMelee(player)
     print('[MgrWeapon] 挥砍发起', player.UserId, tostring(weaponId or 'unarmed'),
-        'damage=' .. tostring(mcfg.Damage), 'range=' .. tostring(mcfg.Range),
+        'damage=' .. tostring(damage), 'range=' .. tostring(mcfg.Range),
         'interval=' .. tostring(mcfg.IntervalSec), cast and 'cast' or 'cast-failed')
     return self:Reply(player, { ok = true, action = 'attack', weapon = weaponId,
-        damage = mcfg.Damage, range = mcfg.Range })
+        damage = damage, range = mcfg.Range })
 end
 
 function Mgr:MagState(state, weaponId, magazine)
@@ -156,11 +159,14 @@ function Mgr:RefreshMag(mag, magazine, now)
     end
 end
 
-function Mgr:AttackGun(player, weaponId, gcfg)
+function Mgr:AttackGun(player, weaponId, gcfg, data)
     local now = self:Now()
     local state = self:GetState(player.UserId)
-    local mag = self:MagState(state, weaponId, gcfg.Magazine)
-    self:RefreshMag(mag, gcfg.Magazine, now)
+    -- #130：弹容强化向上取整（PlayerData:MagazineSize），0 级即基础值
+    local magazine = data and data.MagazineSize and data:MagazineSize(gcfg.Magazine) or gcfg.Magazine
+    local scale = data and data.WeaponDamageScale and data:WeaponDamageScale('ranged') or 1
+    local mag = self:MagState(state, weaponId, magazine)
+    self:RefreshMag(mag, magazine, now)
     if mag.reloadUntil then
         return self:Fail(player, 'attack', 'reloading', { weapon = weaponId, ammo = mag.ammo })
     end
@@ -179,23 +185,26 @@ function Mgr:AttackGun(player, weaponId, gcfg)
 
     local target, hitPos = self:GunHit(player, gcfg)
     local pellets = gcfg.Pellets or 1
+    local damage = gcfg.Damage * scale
     if target then
         for _ = 1, pellets do
             local hit = self.Vitals:NewHit(player, 'weapon')
-            self.Vitals:ApplyHit(hit, target, gcfg.Damage)
+            self.Vitals:ApplyHit(hit, target, damage)
         end
         print('[MgrWeapon] 枪击命中', player.UserId, weaponId,
-            'damage=' .. tostring(gcfg.Damage), pellets > 1 and ('pellets=' .. pellets) or '',
+            'damage=' .. tostring(damage), pellets > 1 and ('pellets=' .. pellets) or '',
             'ammo=' .. tostring(mag.ammo))
     else
         print('[MgrWeapon] 枪击未命中', player.UserId, weaponId, 'ammo=' .. tostring(mag.ammo))
     end
     if gcfg.Splash and hitPos then
+        -- 火箭筒两段都只归远程强化（不乘爆炸物强化，不双加成）
         local splashHit = self.Vitals:NewHit(player, 'weapon')
-        local damaged = self:RadialDamage(hitPos, gcfg.Splash.Radius, gcfg.Splash.Damage,
+        local splashDamage = gcfg.Splash.Damage * scale
+        local damaged = self:RadialDamage(hitPos, gcfg.Splash.Radius, splashDamage,
             splashHit, { player, target })
         print('[MgrWeapon] 火箭溅射', player.UserId, 'radius=' .. tostring(gcfg.Splash.Radius),
-            'damage=' .. tostring(gcfg.Splash.Damage), '命中=' .. tostring(damaged))
+            'damage=' .. tostring(splashDamage), '命中=' .. tostring(damaged))
     end
     return self:Reply(player, { ok = true, action = 'attack', weapon = weaponId, ammo = mag.ammo })
 end
@@ -207,10 +216,11 @@ function Mgr:Reload(player)
     local gcfg = weaponId and acfg().Guns[weaponId]
     if not gcfg then return self:Fail(player, 'reload', 'not-a-gun', { weapon = weaponId }) end
     local now = self:Now()
-    local mag = self:MagState(self:GetState(player.UserId), weaponId, gcfg.Magazine)
-    self:RefreshMag(mag, gcfg.Magazine, now)
+    local magazine = data:MagazineSize(gcfg.Magazine)
+    local mag = self:MagState(self:GetState(player.UserId), weaponId, magazine)
+    self:RefreshMag(mag, magazine, now)
     if mag.reloadUntil then return self:Fail(player, 'reload', 'reloading', { weapon = weaponId }) end
-    if mag.ammo >= gcfg.Magazine then return self:Fail(player, 'reload', 'mag-full', { weapon = weaponId }) end
+    if mag.ammo >= magazine then return self:Fail(player, 'reload', 'mag-full', { weapon = weaponId }) end
     mag.reloadUntil = now + acfg().GunShared.ReloadSec
     print('[MgrWeapon] 手动换弹', player.UserId, weaponId,
         'sec=' .. tostring(acfg().GunShared.ReloadSec), 'until=' .. tostring(mag.reloadUntil))
@@ -390,15 +400,19 @@ end
 function Mgr:Detonate(player, itemId, landing, zone)
     local ecfg = acfg().Explosives[itemId]
     if not ecfg or not landing then return 0 end
+    -- #130：爆炸物强化按基础线性叠加（投掷爆炸结算唯一消费点）
+    local data = self.PlayerData and self.PlayerData:GetDataInst(player)
+    local scale = data and data.WeaponDamageScale and data:WeaponDamageScale('explosive') or 1
+    local damage = ecfg.Damage * scale
     local hit = self.Vitals and self.Vitals:NewHit(player, 'explosive')
     if zone then
         local count = self:SpawnBlastFish(zone, landing, player)
         print('[MgrWeapon] 爆炸落水', zone.Id, itemId, '保底鱼=' .. tostring(count))
     end
     local radius = acfg().Throw.ExplosionRadius
-    local damaged = self:RadialDamage(landing, radius, ecfg.Damage, hit, player)
+    local damaged = self:RadialDamage(landing, radius, damage, hit, player)
     print('[MgrWeapon] 爆炸', itemId, zone and 'water' or 'land',
-        'damage=' .. tostring(ecfg.Damage), 'radius=' .. tostring(radius),
+        'damage=' .. tostring(damage), 'radius=' .. tostring(radius),
         '命中=' .. tostring(damaged))
     return damaged
 end
