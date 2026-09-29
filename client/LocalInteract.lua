@@ -1,5 +1,5 @@
--- 钓鱼佬「对话」「喂食」文字泡（#44；#90 多锚点）：每个钓鱼佬锚点（Fisherman.AnchorNames，
--- 一区 TGUnitFish + 虾池 TGUnitFishShrimp）上方建一个场景 UI，放两个按钮，
+-- 钓鱼佬「对话」「喂食」文字泡（#44；#90 多锚点；#127 按区分派）：七区各一个钓鱼佬锚点
+-- （Interact.Fishermen[i].AnchorNames，锚点取 #125 场景合同）上方建一个场景 UI，放两个按钮，
 -- 本地角色在该锚点 Radius 米内（只看 x/z）才显示。「对话」本地弹固定台词；「喂食」只发请求
 -- （InteractAction{target, action, seq}，seq 递增防重放），结果以服务端回包为准。
 -- 喂食成功的吃动作是客户端缩放脉冲：对 ModelName 模型按 Heartbeat 帧数播 1→放大→还原，
@@ -31,7 +31,7 @@ function LocalInteract:Feed()
     REUtil:GetRE('InteractAction'):FireServer({ target = 'fisherman', action = 'Feed', seq = self.Seq })
 end
 
-function LocalInteract:Create(anchor)
+function LocalInteract:Create(anchor, suffix)
     local cfg = GameCfg.Interact.Fisherman
     local player = Players.LocalPlayer
     local eui = player and player.PlayerGui and player.PlayerGui.EuiManager
@@ -44,8 +44,10 @@ function LocalInteract:Create(anchor)
         return
     end
     local offset = (GameCfg.InteractionBubble.Width + GameCfg.InteractionBubble.Gap) / 2
-    self:Button(node, 'BtnFishermanTalk', '对话', -offset, function() notice(cfg.DialogText) end)
-    self:Button(node, 'BtnFishermanFeed', '喂食', offset, function() self:Feed() end)
+    -- 按钮名带区后缀：七区钓鱼佬各有自己的文字泡，名字不能撞
+    self:Button(node, 'BtnFishermanTalk' .. suffix, '对话', -offset,
+        function() notice(cfg.DialogText) end)
+    self:Button(node, 'BtnFishermanFeed' .. suffix, '喂食', offset, function() self:Feed() end)
     node.Visible = false
     self.Bubbles[#self.Bubbles + 1] = { Node = node, Center = center, Visible = false }
 end
@@ -100,7 +102,11 @@ function LocalInteract:Start()
     REUtil:GetRE('InteractResult').OnClientEvent:Connect(function(result)
         if type(result) ~= 'table' then return end
         if result.ok then
-            if type(result.exchange) == 'table' then
+            if result.achievement then
+                -- 第七区最终成就（#127）：产物不占格，回包只给成就 id，名字查 GameCfg.Achievements
+                local achievement = GameCfg.Achievements[result.achievement]
+                notice('达成' .. (achievement and achievement.Name or tostring(result.achievement)))
+            elseif type(result.exchange) == 'table' then
                 -- 信物兑换（#87）：回包带兑换双方 id，按物品表名字拼提示；吃动作脉冲与金币喂食相同
                 local defs = GameCfg.Items.Definitions
                 local from = defs[result.exchange.from]
@@ -117,16 +123,19 @@ function LocalInteract:Start()
             notice('格子满了，钓鱼佬不肯换')
         end
     end)
-    local cfg = GameCfg.Interact.Fisherman
-    for _, name in ipairs(cfg.AnchorNames) do
-        local anchor = Util:WaitForChild(World, name)
-        if anchor then
-            self:Create(anchor)
-        else
-            print('[LocalInteract] 找不到钓鱼佬单位', name)
+    local shared = GameCfg.Interact.Fisherman
+    -- 按区分派（#127）：七区各一个钓鱼佬；未建区的锚点取不到时只记日志
+    for index, npc in ipairs(GameCfg.Interact.Fishermen) do
+        for _, name in ipairs(npc.AnchorNames) do
+            local anchor = Util:WaitForChild(World, name)
+            if anchor then
+                self:Create(anchor, index .. '_' .. name)
+            else
+                print('[LocalInteract] 找不到钓鱼佬单位', npc.ZoneId, name)
+            end
         end
     end
-    local model = cfg.ModelName and Util:WaitForChild(World, cfg.ModelName)
+    local model = shared.ModelName and Util:WaitForChild(World, shared.ModelName)
     if model then
         local ok, scale = pcall(function() return model.Scale end)
         if ok and scale then
@@ -136,7 +145,7 @@ function LocalInteract:Start()
             print('[LocalInteract] 钓鱼佬模型读 Scale 失败，跳过吃动作', tostring(scale))
         end
     else
-        print('[LocalInteract] 找不到钓鱼佬模型，跳过吃动作', tostring(cfg.ModelName))
+        print('[LocalInteract] 找不到钓鱼佬模型，跳过吃动作', tostring(shared.ModelName))
     end
     game:GetService('RunService').Heartbeat:Connect(function() self:Update() end)
 end

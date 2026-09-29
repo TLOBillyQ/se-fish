@@ -441,32 +441,12 @@ GameCfg.Shop.Excluded = ContentShop.Excluded
 GameCfg.Lottery = ContentLottery
 GameCfg.Blindbox = ContentBlindbox
 
--- 摆渡（#89，GameSpec §8.3 已确认细则）：去程一人在船边交 1 张船票，倒计时 CountdownSec 秒后
--- 带走 BoatRange 米内（只看 x/z）所有玩家到虾池落点，无票同行者搭便船合法；倒计时中再交票拒绝且不扣。
--- 返程在虾池侧锚点按人付 Price 金币、立即传送回第一钓鱼区。船与虾池都是占位表现（#90 才铺虾池内容）；
--- 区域名写入 PlayerData.Data.Zone（#92 存档用），HomeZone 是开局区域。返程票价为占位值，待策划校准。
+-- 摆渡（#89 定细则，#127 T06 扩到七区六航线）：去程一人在船边交 1 张船票，倒计时 CountdownSec 秒后
+-- 带走 BoatRange 米内（只看 x/z）所有玩家到本航线目的区落点，无票同行者搭便船合法；倒计时中再交票拒绝且不扣。
+-- 返程按人付 Price 金币、立即传送回出发区。票、价、锚点、落点、区域名全部由航线（Ferry.Routes，见下）
+-- 提供；区域名写入 PlayerData.Data.Zone（#92 存档用），HomeZone 是开局区域。
+-- 具体的 Outbound / Return 两条腿在 PlannedRoutes 之后由航线派生（#127 前只有第一段是既有现场）。
 GameCfg.Ferry = {
-    HomeZone = 'fishPond1',
-    Outbound = {
-        AnchorName = 'FerryBoat',
-        Ticket = 'shrimpTicket',
-        CountdownSec = 10,
-        BoatRange = 6,
-        Radius = 5,
-        Slack = 0.5,
-        BubbleHeight = 6,
-        Destination = { x = 100, y = 6, z = 100 }, -- 虾池落点（占位平台，随场景摆位校准）
-        Zone = 'shrimpPond',
-    },
-    Return = {
-        AnchorName = 'FerryReturn',
-        Price = 20,
-        Radius = 5,
-        Slack = 0.5,
-        BubbleHeight = 6,
-        Destination = { x = 6.26, y = 5.01, z = 39.29 }, -- 第一钓鱼区出生点旁
-        Zone = 'fishPond1',
-    },
 }
 
 -- 抛竿选鱼（钓鱼表）。Zones 每行：Id=鱼种，Bait=需要的鱼饵（0 = 不挂饵也可），RodLevel=鱼竿等级下限
@@ -837,6 +817,45 @@ for index = 1, 6 do
             CountdownSec = 5, Destination = to.Scene.SafePoint },
         Return = { AnchorName = returnName, Price = plannedReturnPrices[index], Destination = from.Scene.SafePoint },
     }
+end
+
+-- #127 T06 六条航线（路线图 §8.2）：一条航线 = 一段去程（第 i 区 → 第 i+1 区）+ 一段返程（第 i+1 区 → 第 i 区），
+-- 去程与返程各有**独立标识与独立状态**，不同航线互不占用倒计时。Id 是服务端唯一的航线凭证：
+-- 请求里带 Id 才能拿到这条航线的 NPC 锚点、目的地、船票（去程）与票价（返程），查不到就拒收。
+-- 票与价都随本区链推进：去程票 = 本区首领信物的产物（Content.Exchanges[i].Result，#126），
+-- 返程价 = 10 × 3^(到达区序 − 2)，即 10 / 30 / 90 / 270 / 810 / 2430。
+-- 腿的公共几何（BoatRange / Radius / Slack / BubbleHeight）与 #89 保持一致，逐条航线可单独覆盖。
+GameCfg.Ferry.Routes = {}
+local ferryLegGeometry = { BoatRange = 6, Radius = 5, Slack = 0.5, BubbleHeight = 6 }
+for index = 1, 6 do
+    local planned = GameCfg.Ferry.PlannedRoutes[index]
+    local from, to = GameCfg.Zones[index], GameCfg.Zones[index + 1]
+    local outbound, back = {}, {}
+    for key, value in pairs(ferryLegGeometry) do outbound[key], back[key] = value, value end
+    for key, value in pairs(planned.Outbound) do outbound[key] = value end
+    for key, value in pairs(planned.Return) do back[key] = value end
+    outbound.Zone = to.Id      -- 到达区（去程落点写进 Data.Zone）
+    back.Zone = from.Id        -- 返程回出发区
+    GameCfg.Ferry.Routes[index] = {
+        Id = from.Id .. '>' .. to.Id,
+        FromZoneId = from.Id,
+        ToZoneId = to.Id,
+        Outbound = outbound,
+        Return = back,
+    }
+end
+
+-- 第一段（鱼塘 ⇄ 虾池）是既有现场（#89 已实装）：这两个别名让老消费者与老用例不必认识 Routes。
+GameCfg.Ferry.HomeZone = GameCfg.Zones[1].Id
+GameCfg.Ferry.Outbound = GameCfg.Ferry.Routes[1].Outbound
+GameCfg.Ferry.Return = GameCfg.Ferry.Routes[1].Return
+
+-- 航线 id 校验（#127）：只有登记在 Routes 里的字符串 id 才算数，伪造成别的区号或数字一律查不到。
+function GameCfg.Ferry.Route(routeId)
+    if type(routeId) ~= 'string' then return nil end
+    for _, route in ipairs(GameCfg.Ferry.Routes) do
+        if route.Id == routeId then return route end
+    end
 end
 
 -- #127 T06 七区兑换：每区一个钓鱼佬，锚点取本区场景合同（Zones[].Scene.FishermanName，#125 的真源），
