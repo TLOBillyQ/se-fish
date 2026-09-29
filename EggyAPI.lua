@@ -293,7 +293,7 @@ local Camp = {}
 
 ---获取阵营玩家列表（迭代器）
 ---**适用范围**: 客户端和服务端
----@return Player[] 阵营玩家列表
+---@return function 阵营玩家列表
 function Camp:GetPlayers() end
 
 ---刚体本地碰撞回调信息
@@ -446,6 +446,7 @@ function Connection:Disconnect() end
 ---@field Id String 自定义外观ID，由系统生成，只读。
 ---@field MainModelVisible Bool 是否显示主模型；关闭后仅显示子模型。
 ---@field MaterialParam MaterialParam 主模型的材质参数，用于调整模型的材质表现。
+---@field MaterialParamList MaterialParam[] 与 SkinSlots 按索引平行对应的逐槽位材质参数；槽位元素为空时回落该槽位皮肤自带的材质参数。
 ---@field ModelAlpha Float 主模型的透明度，取值 0（完全透明）~ 1（不透明）。
 ---@field ModelColor1 Color 主模型染色区域 1 的颜色；仅当模型支持该染色区域时生效。
 ---@field ModelColor2 Color 主模型染色区域 2 的颜色；仅当模型支持该染色区域时生效。
@@ -1012,7 +1013,7 @@ function Faces.New(...) end
 ---@field Processed Bool 该输入是否已被引擎/UI 层处理
 ---@field UserInputState Enums.UserInputState 本次输入的状态（开始、变化、结束等）
 ---@field UserInputType Enums.UserInputType 本次输入的来源类型（键盘、鼠标、触摸等）
-InputObject = {}
+local InputObject = {}
 
 ---Player 加入战斗相关的信息。通过Player:GetJoinData接口获取。
 ---@class JoinData
@@ -1035,6 +1036,7 @@ local LogRecord = {}
 ---@field MaterialBorderColor Color 边缘光的颜色。仅在“开启边缘光”开启时生效。
 ---@field MaterialBorderIntensity Float 边缘光的亮度倍率。仅在“开启边缘光”开启时生效。
 ---@field MaterialBorderScale Float 边缘光的覆盖范围（菲涅尔角度）。仅在“开启边缘光”开启时生效。
+---@field MaterialCullMode Int 材质的面剔除模式。未配置时保持材质组原始设置。
 ---@field MaterialDecalAngle Float 纹理的旋转角度（度）。
 ---@field MaterialDecalIsFreeScaling Bool 开启后可对纹理 X/Y 轴单独设置缩放，关闭时使用整体缩放。
 ---@field MaterialDecalOffsetX Float 纹理沿 X 轴方向的偏移量。
@@ -1108,6 +1110,7 @@ local LogRecord = {}
 ---@field MaterialSFoamContrast Float 水面浮沫的过渡对比度。
 ---@field MaterialSFoamTiling Float 水面浮沫纹理的密度。
 ---@field MaterialSFoamType Float 水面浮沫的形状类型。
+---@field MaterialTransparentMode Int 材质的透明/贴图渲染模式。未配置时保持材质组原始设置。
 ---@field MaterialUVtilingX Float 波纹沿表面 X 轴方向的纹理重复次数。
 ---@field MaterialUVtilingY Float 波纹沿表面 Y 轴方向的纹理重复次数。
 ---@field MaterialUseMetalness4 Bool 开启后可对4个染色区域分别设置金属度，关闭时使用整体金属度。
@@ -1749,6 +1752,11 @@ local PathWaypoint = {}
 ---@field FrictionWeight Float 摩擦混合权重
 PhysicalProperties = {}
 
+---创建一个新的物理材质属性实例
+---@param values? Table 创建参数: Density(密度), Friction(摩擦系数), Elasticity(弹性系数), FrictionWeight(摩擦混合权重), ElasticityWeight(弹性混合权重)
+---@return PhysicalProperties
+function PhysicalProperties.New(values) end
+
 ---PlayerGui 管理玩家的 ScreenGui/EuiManager 等，并支持注册/解注册本地自定义事件，通过 player.PlayerGui 获取
 ---@class PlayerGui
 ---@field EuiManager EUIManager EUI 管理器
@@ -1928,6 +1936,7 @@ function Ray.New(origin, direction) end
 ---@field CollisionGroup String 碰撞组名称, 用于按碰撞关系过滤, nil 表示不过滤
 ---@field FilterDescendantsInstances Unit[] 与 FilterType 配合的 Unit 数组, 默认空数组
 ---@field FilterType Int Exclude (默认, 跳过 FilterDescendantsInstances 列表中的 Unit), Include (仅返回列表中的 Unit)
+---@field TargetCollisionGroupList String[] 显式指定射线命中的目标碰撞组列表, 优先级高于 CollisionGroup。非空时直接 OR 各组的 category 位作为目标掩码; 空列表回退到 CollisionGroup 自身组关系掩码
 RaycastParams = {}
 
 ---创建 RaycastParams
@@ -2102,12 +2111,12 @@ function ScreenGui:UpdateTeamScore(campScores) end
 
 ---事件信号，用于同端内部模块之间的发布订阅通信，支持持续监听、单次监听以及触发并向所有监听者转发参数；如需跨端通信请使用 RemoteEvent。
 ---**适用范围**: 客户端和服务端
----@class Signal<T>
+---@class Signal
 Signal = {}
 
 ---连接监听函数
 ---**适用范围**: 客户端和服务端
----@param func T 事件触发时调用的监听函数
+---@param func function 事件触发时调用的监听函数
 ---@return Connection 可用于断开监听的连接句柄
 function Signal:Connect(func) end
 
@@ -2123,14 +2132,24 @@ function Signal.New() end
 
 ---连接只触发一次的监听函数
 ---**适用范围**: 客户端和服务端
----@param func T 第一次事件触发时调用的监听函数
+---@param func function 第一次事件触发时调用的监听函数
 ---@return Connection 可用于提前断开监听的连接句柄
 function Signal:Once(func) end
+
+---皮肤槽位
+---@class SkinSlot
+---@field ModelColor1 Color 模型染色区域1的颜色
+---@field ModelColor2 Color 模型染色区域2的颜色
+---@field ModelColor3 Color 模型染色区域3的颜色
+---@field ModelColor4 Color 模型染色区域4的颜色
+---@field SkinId String 皮肤
+local SkinSlot = {}
 
 ---子自定义外观数据，自定义外观（CustomAppearance）中一个子模型的外观描述；记录子模型的模型资源、皮肤、染色区域、挂点、相对主模型的位置/旋转/缩放、材质参数、透明度与阴影投射等属性。仅作为 CustomAppearance 的 SubAppearance（子模型）数组元素使用。
 ---@class SubCustomAppearance
 ---@field CastShadow Bool 子模型是否投射阴影。
 ---@field MaterialParam MaterialParam 子模型的材质参数，用于调整模型的材质表现。
+---@field MaterialParamList MaterialParam[] 与 SkinSlots 按索引平行对应的逐槽位材质参数；槽位元素为空时回落该槽位皮肤自带的材质参数。
 ---@field ModelAlpha Float 子模型的透明度，取值 0（完全透明）~ 1（不透明）。
 ---@field ModelColor1 Color 子模型染色区域 1 的颜色；仅当模型支持该染色区域时生效。
 ---@field ModelColor2 Color 子模型染色区域 2 的颜色；仅当模型支持该染色区域时生效。
@@ -2709,12 +2728,15 @@ Enums.ActuatorType = {
 ---动画过滤器类型
 ---@enum Enums.AnimationFilterType 
 Enums.AnimationFilterType = {
-	Head = 1 << 1,  ---头
-	Trunk = 1 << 2,  ---躯干
-	LeftArm = 1 << 3,  ---左手臂
-	RightArm = 1 << 4,  ---右手臂
-	LeftLeg = 1 << 5,  ---左腿
-	RightLeg = 1 << 6,  ---右腿
+	Head = 2,  ---头
+	Trunk = 4,  ---躯干
+	LeftArm = 8,  ---左手臂
+	RightArm = 16,  ---右手臂
+	UpperBody = 30,  ---上半身（头+躯干+双臂）
+	LeftLeg = 32,  ---左腿
+	RightLeg = 64,  ---右腿
+	LowerBody = 96,  ---下半身（双腿）
+	FullBody = 126,  ---全身
 }
 
 ---动画优先级。Eggy 的默认角色动画，播放时优先级为 Core。Idle 到 Action4 的优先级供开发者使用
@@ -2927,6 +2949,13 @@ Enums.CoreGuiType = {
 	EmotesMenu = 107,  ---情感表达界面
 }
 
+---游戏内置货币类型
+---@enum Enums.CurrencyType 
+Enums.CurrencyType = {
+	GALLERY = 0,  ---乐园币
+	GOLD = 1,  ---金豆子
+}
+
 ---数据存储错误码
 ---@enum Enums.DataStoreErrorCode 
 Enums.DataStoreErrorCode = {
@@ -3050,6 +3079,141 @@ Enums.DisplayDistanceType = {
 	None = 0,  ---隐藏
 	Viewer = 1,  ---观察者距离
 	Subject = 2,  ---被观察者距离
+}
+
+---EUIAdaptMode
+---@enum Enums.EUIAdaptMode 
+Enums.EUIAdaptMode = {
+	None = 0,  ---无对齐
+	Absolute = 1,  ---像素对齐
+	Percent = 2,  ---百分比对齐
+}
+
+---EUIAnchorAdaptMode
+---@enum Enums.EUIAnchorAdaptMode 
+Enums.EUIAnchorAdaptMode = {
+	None = 0,  ---经典对齐
+	Percent = 1,  ---百分比对齐
+}
+
+---EUIArrangeMode
+---@enum Enums.EUIArrangeMode 
+Enums.EUIArrangeMode = {
+	SingleLine = 1,  ---单行排列
+	AutoWrap = 2,  ---自动换行
+}
+
+---EUIFillDirection
+---@enum Enums.EUIFillDirection 
+Enums.EUIFillDirection = {
+	Horizontal = 0,  ---水平
+	Vertical = 1,  ---垂直
+}
+
+---EUIGridStartCorner
+---@enum Enums.EUIGridStartCorner 
+Enums.EUIGridStartCorner = {
+	TopLeft = 0,  ---左上
+	TopRight = 1,  ---右上
+	BottomLeft = 2,  ---左下
+	BottomRight = 3,  ---右下
+}
+
+---EUIHorizontalAlignment
+---@enum Enums.EUIHorizontalAlignment 
+Enums.EUIHorizontalAlignment = {
+	Left = 0,  ---左对齐
+	Center = 1,  ---居中对齐
+	Right = 2,  ---右对齐
+}
+
+---EUIListviewGravity
+---@enum Enums.EUIListviewGravity 
+Enums.EUIListviewGravity = {
+	Left = 0,  ---左对齐
+	Right = 1,  ---右对齐
+	HorizontalCenter = 2,  ---水平居中
+	Top = 3,  ---上对齐
+	Bottom = 4,  ---下对齐
+	VerticalCenter = 5,  ---垂直居中
+}
+
+---EUIOverflowPolicy
+---@enum Enums.EUIOverflowPolicy 
+Enums.EUIOverflowPolicy = {
+	Culling = 1,  ---移除剔除
+	Ellipsis = 2,  ---溢出省略
+	AutoScroll = 3,  ---溢出跑马灯
+}
+
+---EUIOverflowStrategy
+---@enum Enums.EUIOverflowStrategy 
+Enums.EUIOverflowStrategy = {
+	None = 0,  ---截断
+	AutoWrap = 1,  ---强制换行
+	Ellipsis = 2,  ---省略号
+	AutoScroll = 3,  ---走马灯
+	HorizontalScroll = 4,  ---横向走马灯
+}
+
+---EUIProgressDirection
+---@enum Enums.EUIProgressDirection 
+Enums.EUIProgressDirection = {
+	Normal = 0,  ---正向
+	Reverse = 1,  ---反向
+}
+
+---EUIResetSizePolicy
+---@enum Enums.EUIResetSizePolicy 
+Enums.EUIResetSizePolicy = {
+	AutoScroll = 0,  ---自动滚动
+	FitWidth = 1,  ---按宽自适应
+	FitHeight = 2,  ---按高自适应
+}
+
+---EUIScrollDirection
+---@enum Enums.EUIScrollDirection 
+Enums.EUIScrollDirection = {
+	Vertical = 1,  ---垂直
+	Horizontal = 2,  ---水平
+}
+
+---EUISortOrderType
+---@enum Enums.EUISortOrderType 
+Enums.EUISortOrderType = {
+	LayoutOrder = 0,  ---按布局顺序
+	Name = 1,  ---按名称
+}
+
+---EUITableMajorAxis
+---@enum Enums.EUITableMajorAxis 
+Enums.EUITableMajorAxis = {
+	RowMajor = 0,  ---行主序
+	ColumnMajor = 1,  ---列主序
+}
+
+---EUITextHorizontalAlignment
+---@enum Enums.EUITextHorizontalAlignment 
+Enums.EUITextHorizontalAlignment = {
+	Left = 0,  ---左对齐
+	Center = 1,  ---居中对齐
+	Right = 2,  ---右对齐
+}
+
+---EUITextVerticalAlignment
+---@enum Enums.EUITextVerticalAlignment 
+Enums.EUITextVerticalAlignment = {
+	Top = 0,  ---顶部对齐
+	Center = 1,  ---居中对齐
+	Bottom = 2,  ---底部对齐
+}
+
+---EUIVerticalAlignment
+---@enum Enums.EUIVerticalAlignment 
+Enums.EUIVerticalAlignment = {
+	Top = 0,  ---顶部对齐
+	Center = 1,  ---居中对齐
+	Bottom = 2,  ---底部对齐
 }
 
 ---EasingDirection 缓动方向枚举
@@ -3375,17 +3539,17 @@ Enums.RaycastFilterType = {
 ---生物身体上的骨骼挂点位置，用于在指定部位绑定外观件、特效或道具。
 ---@enum Enums.SkeletalSocketType 
 Enums.SkeletalSocketType = {
-	LWeapon = "l_weapon",  ---左手武器
-	Origin = "origin",  ---底面中心
-	RWeapon = "r_weapon",  ---右手武器
-	LFoot = "ugc_foot_l",  ---左脚
-	RFoot = "ugc_foot_r",  ---右脚
-	LForearm = "ugc_forearm_l",  ---左臂
-	RForearm = "ugc_forearm_r",  ---右臂
-	LHand = "ugc_hand_l",  ---左手
-	RHand = "ugc_hand_r",  ---右手
-	Head = "ugc_head",  ---头部
-	Spine = "ugc_spine01",  ---身体
+	Spine = "socket_body",  ---身体
+	LFoot = "socket_foot_l",  ---左脚
+	RFoot = "socket_foot_r",  ---右脚
+	LForearm = "socket_forearm_l",  ---左臂
+	RForearm = "socket_forearm_r",  ---右臂
+	LHand = "socket_hand_l",  ---左手
+	RHand = "socket_hand_r",  ---右手
+	Head = "socket_head",  ---头部
+	Origin = "socket_origin",  ---底面中心
+	LWeapon = "socket_weapon_l",  ---左手武器
+	RWeapon = "socket_weapon_r",  ---右手武器
 }
 
 ---天空模板
@@ -3447,6 +3611,17 @@ Enums.SkyTemplate = {
 Enums.SortDirection = {
 	Descending = -1,  ---降序 (DESC)
 	Ascending = 1,  ---升序 (ASC)
+}
+
+---Space 关闭原因枚举。
+---@enum Enums.SpaceCloseReason 
+Enums.SpaceCloseReason = {
+	Unknown = 0,  ---未知原因关闭
+	OfficalMaintenance = 1,  ---蛋仔官方维护服务器
+	DeveloperShutdown = 2,  ---开发者已经关闭了服务器，或者在 Studio 中调用了绑定到 BindToClose() 的函数
+	DeveloperUpdate = 3,  ---开发者已将服务器迁移到新版本的地方
+	ServerEmpty = 4,  ---最后一个玩家已离开
+	OutOfMemory = 5,  ---Space 已达到游戏服务器的内存限制
 }
 
 ---TableMajorAxis
@@ -3843,6 +4018,12 @@ function AssetService:LoadUnitAsset(uri) end
 ---@param callback function 完成回调 function(ok: Bool, units: Unit[])
 function AssetService:LoadUnitAssetAsync(uri, callback) end
 
+---加载资产{#0}并创建 Unit 实例，可用 RootOverride 覆盖根节点
+---@param uri String 资产URI
+---@param rootOverride? Table 根节点覆盖数据
+---@return Unit[] 创建出的 Unit 数组（根在索引 1，已挂到 World，失败返回空表）
+function AssetService:LoadUnitAssetByData(uri, rootOverride) end
+
 ---批量预加载资产列表{#0}
 ---@param uriList String[] 资产 URI 列表
 ---@param callback function 每个资产完成时回调 function(uri: String, status: String)
@@ -4067,9 +4248,9 @@ function ConfigService:SetTestingValue(key, value) end
 ---@class CustomAppearanceService : Unit
 local CustomAppearanceService = {}
 
----运行时创建自定义外观，返回 CustomAppearance 外观对象，经 对象.Id 读取外观ID（runtime://appearance/<int>）并设置到单位 CustomAppearanceId 完成应用。服务端创建的外观自动同步到所有客户端；客户端创建的仅本端可见。外观只增不改不删，需变更时以新数据重新创建。
+---运行时创建自定义外观，返回自定义外观对象ID
 ---@param data CustomAppearance 外观数据
----@return String 外观对象
+---@return String 自定义外观对象ID
 function CustomAppearanceService:CreateCustomAppearance(data) end
 
 ---数据存储服务，用于数据持久化存储和玩家存档管理。
@@ -4153,6 +4334,7 @@ function FriendShipService:IsPlayerFriendsWithAsync(player, userId, checkCallbac
 ---Game是游戏对象树的根节点，继承自Unit。作为全局唯一的顶层对象，承载所有服务和单位的创建与管理。通过 GetService 获取各类全局服务，通过 CreateUnit 创建新的单位实例。
 ---@class Game : Unit
 ---@field Loaded Signal<fun()> 客户端初始单位/属性加载完成时触发，仅触发一次（幂等保护）。服务端不会触发该信号。订阅者通过 game.Loaded:Connect(fn) 接收回调，回调不带任何参数。
+---@field ServerRestartScheduled Signal<fun(restartTime: Int, closeReason: Enums.SpaceCloseReason, attributes: Table)> 当服务器被计划重启或当官方服务器需要执行官方维护更新时，以使用此事件通知服务器上的玩家即将发生的 重启。回调参数：restartTime 计划重启的时间戳,实际重启可能会稍晚于此预计时间，但不会早于此时间, closeReason 触发服务器重启的原因,参见枚举Enum.SpaceCloseReason, attributes 提供的重启事件自定义元数据，根据它可以定制特殊的逻辑，默认是一个空的字典
 local Game = {}
 
 ---绑定一个在服务器关闭之前调用的函数。如果绑定的函数接受一个参数，则传递Enum.CloseReason，指定服务器关闭的原因。可以通过反复调用BindToClose()。服务器在关闭之前等待30秒，以便所有绑定的函数停止运行。30秒后，服务器即使函数仍在运行，也会关闭。
@@ -4164,6 +4346,10 @@ function Game:BindToClose(callback) end
 ---@param values? Table 初始化属性键值表。可填写的属性键来自对应 unitType 的 API 文档（即该类型及其继承链上声明的属性），例如 { Name = "box", Position = Vector3.new(0, 10, 0), Parent = world }。注意：UnitId 为系统保留键，传入会被忽略；本方法不会自动设置 Parent，需显式指定。具体支持哪些属性以该单位类型 API 文档中列出的属性为准。
 ---@return Unit? 新创建的单位实例，创建失败时返回 nil
 function Game:CreateUnit(unitType, values) end
+
+---生成一个全局唯一GUID。
+---@return String 唯一编号
+function Game:GenerateGUID() end
 
 ---按名称获取全局服务实例，如 PhysicsService、CollectionService 等
 ---@overload fun(self: Game, serviceName: "AdvertisementService"): AdvertisementService
@@ -4187,6 +4373,7 @@ function Game:CreateUnit(unitType, values) end
 ---@overload fun(self: Game, serviceName: "PathfindingService"): PathfindingService
 ---@overload fun(self: Game, serviceName: "PhysicsService"): PhysicsService
 ---@overload fun(self: Game, serviceName: "Players"): Players
+---@overload fun(self: Game, serviceName: "PrimitiveService"): PrimitiveService
 ---@overload fun(self: Game, serviceName: "ProfileService"): ProfileService
 ---@overload fun(self: Game, serviceName: "ReplicatedFirst"): ReplicatedFirst
 ---@overload fun(self: Game, serviceName: "ReplicatedStorage"): ReplicatedStorage
@@ -4273,38 +4460,9 @@ function LogService:Warn(message, context) end
 ---@class MapData : Unit
 local MapData = {}
 
----获取所有地图实体数据。
-function MapData:GetAllUnitData() end
-
----获取预设数据。
----@param assetId String 资产预设 ID
-function MapData:GetAssetData(assetId) end
-
----获取 Asset 中目标 UnitType 的数据。
----@param assetId String 资产预设 ID
----@param UnitTypes string[] 目标 UnitType 列表
-function MapData:GetAssetUnitData(assetId, UnitTypes) end
-
 ---获取用户自定义地图数据。
 ---@param key String 用户自定义地图数据的 key
 function MapData:GetCustomMapData(key) end
-
----获取指定 Section 的完整数据。
----@param sectionName String Section 属性名（如 "camera_data", "fog_data", "camp_data" 等）
-function MapData:GetSectionData(sectionName) end
-
----获取指定 Section 数据中的特定字段。
----@param sectionName String Section 属性名
----@param fieldName String 字段名
-function MapData:GetSectionField(sectionName, fieldName) end
-
----获取地图实体数据（初始属性）。
----@param unitId Int 单位 ID
-function MapData:GetUnitData(unitId) end
-
----检查指定 Section 是否存在且有数据。
----@param sectionName String Section 属性名
-function MapData:HasSectionData(sectionName) end
 
 ---内存存储服务（仅服务端可用），提供三种集合：SortedMap / Queue / HashMap；SortedMap & HashMap 支持基于 transform 回调的原子 UpdateAsync。
 ---仅由 game:GetService("MemoryStoreService") 返回，不可实例化。
@@ -4456,6 +4614,12 @@ function PhysicsService:Spherecast(position, radius, direction, raycastParams) e
 ---@field PlayerRemoving Signal<fun(player: Player)> 当有玩家即将离开时触发。回调参数：player 玩家
 local Players = {}
 
+---获取指定玩家的昵称（失败抛错，需 pcall 包裹）
+---**适用范围**: 客户端和服务端
+---@param userId String 玩家编号
+---@return String 玩家昵称
+function Players:GetNameFromUserIdAsync(userId) end
+
 ---通过玩家编号获取玩家对象
 ---**适用范围**: 客户端和服务端
 ---@param userId String 玩家编号
@@ -4477,12 +4641,20 @@ function Players:GetPlayerFromCharacter(character) end
 ---@return Player[] 所有玩家列表
 function Players:GetPlayers() end
 
+---获取指定玩家的头像框
+---**适用范围**: 客户端和服务端
+---@param userId String 玩家编号
+---@return String 头像框 avatarframe:// 协议地址，可直接交给 EUIImage:SetImage 渲染；失败返回空串
+---@return Bool 是否成功取到头像框
+function Players:GetUserAvatarFrame(userId) end
+
 ---获取指定玩家的头像缩略图
 ---**适用范围**: 客户端和服务端
 ---@param userId String 玩家编号
 ---@param thumbnailType Enums.ThumbnailType 头像类型
 ---@param thumbnailSize Enums.ThumbnailSize 头像尺寸
----@return String 头像内容地址；第二返回值表示是否就绪
+---@return String 头像 avatar:// 协议地址，可直接交给 EUIImage:SetImage 渲染；失败返回空串
+---@return Bool 是否成功取到头像
 function Players:GetUserThumbnailAsync(userId, thumbnailType, thumbnailSize) end
 
 ---设置聊天显示样式
@@ -4490,10 +4662,39 @@ function Players:GetUserThumbnailAsync(userId, thumbnailType, thumbnailSize) end
 ---@param chatStyle Enums.ChatStyle 聊天显示样式
 function Players:SetChatStyle(chatStyle) end
 
+---PrimitiveService SE 客户端图元渲染统一入口，提供图元创建/销毁、位置与可见性控制，及抛物线绘制
+---**适用范围**: 仅客户端
+---@class PrimitiveService : Unit
+local PrimitiveService = {}
+
+---创建一个图元，返回图元句柄，后续通过句柄操作该图元
+---**适用范围**: 仅客户端
+---@return Int 图元句柄 handle
+function PrimitiveService:CreatePrimitive() end
+
+---销毁图元，从场景移除并清理资源
+---**适用范围**: 仅客户端
+---@param handle Int 图元句柄
+function PrimitiveService:DestroyPrimitive(handle) end
+
+---一键绘制抛物线
+---**适用范围**: 仅客户端
+---@param handle Int 图元句柄
+---@param opts Table 可选参数 { startPos: Vector3(必填), velocity: Vector3(必填), gravity: Vector3(必填), totalTime: Float?(默认2.0), stepTime: Float?(默认0.08), width: Float?(默认0.3), raycastParams: RaycastParams? }
+---@return Bool 是否命中障碍
+---@return Vector3 终点世界坐标
+function PrimitiveService:DrawParabola(handle, opts) end
+
 ---性能监控服务
 ---**适用范围**: 客户端和服务端
 ---@class ProfileService : Unit
 local ProfileService = {}
+
+---将采集到的Lua性能数据导出为火焰图HTML（含CPU栈、覆盖率与内存diff面板）。文件写入当前进程工作目录。仅编辑器试玩态可用
+---**适用范围**: 客户端和服务端
+---@param filePath String 如 "lua_dump.html"
+---@return Bool 是否成功导出
+function ProfileService:DumpLuaProfileStacks(filePath) end
 
 ---Error
 ---**适用范围**: 客户端和服务端
@@ -4519,6 +4720,32 @@ function ProfileService:ProfileBegin(name) end
 ---**适用范围**: 客户端和服务端
 ---@return number 最近一段计时耗时（毫秒），无匹配开始段返回 0
 function ProfileService:ProfileEnd() end
+
+---开始采集Lua CPU火焰图，并捕获当前内存分配树快照作为基线。
+---推荐用法：
+---1. StartMemoryRecord()：尽早调用，开始记录内存分配
+---2. StartLuaProfile()：开始采集CPU火焰图
+---3. 需要时 StopLuaProfile()：结束采集（同时计算内存diff）
+---4. DumpLuaProfileStacks("lua_dump.html")：导出火焰图HTML查看
+---仅编辑器试玩态可用
+---**适用范围**: 客户端和服务端
+---@return Bool 是否成功开始
+function ProfileService:StartLuaProfile() end
+
+---开始记录Lua内存分配树，供StartLuaProfile采集期间的内存diff使用，建议在脚本启动早期调用。仅编辑器试玩态可用
+---**适用范围**: 客户端和服务端
+---@return Bool 是否成功开始
+function ProfileService:StartMemoryRecord() end
+
+---结束Lua CPU火焰图采集，同时捕获内存end快照并计算diff。仅编辑器试玩态可用
+---**适用范围**: 客户端和服务端
+---@return Bool 是否成功结束
+function ProfileService:StopLuaProfile() end
+
+---停止记录Lua内存分配树。仅编辑器试玩态可用
+---**适用范围**: 客户端和服务端
+---@return Bool 是否成功停止
+function ProfileService:StopMemoryRecord() end
 
 ---Warn
 ---**适用范围**: 客户端和服务端
@@ -4761,12 +4988,12 @@ function Task:Wait(duration) end
 ---TeleportService 地图传送服务
 ---**适用范围**: 仅服务端
 ---@class TeleportService : Unit
----@field TeleportInitFailed Signal<fun(player: Player, teleportResult: Enums.TeleportErrcode, errorMessage: String, mapId: String, teleportOptions: Table)> 传送初始化失败事件（服务端触发）。回调参数：player 传送的玩家, teleportResult 传送结果错误码, errorMessage 错误描述, mapId 目标地图编号, teleportOptions 传送选项 (含 ShouldReserveServer/ServerInstanceId 等字段)
+---@field TeleportInitFailed Signal<fun(player: Player, teleportResult: Enums.TeleportErrcode, errorMessage: String, mapId: String, teleportOptions: Table)> 传送初始化失败事件（服务端触发）。回调参数：player 传送的玩家, teleportResult 传送结果错误码, errorMessage 错误描述, mapId 本次传送的目标地图 mapId (传入 'SELF' 时, 事件上报的为解析后的当前地图实际 mapId), teleportOptions 传送选项 (含 ShouldReserveServer/ServerInstanceId 等字段)
 local TeleportService = {}
 
 ---发起局内匹配, 匹配完成后返回可用于 TeleportAsync 的 ReservedServerAccessCode; 编辑器环境下返回 nil; 失败时抛出 error, 调用方应 pcall 保护。拿到的 accessCode 可填入 TeleportOptions.ReservedServerAccessCode, 再通过 TeleportAsync 把玩家送入匹配到的服务器。通过该途径获取的 accessCode 和 TeleportService:ReserveServerAsync 接口的返回值提供相同的效果
 ---**适用范围**: 仅服务端
----@param mapId String 目标地图编号（支持传入关卡ID）
+---@param mapId String 匹配目标: 传 'SELF' 表示在当前地图发起局内匹配 (所有地图通用); 非多关卡地图仅支持 'SELF'; 多关卡地图可传关卡ID 在指定关卡匹配
 ---@param players Player[] 参与匹配的玩家列表（至少 1 个）
 ---@return String? 匹配结果中的 accessCode (编辑器环境返回 nil)
 function TeleportService:ApplyIngameMatchAsync(mapId, players) end
@@ -4784,13 +5011,13 @@ function TeleportService:CreateTeleportOptions() end
 
 ---获取一个预留服务器的战场实例访问码, 返回 ReserveServerResult 对象; 编辑器环境下返回 nil; 失败时抛出 error, 调用方应 pcall 保护。ReserveServerResult.ReservedServerAccessCode 可填入 TeleportOptions, 再通过 TeleportAsync 把玩家送入预留的服务器战场实例。一但获取到访问码, 访问码始终可用, 如果该服务器战场实例当前不在运行, 会在传送开始时创建实例
 ---**适用范围**: 仅服务端
----@param mapId String 目标地图编号（支持传入关卡ID）
+---@param mapId String 预留目标: 传 'SELF' 表示为当前地图预留其他服务器实例 (所有地图通用); 非多关卡地图仅支持 'SELF'; 多关卡地图可传关卡ID 为指定关卡预留
 ---@return ReserveServerResult? 保留服务器结果 (编辑器环境返回 nil)
 function TeleportService:ReserveServerAsync(mapId) end
 
 ---将指定玩家迁移到目标地图, 编辑器环境下不会生效。未传 teleportOptions 时走 fire-and-forget 不返回; 传入时返回 TeleportAsyncResult。失败时抛出 error, 调用方应 pcall 保护
 ---**适用范围**: 仅服务端
----@param mapId String 目标地图编号（支持传入关卡ID）
+---@param mapId String 传送目标: 传 'SELF' 表示传送到当前地图的其他服务器实例 (所有地图通用); 非多关卡地图仅支持 'SELF'; 多关卡地图可传关卡ID 传送到指定关卡
 ---@param players Player[] 待传送的玩家列表
 ---@param teleportOptions? TeleportOptions 传送选项, 可通过 TeleportService:CreateTeleportOptions() 创建 (可选)
 ---@return TeleportAsyncResult? 传送结果 (仅传入 teleportOptions 时返回; 未传时返回 nil)
@@ -4881,6 +5108,18 @@ function TweenService:Create(instance, tweenInfo, goalTable) end
 ---@field TouchStarted Signal<fun(touch: InputObject, gameProcessedEvent: Bool)> 回调参数：touch 触摸输入对象, gameProcessedEvent 游戏是否已处理该事件
 ---@field TouchTap Signal<fun(touchPositions: Table<Vector2>, gameProcessedEvent: Bool)> 回调参数：touchPositions 参与手势的所有手指屏幕坐标（Tap 永远是 1 个）, gameProcessedEvent 游戏是否已处理该事件
 local UserInputService = {}
+
+---屏幕(设备)坐标转UI(cocos)坐标
+---**适用范围**: 仅客户端
+---@param screenPos Vector2 屏幕(设备)坐标：左上原点、真实像素，与 GetMouseLocation 一致
+---@return Vector2 UI(cocos)坐标：左下原点、设计分辨率，与 EUINode:GetWorldPosition 一致
+function UserInputService:ConvertScreenToUIPosition(screenPos) end
+
+---UI(cocos)坐标转屏幕(设备)坐标
+---**适用范围**: 仅客户端
+---@param uiPos Vector2 UI(cocos)坐标：左下原点、设计分辨率，与 EUINode:GetWorldPosition 一致
+---@return Vector2 屏幕(设备)坐标：左上原点、真实像素，与 GetMouseLocation 一致
+function UserInputService:ConvertUIToScreenPosition(uiPos) end
 
 ---获取当前摇杆偏移长度
 ---**适用范围**: 仅客户端
@@ -4996,7 +5235,11 @@ function VibrationService:StartVibration(player, vibrateType, vibrateCount, vibr
 
 ---World的核心职责是容纳存在于3D世界中的所有对象，主要是各类Unit如 WorldUnit、ModelUnit、EffectUnit 等）。当这些对象作为World的后代时，它们将处于活跃状态。对于具有物理属性的Unit（如 WorldUnit），这意味着它们将被渲染，并与其他Unit及世界进行物理交互。脱离World层级的对象不会被渲染也不会参与物理计算，直至被重新挂载到World树中。
 ---@class World : WorldRoot
+---@field AOIDestroyType Int AOI销毁类型
 ---@field AOIType Int AOI类型
+---@field AOIType2MaxRadius Float AOI外圈
+---@field AOIType2MinRadius Float AOI内圈
+---@field AOIType2StreamingMainRadius Float Streaming主半径
 ---@field CurrentCamera CameraUnit 当前相机
 ---@field StreamingMainRadius Float Streaming主半径
 local World = {}
@@ -5044,12 +5287,12 @@ local AnimatedUnit = {}
 ---@return Table 动画状态 { animName， startTime， looped， speed， isPlaying， playToken， serverTime }
 function AnimatedUnit:GetAnimationState() end
 
----播放模型动画，仅服务端可调用
----@param animName String 动画名称
+---播放模型动画（服务端调用=权威播放并同步所有客户端；客户端调用=仅本端播放，不同步；需多端同步时请从服务端调用）
+---@param animName String 模型内包含的动画名称或单独上传的动画资源 ID（需与模型骨骼匹配）
 ---@param params? Table 播放参数 { startTime, looped, speed }
 function AnimatedUnit:PlayAnimation(animName, params) end
 
----停止当前模型动画，仅服务端可调用
+---停止当前模型动画（服务端调用=权威停止并同步所有客户端；客户端调用=仅本端停止，不同步）
 function AnimatedUnit:StopAnimation() end
 
 ---AnimationTrack 动画轨道对象
@@ -5399,18 +5642,19 @@ function BaseMotorUnit:Stop() end
 ---@field CastShadow Bool 控制模型是否向场景投射阴影
 ---@field CustomAppearanceId String 自定义外观的资源ID，启用自定义外观后生效
 ---@field ModelAlpha Float 控制模型的整体透明度，0 为完全透明，1 为完全不透明
----@field ModelColor1 Color 模型染色区域1的颜色
----@field ModelColor2 Color 模型染色区域2的颜色
----@field ModelColor3 Color 模型染色区域3的颜色
----@field ModelColor4 Color 模型染色区域4的颜色
+---@field ModelColor1 Color 模型染色区域1的颜色；启用自定义外观后该属性不生效
+---@field ModelColor2 Color 模型染色区域2的颜色；启用自定义外观后该属性不生效
+---@field ModelColor3 Color 模型染色区域3的颜色；启用自定义外观后该属性不生效
+---@field ModelColor4 Color 模型染色区域4的颜色；启用自定义外观后该属性不生效
 ---@field ModelVisible Bool 控制模型是否可见，隐藏后仍参与物理碰撞
 ---@field OcclusionType Int 当模型遮挡住摄像机与玩家之间的视线时的处理策略
+---@field Persistent Bool 仅在World开启了AOI功能时此字段生效
 ---@field PivotOffset CFrame 轴心点相对于组件原点的偏移，影响 GetPivot 和 PivotTo 的结果
 ---@field Position Vector3 单位在世界空间中的位置坐标。该属性为 CFrame 的语法糖：读取等价于 CFrame.Position，写入会保持当前旋转不变、仅重建 CFrame 的位置分量
 ---@field Rotation Quaternion 单位在世界空间中的旋转，以四元数表示。该属性为 CFrame 的语法糖：读取等价于 CFrame.Rotation，写入会保持当前位置不变、仅重建 CFrame 的旋转分量
 ---@field Scale Vector3 组件各轴的缩放比例，默认为 (1, 1, 1)
 ---@field Size Vector3 渲染层尺寸，等于 Scale × ModelBaseSize。无模型时为 nil。修改Scale或模型可改变渲染尺寸
----@field SkinId String 模型使用的皮肤资源ID，用于切换模型外观
+---@field SkinId String 模型使用的皮肤资源ID，用于切换模型外观；启用自定义外观后该属性不生效
 ---@field UseCustomAppearance Bool 启用后使用自定义外观替代默认模型渲染
 local BasePart = {}
 
@@ -5422,13 +5666,9 @@ function BasePart:GetConnectedUnits() end
 ---@return Player
 function BasePart:GetNetworkOwner() end
 
----获取所属焊接约束的ID
----@return Int
-function BasePart:GetWeldConstraintId() end
-
----获取所属焊接约束中根节点的单位ID
----@return Int
-function BasePart:GetWeldConstraintRootId() end
+---返回该物体的物理拥有者是否由引擎自动决定。返回 true 表示引擎会在玩家感知/接触时自动分配所有权；返回 false 表示已被手动固定（SetNetworkOwner 会隐式切为手动）
+---@return Bool
+function BasePart:GetNetworkOwnershipAuto() end
 
 ---判断当前是否为该物体的物理模拟拥有者
 ---@return Bool
@@ -5446,6 +5686,10 @@ function BasePart:IsWeldConstraintRoot() end
 ---@param player Player 要转移权限的玩家对象
 function BasePart:SetNetworkOwner(player) end
 
+---设置物体的物理拥有者是否由引擎自动分配。传 true（缺省）恢复引擎自动分配，用于撤销 SetNetworkOwner 的手动固定；传 false 则锁定为手动。仅服务端调用生效，恢复自动后重新分配在下一次选择器求值时发生
+---@param isAuto? Bool true 为恢复引擎自动分配（缺省），false 为锁定为手动
+function BasePart:SetNetworkOwnershipAuto(isAuto) end
+
 ---将本地渲染位置强制同步到最新的物理模拟位置，消除渲染延迟
 function BasePart:SyncRenderToPhysics() end
 
@@ -5457,6 +5701,7 @@ local BasePostEffect = {}
 
 ---脚本基类
 ---@class BaseScript : Unit
+---@field IsEnabled Bool 启用
 ---@field SourceCode String 代码
 local BaseScript = {}
 
@@ -5510,7 +5755,7 @@ local BloomEffect = {}
 ---@field ExtraSubject Unit 相机额外的关注目标, 默认为空, 非空时预设行为下相机的朝向状态会参考此目标
 ---@field FieldOfView Float 相机垂直视场角
 ---@field FieldOfViewMode Int 视场角模式: 0=Vertical(默认), 1=Diagonal, 2=MaxAxis
----@field Focus CFrame 相机聚焦点，用于确定相机朝向
+---@field Focus Vector3 相机聚焦点，用于确定相机朝向
 ---@field IsActive Bool 相机是否处于激活状态
 ---@field Mode Enums.CameraMode 相机行为模式（Eggy 原生模式）
 ---@field NearPlaneZ Float 近裁剪平面距离
@@ -5538,6 +5783,18 @@ function CameraUnit:GetPartsObscuringTarget(castPoints, ignoreList) end
 ---**适用范围**: 客户端和服务端
 function CameraUnit:ResetMovement() end
 
+---天体，可用于太阳/月亮等天空发光体，允许同时存在多个
+---**适用范围**: 客户端和服务端
+---@class CelestialBody : Unit
+---@field AffectedByFog Bool 受雾影响
+---@field AngularSize Float 天体在天空中张开的角直径，单位度
+---@field Brightness Float 亮度
+---@field Color Color 颜色
+---@field FollowLightOrientation Bool 跟随光照朝向，开启后天体朝向由 LightingService 的 Orientation 决定，自身 Orientation 不再生效
+---@field Orientation Vector3 朝向，FollowLightOrientation 为真时该属性无效
+---@field Texture String 贴图
+local CelestialBody = {}
+
 ---点击检测器是一种可挂载到其他单位上的交互组件，用于检测玩家鼠标左键和右键的点击操作。它支持配置最大激活距离和启用状态，当玩家在有效距离内点击时，会触发对应的事件并传入触发玩家。
 ---@class ClickDetector : Unit
 ---@field Enabled Bool 是否启用
@@ -5545,6 +5802,16 @@ function CameraUnit:ResetMovement() end
 ---@field MouseClick Signal<fun(player: Player)> 鼠标左键点击触发。回调参数：player 触发的玩家
 ---@field RightMouseClick Signal<fun(player: Player)> 鼠标右键点击触发。回调参数：player 触发的玩家
 local ClickDetector = {}
+
+---云层
+---**适用范围**: 客户端和服务端
+---@class Clouds : Unit
+---@field AffectedByFog Bool 受雾影响
+---@field Color Color 颜色
+---@field Coverage Float 覆盖率
+---@field Density Float 密度
+---@field Speed Float 移动速度
+local Clouds = {}
 
 ---色彩分级效果
 ---**适用范围**: 客户端和服务端
@@ -5658,12 +5925,12 @@ function EUIEffect:StopAnimation() end
 ---@field AutomaticSize Bool 自动扩容
 ---@field CellPadding Vector2 单元间距(像素)
 ---@field CellSize Vector2 单元尺寸(像素)
----@field FillDirection Int 填充方向
+---@field FillDirection Enums.EUIFillDirection 填充方向
 ---@field FillDirectionMaxCells Int 主轴最大单元数
----@field HorizontalAlignment Int 水平对齐
----@field SortOrder Int 排序依据
----@field StartCorner Int 起始角落
----@field VerticalAlignment Int 垂直对齐
+---@field HorizontalAlignment Enums.EUIHorizontalAlignment 水平对齐
+---@field SortOrder Enums.EUISortOrderType 排序依据
+---@field StartCorner Enums.EUIGridStartCorner 起始角落
+---@field VerticalAlignment Enums.EUIVerticalAlignment 垂直对齐
 local EUIGridLayout = {}
 
 function EUIGridLayout:ApplyLayout() end
@@ -5692,8 +5959,8 @@ local EUIImage = {}
 ---@field ShadowOffset Vector2 阴影偏移
 ---@field Text String 文本
 ---@field TextColor Color 文本颜色
----@field TextHorizontalAlignment Int 水平对齐方式
----@field TextVerticalAlignment Int 垂直对齐方式
+---@field TextHorizontalAlignment Enums.EUITextHorizontalAlignment 水平对齐方式
+---@field TextVerticalAlignment Enums.EUITextVerticalAlignment 垂直对齐方式
 ---@field OnDetach Signal<fun()>
 local EUIInputField = {}
 
@@ -5706,11 +5973,11 @@ local EUILayout = {}
 ---@class EUIListLayout : EUINodeBase
 ---@field AutoLayout Bool 自动布局
 ---@field AutomaticSize Bool 自动扩容
----@field FillDirection Int 填充方向
----@field HorizontalAlignment Int 水平对齐
+---@field FillDirection Enums.EUIFillDirection 填充方向
+---@field HorizontalAlignment Enums.EUIHorizontalAlignment 水平对齐
 ---@field Padding Vector2 间距(像素)
----@field SortOrder Int 排序依据
----@field VerticalAlignment Int 垂直对齐
+---@field SortOrder Enums.EUISortOrderType 排序依据
+---@field VerticalAlignment Enums.EUIVerticalAlignment 垂直对齐
 ---@field Wraps Bool 允许换行
 local EUIListLayout = {}
 
@@ -5723,10 +5990,13 @@ function EUIListLayout:ApplyLayout() end
 ---@field BounceEnabled Bool 开启反弹
 ---@field ClippingEnabled Bool 开启裁切
 ---@field ItemsMargin Int 列表边距
----@field ListviewGravity Int 对齐方式
----@field ScrollDirection Int 方向
+---@field ListviewGravity Enums.EUIListviewGravity 对齐方式
+---@field ScrollDirection Enums.EUIScrollDirection 方向
 ---@field ScrollEnabled Bool 开启滑动
 local EUIListView = {}
+
+---@return Float 当前滚动百分比(0~100)
+function EUIListView:GetScrollPercent() end
 
 ---@param itemIndex Int 子项索引(从0开始)
 ---@param time Float 滚动时长(秒)
@@ -5740,39 +6010,39 @@ function EUIListView:ScrollToPercent(percent, time, attenuated) end
 ---UI进度条节点
 ---@class EUILoadingBar : EUINodeBase
 ---@field Color Color 颜色
----@field Direction Int 方向
----@field Image String 默认值
----@field Percent Float 默认值
+---@field Direction Enums.EUIProgressDirection 方向
+---@field Image String 进度图片
+---@field Percent Float 进度百分比
 local EUILoadingBar = {}
 
 ---UI节点
 ---@class EUINodeBase : Unit
 ---@field Anchor Vector2 锚点
----@field AnchorXAdaptMode Int 锚点X自适应模式
+---@field AnchorXAdaptMode Enums.EUIAnchorAdaptMode 锚点X自适应模式
 ---@field AnchorXAdaption Float 锚点X自适应
----@field AnchorYAdaptMode Int 锚点Y自适应模式
+---@field AnchorYAdaptMode Enums.EUIAnchorAdaptMode 锚点Y自适应模式
 ---@field AnchorYAdaption Float 锚点Y自适应
----@field BottomAdaptMode Int 底部自适应模式
+---@field BottomAdaptMode Enums.EUIAdaptMode 底部自适应模式
 ---@field BottomAdaption Float 底部自适应
 ---@field ClickEvent String 点击事件
 ---@field FlippedX Bool 横向反转
 ---@field FlippedY Bool 纵向反转
 ---@field HideEvent String 隐藏事件
 ---@field LayoutOrder Int 布局序号
----@field LeftAdaptMode Int 左边自适应模式
+---@field LeftAdaptMode Enums.EUIAdaptMode 左边自适应模式
 ---@field LeftAdaption Float 左边自适应
 ---@field LocalZOrder Int 层级序号
 ---@field LongtouchEvent String 长按事件
 ---@field Opacity Float 透明度
 ---@field Position Vector2 坐标
----@field RightAdaptMode Int 右边自适应模式
+---@field RightAdaptMode Enums.EUIAdaptMode 右边自适应模式
 ---@field RightAdaption Float 右边自适应
 ---@field Rotation Float 旋转
 ---@field Scale Vector2 缩放
 ---@field ShowEvent String 显示事件
 ---@field Size Vector2 尺寸
 ---@field SwallowTouchEnabled Bool 是否吞噬触摸
----@field TopAdaptMode Int 顶部自适应模式
+---@field TopAdaptMode Enums.EUIAdaptMode 顶部自适应模式
 ---@field TopAdaption Float 顶部自适应
 ---@field TouchBeginAudio String 按下音效
 ---@field TouchClickAudio String 点击音效
@@ -5787,9 +6057,28 @@ local EUILoadingBar = {}
 ---@field OnTouchMoved Signal<fun(euiTouchInfo: EUITouchInfo, player: Player)> 回调参数：euiTouchInfo 交互参数, player 玩家
 local EUINodeBase = {}
 
+---把 UI 世界坐标转换为相对本节点的局部坐标。仅客户端可调用，服务端调用会报错
+---@param worldPos Vector2 世界坐标
+---@return Vector2 局部坐标
+function EUINodeBase:ConvertToLocalPosition(worldPos) end
+
+---把相对本节点的局部坐标转换为 UI 世界坐标。仅客户端可调用，服务端调用会报错
+---@param localPos Vector2 局部坐标
+---@return Vector2 世界坐标
+function EUINodeBase:ConvertToWorldPosition(localPos) end
+
 ---返回当前 UI 节点从 UI 根节点到自身（不含 UI 根节点）的 '.' 分隔路径字符串。例：节点层级 root.A.B 中，B:GetFullPath() 返回 'A.B'
 ---@return String UI 路径字符串（'.' 分隔）
 function EUINodeBase:GetFullPath() end
+
+---返回本节点在 UI 世界坐标系下的位置。仅客户端可调用，服务端调用会报错。无父节点时返回 (0, 0)
+---@return Vector2 世界坐标
+function EUINodeBase:GetWorldPosition() end
+
+---判断给定的 UI 世界坐标是否落在本节点范围内。仅客户端可调用，服务端调用会报错
+---@param pos Vector2 世界坐标
+---@return Bool 是否命中
+function EUINodeBase:HitTest(pos) end
 
 function EUINodeBase:Release() end
 
@@ -5837,14 +6126,14 @@ function EUINodeBase:TweenSizeAndPosition(endSize, endPosition, easingDirection,
 ---UI环形进度条节点
 ---@class EUIProgressTimer : EUINodeBase
 ---@field Color Color 颜色
----@field Direction Int 方向
----@field Image String 默认值
----@field Percent Float 默认值
+---@field Direction Enums.EUIProgressDirection 方向
+---@field Image String 进度图片
+---@field Percent Float 进度百分比
 local EUIProgressTimer = {}
 
 ---UI富文本
 ---@class EUIRichTextLabel : EUINodeBase
----@field ArrangeMode Int 排列模式
+---@field ArrangeMode Enums.EUIArrangeMode 排列模式
 ---@field AutoScrollProgress Float 自动滚动循环间距
 ---@field AutoScrollSpeed Float 自动滚动速度
 ---@field AutoSizeEnabled Bool 是否自动缩小字号
@@ -5859,7 +6148,7 @@ local EUIProgressTimer = {}
 ---@field OutlineEnabled Bool 开启描边
 ---@field OutlineOpacity Float 描边透明度
 ---@field OutlineWidth Int 描边宽度
----@field OverflowPolicy Int 溢出策略
+---@field OverflowPolicy Enums.EUIOverflowPolicy 溢出策略
 ---@field ShadowColor Color 阴影颜色
 ---@field ShadowEnabled Bool 开启阴影
 ---@field ShadowOffset Vector2 阴影偏移
@@ -5868,9 +6157,9 @@ local EUIProgressTimer = {}
 ---@field SingleLineMinWidth Int 单行最小宽度
 ---@field Text String 文本
 ---@field TextColor Color 文本颜色
----@field TextHorizontalAlignment Int 水平对齐方式
+---@field TextHorizontalAlignment Enums.EUITextHorizontalAlignment 水平对齐方式
 ---@field TextSpacing Int 字间距
----@field TextVerticalAlignment Int 垂直对齐方式
+---@field TextVerticalAlignment Enums.EUITextVerticalAlignment 垂直对齐方式
 ---@field WrapMaxHeight Int 换行最大高度
 ---@field WrapMinHeight Int 换行最小高度
 ---@field WrapWidth Int 换行宽度
@@ -5905,16 +6194,16 @@ function EUISceneNode:AttachUnit(unit, socket) end
 ---@field OutlineEnabled Bool 开启描边
 ---@field OutlineOpacity Float 描边透明度
 ---@field OutlineWidth Int 描边宽度
----@field OverflowStrategy Int 超框策略
----@field ResetSizePolicy Int 爆框策略
+---@field OverflowStrategy Enums.EUIOverflowStrategy 超框策略
+---@field ResetSizePolicy Enums.EUIResetSizePolicy 爆框策略
 ---@field ShadowColor Color 阴影颜色
 ---@field ShadowEnabled Bool 开启阴影
 ---@field ShadowOffset Vector2 阴影偏移
 ---@field Text String 文本
 ---@field TextColor Color 文本颜色
----@field TextHorizontalAlignment Int 水平对齐方式
+---@field TextHorizontalAlignment Enums.EUITextHorizontalAlignment 水平对齐方式
 ---@field TextSpacing Int 字间距
----@field TextVerticalAlignment Int 垂直对齐方式
+---@field TextVerticalAlignment Enums.EUITextVerticalAlignment 垂直对齐方式
 local EUISimpleRichTextLabel = {}
 
 ---UI表格布局容器
@@ -5923,7 +6212,7 @@ local EUISimpleRichTextLabel = {}
 ---@field AutomaticSize Bool 自动扩容
 ---@field FillEmptySpaceColumns Bool 列均分空间
 ---@field FillEmptySpaceRows Bool 行均分空间
----@field MajorAxis Int 主轴模式
+---@field MajorAxis Enums.EUITableMajorAxis 主轴模式
 ---@field Padding Vector2 间距(像素)
 local EUITableLayout = {}
 
@@ -5943,19 +6232,18 @@ function EUITableLayout:ApplyLayout() end
 ---@field ShadowOffset Vector2 阴影偏移
 ---@field Text String 文本
 ---@field TextColor Color 文本颜色
----@field TextHorizontalAlignment Int 水平对齐方式
----@field TextVerticalAlignment Int 垂直对齐方式
+---@field TextHorizontalAlignment Enums.EUITextHorizontalAlignment 水平对齐方式
+---@field TextVerticalAlignment Enums.EUITextVerticalAlignment 垂直对齐方式
 local EUITextLabel = {}
 
 ---特效
 ---@class EffectUnit : Unit
 ---@field AsyncLoad Bool 异步加载
----@field AttachEndPos Vector3 绑定终点位置（偏移）
 ---@field BlendFactor Float 融合系数
 ---@field ColorStrength Int 颜色强度
 ---@field DiffuseColor Color 基础颜色
 ---@field Duration Float 持续时间
----@field EffectBindData EffectBindData 绑定单位数据
+---@field EffectBindData EffectBindData EffectUnit有2中bind模式, 1、有合法的parent，就跟随parent（basepart，attachemnt）,2、设置EffectBindData绑定信息,主动设置EffectBindData视为第一优先级，如果想恢复跟随Parent，EffectBindData 需要赋空实现
 ---@field EffectEndBindData EffectBindData 终点绑定数据（socket）
 ---@field EffectId String 特效资源
 ---@field EnableColor Bool 启用自定义颜色
@@ -5985,6 +6273,9 @@ function EffectUnit:MoveTo(targetPos, speed, callBack) end
 
 ---移除特效的声音
 function EffectUnit:RemoveSound() end
+
+---重播特效
+function EffectUnit:Restart() end
 
 ---绑定特效
 ---@param otherUnit SpaceUnit 单位预制
@@ -6063,6 +6354,7 @@ function EggyController:Throw() end
 
 ---蛋形生物，玩家在游戏中操控的蛋仔角色，也可作为怪物/NPC等存在。具备空间位置、姿态、外观等生命体属性。EggyUnit.Controller获取控制器实现移动、跳跃等行为状态，EggyUnit.Animator获取动画组件，EggyUnit.EggyAppearance获取外观组件进行使用
 ---@class EggyUnit : SpaceUnit
+---@field Animator Animator 关联的动画控制器组件引用，运行时自动从子节点中查找
 ---@field Controller EggyController 蛋形生物控制器
 ---@field CustomAppearanceId String 自定义外观ID
 ---@field EggyAppearance EggyAppearance 蛋形生物外观
@@ -6199,6 +6491,8 @@ local HingeConstraint = {}
 
 ---人形生物控制器，通过HumanUnit.Controller获取使用，在通用生物控制器的基础上扩展人形特有的能力。
 ---@class HumanController : BaseController
+---@field ClimbEnabled Bool 是否启用攀爬能力，开启后单位可在符合条件的墙体上攀爬
+---@field ClimbMoveDirection Vector3 攀爬方向（x=左右, z=上下）
 ---@field EvaluateStateMachine Bool 是否启用内置状态机评估（移动、跳跃、下落等）。关闭后状态机副作用暂停，但脚本驱动 ChangeState 仍可用
 ---@field InertiaEnabled Bool 是否启用引擎层惯性位移。设为 false 时，人物在 Move / MoveTo 停止后立即静止，不再因惯性继续向前滑动；恢复为 true 时还原原有反向加速度
 ---@field NameBarOffset Float 名称标签在头顶上方的垂直偏移高度（m）
@@ -6209,6 +6503,8 @@ local HingeConstraint = {}
 ---@field FallingDown Signal<fun(active: Bool)> 单位进入或离开绊倒状态时触发。回调参数：active true=进入绊倒，false=离开绊倒
 ---@field FreeFalling Signal<fun(active: Bool)> 单位开始自由下落或落地时触发。回调参数：active true=开始下落，false=落地
 ---@field GettingUp Signal<fun(active: Bool)> 单位开始或完成起身动作时触发。回调参数：active true=开始起身，false=起身完成
+---@field OnClimbEnd Signal<fun()> 攀爬结束时触发
+---@field OnClimbStart Signal<fun()> 攀爬开始时触发，空中/跳跃上墙不发此事件
 ---@field Running Signal<fun(speed: Float)> 单位处于奔跑状态时每帧触发，携带当前水平移动速度。回调参数：speed 当前水平移动速度
 ---@field Seated Signal<fun(active: Bool, seat: Unit)> 单位坐下或起身时触发，携带当前座位 Unit 引用。回调参数：active true=坐下，false=起身, seat 座位 Unit
 local HumanController = {}
@@ -6230,10 +6526,12 @@ function HumanController:GetRelativeVelocityAtFloor() end
 ---@field CenterOfMass Vector3 相对于模型原点的质心偏移，影响旋转和受力行为
 ---@field CollisionGroup String 单位所属的碰撞预设组名称，决定默认的碰撞过滤规则
 ---@field Controller HumanController 人形生物控制器
+---@field CustomAppearanceId String 自定义外观ID
 ---@field EnableAnimScript Bool 单位创建时是否自动挂载动画蓝图脚本
 ---@field EnableAnimator Bool 单位创建时是否自动挂载Animator
 ---@field EnableController Bool 是否创建Controller
 ---@field GravityEnabled Bool 是否受全局重力影响，关闭后单位将漂浮
+---@field HumanSkinColor Vector4 肤色 HSL 调整 4 元组，x=色相偏移(默认0，范围-1~1)，y=饱和度(默认1，范围0~2)，z=亮度(默认1，范围0~2)，w=换色强度(默认1，范围0~1)；相对贴图基准色计算，默认 (0,1,1,1) 表示不染色
 ---@field IndividualGravityValue Vector3 自定义重力加速度向量
 ---@field LinearVelocity Vector3 当前线速度（m/s），运行时只读，反映单位在世界空间中的移动速度
 ---@field Mass Float 单位质量，影响碰撞反馈和受力效果，仅 Dynamic 类型有效
@@ -6244,6 +6542,7 @@ function HumanController:GetRelativeVelocityAtFloor() end
 ---@field Rotation Quaternion 单位在世界空间中的旋转，以四元数表示
 ---@field RotationLocked Bool 是否锁定旋转自由度，启用后物理模拟不会改变单位朝向
 ---@field Scale Vector3 单位在三个轴向上的缩放倍数，默认 (1,1,1) 表示原始尺寸
+---@field UseCustomAppearance Bool 使用自定义外观
 ---@field UseIndividualGravity Bool 是否覆盖全局重力，启用后将使用 IndividualGravityValue 指定的重力方向与大小
 ---@field Visible Bool 控制单位模型是否在场景中渲染显示
 ---@field OnCollisionEnter Signal<fun(otherUnit: Unit)> 当本单位与其他 Unit 开始碰撞时触发。回调参数：otherUnit 碰撞到的单位
@@ -6608,6 +6907,7 @@ local PixelateEffect = {}
 ---@field LoseClient Signal<fun()> 当玩家客户端掉线/失联时触发
 ---@field MapFavoriteChanged Signal<fun(oldValue: Int, newValue: Int)> 当玩家对当前地图的收藏状态变更时触发。回调参数：oldValue 变更前状态（0=未收藏，1=已收藏）, newValue 变更后状态（0=未收藏，1=已收藏）
 ---@field MapLikeChanged Signal<fun(oldValue: Int, newValue: Int)> 当玩家对当前地图的点赞状态变更时触发。回调参数：oldValue 变更前状态（0=未点赞，1=已点赞）, newValue 变更后状态（0=未点赞，1=已点赞）
+---@field OnRelay Signal<fun()> 当玩家顶号登录客户端就绪后触发
 ---@field OnTeleport Signal<fun(teleportState: Enums.TeleportState, mapId: String, spawnName: String)> 当玩家传送状态变化时触发。回调参数：teleportState 传送状态, mapId 目标地图编号, spawnName 出生点名称
 local Player = {}
 
@@ -6670,7 +6970,8 @@ function Player:IsVip() end
 
 ---将玩家踢出游戏
 ---**适用范围**: 客户端和服务端
-function Player:Kick() end
+---@param reason? String 踢出原因提示，踢出前向该玩家展示 tips
+function Player:Kick(reason) end
 
 ---异步加载玩家角色
 ---**适用范围**: 客户端和服务端
@@ -6683,6 +6984,7 @@ function Player:ResetCharacterToSpawnLocation(resetCamera) end
 
 ---预设链接
 ---@class PresetLink : Unit
+---@field Icon String 单位图标资源路径，仅编辑时使用，运行时不参与同步
 local PresetLink = {}
 
 ---预置天空模板，内置多套精选固定材质的天空球方案。即选即用，无需调参，专注呈现纯粹的场景背景氛围。
@@ -6732,42 +7034,54 @@ local QuadGradientSky = {}
 
 ---触发区域
 ---@class RenderTriggerUnit : TriggerUnit
----@field CastShadow Bool 控制模型是否向场景投射阴影
+---@field CastShadow Bool 控制模型是否向场景投射阴影；启用自定义外观后该属性不生效
 ---@field CustomAppearanceId String 自定义外观ID
 ---@field DisplayModelId String 预览模型
 ---@field LocalTransparencyModifier Float 本地客户端的透明度乘数，用于第一人称遮挡等本地渲染效果，不同步到其他客户端
 ---@field ModelAlpha Float 控制模型的整体透明度，0 为完全透明，1 为完全不透明
 ---@field ModelBindParent Bool 启用后，当父节点为 WorldUnit、RenderUnit、TriggerUnit、PhysicsUnit 等支持父子带动的场景单位时，当前模型渲染表现将跟随父节点的变换自动同步。运行时可通过脚本设置 .ModelBindParent = true/false 动态切换该行为。
----@field ModelColor1 Color 染色区域1
----@field ModelColor2 Color 染色区域2
----@field ModelColor3 Color 染色区域3
----@field ModelColor4 Color 染色区域4
+---@field ModelColor1 Color 模型染色区域1的颜色；启用自定义外观后该属性不生效
+---@field ModelColor2 Color 模型染色区域2的颜色；启用自定义外观后该属性不生效
+---@field ModelColor3 Color 模型染色区域3的颜色；启用自定义外观后该属性不生效
+---@field ModelColor4 Color 模型染色区域4的颜色；启用自定义外观后该属性不生效
 ---@field ModelVisible Bool 控制模型是否可见，隐藏后仍参与物理碰撞
 ---@field OcclusionType Int 遮挡玩家时的规则
 ---@field PhysicsMeshId String 物理网格资源ID。缺省时，若初始创建时传入了 RenderMeshId，则默认使用该 RenderMeshId 作为物理资源；后续修改 .RenderMeshId 不会影响 PhysicsMeshId
----@field RenderMeshId String 模型的资源路径，用于指定渲染使用的网格资源
----@field SkinId String 皮肤
+---@field RenderMeshId String 模型的资源路径，用于指定渲染使用的网格资源；启用自定义外观后该属性不生效
+---@field SkinId String 模型使用的皮肤资源ID，用于切换模型外观；启用自定义外观后该属性不生效
 ---@field UseCustomAppearance Bool 使用自定义外观
 local RenderTriggerUnit = {}
 
+---切换 RenderMeshId 并自动应用新模型的默认皮肤：默认皮肤 >1 个时进入多槽位模式（逐 Submesh 一个默认皮并回填默认染色），单个/无默认皮肤时回到单皮肤模式并写入默认 SkinId（含默认染色回填）。双端可调用，服务端权威（客户端仅本机生效）；自定义外观开启期间不可用
+---@param renderMeshId String 模型资源ID
+function RenderTriggerUnit:SetRenderMeshWithDefaultSkin(renderMeshId) end
+
+---设置单位的自定义贴图，整模型生效，传空字符串恢复默认贴图；双端可调用（服务端广播全端，客户端仅本机生效）；自定义外观期间不可用；换模型/换皮肤/开启自定义外观时自动清除
+---@param textureAssetId String 贴图资源ID
+function RenderTriggerUnit:SetTexture(textureAssetId) end
+
 ---RenderUnit是一种可创建的3D空间组件，具备渲染表现能力。常用于场景中需要模型展示的装饰物件。
 ---@class RenderUnit : BasePart
----@field CastShadow Bool 控制模型是否向场景投射阴影
+---@field CastShadow Bool 控制模型是否向场景投射阴影；启用自定义外观后该属性不生效
 ---@field CustomAppearanceId String 自定义外观的资源ID，启用自定义外观后生效
 ---@field LocalTransparencyModifier Float 本地客户端的透明度乘数，用于第一人称遮挡等本地渲染效果，不同步到其他客户端
 ---@field ModelAlpha Float 控制模型的整体透明度，0 为完全透明，1 为完全不透明
 ---@field ModelBindParent Bool 启用后，当父节点为 WorldUnit、RenderUnit、TriggerUnit、PhysicsUnit 等支持父子带动的场景单位时，当前模型渲染表现将跟随父节点的变换自动同步。运行时可通过脚本设置 .ModelBindParent = true/false 动态切换该行为。
----@field ModelColor1 Color 染色区域1
----@field ModelColor2 Color 染色区域2
----@field ModelColor3 Color 染色区域3
----@field ModelColor4 Color 染色区域4
+---@field ModelColor1 Color 模型染色区域1的颜色；启用自定义外观后该属性不生效
+---@field ModelColor2 Color 模型染色区域2的颜色；启用自定义外观后该属性不生效
+---@field ModelColor3 Color 模型染色区域3的颜色；启用自定义外观后该属性不生效
+---@field ModelColor4 Color 模型染色区域4的颜色；启用自定义外观后该属性不生效
 ---@field ModelVisible Bool 控制模型是否可见，隐藏后仍参与物理碰撞
 ---@field OcclusionType Int 当模型遮挡住摄像机与玩家之间的视线时的处理策略
----@field RenderMeshId String 模型的资源路径，用于指定渲染使用的网格资源
----@field SkinId String 模型使用的皮肤资源ID，用于切换模型外观
+---@field RenderMeshId String 模型的资源路径，用于指定渲染使用的网格资源；启用自定义外观后该属性不生效
+---@field SkinId String 模型使用的皮肤资源ID，用于切换模型外观；启用自定义外观后该属性不生效
 ---@field TransparentRenderBias Int 控制半透明物体的渲染层级偏置，值越小越先渲染。仅影响半透明物体，不透明物体不受此偏置影响。取值范围 [-15, 16]，超出会被截断到边界。注意：仅当遮挡规则(OcclusionType)为 组件半透明/镜头前推/玩家虚影 时生效；为 不处理 时本偏置不生效
 ---@field UseCustomAppearance Bool 启用后使用自定义外观替代默认模型渲染
 local RenderUnit = {}
+
+---切换 RenderMeshId 并自动应用新模型的默认皮肤：默认皮肤 >1 个时进入多槽位模式（逐 Submesh 一个默认皮并回填默认染色），单个/无默认皮肤时回到单皮肤模式并写入默认 SkinId（含默认染色回填）。双端可调用，服务端权威（客户端仅本机生效）；自定义外观开启期间不可用
+---@param renderMeshId String 模型资源ID
+function RenderUnit:SetRenderMeshWithDefaultSkin(renderMeshId) end
 
 ---刚性约束用于将两个物理部件完全固定在一起，使其之间不能有任何相对运动（位置和旋转均锁定）。使用时需设置 Attachment0 和 Attachment1 指向两个已存在的 Attachment。物理约束建议在服务端创建。
 ---@class RigidConstraint : Unit
@@ -6915,6 +7229,7 @@ local SketchEffect = {}
 ---皮肤组件，作为数据覆盖层挂载在父单位下，用于覆盖父单位的皮肤渲染表现。通过SkinId指定皮肤资源，并支持通过ModelColor1-4自定义各染色区域颜色、通过MaterialParam覆盖材质参数。当SkinId生效时，父单位会使用SkinUnit携带的皮肤数据替代自身默认外观；属性变更或父子关系变化时会自动通知父单位刷新渲染。
 ---@class SkinUnit : Unit
 ---@field MaterialParam MaterialParam 皮肤的材质参数覆盖，用于修改模型的材质渲染属性（如金属度、粗糙度、自发光等）。设置后会覆盖父单位的默认材质表现。
+---@field MaterialParamList MaterialParam[] 材质参数列表
 ---@field ModelColor1 Color 模型第1染色区域的颜色覆盖值。仅当皮肤模型的color_mask包含第1位（值为1）时生效，用于自定义该区域的渲染颜色。
 ---@field ModelColor2 Color 模型第2染色区域的颜色覆盖值。仅当皮肤模型的color_mask包含第2位（值为2）时生效，用于自定义该区域的渲染颜色。
 ---@field ModelColor3 Color 模型第3染色区域的颜色覆盖值。仅当皮肤模型的color_mask包含第3位（值为4）时生效，用于自定义该区域的渲染颜色。
@@ -6942,7 +7257,7 @@ local SoundGroup = {}
 ---3D 空间音效
 ---@class SoundUnit : Unit
 ---@field CampRoleId Int 所属阵营
----@field Duration Float 持续时间
+---@field Duration Float 设置音效强制播放窗口，时长后到期即销毁（非音频本身时长，无论是否在播）
 ---@field FadeDistance Float 衰减距离
 ---@field Looped Bool 循环播放
 ---@field Playing Bool 自动播放
@@ -6957,7 +7272,7 @@ local SoundUnit = {}
 ---播放音效{#0}
 function SoundUnit:Play() end
 
----设置音效（3D）{#0}时长{#1}
+---设置音效{#0}播放时长{#1}(设置时长后到期即销毁（无论是否在播）)
 ---@param duration Float 时长
 function SoundUnit:SetDuration(duration) end
 
@@ -6988,7 +7303,6 @@ function SoundUnit:Stop() end
 ---SpaceUnit是具有空间变换（位置、旋转、缩放）的单位基类，所有存在于3D世界中的对象（如WorldUnit、ModelUnit）均继承自此类。提供轴心点（Pivot）操作、标签管理和空间层级查询等核心能力。
 ---@class SpaceUnit : Unit
 ---@field EcaPath String ECA 触发器资源路径，用于关联可视化触发器逻辑
----@field Owner Int 所属玩家
 ---@field Tags String[] 组件拥有的标签集合，用于 CollectionService 分类检索
 local SpaceUnit = {}
 
@@ -7037,9 +7351,31 @@ function SpaceUnit:TranslateBy(delta) end
 ---@field InheritPrefabAppearance Bool 是否继承预设外观
 ---@field Owner Int 所属玩家
 ---@field RangeBirth Bool 是否在范围内出生
----@field RenderMeshId String
+---@field RenderMeshId String 模型的资源路径，用于指定渲染使用的网格资源；启用自定义外观后该属性不生效
 ---@field SkinId String 皮肤ID
 local SpawnLocationUnit = {}
+
+---星星
+---**适用范围**: 客户端和服务端
+---@class Stars : Unit
+---@field AffectedByFog Bool 受雾影响
+---@field Brightness Float 亮度
+---@field Color Color 颜色
+---@field Coverage Float 覆盖率
+---@field Density Float 密度
+---@field TwinkleSpeed Float 闪烁速度
+local Stars = {}
+
+---贴面UI容器
+---@class SurfaceGui : BasePart
+---@field Brightness Float 亮度，0.0~10.0，默认 1.0
+---@field CanvasSize Vector2 画布逻辑尺寸（像素），需非零。仅 FixedSize 模式驱动布局
+---@field Enabled Bool 总渲染开关。关闭后画布不渲染，子节点与内部结构不受影响
+---@field LightInfluence Float 受场景光照影响程度，0.0~1.0，默认 1.0
+---@field MaxDistance Float 世界单位，超出该距离则剔除不渲染；0 表示不限制
+---@field PixelsPerWorldUnit Vector2 每轴像素密度，分量需 > 0。仅 PixelsPerWorldUnit 模式生效
+---@field WorldScale Vector3 画布在世界中的尺寸（各轴缩放）
+local SurfaceGui = {}
 
 ---3D文字组件
 ---@class TextUnit : Unit
@@ -7323,7 +7659,7 @@ local WorldRoot = {}
 ---@field ModelBindParent Bool 启用后，当父节点为 WorldUnit、RenderUnit、TriggerUnit、PhysicsUnit 等支持父子带动的场景单位时，当前单位将整体跟随父节点运动，保持与父节点的相对位置和旋转。运行时可通过脚本设置 .ModelBindParent = true/false 动态切换该行为。
 ---@field PhysicsActive Bool 是否启用物理模拟，关闭后物体不参与碰撞和物理计算
 ---@field PhysicsMeshId String 物理网格资源ID。缺省时，若初始创建时传入了 RenderMeshId，则默认使用该 RenderMeshId 作为物理资源；后续修改 .RenderMeshId 不会影响 PhysicsMeshId
----@field RenderMeshId String 模型资源ID
+---@field RenderMeshId String 模型的资源路径，用于指定渲染使用的网格资源；启用自定义外观后该属性不生效
 ---@field TransparentRenderBias Int 控制半透明物体的渲染层级偏置，值越小越先渲染。仅影响半透明物体，不透明物体不受此偏置影响。取值范围 [-15, 16]，超出会被截断到边界。注意：仅当遮挡规则(OcclusionType)为 组件半透明/镜头前推/玩家虚影 时生效；为 不处理 时本偏置不生效
 ---@field UseCustomThrownAngle Bool 启用后使用自定义的投掷角度替代默认投掷角度
 ---@field UseCustomThrownForce Bool 启用后使用自定义的投掷力替代默认投掷力
@@ -7399,6 +7735,10 @@ function WorldUnit:RemoveCollisionWithGroup(groupName) end
 ---取消与指定单位的互不碰撞关系
 ---@param targetUnit SpaceUnit 要恢复碰撞的目标单位
 function WorldUnit:RemoveNoCollisionPairWithUnit(targetUnit) end
+
+---切换 RenderMeshId 并自动应用新模型的默认皮肤：默认皮肤 >1 个时进入多槽位模式（逐 Submesh 一个默认皮并回填默认染色），单个/无默认皮肤时回到单皮肤模式并写入默认 SkinId（含默认染色回填）。双端可调用，服务端权威（客户端仅本机生效）；自定义外观开启期间不可用
+---@param renderMeshId String 模型资源ID
+function WorldUnit:SetRenderMeshWithDefaultSkin(renderMeshId) end
 
 ---全局Game对象单例。
 ---@type Game
