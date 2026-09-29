@@ -23,6 +23,28 @@ local function armPlayer(player, health)
     return damages
 end
 
+local function armVitals(self)
+    self.vitalsCalls = {}
+    self.downed = {}
+    self.mgr.Vitals = {
+        NewHit = function(_, source, category) return { source = source, category = category } end,
+        ApplyHit = function(_, hit, player, amount)
+            self.vitalsCalls[#self.vitalsCalls + 1] = { hit, player, amount }
+            player.Character.Controller:TakeDamage(amount)
+            return true, amount
+        end,
+        CanTakeDamage = function(_, player)
+            return not self.downed[player] and (player.Character.Controller.Health or 0) > 0
+        end,
+    }
+end
+
+local baseSetUp = TestFishEscape.setUp
+function TestGarCombat:setUp()
+    baseSetUp(self)
+    armVitals(self)
+end
+
 function TestGarCombat:test_drop_enters_combat_and_chases_nearest_living_player()
     self:prepare()
     armPlayer(self.player, 300)
@@ -64,6 +86,10 @@ function TestGarCombat:test_bite_only_in_range_with_cooldown_and_species_attack(
     self.now = cd
     self.mgr:Update()
     lu.assertEquals(damages, { 30 })
+    lu.assertEquals(#self.vitalsCalls, 1)
+    lu.assertEquals(self.vitalsCalls[1][1].source, fish)
+    lu.assertEquals(self.vitalsCalls[1][1].category, 'fishAttack')
+    lu.assertEquals(self.vitalsCalls[1][2], self.player)
     self.now = cd + 0.1
     self.mgr:Update()
     lu.assertEquals(damages, { 30 })
@@ -76,6 +102,36 @@ function TestGarCombat:test_bite_only_in_range_with_cooldown_and_species_attack(
     self.mgr:Update()
     lu.assertEquals(damages, { 30, 30 })
     lu.assertTrue(body.LinearVelocity.x > 0)
+end
+
+function TestGarCombat:test_threat_target_and_override_reselect_legal_targets()
+    self:prepare()
+    armPlayer(self.player, 300)
+    armPlayer(self.other, 300)
+    local fish = self:heldFish(self.player, 'alligatorGar')
+    self.mgr:Drop(self.player)
+    local body = fish.Carrier.Body
+    self.mgr:NoteDamage(fish, self.player, 30)
+    self.mgr:NoteDamage(fish, self.other, 10)
+    -- other 更近，但累计有效伤害更高的 player 优先
+    self.other.Character.Position = vec(body.Position.x, 2, body.Position.z + 10)
+    self.player.Character.Position = vec(body.Position.x + 10, 2, body.Position.z)
+    self.mgr:Update()
+    lu.assertTrue(body.LinearVelocity.x > 0)
+    -- 特殊招式目标优先于仇恨
+    self.mgr:SetTargetOverride(fish, self.other)
+    self.mgr:Update()
+    lu.assertTrue(body.LinearVelocity.z > 0)
+    -- 指定目标失效即清理，回到最高仇恨；最高仇恨失效后重选合法目标
+    self.downed[self.other] = true
+    self.mgr:Update()
+    lu.assertTrue(body.LinearVelocity.x > 0)
+    lu.assertNil(fish.TargetOverride)
+    self.downed[self.player] = true
+    self.downed[self.other] = false
+    self.mgr:Update()
+    lu.assertTrue(body.LinearVelocity.z > 0)
+    lu.assertNil(fish.Threat[self.player])
 end
 
 function TestGarCombat:test_flee_deadline_switches_to_straight_escape()

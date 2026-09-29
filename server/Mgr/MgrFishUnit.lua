@@ -81,7 +81,7 @@ function Mgr:SpawnLanded(player, catch, position)
     if not carrier then return nil, err end
     self.NextId = self.NextId + 1
     local fish = { Id = self.NextId, Owner = player, FishId = catch.fishId, Mult = catch.mult,
-        Carrier = carrier, State = Mgr.State.AwaitLift, Anchor = position, LiftAttempts = 0 }
+        Carrier = carrier, State = Mgr.State.AwaitLift, Anchor = position, LiftAttempts = 0, Threat = {} }
     self.Fish[fish.Id] = fish
     -- 受击体是带 Controller 的 EggyUnit，不关掉会被 Lift() 当成身前目标抓走
     if carrier.Receiver and carrier.Receiver.Controller then
@@ -387,25 +387,76 @@ function Mgr:UpdateEscaping(fish, now)
     end
 end
 
--- 首领追咬（#88，占位）：Kinematic 追最近的活着的玩家，BiteRange 米内停下按冷却咬鱼种 Attack；
--- 没有活目标就原地待命。头伤 / 身后弱点判定后补
+-- 首领追咬（#88 / #128）：目标优先取本场累计有效伤害最高的玩家，无记录时取最近目标；
+-- 濒死 / 死亡 / 离线目标立即从仇恨与特殊覆盖里清掉。咬人经 MgrVitals 命中入口，不直接碰 Controller。
+function Mgr:IsTargetValid(fish, player, pos, params)
+    if not player or not self.Vitals or not self.Vitals:CanTakeDamage(player) then return false end
+    local character = player.Character
+    local controller = character and character.Controller
+    local cp = controller and controller.Health and controller.Health > 0 and readPosition(character)
+    if not cp then return false end
+    if params and type(params.AggroRange) == 'number' and pos then
+        local dx, dz = cp.x - pos.x, cp.z - pos.z
+        if dx * dx + dz * dz > params.AggroRange * params.AggroRange then return false end
+    end
+    return true, cp
+end
+
+function Mgr:NoteDamage(fish, player, amount)
+    if not fish or self.Fish[fish.Id] ~= fish or not player
+        or type(amount) ~= 'number' or amount <= 0 or amount ~= amount then return false end
+    fish.Threat = fish.Threat or {}
+    fish.Threat[player] = (fish.Threat[player] or 0) + amount
+    return true
+end
+
+function Mgr:SetTargetOverride(fish, player)
+    if not fish or self.Fish[fish.Id] ~= fish then return false end
+    fish.TargetOverride = player
+    return true
+end
+
+function Mgr:ChooseTarget(fish, pos, params)
+    local override = fish.TargetOverride
+    if override then
+        local valid, cp = self:IsTargetValid(fish, override, pos, params)
+        if valid then return override, cp end
+        fish.TargetOverride = nil
+    end
+    local target, tpos, bestThreat = nil, nil, -1
+    if fish.Threat then
+        for player, total in pairs(fish.Threat) do
+            local valid, cp = self:IsTargetValid(fish, player, pos, params)
+            if valid then
+                if total > bestThreat or (total == bestThreat and target and player.UserId < target.UserId) then
+                    bestThreat, target, tpos = total, player, cp
+                end
+            else
+                fish.Threat[player] = nil
+            end
+        end
+    end
+    if target then return target, tpos end
+    local bestDistance
+    for _, player in ipairs(self:Players()) do
+        local valid, cp = self:IsTargetValid(fish, player, pos, params)
+        if valid then
+            local d = (cp.x - pos.x) * (cp.x - pos.x) + (cp.z - pos.z) * (cp.z - pos.z)
+            if not bestDistance or d < bestDistance then bestDistance, target, tpos = d, player, cp end
+        end
+    end
+    return target, tpos
+end
+
 function Mgr:UpdateChase(fish, now, pos, params)
     local species = GameCfg.Fish[fish.FishId]
     local body = fish.Carrier.Body
-    local target, tpos, best
-    for _, player in ipairs(self:Players()) do
-        local character = player.Character
-        local controller = character and character.Controller
-        local cp = controller and controller.Health and controller.Health > 0 and readPosition(character)
-        if cp then
-            local d = (cp.x - pos.x) * (cp.x - pos.x) + (cp.z - pos.z) * (cp.z - pos.z)
-            if not best or d < best then best, target, tpos = d, controller, cp end
-        end
-    end
+    local target, tpos = self:ChooseTarget(fish, pos, params)
     if not target then
         pcall(function() body.LinearVelocity = Vector3.New(0, 0, 0) end)
         return
     end
+    local best = (tpos.x - pos.x) * (tpos.x - pos.x) + (tpos.z - pos.z) * (tpos.z - pos.z)
     if best > params.BiteRange * params.BiteRange then
         local ux, uz = flatDirection(tpos.x - pos.x, tpos.z - pos.z)
         local speed = self:Speed(fish)
@@ -415,7 +466,8 @@ function Mgr:UpdateChase(fish, now, pos, params)
     pcall(function() body.LinearVelocity = Vector3.New(0, 0, 0) end)
     if now < (fish.NextBiteAt or 0) then return end
     fish.NextBiteAt = now + params.BiteCooldownSec
-    target:TakeDamage(species.Attack)
+    local hit = self.Vitals:NewHit(fish, 'fishAttack')
+    self.Vitals:ApplyHit(hit, target, species.Attack)
     print('[MgrFishUnit] 首领追咬', fish.FishId, species.Attack, 'fish=' .. tostring(fish.Id))
 end
 
@@ -599,6 +651,10 @@ function Mgr:OnPlayerRemoving(player)
     self:ClearLinks(player)
     local held = self:GetHeld(player)
     if held then self:Remove(held) end
+    for _, fish in pairs(self.Fish) do
+        if fish.Threat then fish.Threat[player] = nil end
+        if fish.TargetOverride == player then fish.TargetOverride = nil end
+    end
     for _, fish in ipairs(self:GetFish(player)) do
         if fish.State == Mgr.State.AwaitLift then self:Remove(fish) end
     end
