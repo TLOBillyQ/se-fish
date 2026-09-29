@@ -567,7 +567,8 @@ function TestSurvivalAdrenaline:test_old_callback_cannot_touch_the_state_of_a_re
     local new = self.s:GetState(self.a)
     lu.assertNotIs(new, old)
     self:drain() -- 旧请求的落账回调此刻到达
-    lu.assertEquals(new.phase, 'alive')
+    -- 存档里带着濒死标记，重进后的新状态在等离线恢复落账；旧回调既不能替它救起也不能留在飞标记
+    lu.assertEquals(new.phase, 'dead')
     lu.assertNil(new.adrenalineFlying)
     lu.assertEquals(self:ctrl().Health, 1) -- 旧回调没有对新状态执行救起
 end
@@ -656,4 +657,146 @@ function TestSurvivalHelp:test_call_help_is_rate_limited_and_cycles_the_cries()
     local heard = self:helpFor(self.b)
     lu.assertEquals(#heard, 2)
     lu.assertEquals(heard[2].text, cries[2])
+end
+
+TestSurvivalOffline = {}
+
+function TestSurvivalOffline:setUp()
+    TestSurvivalDowned.setUp(self)
+    attachSave(self)
+    self.data = joinData(self, self.a)
+    local env = self
+    self.s.Save = self.save
+    self.s.PlayerData = { GetDataInst = function(_, p) return p == env.a and env.data or nil end }
+    self.s:Start()
+end
+
+function TestSurvivalOffline:tearDown()
+    _G.game = self.oldGame
+    TestSurvivalDowned.tearDown(self)
+end
+
+function TestSurvivalOffline:ctrl(p) return (p or self.a).Character.Controller end
+
+function TestSurvivalOffline:mark() return self.data.Extra.survival end
+
+-- 退出再重进：服务端 Survival 状态随玩家清掉，存档 Extra.survival 里的离线标记是唯一凭据
+function TestSurvivalOffline:rejoin()
+    self.s:BeforeLeave(self.a)
+    self.s:OnPlayerRemoving(self.a)
+    self:ctrl().WalkSpeed = 10 -- 新会话的角色是默认速度
+    self.s:OnPlayerAdded(self.a)
+end
+
+function TestSurvivalOffline:test_downed_and_dead_mark_remaining_before_leaving()
+    TestSurvivalDowned.enterDowned(self) -- 100 进濒死
+    self.now = 105
+    self.s:BeforeLeave(self.a)
+    lu.assertTrue(self:mark().dying)
+    lu.assertFalse(self:mark().dead)
+    lu.assertEquals(self:mark().dyingRemaining, 10)
+    self.now = 115
+    self.s:Update() -- 转死亡
+    self.now = 120
+    self.s:BeforeLeave(self.a)
+    lu.assertTrue(self:mark().dead)
+    lu.assertFalse(self:mark().dying)
+    lu.assertEquals(self:mark().deadRemaining, 25)
+end
+
+function TestSurvivalOffline:test_rejoin_after_downed_or_dead_gives_ten_percent_health_and_weak()
+    for _, phase in ipairs({ 'downed', 'dead' }) do
+        self.now = 200
+        TestSurvivalDowned.enterDowned(self)
+        if phase == 'dead' then self.now = 215 self.s:Update() end
+        self:rejoin()
+        lu.assertEquals(self.v:LifeStatus(self.a), 'dead') -- 落账确认前不放行
+        lu.assertEquals(self:ctrl().Health, 1)
+        self:drain()
+        lu.assertEquals(self.v:LifeStatus(self.a), 'alive')
+        lu.assertEquals(self:ctrl().Health, 30)
+        lu.assertTrue(self.v:GetState(self.a).hunger >= 30)
+        lu.assertEquals(self:ctrl().WalkSpeed, 5) -- 半速虚弱
+        lu.assertEquals(self.s:GetState(self.a).weakUntil, self.now + 60)
+        lu.assertFalse(self:mark().dying)
+        lu.assertFalse(self:mark().dead)
+        lu.assertEquals(self:mark().weakRemaining, 60)
+        self.now = self.now + 60
+        self.s:Update() -- 收尾：清虚弱，进入下一轮
+        lu.assertEquals(self:ctrl().WalkSpeed, 10)
+    end
+    local recover = 0
+    for _, op in ipairs(self.data:Serialize().meta.operations) do
+        if op.kind == 'survival:recover' then recover = recover + 1 end
+    end
+    lu.assertEquals(recover, 2) -- 两次重进各落一次
+end
+
+function TestSurvivalOffline:test_rejoin_with_nothing_pending_changes_nothing()
+    self:rejoin()
+    self:drain()
+    lu.assertEquals(self.s:Phase(self.a), 'alive')
+    lu.assertNil(self.s:GetState(self.a).weakUntil)
+    lu.assertEquals(#self.data:Serialize().meta.operations, 0)
+    lu.assertEquals(self:ctrl().Health, 300)
+end
+
+function TestSurvivalOffline:test_weak_remaining_follows_the_clock_and_survives_rejoin()
+    TestSurvivalDowned.enterDowned(self)
+    self.now = 130
+    self.s:Update() -- 死亡
+    self.now = 160
+    self.s:Update() -- 30 秒到，虚弱复活，weakUntil=220
+    lu.assertEquals(self.s:Phase(self.a), 'alive')
+    self.now = 180
+    self.s:Update()
+    lu.assertEquals(self:mark().weakRemaining, 40) -- 轮询镜像
+    self.now = 190
+    self:rejoin() -- 退出时终镜像剩 30 秒
+    lu.assertEquals(self:mark().weakRemaining, 30)
+    lu.assertEquals(self.s:Phase(self.a), 'alive')
+    lu.assertEquals(self:ctrl().WalkSpeed, 5)
+    self.now = 219
+    self.s:Update()
+    lu.assertEquals(self:ctrl().WalkSpeed, 5)
+    self.now = 220
+    self.s:Update()
+    lu.assertEquals(self:ctrl().WalkSpeed, 10)
+    lu.assertEquals(self:mark().weakRemaining, 0)
+end
+
+function TestSurvivalOffline:test_respawn_keeps_weak_speed()
+    TestSurvivalDowned.enterDowned(self)
+    self.now = 130
+    self.s:Update()
+    self.now = 160
+    self.s:Update()
+    self:ctrl().WalkSpeed = 10 -- 重生后引擎给了默认速度
+    self.a.CharacterAdded:Fire(self.a.Character)
+    lu.assertEquals(self:ctrl().WalkSpeed, 5)
+end
+
+function TestSurvivalOffline:test_persist_failure_keeps_player_out_of_action()
+    TestSurvivalDowned.enterDowned(self)
+    self.writeFailure = true
+    self:rejoin()
+    for _ = 1, 6 do
+        self.save:Update()
+        self:drain()
+    end
+    lu.assertNotEquals(self.v:LifeStatus(self.a), 'alive') -- 没确认落账就不放行
+    lu.assertEquals(self:ctrl().Health, 1)
+end
+
+function TestSurvivalOffline:test_old_recover_callback_cannot_touch_a_newer_state()
+    TestSurvivalDowned.enterDowned(self)
+    self:rejoin() -- 落账在飞
+    local old = self.s:GetState(self.a)
+    self.s:OnPlayerRemoving(self.a)
+    self.s:OnPlayerAdded(self.a) -- 再次重进（存档标记仍是濒死）
+    local new = self.s:GetState(self.a)
+    lu.assertNotIs(new, old)
+    self:drain()
+    lu.assertNotIs(self.s:GetState(self.a), old)
+    lu.assertNil(old.weakUntil) -- 旧状态没被旧回调改动
 end

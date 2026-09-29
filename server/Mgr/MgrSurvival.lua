@@ -46,6 +46,32 @@ function Mgr:SendState(state)
     elseif state.phase == 'dead' then payload.endsAt = state.deadAt + c.DeadSec end
     if state.weakUntil then payload.weakUntil = state.weakUntil end
     REUtil:GetRE('SurvivalState'):FireClient(state.player, payload)
+    self:Mirror(state) -- 状态每变一次，离线标记跟着落一次
+end
+
+local function remaining(untilAt, now)
+    return math.max(0, math.ceil(untilAt - now))
+end
+
+-- 离线标记：把状态机镜像进存档 Extra.survival（随普通存档快照一起落盘）。
+-- 濒死 / 死亡记剩余秒数，虚弱记剩余秒数；重进时据此恢复（OnPlayerAdded）。
+-- 只写本模块的字段，health / hunger 归 Vitals，不动。
+function Mgr:Mirror(state)
+    local data = self.PlayerData and self.PlayerData:GetDataInst(state.player)
+    local mark = data and data.Extra and data.Extra.survival
+    if type(mark) ~= 'table' then return end
+    local now, c = self:Now(), cfg()
+    mark.dying = state.phase == 'downed'
+    mark.dead = state.phase == 'dead'
+    mark.dyingRemaining = mark.dying and remaining(state.downedAt + c.DownedSec, now) or 0
+    mark.deadRemaining = mark.dead and remaining(state.deadAt + c.DeadSec, now) or 0
+    mark.weakRemaining = state.weakUntil and remaining(state.weakUntil, now) or 0
+end
+
+-- 玩家离开前的终镜像：必须先于 MgrPlayerData 的 SaveLeaving 序列化（server/main.lua 调用）。
+function Mgr:BeforeLeave(player)
+    local state = self:GetState(player)
+    if state and state.player == player then self:Mirror(state) end
 end
 
 -- 进入濒死（致命伤害被 OnBeforeDamage 拦截时）：锁 1 血、断开钓鱼、释放举鱼、通知客户端。
@@ -123,8 +149,7 @@ end
 
 -- 虚弱（策划案：虚弱复活后 1 分钟移速减半）：进入时记当前 WalkSpeed 为基准并乘 WeakSpeedScale，
 -- 结束恢复基准值。与加速技能（speed_add 锚点）叠加时的恢复顺序是已知边界，见 issue 评论。
-function Mgr:ApplyWeak(state, seconds)
-    state.weakUntil = self:Now() + seconds
+function Mgr:ApplyWeakSpeed(state)
     local controller = controllerOf(state.player)
     if not controller then return end
     local ok, speed = pcall(function() return controller.WalkSpeed end)
@@ -132,6 +157,11 @@ function Mgr:ApplyWeak(state, seconds)
         state.baseSpeed = speed
         pcall(function() controller.WalkSpeed = speed * cfg().WeakSpeedScale end)
     end
+end
+
+function Mgr:ApplyWeak(state, seconds)
+    state.weakUntil = self:Now() + seconds
+    self:ApplyWeakSpeed(state)
 end
 
 function Mgr:ClearWeak(state)
@@ -161,14 +191,65 @@ function Mgr:WeakRevive(state)
     self:SendState(state)
 end
 
+-- 离线恢复落账：濒死 / 死亡退出重进，在确认持久后才放行虚弱复活（10% 血、饥饿至少 10%、60 秒虚弱）。
+-- 落账前玩家按死亡处理（拒绝动作、无敌、暂停饥饿）；请求号每个恢复状态一个，重复调用只回放不重放效果。
+-- 排队 / 写档暂不可用时由 Update 重试；回调核对 state 对象，旧回调不碰重进后的新状态。
+function Mgr:TryRecover(state)
+    if state.recoverFlying or not state.recovering then return end
+    local player = state.player
+    local data = self.PlayerData and self.PlayerData:GetDataInst(player)
+    if not data or not self.Save then return end
+    local operation, mode = self.Save:ResolveRequest(player, data, 'survival:recover', state.recoverId)
+    if not operation or mode == 'replay' then return end
+    state.recoverFlying = true
+    local accepted = self.Save:Execute(player, data, operation, function(draft)
+        local mark = draft.Extra.survival
+        mark.dying, mark.dead, mark.dyingRemaining, mark.deadRemaining = false, false, 0, 0
+        mark.weakRemaining = cfg().WeakSec
+        return { ok = true }
+    end, function(written)
+        if self.States[player.UserId] ~= state then return end
+        state.recoverFlying = nil
+        if not written then return end -- 会话已关闭，玩家保持死亡处理
+        state.recovering = nil
+        self:WeakRevive(state)
+    end)
+    if not accepted then state.recoverFlying = nil end
+end
+
 function Mgr:OnPlayerAdded(player)
     if not player or self.States[player.UserId] then return end
-    self.States[player.UserId] = { player = player, phase = 'alive' }
+    local state = { player = player, phase = 'alive' }
+    self.States[player.UserId] = state
+    -- 重生后引擎把速度还成默认值：虚弱期内重新套半速
+    if player.CharacterAdded then
+        state.added = player.CharacterAdded:Connect(function()
+            if self.States[player.UserId] == state and state.weakUntil then self:ApplyWeakSpeed(state) end
+        end)
+    end
+    local data = self.PlayerData and self.PlayerData:GetDataInst(player)
+    local mark = data and data.Extra and data.Extra.survival
+    if type(mark) ~= 'table' then return end
+    if mark.dying or mark.dead then
+        self.RecoverSeq = (self.RecoverSeq or 0) + 1
+        state.phase, state.deadAt, state.recovering = 'dead', self:Now(), true
+        state.recoverId = self.RecoverSeq -- 每次进入一个请求号：同状态重试只回放，新状态是新的一次
+        local vitalState = self.Vitals and self.Vitals:GetState(player)
+        if vitalState then self.Vitals:SetControllerHealth(vitalState, 1) end
+        print('[MgrSurvival] 离线时濒死 / 死亡，重进按虚弱复活', player.UserId)
+        self:SendState(state)
+        self:TryRecover(state)
+    elseif type(mark.weakRemaining) == 'number' and mark.weakRemaining > 0 then
+        self:ApplyWeak(state, mark.weakRemaining)
+        print('[MgrSurvival] 离线虚弱剩余', player.UserId, mark.weakRemaining)
+        self:SendState(state)
+    end
 end
 
 function Mgr:OnPlayerRemoving(player)
     local state = self:GetState(player)
     if not state or state.player ~= player then return end
+    if state.added then state.added:Disconnect() end
     self.States[player.UserId] = nil
 end
 
@@ -185,6 +266,8 @@ function Mgr:Update()
             state.deadAt = now
             print('[MgrSurvival] 死亡', state.player.UserId)
             self:SendState(state)
+        elseif state.phase == 'dead' and state.recovering then
+            self:TryRecover(state) -- 离线恢复等落账，不走死亡倒计时
         elseif state.phase == 'dead' then
             local due = now - state.deadAt >= c.DeadSec
             local engineRevived = false
@@ -199,6 +282,7 @@ function Mgr:Update()
             self:ClearWeak(state)
             self:SendState(state)
         end
+        if state.phase ~= 'alive' or state.weakUntil then self:Mirror(state) end -- 剩余秒数随时钟走
     end
 end
 
