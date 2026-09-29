@@ -1,9 +1,11 @@
 -- #44 向钓鱼佬喂食换金币（真 PlayerData + 假钓鱼佬锚点单位）。
+-- #127 起回收口径放宽：选中格里的**任何**有基础价的物品都按基础价 × 实例倍率回收（鱼竿、道具、船票同理），
+-- 烤过的按烤熟价 ×1.5；「选中鱼竿也能换钱」不再是缺陷，「什么都没选」才是 'nothing'。
 -- 失败方式（先列后写）：
 --   1. 金币算错：四舍五入而不是 floor(基础售价 × 个体倍率)、倍率缺省不按 1、蚯蚓不是每只 1 金币、
 --      用了商店买入价；
 --   2. 扣错库存：鱼获不从选中格扣、扣了别的格或整格以外的东西；鱼饵不从 Bait 计数扣而另建库存；
---      选中鱼竿 / 空格 / 没选中时也能换钱；
+--      空格 / 没选中时也能换钱；
 --   3. 不复验：不在钓鱼佬 5 米内（按 x/z）、目标不是登记的交互点、动作不是喂食、玩家数据未就绪也能结算；
 --   4. 重放：同一请求序号重复到达、旧序号回放各结算一次；
 --   5. 扣除、入账、选中态归位不同步：扣了没加钱或加了没扣，选中格清空后仍指向空格，不推送库存；
@@ -130,15 +132,20 @@ function TestFishFeed:test_selected_fish_wins_over_selected_bait()
     lu.assertEquals(self.data.Data.Bait.worm, worms)
 end
 
-function TestFishFeed:test_nothing_feedable_selected_is_refused()
+-- 什么都不选（或选中格空）才是 'nothing'；选中鱼竿按物品表基础价回收（#127 取代 #44 的「不能卖竿」）
+function TestFishFeed:test_nothing_selected_is_refused_and_plain_items_are_recycled()
     lu.assertFalse(self:feed())             -- 什么都没选
-    self.data:SelectSlot(1)                 -- 新手鱼竿
-    lu.assertEquals(self.data.Data.SelectedSlot, 1)
-    lu.assertFalse(self:feed())
-    lu.assertEquals(self.data.Data.Containers.itemBar[1].itemId, 'starterRod')
     lu.assertEquals(self.data.Data.FishCoin, 0)
     lu.assertEquals(self.plays, {})
     lu.assertEquals(self.replies[#self.replies].payload.reason, 'nothing')
+
+    self.data:SelectSlot(1)                 -- 新手鱼竿（BasePrice = 3）
+    lu.assertEquals(self.data.Data.SelectedSlot, 1)
+    lu.assertTrue(self:feed())
+    lu.assertEquals(self.data.Data.FishCoin, self.cfg.Items.SalePrice('starterRod'))
+    lu.assertEquals(self.data.Data.Containers.itemBar[1], nil)
+    lu.assertEquals(self.replies[#self.replies].payload.itemId, 'starterRod')
+    lu.assertEquals(self.replies[#self.replies].payload.category, 'item')
 end
 
 function TestFishFeed:test_server_rechecks_distance_target_action_and_identity()

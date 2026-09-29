@@ -4,6 +4,7 @@ local ContentFish = require('common.cfg.Fish')
 local ContentShop = require('common.cfg.Shop')
 local ContentLottery = require('common.cfg.Lottery')
 local ContentBlindbox = require('common.cfg.Blindbox')
+local FishCatch = require('common.FishCatch')
 
 -- 钓鱼区 ID 用于内容与后续场景锚点；存档旧值在 LegacyZoneIdMap 中解析。
 -- WaterId 是内容层稳定 ID，现场 Water.Zones[*].Id 保留已有编辑器单位名称。
@@ -285,26 +286,22 @@ GameCfg.CastFeedback = {
     FloatColor = { 255, 225, 70, 255 },
 }
 
--- 交互点（#44，#27 规格）：场景既有触发器单位登记为可交互目标，当前只有钓鱼佬（一区 TGUnitFish、
--- 虾池 TGUnitFishShrimp，#90 多锚点；退役入口 LocalFishEnter 用 TGUnitFish 做靠近判定）。Radius 米内（只看 x/z：触发器中心在高处）显示「对话」「喂食」，
--- 服务端复验多给 Slack 米容差。喂食即出售：鱼获 floor(BasePrice × mult)，鱼饵每只 BaitPrice 金币。
+-- 交互点（#44，#27 规格）：场景既有触发器单位登记为可交互目标。当前只有钓鱼佬：
+-- Radius 米内（只看 x/z：触发器中心在高处）显示「对话」「喂食」，服务端复验多给 Slack 米容差。
+-- 喂食即出售（#127 改为按物品表回收）：未烤的本区信物优先走本区链 1:1 兑换（表见 Interact.Fishermen），
+-- 其余选中物品按基础价 × 实例倍率结金币、烤过的按烤熟价；选中的鱼饵按 BaitPrice 每只结算。
 -- 钓鱼佬的可见模型是官方「咸鱼」（official://preset/102179，场景单位名见 ModelName）；
 -- 模型无 Eat 动画（EatAnimation 留空，服务端播动画自动跳过），喂食吃动作为客户端缩放脉冲
 -- （LocalInteract 播，仅喂食者本机可见）。文字泡相对触发器中心（y=-1）抬高 9.5 米，露出高岸地面（y≈8.03）。
+-- 本表只放七区共享的表现与鱼饵价；每区的锚点与兑换链见下方 GameCfg.Interact.Fishermen（#127）。
 GameCfg.Interact = {
     Fisherman = {
-        -- 多锚点（#90）：第一钓鱼区 TGUnitFish + 虾池 TGUnitFishShrimp，范围内任一即命中；
-        -- 配置、台词、回收价全共享（虾池钓鱼佬同样什么都吃、信物兑换一样走 Exchange）
-        AnchorNames = { 'TGUnitFish', 'TGUnitFishShrimp' },
         ModelName = 'FishermanModel',
         Radius = 5,
         Slack = 0.5,
         BubbleHeight = 9.5,
         DialogText = '我好饿啊，什么都吃！',
         BaitPrice = { worm = 1 },
-        -- 信物兑换（#87，GameSpec §8.1 已确认）：选中格是信物时走 1:1 兑换、不给金币；
-        -- 精英信物 → 首领饵，首领信物 → 船票；道具栏 + 背包全满时拒绝且不消耗信物
-        Exchange = { eelHead = 'duck', garHead = 'shrimpTicket' },
     },
 }
 
@@ -414,6 +411,30 @@ GameCfg.Content.Exchanges = {
     { ZoneId = 'beachIsland', EliteFish = 'fish39Elite', EliteToken = 'item79', BossBait = 'item124', BossFish = 'fish40Boss', BossToken = 'item80', Result = 'item150', source = 'GameSpec.md#8.1-沙滩岛' },
     { ZoneId = 'reefIsland', EliteFish = 'fish47Elite', EliteToken = 'item95', BossBait = 'item125', BossFish = 'fish48Boss', BossToken = 'item96', Result = 'item151', source = 'GameSpec.md#8.1-礁石岛' },
     { ZoneId = 'volcanoIsland', EliteFish = 'fish55Elite', EliteToken = 'item111', BossBait = 'item126', BossFish = 'fish56Boss', BossToken = 'item112', Result = 'achievement.final', source = 'GameSpec.md#8.1-火山岛' },
+}
+-- #127 T06 回收价与最终成就（行为在 server/Mgr/MgrInteract.lua）。喂钓鱼佬即回收：
+-- 鱼获的基础价随鱼种表走 FishCatch（含个体倍率），其余物品取物品表的 BasePrice；
+-- 烤过的按烤熟价 = 基础价 × 倍率 × 1.5（GameSpec §4.3）。烤制标记落在存档格位的
+-- saved.cooked（PlayerData 序列化原样保留格位的未知字段，不额外占位）。
+GameCfg.Items.CookedFlag = 'cooked'
+GameCfg.Items.CookedPriceScale = 1.5
+-- 物品表没有的物品返回 nil（不可回收，属配置事故；调用方按「没得喂」处理）
+function GameCfg.Items.SalePrice(itemId, mult, cooked)
+    local species = type(itemId) == 'string' and GameCfg.Fish[itemId]
+    if species then
+        return cooked and FishCatch.CookedPrice(species, mult) or FishCatch.Price(species, mult)
+    end
+    local definition = type(itemId) == 'string' and GameCfg.Items.Definitions[itemId]
+    local base = definition and definition.BasePrice
+    if type(base) ~= 'number' then return nil end
+    local factor = type(mult) == 'number' and mult or 1
+    return math.floor(base * factor * (cooked and GameCfg.Items.CookedPriceScale or 1) + 1e-9)
+end
+
+-- 最终成就（#127 第七区，GameSpec §8.1「哥斯拉头 → 通关成就」）：兑换产物是 'achievement.<id>'
+-- 时写进 Extra.achievements[<id>]（不占道具格，重进照旧保留），这里只给客户端提示用的名字。
+GameCfg.Achievements = {
+    final = { Name = '通关成就' },
 }
 GameCfg.Shop.Catalog = ContentShop.Goods
 GameCfg.Shop.Excluded = ContentShop.Excluded
@@ -815,6 +836,21 @@ for index = 1, 6 do
         Outbound = { AnchorName = outName, Ticket = GameCfg.Content.Exchanges[index].Result,
             CountdownSec = 5, Destination = to.Scene.SafePoint },
         Return = { AnchorName = returnName, Price = plannedReturnPrices[index], Destination = from.Scene.SafePoint },
+    }
+end
+
+-- #127 T06 七区兑换：每区一个钓鱼佬，锚点取本区场景合同（Zones[].Scene.FishermanName，#125 的真源），
+-- 兑换链取本区信物链（Content.Exchanges）。共享表现参数与鱼饵价留在 Interact.Fisherman，
+-- 消费端（server/Mgr/MgrInteract.lua）把两者合成一个完整交互点，避免把共享参数抄七份。
+GameCfg.Interact.Fishermen = {}
+for index, chain in ipairs(GameCfg.Content.Exchanges) do
+    local zone = GameCfg.Zones[index]
+    GameCfg.Interact.Fishermen[index] = {
+        ZoneId = zone.Id,
+        AnchorNames = { zone.Scene.FishermanName },
+        -- 未烤信物 1:1：精英信物 → 本区首领饵，首领信物 → 本区产物（第七区是 achievement.final）
+        Exchange = { [chain.EliteToken] = chain.BossBait, [chain.BossToken] = chain.Result },
+        Chain = index,
     }
 end
 
