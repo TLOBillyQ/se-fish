@@ -1,11 +1,14 @@
--- #91 场上掉落物分区上限与 FIFO 回收（沿用 tests/gameplay/fish_loot_test.lua 的假引擎与真 PlayerData）。
+-- #91/#126 场上掉落物分区上限与 FIFO 回收（沿用 tests/gameplay/fish_loot_test.lua 的假引擎与真 PlayerData）。
 -- 失败方式（先列后写）：
 --   1. 上限与闪烁时长不走 GameCfg（写死数字 / 配置名与 issue 不符），压测无法校准；
 --   2. 超限不回收，或回收的不是最旧一份（FIFO 顺序错），或场上计数把待回收的也算进去导致连锁误回收；
 --   3. 待回收不闪烁、闪烁节奏乱（每帧乱闪），或 30 秒不到就提前销毁；
 --   4. 待回收中的鱼获不能被拾取，或拾取后计时器残留把后来的同 id / 别的鱼获销毁；
 --   5. 已拾取的鱼获仍占区计数，导致没超限也触发回收；
---   6. 各区互相串：一区刷满把另一区的鱼获回收掉；点位鱼饵（Kind='bait'）被计入上限。
+--   6. 各区互相串：一区刷满把另一区的鱼获回收掉；点位鱼饵（Kind='bait'）被计入上限；
+--   7. #126 同区两块水域各算各的预算（合计能超 200 件），或跨水域的 FIFO 顺序错；
+--   8. #126 预警期不设上限：活跃满 + 30 秒预警内继续新增，场上数量无界增长；峰值不可观测；
+--   9. #126 预警标记没进快照（客户端不会闪），或把别的区 / 未预警的件也标成预警。
 local lu = require('luaunit')
 require('tests.gameplay.fish_loot_test')
 
@@ -24,8 +27,32 @@ function TestLootRecycle:setUp()
 end
 
 function TestLootRecycle:tearDown()
+    if self.realPrint then
+        _G.print = self.realPrint
+        self.realPrint = nil
+    end
     TestFishLoot.tearDown(self)
     self.cfg.Loot = self.savedLootCfg
+end
+
+-- 采集 print 输出（回收/峰值日志的验收证据），用例结束务必 restoreLogs 或走 tearDown
+function TestLootRecycle:captureLogs()
+    self.logs = {}
+    self.realPrint = print
+    local logs = self.logs
+    _G.print = function(...)
+        local parts = {}
+        for i = 1, select('#', ...) do parts[i] = tostring(select(i, ...)) end
+        logs[#logs + 1] = table.concat(parts, ' ')
+    end
+    return logs
+end
+
+function TestLootRecycle:restoreLogs()
+    if self.realPrint then
+        _G.print = self.realPrint
+        self.realPrint = nil
+    end
 end
 
 TestLootRecycle.land = TestFishLoot.land
@@ -175,3 +202,87 @@ function TestLootRecycle:test_bait_spot_loot_not_counted_in_cap()
     for _ in pairs(self.loot.Recycling) do recycling = recycling + 1 end
     lu.assertEquals(recycling, 1)
 end
+
+-- #126：池壁水条（addWaterStrip 生成）与鱼塘水圈同属一个钓鱼区，落点取第一块水条的中心
+function TestLootRecycle:spawnStrip()
+    for _, zone in ipairs(self.cfg.Water.Zones) do
+        if tostring(zone.Id):find('^PondWest') then
+            return self:spawnAt(zone.Center.x, zone.Center.z), zone
+        end
+    end
+    error('未找到池壁水条水域')
+end
+
+-- #126：同一钓鱼区的两块水域共用一份预算，跨水域也是同一条 FIFO
+function TestLootRecycle:test_same_zone_water_bodies_share_one_budget_and_fifo()
+    local a = self:spawnPond() -- 鱼塘水圈
+    local b = self:spawnPond()
+    local c, stripZone = self:spawnStrip() -- 池壁水条
+    lu.assertEquals(a.ZoneId, c.ZoneId) -- 两块水域归同一个钓鱼区
+    lu.assertEquals(c.ZoneId, stripZone.ZoneId)
+    local d = self:spawnStrip()
+    -- 合计第 4 件（落水条）把全区最旧的水圈件顶进待回收：预算不是按水域各算一份
+    lu.assertEquals(#self:queueOf(a), self.cfg.Loot.PerZoneCap)
+    lu.assertEquals(self:queueOf(a), { b.Id, c.Id, d.Id })
+    lu.assertNotNil(self.loot.Recycling[a.Id])
+    lu.assertNil(self.loot.Recycling[c.Id])
+    -- 其他钓鱼区（虾池）不受影响、也不共用这条队列
+    local p = self:spawnPool()
+    lu.assertNil(self.loot.Recycling[p.Id])
+    lu.assertEquals(#self:queueOf(p), 1)
+    lu.assertNotEquals(self:queueOf(a), self:queueOf(p))
+    lu.assertNotNil(self.loot.Recycling[a.Id])
+end
+
+-- #126：预警只落在最旧一件上并写进快照（客户端据此闪文字泡），别的件与别的区都没有标记
+function TestLootRecycle:test_warning_flag_marks_only_oldest_and_stays_pickable()
+    local a = self:spawnPond()
+    local b = self:spawnPond()
+    local c = self:spawnPond()
+    self:spawnPond() -- 第 4 件把 a 顶进预警
+    local p = self:spawnPool()
+    local warn = {}
+    for _, row in ipairs(self.loot:Snapshot()) do warn[row.id] = row.warn end
+    lu.assertEquals(warn[a.Id], true)
+    lu.assertNil(warn[b.Id])
+    lu.assertNil(warn[c.Id])
+    lu.assertNil(warn[p.Id])
+    -- 预警时长取配置（30 秒），不是写死的其它值
+    lu.assertEquals(self.loot.Recycling[a.Id].At - self.loot:Now(), self.cfg.Loot.FlashBeforeRecycleSec)
+    -- 预警期内仍可拾取，拾取即取消预警，且不误伤队列里的其他件
+    self.player.Character.Position = a.Position
+    lu.assertTrue(self.loot:Pickup(self.player, a.Id))
+    lu.assertNil(self.loot.Recycling[a.Id])
+    lu.assertNil(self.loot.Recycling[b.Id])
+    lu.assertEquals(#self:queueOf(b), 3)
+end
+
+-- #126：预警期新增调度——超出 PendingCap 时立刻回收最旧的预警件（跳过剩余预警），
+-- 单区总量恒 ≤ PerZoneCap + PendingCap，并有峰值日志可观测
+function TestLootRecycle:test_bulk_spawn_keeps_active_and_pending_bounded_with_peak_logs()
+    self.cfg.Loot.PendingCap = 2
+    local logs = self:captureLogs()
+    local first = self:spawnPond()
+    for _ = 1, 19 do self:spawnPond() end
+    self:restoreLogs()
+    local active = #self:queueOf(first)
+    local pending = 0
+    for _ in pairs(self.loot.Recycling) do pending = pending + 1 end
+    lu.assertEquals(active, self.cfg.Loot.PerZoneCap)
+    lu.assertEquals(pending, self.cfg.Loot.PendingCap)
+    lu.assertTrue(active + pending <= self.cfg.Loot.PerZoneCap + self.cfg.Loot.PendingCap)
+    -- 生成 20 件后场上只留 3 件活跃 + 2 件预警，不随生成次数增长
+    lu.assertEquals(#self:lootUnits(), self.cfg.Loot.PerZoneCap + self.cfg.Loot.PendingCap)
+    local peak, earlyRecycle = false, false
+    for _, line in ipairs(logs) do
+        if line:find('区峰值') and line:find('active=') and line:find('pending=') then peak = true end
+        if line:find('预警超限即回收') then earlyRecycle = true end
+    end
+    lu.assertTrue(peak)
+    lu.assertTrue(earlyRecycle)
+    -- 预警到点后剩下的一并销毁，场上只剩活跃的 3 件
+    self.now = self.cfg.Loot.FlashBeforeRecycleSec + 1
+    self.loot:Update()
+    lu.assertEquals(#self:lootUnits(), self.cfg.Loot.PerZoneCap)
+end
+
