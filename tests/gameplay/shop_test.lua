@@ -52,6 +52,129 @@ function TestShop:lastReason()
     return last and last.reason
 end
 
+-- #130：按货架行编号购买（升级行无 itemKey，编号是稳定购买键）
+function TestShop:buyNumber(number, extra)
+    self.seq = self.seq + 1
+    local payload = { action = 'Buy', number = number, seq = self.seq }
+    for k, v in pairs(extra or {}) do payload[k] = v end
+    return self.shop:Handle(self.me, payload)
+end
+
+-- 新档 5 金币可买 5 金新手鱼竿（#130 验收）；失败方式：定价错或余额校验错导致买不了/扣错
+function TestShop:test_five_coin_profile_buys_starter_rod()
+    self.data:AddCoin(5, nil, 'test')
+    lu.assertTrue(self:buy('starterRod'))
+    lu.assertEquals(self.data.Data.FishCoin, 0)
+    lu.assertTrue(self.replies[#self.replies].ok)
+end
+
+-- 编号购买普通商品（鱼饵进计数库存），响应带名称与编号
+function TestShop:test_buy_regular_goods_by_number()
+    local worms = self.data.Data.Bait.worm
+    self.data:AddCoin(10, nil, 'test')
+    lu.assertTrue(self:buyNumber(13)) -- 蚯蚓 1 金
+    lu.assertEquals(self.data.Data.Bait.worm, worms + 1)
+    lu.assertEquals(self.data.Data.FishCoin, 9)
+    local last = self.replies[#self.replies]
+    lu.assertTrue(last.ok)
+    lu.assertEquals(last.number, 13)
+    lu.assertEquals(last.name, '蚯蚓')
+    lu.assertEquals(last.price, 1)
+end
+
+-- 升级行购买：扣款 + 逐级生效 + 响应带名称；重复购买走限购拒绝且不扣钱
+function TestShop:test_buy_upgrade_row_by_number_settles_once()
+    self.data:AddCoin(1000, nil, 'test')
+    lu.assertTrue(self:buyNumber(51)) -- 近战武器升级1，50 金
+    lu.assertEquals(self.data.Data.FishCoin, 950)
+    lu.assertEquals(self.data:ShopUpgradeLevel('melee'), 1)
+    local last = self.replies[#self.replies]
+    lu.assertEquals(last.name, '近战武器升级1')
+    lu.assertEquals(last.number, 51)
+    lu.assertEquals(last.kind, 'melee')
+    lu.assertEquals(last.level, 1)
+    lu.assertAlmostEquals(self.data:WeaponDamageScale('melee'), 1.1, 1e-9)
+    -- 重复强化：限购拒绝，钱与等级都不动
+    lu.assertFalse(self:buyNumber(51))
+    lu.assertEquals(self:lastReason(), 'limit')
+    lu.assertEquals(self.data.Data.FishCoin, 950)
+    lu.assertEquals(self.data:ShopUpgradeLevel('melee'), 1)
+end
+
+-- 越级购买拒绝且不扣钱
+function TestShop:test_upgrade_rejects_skip_without_charge()
+    self.cfg.Shop = setmetatable({ Stands = { { AnchorName = 'TGUnitShop7', Level = 7 } } },
+        { __index = self.savedShop })
+    self.data:AddCoin(1000, nil, 'test')
+    lu.assertFalse(self:buyNumber(50)) -- 近战 2 级，未买过 1 级
+    lu.assertEquals(self:lastReason(), 'level')
+    lu.assertEquals(self.data.Data.FishCoin, 1000)
+    lu.assertEquals(self.data:ShopUpgradeLevel('melee'), 0)
+end
+
+-- 逐级链路与逐级价格（7 级摊位）：近战/远程/弹容/爆炸物满级
+function TestShop:test_full_level_chains_and_step_prices()
+    self.cfg.Shop = setmetatable({ Stands = { { AnchorName = 'TGUnitShop7', Level = 7 } } },
+        { __index = self.savedShop })
+    self.data:AddCoin(35000, nil, 'test')
+    for _, number in ipairs({ 51, 50, 49, 48, 47, 46, 45 }) do lu.assertTrue(self:buyNumber(number)) end
+    lu.assertEquals(self.data:ShopUpgradeLevel('melee'), 7)
+    lu.assertAlmostEquals(self.data:WeaponDamageScale('melee'), 1.7, 1e-9)
+    for _, number in ipairs({ 38, 37, 36, 35, 34 }) do lu.assertTrue(self:buyNumber(number)) end
+    lu.assertEquals(self.data:ShopUpgradeLevel('ranged'), 5)
+    lu.assertAlmostEquals(self.data:WeaponDamageScale('ranged'), 1.5, 1e-9)
+    for _, number in ipairs({ 41, 40, 39 }) do lu.assertTrue(self:buyNumber(number)) end
+    lu.assertEquals(self.data:ShopUpgradeLevel('magazine'), 3)
+    lu.assertEquals(self.data:MagazineSize(5), 13)
+    for _, number in ipairs({ 44, 43, 42 }) do lu.assertTrue(self:buyNumber(number)) end
+    lu.assertEquals(self.data:ShopUpgradeLevel('explosive'), 3)
+    lu.assertAlmostEquals(self.data:WeaponDamageScale('explosive'), 1.6, 1e-9)
+    -- 满级后再买任一级：限购拒绝且不扣钱
+    local coin = self.data.Data.FishCoin
+    lu.assertFalse(self:buyNumber(45))
+    lu.assertEquals(self:lastReason(), 'limit')
+    lu.assertEquals(self.data.Data.FishCoin, coin)
+    -- 逐级总价：近战 6350 + 远程 15500 + 弹容 4200 + 爆炸 8400
+    lu.assertEquals(35000 - coin, 6350 + 15500 + 4200 + 8400)
+end
+
+-- 客户端带的价格不采用（编号路径同样忽略）
+function TestShop:test_buy_number_ignores_client_price()
+    self.data:AddCoin(100, nil, 'test')
+    lu.assertTrue(self:buyNumber(51, { price = 1 }))
+    lu.assertEquals(self.data.Data.FishCoin, 50)
+end
+
+-- 武器不占格：满格也能买（#130 修正 CanGrant）
+function TestShop:test_weapon_buy_when_slots_full()
+    self.data:AddCoin(1000, nil, 'test')
+    while self.data:AddItem('carp', 1) do end
+    lu.assertTrue(self:buy('item134'))
+    lu.assertEquals(self.data:WeaponCount('item134'), 1)
+    lu.assertEquals(self.data.Data.FishCoin, 976)
+    local last = self.replies[#self.replies]
+    lu.assertEquals(last.name, '指虎')
+    lu.assertEquals(last.number, 26)
+end
+
+-- 编号路径的等级门槛与作废编号
+function TestShop:test_buy_number_respects_level_and_excluded_rows()
+    lu.assertFalse(self:buyNumber(1)) -- 科技假饵要求 7 级摊位
+    lu.assertEquals(self:lastReason(), 'item')
+    self.data:AddCoin(100, nil, 'test')
+    lu.assertFalse(self:buyNumber(27)) -- 作废编号不在货架
+    lu.assertEquals(self:lastReason(), 'item')
+    lu.assertEquals(self.data.Data.FishCoin, 100)
+end
+
+-- 畸形请求：既无 itemId 也无 number、编号非整数，直接拒绝
+function TestShop:test_malformed_number_requests_are_rejected()
+    lu.assertFalse(self.shop:Handle(self.me, { action = 'Buy', seq = 1 }))
+    lu.assertFalse(self.shop:Handle(self.me, { action = 'Buy', number = 1.5, seq = 2 }))
+    lu.assertFalse(self.shop:Handle(self.me, { action = 'Buy', number = -1, seq = 3 }))
+    lu.assertFalse(self.shop:Handle(self.me, { action = 'Buy', number = 51 }))
+end
+
 function TestShop:test_prices_come_from_shop_table()
     local prices = {}
     for _, goods in ipairs(self.cfg.Shop.Goods) do

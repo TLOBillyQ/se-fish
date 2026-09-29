@@ -43,6 +43,14 @@ function Mgr:FindGoods(itemId, level)
     end
 end
 
+-- #130：按货架行编号查上架商品（升级行无 itemKey，编号是稳定购买键）；编号非法或等级不够返回 nil
+function Mgr:FindGoodsByNumber(number, level)
+    if type(number) ~= 'number' or number ~= math.floor(number) or number < 1 then return nil end
+    for _, goods in ipairs(GameCfg.Shop.Goods) do
+        if goods.Number == number and goods.MinShopLevel <= level then return goods end
+    end
+end
+
 -- 玩家站在哪个摊位旁：返回 Stands 行（含 Level），不在任何摊位返回 nil
 function Mgr:StandFor(player)
     local shop = GameCfg.Shop
@@ -55,49 +63,88 @@ function Mgr:StandFor(player)
     return nil
 end
 
-function Mgr:Fail(player, itemId, reason)
-    print('[MgrShop] 购买失败', player.UserId, tostring(itemId), reason)
-    self:Reply(player, { ok = false, itemId = itemId, reason = reason })
+function Mgr:Fail(player, itemId, reason, number)
+    print('[MgrShop] 购买失败', player.UserId, tostring(itemId), tostring(number), reason)
+    self:Reply(player, { ok = false, itemId = itemId, number = number, reason = reason })
     return false
 end
 
-function Mgr:Buy(player, data, itemId, seq, operation)
+-- 结算一次购买（live/draft 通用，#130）：限购复验、扣款、发货或强化、购买计数一次落地。
+-- 价格一律取货架行（服务端定价，客户端传价忽略）；返回 result 或 nil, reason。
+local function settlePurchase(draft, goods)
+    if (goods.PurchaseLimit or 0) > 0 and draft:PurchaseCount(goods.Number) >= goods.PurchaseLimit then
+        return nil, 'limit'
+    end
+    if goods.Upgrade then
+        local allowed, failure = draft:CanShopUpgrade(goods.Upgrade)
+        if not allowed then return nil, failure end
+        local beforeCoin = draft.Data.FishCoin
+        if not draft:SpendCoin(goods.Price, function() draft:ApplyShopUpgrade(goods.Upgrade) end,
+            'shop:' .. goods.Number) then
+            return nil, 'coin'
+        end
+        draft:NotePurchase(goods.Number)
+        return { ok = true, action = 'Upgrade', number = goods.Number, name = goods.Name, price = goods.Price,
+            kind = goods.Upgrade.kind, level = goods.Upgrade.level,
+            coinBefore = beforeCoin, coinAfter = draft.Data.FishCoin }
+    end
+    local itemId = goods.ItemId
+    local allowed, failure = draft:CanGrant(itemId, 1)
+    if not allowed then return nil, failure == 'full' and 'full' or 'item' end
+    local beforeCoin, beforeItem = draft.Data.FishCoin, itemCount(draft, itemId)
+    if not draft:SpendCoin(goods.Price, function() draft:GrantItem(itemId, 1) end, 'shop:' .. itemId) then
+        return nil, 'coin'
+    end
+    draft:NotePurchase(goods.Number)
+    return { ok = true, itemId = itemId, number = goods.Number, name = goods.Name, price = goods.Price,
+        coinBefore = beforeCoin, coinAfter = draft.Data.FishCoin,
+        itemBefore = beforeItem, itemAfter = itemCount(draft, itemId) }
+end
+
+function Mgr:Buy(player, data, itemId, number, seq, operation)
     local stand = self:StandFor(player)
-    if not stand then return self:Fail(player, itemId, 'range') end
-    local goods = self:FindGoods(itemId, stand.Level)
-    if not goods then return self:Fail(player, itemId, 'item') end
-    local ok, reason = data:CanGrant(itemId, 1)
-    if not ok then return self:Fail(player, itemId, reason == 'full' and 'full' or 'item') end
+    if not stand then return self:Fail(player, itemId, 'range', number) end
+    local goods
+    if number ~= nil then goods = self:FindGoodsByNumber(number, stand.Level)
+    else goods = self:FindGoods(itemId, stand.Level) end
+    if not goods then return self:Fail(player, itemId, 'item', number) end
+    -- 快速预检（live 状态）；持久模式仍在隔离 draft 上复验，结果以 draft 结算为准
+    if (goods.PurchaseLimit or 0) > 0 and data:PurchaseCount(goods.Number) >= goods.PurchaseLimit then
+        return self:Fail(player, itemId, 'limit', number)
+    end
+    if goods.Upgrade then
+        local allowed, failure = data:CanShopUpgrade(goods.Upgrade)
+        if not allowed then return self:Fail(player, itemId, failure, number) end
+    else
+        local ok, reason = data:CanGrant(goods.ItemId, 1)
+        if not ok then return self:Fail(player, itemId, reason == 'full' and 'full' or 'item', number) end
+    end
     if self.Save then
         return execute(self, player, data, operation, function(draft)
-            local allowed, failure = draft:CanGrant(itemId, 1)
-            if not allowed then return nil, failure end
-            local beforeCoin, beforeItem = draft.Data.FishCoin, itemCount(draft, itemId)
-            if not draft:SpendCoin(goods.Price, function() draft:GrantItem(itemId, 1) end, 'shop:' .. itemId) then
-                return nil, 'coin'
-            end
-            return { ok = true, itemId = itemId, price = goods.Price,
-                coinBefore = beforeCoin, coinAfter = draft.Data.FishCoin,
-                itemBefore = beforeItem, itemAfter = itemCount(draft, itemId) }
+            local result, failure = settlePurchase(draft, goods)
+            if not result then return nil, failure end
+            return result
         end, function(written, result, operation)
-            if not written then self:Fail(player, itemId, result) return end
-            print('[MgrShop] 购买落账', player.UserId, operation.id, itemId,
-                'coinBefore=' .. result.coinBefore, 'coinAfter=' .. result.coinAfter,
-                'itemBefore=' .. result.itemBefore, 'itemAfter=' .. result.itemAfter)
+            if not written then self:Fail(player, itemId, result, number) return end
+            print('[MgrShop] 购买落账', player.UserId, operation.id,
+                tostring(result.itemId or result.number),
+                'coinBefore=' .. result.coinBefore, 'coinAfter=' .. result.coinAfter)
             self.PlayerData:SendItemBar(player)
             self:Reply(player, result)
-            if self.Quest then self.Quest:Notify('Buy', player, { itemId = itemId, eventId = operation.id }) end
+            if self.Quest then self.Quest:Notify('Buy', player,
+                { itemId = result.itemId, number = result.number, eventId = operation.id }) end
         end)
     end
-    if not data:SpendCoin(goods.Price, function() data:GrantItem(itemId, 1) end, 'shop:' .. itemId) then
-        return self:Fail(player, itemId, 'coin')
-    end
-    print('[MgrShop] 购买', player.UserId, itemId, '-' .. tostring(goods.Price), 'FishCoin=' .. tostring(data.Data.FishCoin))
+    local result, failure = settlePurchase(data, goods)
+    if not result then return self:Fail(player, itemId, failure, number) end
+    print('[MgrShop] 购买', player.UserId, tostring(result.itemId or result.number),
+        '-' .. tostring(goods.Price), 'FishCoin=' .. tostring(data.Data.FishCoin))
     self.PlayerData:SendItemBar(player)
-    self:Reply(player, { ok = true, itemId = itemId, price = goods.Price })
+    self:Reply(player, result)
     -- 新手任务事实（#51）：玩家 + 严格递增的请求序号即这次购买的唯一 eventId
     if self.Quest then
-        self.Quest:Notify('Buy', player, { itemId = itemId, eventId = 'shop:' .. tostring(player.UserId) .. ':' .. tostring(seq) })
+        self.Quest:Notify('Buy', player, { itemId = result.itemId, number = result.number,
+            eventId = 'shop:' .. tostring(player.UserId) .. ':' .. tostring(seq) })
     end
     return true
 end
@@ -147,7 +194,13 @@ function Mgr:Handle(player, payload)
     if last and seq <= last then return false end
     self.LastSeq[player.UserId] = seq
     if payload.action == 'UpgradeStorage' then return self:Upgrade(player, data, operation) end
-    return self:Buy(player, data, payload.itemId, seq, operation)
+    -- #130：购买键支持 itemId（旧路径）或货架行编号 number（升级行唯一键）；两者取 number
+    local itemId, number = payload.itemId, payload.number
+    if number ~= nil then
+        if type(number) ~= 'number' or number ~= math.floor(number) or number < 1
+            or number > 2147483647 then return false end
+    elseif type(itemId) ~= 'string' then return false end
+    return self:Buy(player, data, itemId, number, seq, operation)
 end
 
 function Mgr:Start()
