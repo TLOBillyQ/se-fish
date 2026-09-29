@@ -72,8 +72,15 @@ MgrMap.MgrSave.OnReady = function(player, data)
     if MgrMap.MgrPlayerData:GetDataInst(player) ~= data or ActivePlayers[player.UserId] == player then return end
     if not Started then ReadyQueue[player.UserId] = { player, data } return end
     ActivePlayers[player.UserId] = player
+    -- 这些管理器直接操作角色与生命状态，先于依赖它们的其他管理器初始化。
+    for _, name in ipairs({ 'MgrPlayer', 'MgrVitals', 'MgrAbility', 'MgrFishUnit' }) do
+        invoke(name, MgrMap[name], 'OnPlayerAdded', player)
+    end
     for name, mgr in pairs(MgrMap) do
-        if name ~= 'MgrPlayerData' then invoke(name, mgr, 'OnPlayerAdded', player) end
+        if name ~= 'MgrPlayerData' and name ~= 'MgrPlayer' and name ~= 'MgrVitals'
+            and name ~= 'MgrAbility' and name ~= 'MgrFishUnit' then
+            invoke(name, mgr, 'OnPlayerAdded', player)
+        end
     end
 end
 local function HandlePlayerAdded(player)
