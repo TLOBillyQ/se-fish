@@ -350,6 +350,19 @@ function Mgr:Start()
             end
             return
         end
+        -- #124 双向拖拽：MoveSlot 换格/移动，服务端复验容器与槽位
+        if action == 'MoveSlot' then
+            local ids = GameCfg.Items.ContainerId
+            local from, index, target, slot = payload.from, payload.index, payload.target, payload.slot
+            local valid = (from == ids.ItemBar or from == ids.Backpack)
+                and (target == ids.ItemBar or target == ids.Backpack)
+                and type(index) == 'number' and index == math.floor(index) and index >= 1
+                and type(slot) == 'number' and slot == math.floor(slot) and slot >= 1
+            if not valid then return end
+            if _G.REUtil:CheckRECD(player, 'ItemBarAction', GameCfg.Items.ActionCooldownSec) then return end
+            if data:MoveSlot(from, index, target, slot) then self:SendItemBar(player) end
+            return
+        end
         -- #124 统一分发：吃/丢弃等操作两次语义（切手持再使用），经 ItemBarResult 回包
         if action == 'Operate' then
             if _G.REUtil:CheckRECD(player, 'ItemBarAction', GameCfg.Items.ActionCooldownSec) then return end

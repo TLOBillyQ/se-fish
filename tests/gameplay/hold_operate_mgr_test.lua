@@ -155,6 +155,27 @@ function TestHoldOperateMgr:test_attack_hold_first_combat_pending_second()
     lu.assertEquals(self.data:WeaponCount('item134'), 1)
 end
 
+-- 双向拖拽动作：MoveSlot 经 ItemBarAction 通道，换格/越界/非法容器都服务端复验。
+function TestHoldOperateMgr:test_move_slot_action_dispatches_with_server_validation()
+    for _ = 1, 6 do lu.assertTrue(self.data:AddItem('carp', 1.37)) end
+    lu.assertTrue(self.data:GrantItem('duck', 1))
+    local snapshot = self.data:GetItemBarSnapshot()
+    lu.assertEquals(snapshot.backpack[5].itemId, 'duck')
+    self.events.ItemBarAction.OnServerEvent:Fire(self.player,
+        { action = 'MoveSlot', from = 'backpack', index = 5, target = 'itemBar', slot = 1 })
+    snapshot = self.data:GetItemBarSnapshot()
+    lu.assertEquals(snapshot.slots[1].itemId, 'duck')
+    -- 非法容器名：拒绝且无副作用
+    local before = self.data:GetItemBarSnapshot()
+    self.events.ItemBarAction.OnServerEvent:Fire(self.player,
+        { action = 'MoveSlot', from = 'bogus', index = 1, target = 'itemBar', slot = 2 })
+    lu.assertEquals(self.data:GetItemBarSnapshot(), before)
+    -- 越界槽位：拒绝且无副作用
+    self.events.ItemBarAction.OnServerEvent:Fire(self.player,
+        { action = 'MoveSlot', from = 'itemBar', index = 1, target = 'backpack', slot = 99 })
+    lu.assertEquals(self.data:GetItemBarSnapshot(), before)
+end
+
 -- 丢弃未接 PrepareDrop/CommitDrop：服务端拒绝、不扣物、回明确错误。
 function TestHoldOperateMgr:test_discard_rejected_without_ground_item_api()
     lu.assertTrue(self.data:AddItem('carp', 1.37))
