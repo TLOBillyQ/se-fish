@@ -138,6 +138,59 @@ local function eatSlot(mgr, player, data, value)
     if itemId then mgr.Vitals:Eat(player, itemId) end
 end
 
+-- #124 统一分发：吃/药水/丢弃/攻击经同一入口。切手持与实际使用分两次——
+-- 首次只切手持（held），手持匹配才算再次并执行真实行为；重复点击、空格都有明确回包。
+-- 丢弃依赖地面物品接口（T05 PrepareDrop/CommitDrop）：未接入时拒绝且不扣物。
+function Mgr:Operate(player, data, payload)
+    local function reply(result) _G.REUtil:GetRE('ItemBarResult'):FireClient(player, result) end
+    local op = payload.op
+    local slot = payload.slot
+    if op ~= 'eat' and op ~= 'discard' then
+        reply({ ok = false, reason = 'unknown-op' })
+        return
+    end
+    if type(slot) ~= 'number' or slot ~= math.floor(slot)
+        or slot < 1 or slot > data:ItemBarCapacity() then
+        reply({ ok = false, reason = 'bad-slot' })
+        return
+    end
+    local held = data.Extra.inventory.selection.held
+    if held.kind ~= 'slot' or held.slot ~= slot then
+        -- 首次：只切手持，不消费
+        if not data:HoldSlot(slot) then
+            reply({ ok = false, reason = 'empty' })
+            return
+        end
+        reply({ ok = true, op = op, held = true })
+        return
+    end
+    -- 再次：实际使用
+    local items = data.Data.Containers[GameCfg.Items.ContainerId.ItemBar]
+    local entry = items[slot]
+    if not entry or entry.count <= 0 then
+        reply({ ok = false, reason = 'empty' })
+        return
+    end
+    if op == 'discard' then
+        -- 地面物品接口未接入（T05）：拒绝且不扣物，回明确错误
+        reply({ ok = false, op = 'discard', reason = 'drop-unavailable' })
+        return
+    end
+    if self.Vitals and not self.Vitals:CanEat(player, entry.itemId) then
+        reply({ ok = false, reason = 'cannot-eat' })
+        return
+    end
+    -- EatSlot 只吃选中格（#53）：分发已验槽位有效，先切选中再吃掉整格
+    data:SelectSlot(slot)
+    local itemId = data:EatSlot(slot)
+    if not itemId then
+        reply({ ok = false, reason = 'empty' })
+        return
+    end
+    if self.Vitals then self.Vitals:Eat(player, itemId) end
+    reply({ ok = true, op = 'eat', held = false })
+end
+
 local function notifyEquippedBait(mgr, player, method, value)
     if method ~= 'SelectBait' or value == nil or not mgr.Quest then return end
     mgr.NextFactId = (mgr.NextFactId or 0) + 1
@@ -166,6 +219,12 @@ function Mgr:Start()
             if self.Loot and not _G.REUtil:CheckRECD(player, 'ItemBarAction', GameCfg.Items.ActionCooldownSec) then
                 self.Loot:Pickup(player, payload.value)
             end
+            return
+        end
+        -- #124 统一分发：吃/丢弃等操作两次语义（切手持再使用），经 ItemBarResult 回包
+        if action == 'Operate' then
+            if _G.REUtil:CheckRECD(player, 'ItemBarAction', GameCfg.Items.ActionCooldownSec) then return end
+            self:Operate(player, data, payload)
             return
         end
         local method = type(action) == 'string' and actions[action]
