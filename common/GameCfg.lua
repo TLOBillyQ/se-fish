@@ -617,6 +617,63 @@ GameCfg.Ability = {
         ArcHeight = 3,       -- 飞行弧线高度（暂取，表现参数）
         LongPressSec = 0.35, -- 长按进入选点（暂取，UI 参数）
     },
+    -- T11（#132）高风险能力原型：三倍体型 / 飞行 / 巡航叼人 / 分阶段首领的数值与契约集中在此，
+    -- 纯逻辑见 common/BodyScale.lua、common/FlightPath.lua、common/CarryMount.lua、common/BossPhase.lua。
+    -- 原型只证明逻辑一致性与接缝可调用；真机行为（碰撞、相机、挂点是否穿模）仍须编辑器窗口试玩。
+    -- 标「暂取」的值在试玩前无实测依据，不是策划案数值。
+    BodyScale = {
+        -- GameSpec §2：体型 1 倍起，变大药水每个 +0.2 倍，上限 3 倍（最多 10 个）；
+        -- 血量上限 300 起、每个 +20%（=60），上限 900。
+        Base = 1, Step = 0.2, Max = 3, MaxPotions = 10,
+        HealthBase = 300, HealthStepPercent = 20, HealthMax = 900,
+        -- 1 倍体型下的基准量：胶囊高 2 米（与 MgrVitals.characterHeight 读到的角色 Height 同口径）、
+        -- 相机距离 6 米、交互距离 2 米（GameSpec §8.3「2 米内显示拾取」）。
+        CapsuleHeight = 2, CameraDistance = 6, InteractRange = 2,
+    },
+    Flight = {
+        -- GameSpec §12：白头鹰 飞行移速 20 / 每 20 秒俯冲 / 基础攻击 30；风神翼龙 移速 20 /
+        -- 每 4 秒投掷（5 米落地范围）/ 每 20 秒追踪俯冲（正文 100 / 260，表只给通用 35）；
+        -- 沧龙 移速 13 / 每 15 秒跃起砸击 / 绕岛咬最近岛中心玩家并叼走入海。
+        -- 高度上限取 #125 场景合同的 Boundary.MaxFlightHeight = 20（票面「20 米飞行」）。
+        MaxHeight = 20, MaxStepSec = 0.25, DriftTolerance = 4,
+        CruiseHeight = 12,   -- 巡航高度（暂取）
+        DiveSpeed = 30,      -- 俯冲速度（暂取）
+        ClimbSpeed = 8,      -- 爬升速度（暂取）
+        -- 按鱼种 Id 的飞行档案；Bounds 由鱼所在钓鱼区的 Scene.Boundary 提供，缺省用下面的 FallbackBounds。
+        Species = {
+            fish47Elite = { CruiseHeight = 12, DiveIntervalSec = 20, DiveDamage = 30 },
+            fish48Boss = { CruiseHeight = 15, DiveIntervalSec = 20, DiveDamage = 260,
+                ThrowIntervalSec = 4, ThrowRadius = 5, ThrowDamage = 100 },
+            fish55Elite = { Mode = 'leap', CruiseHeight = 0, DiveIntervalSec = 15, DiveDamage = 100 },
+        },
+        -- 场景合同缺失时的兜底边界（以鱼塘的中心为原点，见 GameCfg.Zones[1].Scene.Boundary）
+        FallbackBounds = { MinX = -60, MaxX = 60, MinZ = -50, MaxZ = 70, BottomY = -30, TopY = 40,
+            MaxFlightHeight = 20 },
+    },
+    Carry = {
+        -- 巡航叼人（沧龙「咬最近岛中心玩家、叼走入海」，GameSpec §12）：咬中 300、过程接触 150。
+        Socket = 'LiftSocket',                -- 与顶鱼挂点同名（MgrFishUnit.LiftSocket）
+        Offset = { x = 0, y = 1.2, z = 1.6 }, -- 1 倍体型下的嘴部挂点位移（暂取）
+        GrabRange = 2.5,                      -- 咬中判定距离（暂取）
+        GrabDamage = 300,                     -- 咬中伤害（正文）
+        FollowTolerance = 3,                  -- 携带跟随容差（米）：超出即整段钳回挂点
+        DropHeight = 1.5, DropForward = 2,    -- 释放落点（暂取）
+        MaxCarrySec = 20,                     -- 单次叼走的最长携带时间（暂取）
+    },
+    BossPhase = {
+        -- 哥斯拉（fish56Boss，GameSpec §12）：低于 60% 入水、切沧龙式攻击（咬中 1000）；
+        -- 低于 20% 重新上岸、伤害 +50%、原子吐息改为每 10 秒。阈值优先于普通招式循环。
+        -- 阈值按百分比降序排列；一帧跨两个阈值只进最终合法阶段（见 common/BossPhase.lua）。
+        Thresholds = {
+            { Percent = 60, Phase = 'water', BiteDamage = 1000 },
+            { Percent = 20, Phase = 'enraged', DamageBonusPercent = 50, BreathIntervalSec = 10 },
+        },
+        Attacks = {
+            claw = { IntervalSec = 2, Damage = 50 },   -- 表内 2 秒爪击（基础攻击 50）
+            tail = { IntervalSec = 6, Damage = 50 },   -- 表内每 6 秒甩尾
+            breath = { IntervalSec = 30, Range = 10, OneShot = true, WindupSec = 1.5 }, -- 正前 10 米秒杀
+        },
+    },
 }
 
 -- 水判定：同一钓鱼区可用多条正方形拼接。Center 只用到 x/z（y 留作场景溯源），HalfXZ 是水平半宽（米），
