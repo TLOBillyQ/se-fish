@@ -174,7 +174,8 @@ function TestLanding:test_unhook_and_manual_reel_spawn_nothing()
     local id = self:hook('bass', 1.2)
     self.now = 30
     self.reel:Update()
-    lu.assertEquals(self:lastState().phase, 'idle')
+    -- #133：脱钩不再直接回 idle，而是停在 escaped（线还在水里）等玩家收竿
+    lu.assertEquals(self:lastState().phase, 'escaped')
     lu.assertEquals(#self.spawned, 0)
     local closed = self:hook('carp', 1.1)
     self.reel:Close(self.player, { session = closed })
@@ -198,11 +199,14 @@ function TestLanding:test_landed_returns_to_idle_with_rod_selected_after_hold()
     lu.assertEquals(#self.spawned, 1)
 end
 
-function TestLanding:test_unhook_restores_rod_selection()
+-- #133：脱钩时线还在水里，鱼竿仍被占着；按「收竿」才归位到抛竿时选中的鱼竿
+function TestLanding:test_unhook_keeps_rod_until_player_reels_back()
     self:hook('bass', 1.2)
     self.data.Data.SelectedSlot = nil
     self.now = 30
     self.reel:Update()
+    lu.assertNil(self.data.Data.SelectedSlot)
+    self.events.CastAction.OnServerEvent:Fire(self.player, { action = 'Reel' })
     lu.assertEquals(self.data.Data.SelectedSlot, 1)
 end
 

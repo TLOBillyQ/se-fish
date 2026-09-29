@@ -166,9 +166,12 @@ function Mgr:EndSession(player, current, notify, reason)
     end
 end
 
+-- 收竿：cast（还没上钩）与 escaped（脱钩后线还在水里）都靠它回到可抛竿的 idle
 function Mgr:Reel(player)
     local current = self.Sessions[player.UserId]
-    if not current or current.player ~= player or current.session.phase ~= 'cast' then return end
+    if not current or current.player ~= player then return end
+    local phase = current.session.phase
+    if phase ~= 'cast' and phase ~= 'escaped' then return end
     if REUtil:CheckRECD(player, 'CastAction', GameCfg.Casting.ActionCooldownSec) then return end
     self:EndSession(player, current)
     print('[MgrCast] 收竿', player.UserId)
@@ -189,7 +192,9 @@ function Mgr:Abort(player)
     print('[MgrCast] 死亡断线', player.UserId)
 end
 
-function Mgr:FinishReel(player, sessionId, outcome, notify)
+-- lineOut：线还在水里（鱼脱钩但没收回竿）。会话停在 escaped，等玩家按「收竿」回 idle；
+-- 其余结束方式（主动收竿 / 死亡 / 离线）照旧一次收竿到底。
+function Mgr:FinishReel(player, sessionId, outcome, notify, lineOut)
     local current = self.Sessions[player.UserId]
     if not current or current.player ~= player or current.session.reelSession ~= sessionId
         or current.session.phase ~= 'hooked' then return end
@@ -208,6 +213,10 @@ function Mgr:FinishReel(player, sessionId, outcome, notify)
         if self.Quest then
             self.Quest:Notify('Land', player, { itemId = session.fishId, eventId = 'reel:' .. tostring(sessionId) })
         end
+    elseif lineOut then
+        -- #133 脱钩：鱼没了但线还在水里，会话停在 escaped 等玩家收竿，收竿后才回到可抛竿的 idle
+        current.session.phase = 'escaped'
+        if notify ~= false then self:SendState(player, current.session) end
     else
         self:EndSession(player, current, notify)
     end

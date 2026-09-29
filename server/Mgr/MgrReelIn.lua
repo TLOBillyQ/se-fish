@@ -38,11 +38,12 @@ function Mgr:Reply(session, action, accepted, q)
         progress = session.Progress.Progress, accepted = accepted, q = q })
 end
 
-function Mgr:Finish(session, outcome, notify)
+-- lineOut：自然脱钩（收线到 0）时线还在水里，交给 Cast 停在 escaped；主动收竿 / 打断照旧直接结束
+function Mgr:Finish(session, outcome, notify, lineOut)
     if self.Sessions[session.Player.UserId] ~= session then return end
     self.Sessions[session.Player.UserId] = nil
     session.Receiver:EndSession()
-    self.Cast:FinishReel(session.Player, session.Id, outcome, notify)
+    self.Cast:FinishReel(session.Player, session.Id, outcome, notify, lineOut)
     if notify ~= false then self:Reply(session, outcome) end
 end
 
@@ -57,11 +58,11 @@ function Mgr:Accept(player, payload)
     if result.Status ~= RateLimit.Result.Ok then return end
     local expired = advanceIdle(session, now)
     if expired then
-        self:Finish(session, expired)
+        self:Finish(session, expired, nil, expired == 'unhooked')
         return
     end
     local outcome = session.Progress:Advance(now, result.Accepted, GameCfg.HighFreqInput.AggregateSec)
-    if outcome then self:Finish(session, outcome)
+    if outcome then self:Finish(session, outcome, nil, outcome == 'unhooked')
     else self:Reply(session, 'progress', result.Accepted, payload.q) end
 end
 
@@ -154,7 +155,7 @@ function Mgr:Update()
     for _, session in pairs(self.Sessions) do
         local outcome = advanceIdle(session, now)
         if outcome then
-            self:Finish(session, outcome)
+            self:Finish(session, outcome, nil, outcome == 'unhooked')
         elseif not session.LastReport or now - session.LastReport >= GameCfg.HighFreqInput.AggregateSec then
             session.LastReport = now
             self:Reply(session, 'progress', 0)
