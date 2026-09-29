@@ -320,3 +320,32 @@ function TestShop:test_malformed_requests_are_rejected()
     lu.assertFalse(self.shop:Handle(self.me, { action = 'Buy', itemId = 'worm' }))
     lu.assertEquals(self.data.Data.FishCoin, 5)
 end
+
+-- #130 code-review：旧 UpgradeStorage 通道与新升级行同口径（逐级一次、摊位最低等级、限购计数），
+-- 失败方式：旧通道绕过等级门槛任意摊位扩容；绕过限购重复扩容；越级/满级提示错。
+function TestShop:test_legacy_upgrade_respects_level_gate_limit_and_note_purchase()
+    self.data:AddCoin(10000, nil, 'test')
+    -- 1 级摊位逐级扩容成功，且把行 33（背包升级1）计入购买次数
+    self.seq = self.seq + 1
+    lu.assertTrue(self.shop:Handle(self.me, { action = 'UpgradeStorage', seq = self.seq }))
+    lu.assertEquals(self.data.Data.UpgradeLevel, 1)
+    lu.assertEquals(self.data:PurchaseCount(33), 1)
+    lu.assertEquals(self.data.Data.FishCoin, 9900)
+    -- 限购：级别回滚后行 33 仍计数 1/1 → 'limit' 且不扣钱
+    self.data.Data.UpgradeLevel = 0
+    self.seq = self.seq + 1
+    lu.assertFalse(self.shop:Handle(self.me, { action = 'UpgradeStorage', seq = self.seq }))
+    lu.assertEquals(self:lastReason(), 'limit')
+    lu.assertEquals(self.data.Data.FishCoin, 9900)
+    -- 摊位等级门槛：1 级摊位已升 1 级，下一级（行 32）需 2 级摊位 → 'level'
+    self.data.Data.UpgradeLevel = 1
+    self.data.Extra.growth.purchases['33'] = 0
+    self.seq = self.seq + 1
+    lu.assertFalse(self.shop:Handle(self.me, { action = 'UpgradeStorage', seq = self.seq }))
+    lu.assertEquals(self:lastReason(), 'level')
+    -- 满级：6 级后再扩 → 'max'
+    self.data.Data.UpgradeLevel = 6
+    self.seq = self.seq + 1
+    lu.assertFalse(self.shop:Handle(self.me, { action = 'UpgradeStorage', seq = self.seq }))
+    lu.assertEquals(self:lastReason(), 'max')
+end

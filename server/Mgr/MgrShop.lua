@@ -149,13 +149,40 @@ function Mgr:Buy(player, data, itemId, number, seq, operation)
     return true
 end
 
+-- 旧扩容通道的货架行（#130 code-review）：与新升级行同口径——逐级一次、摊位最低等级、限购计数，
+-- 避免旧 action='UpgradeStorage' 绕过新货架等级/限购。返回行或 nil, reason。
+local function backpackRow(data, standLevel)
+    local spec = GameCfg.Shop.UpgradeKinds.backpack
+    local nextLevel = data:ShopUpgradeLevel('backpack') + 1
+    if not spec or nextLevel > spec.MaxLevel then return nil, 'max' end
+    local row
+    for _, goods in ipairs(GameCfg.Shop.Goods) do
+        if goods.Upgrade and goods.Upgrade.kind == 'backpack' and goods.Upgrade.level == nextLevel
+            and goods.MinShopLevel <= standLevel then
+            row = goods
+            break
+        end
+    end
+    if not row then return nil, 'level' end
+    if (row.PurchaseLimit or 0) > 0 and data:PurchaseCount(row.Number) >= row.PurchaseLimit then
+        return nil, 'limit'
+    end
+    return row
+end
+
 function Mgr:Upgrade(player, data, operation)
-    if not self:StandFor(player) then return self:Fail(player, nil, 'range') end
+    local stand = self:StandFor(player)
+    if not stand then return self:Fail(player, nil, 'range') end
+    local row, reason = backpackRow(data, stand.Level)
+    if not row then return self:Fail(player, nil, reason) end
     if self.Save then
         return execute(self, player, data, operation, function(draft)
+            local draftRow, failure = backpackRow(draft, stand.Level)
+            if not draftRow then return nil, failure end
             local beforeCoin, beforeLevel = draft.Data.FishCoin, draft.Data.UpgradeLevel
             local upgraded, cost = draft:UpgradeStorage()
             if not upgraded then return nil, cost end
+            draft:NotePurchase(draftRow.Number)
             return { ok = true, action = 'UpgradeStorage', price = cost, level = draft.Data.UpgradeLevel,
                 coinBefore = beforeCoin, coinAfter = draft.Data.FishCoin, levelBefore = beforeLevel }
         end, function(written, result, operation)
@@ -169,6 +196,7 @@ function Mgr:Upgrade(player, data, operation)
     end
     local ok, price = data:UpgradeStorage()
     if not ok then return self:Fail(player, nil, price) end
+    data:NotePurchase(row.Number)
     print('[MgrShop] 扩容', player.UserId, 'level=' .. tostring(data.Data.UpgradeLevel), '-' .. tostring(price))
     self.PlayerData:SendItemBar(player)
     self:Reply(player, { ok = true, action = 'UpgradeStorage', price = price,

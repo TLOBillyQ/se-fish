@@ -29,17 +29,33 @@ local function styleButton(button)
     button.DisableImage = SquareButtonImage
 end
 
-local function createButtonLabel(parent, button, name, text, fontSize)
-    local label = game:GetService('World'):CreateUnit('EUITextLabel', {
+-- 运行时创建节点统一登记：重建（换 RootNode 再 Init）时整体销毁，不残留旧按钮/标签（#130 code-review）
+local function track(self, node)
+    if node then self.RuntimeNodes[#self.RuntimeNodes + 1] = node end
+    return node
+end
+
+local function createButtonLabel(self, parent, button, name, text, fontSize)
+    local label = track(self, game:GetService('World'):CreateUnit('EUITextLabel', {
         Parent = parent, Name = name, Position = button.Position, Size = button.Size,
         Text = text, FontSize = fontSize, TextColor = Color.New(255, 255, 255, 255),
-    })
+    }))
     if label then
         label.TouchEnabled = false
         label.SwallowTouchEnabled = false
         label.LocalZOrder = 1
     end
     return label
+end
+
+-- 行状态后缀（编辑器行与补位行共用）：已购 / 锁定（摊位等级不够或强化越级）
+local function stateSuffix(state, goods, level)
+    if state == 'owned' then return '（已购）' end
+    if state == 'locked' then
+        if goods.MinShopLevel > level then return '（需 ' .. goods.MinShopLevel .. ' 级摊位）' end
+        return '（需先购前一级）'
+    end
+    return ''
 end
 
 -- 行状态：locked（摊位等级不够或强化越级，灰显）/ owned（限购已满或强化级别已购）/ buy（可购买）
@@ -103,6 +119,7 @@ function ScreenHandler:OpenPlatformShop()
         return
     end
     local ok, err = pcall(function() platform:Open() end)
+    if not ok then print('[ScreenShop] 平台商店打开失败', tostring(err)) end
     self.CoinHint.Text = ok and '已请求打开平台商店，请在平台侧完成购买'
         or ('平台商店打开失败：' .. tostring(err) .. '；可返回其他分页')
 end
@@ -123,8 +140,7 @@ function ScreenHandler:SetRowVisible(index, goods)
                 nodes['ShopItemIcon' .. index].Image = definition.Icon
             end
             if nodes['ShopItemName' .. index] then
-                nodes['ShopItemName' .. index].Text = goods.Name
-                    .. (state == 'owned' and '（已购）' or state == 'locked' and '（需 ' .. goods.MinShopLevel .. ' 级摊位）' or '')
+                nodes['ShopItemName' .. index].Text = goods.Name .. stateSuffix(state, goods, self.Level or 1)
             end
             if nodes['LabelShopPrice' .. index] then
                 nodes['LabelShopPrice' .. index].Text = tostring(goods.Price)
@@ -142,7 +158,7 @@ function ScreenHandler:SetRowVisible(index, goods)
     btn.Visible = goods ~= nil
     if goods and self.ExtraLabels[index] then
         self.ExtraLabels[index].Text = goods.Name .. '  ' .. tostring(goods.Price) .. ' 金币'
-            .. (state == 'owned' and '（已购）' or state == 'locked' and '（需 ' .. goods.MinShopLevel .. ' 级摊位）' or '')
+            .. stateSuffix(state, goods, self.Level or 1)
     end
     btn.TouchEnabled = state == 'buy'
     btn.Disabled = state ~= 'buy'
@@ -190,16 +206,13 @@ end
 function ScreenHandler:Init()
     if self.Inited and self.BoundRootNode == self.RootNode then return end
     for _, connection in ipairs(self.Connections or {}) do connection:Disconnect() end
-    for _, btn in pairs(self.ExtraButtons or {}) do btn:Destroy() end
-    for _, label in pairs(self.ExtraLabels or {}) do label:Destroy() end
-    for _, btn in pairs(self.PageTabs or {}) do btn:Destroy() end
-    for _, btn in pairs(self.PageButtons or {}) do btn:Destroy() end
-    if self.CoinHint then self.CoinHint:Destroy() end
-    if self.CoinButton then self.CoinButton:Destroy() end
-    if self.CoinButtonLabel then self.CoinButtonLabel:Destroy() end
+    -- 重建前整体销毁上一轮运行时创建的节点（页签/翻页/补位行/金币页），换 RootNode 再 Init 不残留
+    for _, node in ipairs(self.RuntimeNodes or {}) do pcall(function() node:Destroy() end) end
+    self.RuntimeNodes = {}
     self.ExtraButtons, self.ExtraLabels = {}, {}
-    self.PageTabs, self.PageButtons = {}, {}
+    self.PageTabs = {}
     self.CoinHint, self.CoinButton, self.CoinButtonLabel = nil, nil, nil
+    self.PrevButton, self.NextButton = nil, nil
     self.VisibleRows = {}
     self.Connections = {}
     local function listen(signal, callback)
@@ -222,7 +235,7 @@ function ScreenHandler:Init()
         close.ButtonNormalColor = Color.New(54, 100, 140, 255)
         close.ButtonPressColor = Color.New(36, 130, 94, 255)
         close.ButtonDisableColor = Color.New(120, 120, 120, 255)
-        self.CloseLabel = createButtonLabel(close.Parent, close, 'LabelShopCloseTheme', '关闭', 26)
+        self.CloseLabel = createButtonLabel(self, close.Parent, close, 'LabelShopCloseTheme', '关闭', 26)
         listen(close.OnClicked, function() _G.MgrGameUI:CloseScreen('ScreenShop') end)
     end
     local root = self.RootNode
@@ -231,62 +244,62 @@ function ScreenHandler:Init()
     local x, y = resolution.x / 2, resolution.y / 2 - 110
     -- 页签（四页分页，#130）
     for index, name in ipairs(TabNames) do
-        local tab = world:CreateUnit('EUIButton', {
+        local tab = track(self, world:CreateUnit('EUIButton', {
             Parent = root, Name = 'BtnShopPage' .. name,
             Position = Vector2.New(x - 330 + (index - 1) * 220, y + 320), Size = Vector2.New(200, 70),
-        })
+        }))
         styleButton(tab)
         tab.ButtonNormalColor = Color.New(54, 100, 140, 255)
         tab.ButtonPressColor = Color.New(36, 130, 94, 255)
         tab.ButtonDisableColor = Color.New(120, 120, 120, 255)
         tab.TouchEnabled = true
         self.PageTabs[name] = tab
-        createButtonLabel(root, tab, 'LabelShopPage' .. name, name, 26)
+        createButtonLabel(self, root, tab, 'LabelShopPage' .. name, name, 26)
         listen(tab.OnClicked, function() self:SetPage(name) end)
     end
     -- 页内翻页（升级页 24 行，#130）
-    self.PrevButton = world:CreateUnit('EUIButton', {
+    self.PrevButton = track(self, world:CreateUnit('EUIButton', {
         Parent = root, Name = 'BtnShopPrev', Position = Vector2.New(x - 160, y + 210), Size = Vector2.New(300, 70),
-    })
-    self.NextButton = world:CreateUnit('EUIButton', {
+    }))
+    self.NextButton = track(self, world:CreateUnit('EUIButton', {
         Parent = root, Name = 'BtnShopNext', Position = Vector2.New(x + 160, y + 210), Size = Vector2.New(300, 70),
-    })
+    }))
     for _, pair in ipairs({ { self.PrevButton, '上一页' }, { self.NextButton, '下一页' } }) do
         styleButton(pair[1])
         pair[1].ButtonNormalColor = Color.New(54, 100, 140, 255)
         pair[1].ButtonPressColor = Color.New(36, 130, 94, 255)
         pair[1].ButtonDisableColor = Color.New(120, 120, 120, 255)
         pair[1].TouchEnabled = true
-        createButtonLabel(root, pair[1], pair[1].Name .. 'Label', pair[2], 26)
+        createButtonLabel(self, root, pair[1], pair[1].Name .. 'Label', pair[2], 26)
     end
     listen(self.PrevButton.OnClicked, function() self:TurnPage(-1) end)
     listen(self.NextButton.OnClicked, function() self:TurnPage(1) end)
     -- 金币页：提示 + 平台入口按钮（平台由后台交付，这里只做降级入口）
-    self.CoinHint = world:CreateUnit('EUITextLabel', {
+    self.CoinHint = track(self, world:CreateUnit('EUITextLabel', {
         Parent = root, Name = 'LabelCoinPageHint', Position = Vector2.New(x, y), Size = Vector2.New(700, 90),
         Text = '', FontSize = 26, TextColor = Color.New(255, 255, 255, 255),
-    })
+    }))
     if self.CoinHint then
         self.CoinHint.TouchEnabled = false
         self.CoinHint.SwallowTouchEnabled = false
     end
-    self.CoinButton = world:CreateUnit('EUIButton', {
+    self.CoinButton = track(self, world:CreateUnit('EUIButton', {
         Parent = root, Name = 'BtnOpenPlatformShop', Position = Vector2.New(x, y - 110), Size = Vector2.New(500, 85),
-    })
+    }))
     if self.CoinButton then
         styleButton(self.CoinButton)
         self.CoinButton.ButtonNormalColor = Color.New(54, 100, 140, 255)
         self.CoinButton.ButtonPressColor = Color.New(36, 130, 94, 255)
         self.CoinButton.TouchEnabled = true
-        self.CoinButtonLabel = createButtonLabel(root, self.CoinButton, 'LabelOpenPlatformShop', '打开平台商店', 26)
+        self.CoinButtonLabel = createButtonLabel(self, root, self.CoinButton, 'LabelOpenPlatformShop', '打开平台商店', 26)
         listen(self.CoinButton.OnClicked, function() self:OpenPlatformShop() end)
     end
     -- 运行时商品补位行（编辑器侧只有两行商品节点；第 3..PageSize 行运行时建文本按钮）
     for index = RowCount + 1, PageSize do
-        local btn = world:CreateUnit('EUIButton', {
+        local btn = track(self, world:CreateUnit('EUIButton', {
             Parent = root, Name = 'BtnShopBuyExtra' .. index,
             Position = Vector2.New(x, y - 100 * (index - RowCount)), Size = Vector2.New(590, 85),
-        })
+        }))
         styleButton(btn)
         btn.ButtonNormalColor = Color.New(54, 100, 140, 255)
         btn.ButtonPressColor = Color.New(36, 130, 94, 255)
@@ -294,7 +307,7 @@ function ScreenHandler:Init()
         btn.TouchEnabled = true
         btn.Visible = false
         self.ExtraButtons[index] = btn
-        self.ExtraLabels[index] = createButtonLabel(root, btn, 'LabelShopBuyExtra' .. index, '', 26)
+        self.ExtraLabels[index] = createButtonLabel(self, root, btn, 'LabelShopBuyExtra' .. index, '', 26)
         listen(btn.OnClicked, function() self:Buy(index) end)
     end
     listen(_G.REUtil:GetRE('ItemBarState').OnClientEvent, function(state)

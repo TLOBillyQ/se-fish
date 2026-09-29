@@ -35,9 +35,17 @@ function TestShopCatalog:test_goods_is_full_50_rows_with_pages_and_numbers()
     lu.assertEquals(perPage, { ['钓具'] = 14, ['武器'] = 12, ['升级'] = 24, ['金币'] = 0 })
 end
 
+-- 背包升级行描述与商店表原表一致（#130 code-review：升级6 同为「背包格+5」，按 design 原表）
+function TestShopCatalog:test_backpack_rows_match_source_sheet_wording()
+    for _, row in ipairs(GameCfg.Shop.Goods) do
+        if row.Upgrade and row.Upgrade.kind == 'backpack' then
+            lu.assertEquals(row.Desc, '购买后，道具栏+1，背包格+5', '行 ' .. row.Number)
+        end
+    end
+end
+
 -- 旧白名单 9 行在新货架同价同等级（兼容旧商品）
-function TestShopCatalog:test_legacy_goods_keep_price_and_level()
-    local byItem = {}
+function TestShopCatalog:test_legacy_goods_keep_price_and_level()    local byItem = {}
     for _, row in ipairs(GameCfg.Shop.Goods) do if row.ItemId then byItem[row.ItemId] = row end end
     local legacy = { starterRod = { 5, 1 }, worm = { 1, 1 }, sausage = { 2, 2 }, shrimpRod = { 12, 2 },
         crabRod = { 24, 3 }, normalRod = { 50, 4 }, proRod = { 100, 5 },

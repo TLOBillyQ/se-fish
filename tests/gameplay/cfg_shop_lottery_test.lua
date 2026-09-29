@@ -45,7 +45,7 @@ function TestContentCfg:test_upgrades_are_once_per_level()
     end
     for _, row in ipairs(goods) do
         if row.upgrade and row.upgrade.kind == 'backpack' and row.upgrade.level == 6 then
-            lu.assertEquals(row.description, '购买后，道具栏+1，背包格+10')
+            lu.assertEquals(row.description, '购买后，道具栏+1，背包格+5')
             lu.assertEquals(row.upgrade.backpackSlots, 40)
         end
     end
