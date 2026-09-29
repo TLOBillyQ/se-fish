@@ -87,3 +87,273 @@ function TestRecordsCore:test_state_and_text_never_fabricate_a_record()
     lu.assertEquals(Records.Describe({ state = 'unavailable' }), '全服纪录：暂不可用')
     lu.assertEquals(Records.Describe(nil), '全服纪录：暂不可用', '未知状态按不可用展示，不当作暂无')
 end
+
+-- 服务层：真实 MgrRecords，只替换平台适配器（内存假实现，能表达超时/限流/不可用）
+TestRecordsService = {}
+
+local function readSource(path)
+    local file = io.open(path, 'r')
+    if not file then return nil end
+    local text = file:read('*a')
+    file:close()
+    return text
+end
+
+function TestRecordsService:setUp()
+    self.oldGame = _G.game
+    self.oldREUtil = _G.REUtil
+    self.clock, self.queue = 100, {}
+    self.store, self.calls, self.writes, self.readCalls = {}, 0, 0, 0
+    self.readFail, self.writeFail, self.writeFailRounds = nil, nil, 0
+    local env = self
+    self.adapter = {
+        Read = function(_, fishId)
+            env.readCalls = env.readCalls + 1
+            if env.readFail then return false, nil, env.readFail end
+            return true, env.store[fishId], nil
+        end,
+        -- 假适配器的 CAS 语义与真实适配器一致：decide(current) 返回 nil 就一个字节都不写
+        Submit = function(_, fishId, decide)
+            env.calls = env.calls + 1
+            if env.writeFailRounds > 0 then
+                env.writeFailRounds = env.writeFailRounds - 1
+                return false, nil, env.writeFail or 'unavailable'
+            end
+            local next_ = decide(env.store[fishId])
+            if not next_ then return true, false, env.store[fishId], nil end
+            env.store[fishId] = next_
+            env.writes = env.writes + 1
+            return true, true, next_, nil
+        end,
+    }
+    _G.game = { GetService = function(_, name)
+        if name == 'Task' then return { Spawn = function(_, fn) env.queue[#env.queue + 1] = fn end,
+            Wait = function() end } end
+        if name == 'World' then return { GetServerTime = function() return env.clock end } end
+        if name == 'Players' then return { GetPlayers = function() return {} end } end
+        if name == 'DataStoreService' then return { GetDataStore = function() return {} end } end
+    end }
+    self.mgr = assert(loadfile('server/Mgr/MgrRecords.lua'))()
+    self.mgr.Adapter = self.adapter
+end
+
+function TestRecordsService:tearDown()
+    _G.game, _G.REUtil = self.oldGame, self.oldREUtil
+end
+
+function TestRecordsService:drain()
+    while #self.queue > 0 do table.remove(self.queue, 1)() end
+end
+
+function TestRecordsService:advance(seconds)
+    self.clock = self.clock + seconds
+    self.mgr:Update()
+end
+
+function TestRecordsService:player(userId, name) return { UserId = userId, Name = name } end
+
+function TestRecordsService:test_heavier_landing_updates_record_with_holder_pair()
+    lu.assertTrue(self.mgr:NoteLanding(self:player(7, '甲'), 'goldfish', 0.25))
+    lu.assertEquals(self.calls, 0, '合并窗口内不发写请求')
+    self:advance(GameCfg.Records.FlushIntervalSec)
+    self:drain()
+    -- 重量与保持者同一条记录、同一次写入
+    lu.assertEquals(self.store.goldfish, { w = 25, u = 7, n = '甲' })
+    local state = self.mgr:State('goldfish')
+    lu.assertEquals(state.state, 'ok')
+    lu.assertEquals(state.scaled, 25)
+    lu.assertEquals(state.weight, 0.25)
+    lu.assertEquals(state.userId, 7)
+    lu.assertEquals(state.holder, '甲')
+    lu.assertEquals(state.stale, false)
+end
+
+function TestRecordsService:test_lighter_landing_never_overwrites_and_costs_no_write()
+    self.store.goldfish = { w = 25, u = 7, n = '甲' }
+    self.mgr:Read('goldfish', function() end)
+    self:drain()
+    self.calls, self.writes = 0, 0
+    lu.assertTrue(self.mgr:NoteLanding(self:player(9, '乙'), 'goldfish', 0.2))
+    self:advance(GameCfg.Records.FlushIntervalSec)
+    self:drain()
+    lu.assertEquals(self.store.goldfish, { w = 25, u = 7, n = '甲' })
+    lu.assertEquals(self.calls, 0, '已知现有纪录更大时一个写请求都不发')
+end
+
+function TestRecordsService:test_equal_weight_keeps_smaller_user_id_whatever_the_order()
+    self.store.goldfish = { w = 25, u = 7, n = '甲' }
+    self.mgr:Read('goldfish', function() end)
+    self:drain()
+    -- 同重量、UserID 更大：不换人
+    self.mgr:NoteLanding(self:player(9, '乙'), 'goldfish', 0.25)
+    self:advance(GameCfg.Records.FlushIntervalSec)
+    self:drain()
+    lu.assertEquals(self.store.goldfish, { w = 25, u = 7, n = '甲' })
+    -- 同重量、UserID 更小：换人（规则与到达顺序无关）
+    self.store.goldfish = { w = 25, u = 7, n = '甲' }
+    self.mgr:NoteLanding(self:player(3, '丙'), 'goldfish', 0.25)
+    self:advance(GameCfg.Records.FlushIntervalSec * 2)
+    self:drain()
+    lu.assertEquals(self.store.goldfish, { w = 25, u = 3, n = '丙' })
+    lu.assertEquals(self.mgr:State('goldfish').holder, '丙')
+end
+
+function TestRecordsService:test_landings_inside_one_window_merge_into_a_single_write()
+    for index = 1, 20 do
+        self.mgr:NoteLanding(self:player(index, 'P' .. index), 'carp', 0.01 * index)
+    end
+    lu.assertEquals(self.calls, 0)
+    self:advance(GameCfg.Records.FlushIntervalSec)
+    self:drain()
+    lu.assertEquals(self.calls, 1, '一个窗口内同鱼种只发一次写')
+    lu.assertEquals(self.store.carp, { w = 20, u = 20, n = 'P20' }, '窗口内只保留最大候选')
+    self:drain()
+    lu.assertEquals(self.calls, 1)
+end
+
+function TestRecordsService:test_invalid_or_overflowing_weight_is_never_submitted()
+    lu.assertFalse(self.mgr:NoteLanding(self:player(7, '甲'), 'goldfish', 0))
+    lu.assertFalse(self.mgr:NoteLanding(self:player(7, '甲'), 'goldfish', 'x'))
+    lu.assertFalse(self.mgr:NoteLanding(self:player(7, '甲'), 'noSuchFish', 1))
+    lu.assertFalse(self.mgr:NoteLanding(nil, 'goldfish', 1))
+    local _, reason = self.mgr:NoteLanding(self:player(7, '甲'), 'goldfish',
+        GameCfg.Records.MaxScaled / GameCfg.Records.Scale + 1)
+    lu.assertEquals(reason, 'overflow')
+    self:advance(GameCfg.Records.FlushIntervalSec * 2)
+    self:drain()
+    lu.assertEquals(self.calls, 0)
+    lu.assertEquals(self.store, {})
+    lu.assertEquals(self.mgr.Stats.Rejected, 5)
+end
+
+function TestRecordsService:test_delayed_retry_never_overwrites_a_newer_record()
+    self.writeFail, self.writeFailRounds = 'timeout', 1
+    self.mgr:NoteLanding(self:player(7, '甲'), 'bass', 0.5)
+    self:advance(GameCfg.Records.FlushIntervalSec)
+    self:drain()
+    lu.assertNil(self.store.bass, '第一次写超时，什么都没落地')
+    lu.assertEquals(self.mgr.Stats.Failures, 1)
+    lu.assertEquals(self.mgr.Stats.Retries, 1)
+    -- 退避等待期间，别的服务器已经把纪录换成更大的（跨服竞态）
+    self.store.bass = { w = 90, u = 3, n = '丙' }
+    lu.assertEquals(self.mgr.Pending.bass.attempts, 1)
+    self:advance(GameCfg.Records.RetryDelaySec)
+    self:drain()
+    lu.assertEquals(self.store.bass, { w = 90, u = 3, n = '丙' }, '过期候选不许盖掉更新的纪录')
+    lu.assertNil(self.mgr.Pending.bass, '过期候选重试后丢弃，不再占写频')
+    lu.assertEquals(self.writes, 0)
+end
+
+function TestRecordsService:test_retry_exhaustion_drops_the_candidate_and_logs()
+    self.writeFail, self.writeFailRounds = 'throttled', 99
+    self.mgr:NoteLanding(self:player(7, '甲'), 'bass', 0.5)
+    for _ = 1, GameCfg.Records.MaxRetries + 2 do
+        self:advance(GameCfg.Records.FlushIntervalSec + GameCfg.Records.RetryDelaySec)
+        self:drain()
+    end
+    lu.assertNil(self.mgr.Pending.bass)
+    lu.assertEquals(self.mgr.Stats.Dropped, 1)
+    lu.assertEquals(self.store, {}, '一直失败也不许写假值')
+end
+
+-- 读失败：如实说「暂不可用」，不许说成「暂无纪录」，也不许显示数字
+function TestRecordsService:test_failed_read_is_unavailable_not_missing()
+    local seen
+    self.mgr:Read('goldfish', function(state) seen = state end)
+    self:drain()
+    lu.assertEquals(seen.state, 'missing', '服务可用、只是这条鱼还没纪录')
+    self.readFail = 'throttled'
+    self:advance(GameCfg.Records.MissCacheTtlSec + 1)
+    self.mgr:Read('goldfish', function(state) seen = state end)
+    self:drain()
+    lu.assertEquals(seen.state, 'unavailable')
+    lu.assertNil(seen.scaled)
+    lu.assertEquals(seen.error, 'throttled')
+    lu.assertEquals(Records.Describe(seen), '全服纪录：暂不可用')
+    -- 负缓存：短时间内重复请求不再打平台
+    local calls = self.readCalls
+    self.mgr:Read('goldfish', function(state) seen = state end)
+    self:drain()
+    lu.assertEquals(self.readCalls, calls)
+    lu.assertEquals(seen.state, 'unavailable')
+end
+
+-- 冷启动（还没读过）也按「暂不可用」，绝不当作「暂无纪录」
+function TestRecordsService:test_state_before_any_read_is_unavailable()
+    lu.assertEquals(self.mgr:State('goldfish').state, 'unavailable')
+    lu.assertEquals(Records.Describe(self.mgr:State('goldfish')), '全服纪录：暂不可用')
+end
+
+-- 读失败不许抹掉上一次可信值：照旧值展示并标 stale
+function TestRecordsService:test_read_failure_keeps_last_known_value_and_marks_it_stale()
+    self.store.goldfish = { w = 25, u = 7, n = '甲' }
+    local seen
+    self.mgr:Read('goldfish', function(state) seen = state end)
+    self:drain()
+    lu.assertEquals(seen.state, 'ok')
+    lu.assertEquals(seen.stale, false)
+    self.readFail = 'timeout'
+    self:advance(GameCfg.Records.HolderCacheTtlSec + 1)
+    self.mgr:Read('goldfish', function(state) seen = state end)
+    self:drain()
+    lu.assertEquals(seen.state, 'ok')
+    lu.assertEquals(seen.weight, 0.25, '平台读不到时沿用上一次真实值，不编新值')
+    lu.assertEquals(seen.holder, '甲')
+    lu.assertTrue(seen.stale)
+    lu.assertEquals(seen.error, nil)
+end
+
+-- 同一鱼种的并发读合并成一次平台调用（打开图鉴时几十条一起要）
+function TestRecordsService:test_concurrent_reads_share_one_platform_call()
+    local first, second
+    self.mgr:Read('goldfish', function(state) first = state end)
+    self.mgr:Read('goldfish', function(state) second = state end)
+    lu.assertEquals(self.readCalls, 0, '还没进平台调用')
+    self:drain()
+    lu.assertEquals(self.readCalls, 1)
+    lu.assertEquals(first.state, 'missing')
+    lu.assertEquals(second, first)
+end
+
+-- 坏数据（缺重量或缺身份）不展示：当作这条还没有纪录，而不是拼一个半截纪录出来
+function TestRecordsService:test_corrupt_stored_value_is_never_shown()
+    local adapter = assert(loadfile('server/Data/RecordsAdapter.lua'))()
+    local values = { corrupt = { w = 25 }, nameless = { u = 7, n = '甲' }, ok = { w = 25, u = 7, n = '甲' } }
+    local function field(key) return values[key:sub(5)] end
+    local platform = {
+        GetAsync = function(_, key) return field(key) end,
+        UpdateAsync = function(_, key, transform)
+            local value = transform(field(key))
+            if value then values[key:sub(5)] = value end
+            return value
+        end,
+    }
+    _G.game = { GetService = function(_, name)
+        if name == 'DataStoreService' then return { GetDataStore = function() return platform end } end
+        if name == 'World' then return { GetServerTime = function() return 100 end } end
+    end }
+    local ok, entry = adapter:Read('corrupt')
+    lu.assertTrue(ok, '读成功但值不可信')
+    lu.assertNil(entry, '只有重量的半截记录不算纪录')
+    lu.assertNil(select(2, adapter:Read('nameless')), '缺重量的记录不算纪录')
+    lu.assertEquals(select(2, adapter:Read('ok')), { w = 25, u = 7, n = '甲' })
+end
+
+-- 适配器把平台异常翻译成稳定类别，调用方不依赖错误码文本
+function TestRecordsService:test_adapter_classifies_platform_failures()
+    local adapter = assert(loadfile('server/Data/RecordsAdapter.lua'))()
+    local failure
+    local platform = { GetAsync = function() error(failure) end }
+    _G.game = { GetService = function(_, name)
+        if name == 'DataStoreService' then return { GetDataStore = function() return platform end } end
+    end }
+    for _, pair in ipairs({ { 'Request was throttled', 'throttled' },
+        { 'request limit reached', 'throttled' }, { 'connection timed out', 'timeout' },
+        { 'some new platform text', 'unknown' } }) do
+        failure = pair[1]
+        lu.assertEquals(select(3, adapter:Read('goldfish')), pair[2], pair[1])
+    end
+    _G.game = { GetService = function() error('no DataStoreService') end }
+    adapter.Checked, adapter.Holder = nil, nil
+    lu.assertEquals(select(3, adapter:Read('goldfish')), 'unavailable')
+end
