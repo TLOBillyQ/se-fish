@@ -1,12 +1,11 @@
--- 摆渡（#89，GameSpec §8.3 已确认细则）：客户端发 FerryAction{action='Board'|'Return', seq}。
--- 去程 Board：复验序号/距离后扣 1 张船票开始倒计时（时长在 GameCfg.Ferry.Outbound.CountdownSec），
--- 倒计时结束把船锚点 BoatRange 米内（只看 x/z）的所有在线玩家传送到虾池落点——搭便船合法，
--- 所以只收先交票那一个人的票；倒计时中其他人再交票拒绝（'sailing'）且不扣。
--- 返程 Return：虾池侧锚点按人收金币、立即传送回第一钓鱼区；传送失败（角色缺失等）退款。
--- 到点后区域写入 PlayerData:SetZone（#92 存档用）。范围复验复用 MgrInteract:InRange（AnchorName/Radius/Slack）。
+-- #123：去程交票和返程扣金币先经 Save.Execute 持久，再发布倒计时或传送。
+-- 传送和存储不能原子提交：收费同时保存恢复记录，完成或补偿用独立幂等操作落账；
+-- 未确认的跨会话记录只退款，不重放传送。仍只使用现有 #89 去返程配置，不接入 #127 航线。
+-- FerryAction{action='Board'|'Return', seq, requestId?}；跨会话 requestId 为 FerryResult.operation。
+-- 去程一人付票、搭便船合法，未赶上船不退票；返程按人付费；锚点缺失取消航班退票。
 local GameCfg = require('common.GameCfg')
 
-local Mgr = { LastSeq = {} }
+local Mgr = { LastSeq = {}, Recoveries = {}, ReturnPending = {} }
 
 local function flatDistance(a, b)
     local dx, dz = a.x - b.x, a.z - b.z
@@ -22,6 +21,7 @@ function Mgr:Broadcast(payload)
 end
 
 function Mgr:Fail(player, action, reason)
+    print('[MgrFerry] 请求拒绝', player.UserId, action, tostring(reason))
     self:Reply(player, { ok = false, action = action, reason = reason })
     return false
 end
@@ -34,8 +34,11 @@ end
 -- 传送单个玩家到配置落点；角色缺失或引擎拒绝都不算成功
 function Mgr:Teleport(player, dest)
     local character = player and player.Character
-    if not character then return false end
-    local ok = pcall(function()
+    if not character then
+        print('[MgrFerry] 传送失败', player and player.UserId, '角色缺失')
+        return false
+    end
+    local ok, err = pcall(function()
         local pos = Vector3.New(dest.x, dest.y, dest.z)
         if character.SetPosition then
             character:SetPosition(pos)
@@ -43,44 +46,107 @@ function Mgr:Teleport(player, dest)
             character.Position = pos
         end
     end)
-    if not ok then print('[MgrFerry] 传送失败', player.UserId) end
+    if not ok then print('[MgrFerry] 传送失败', player.UserId, tostring(err)) end
     return ok
 end
 
-function Mgr:Board(player, data)
-    local point = GameCfg.Ferry.Outbound
-    if self.Save and self.Save:IsPaused(player.UserId) then
-        return self:Fail(player, 'Board', '临时本局暂停交船票，请先保存到存档')
-    end
-    if self.DepartAt then return self:Fail(player, 'Board', 'sailing') end
-    if not self.Interact:InRange(player, point) then return self:Fail(player, 'Board', 'range') end
-    if not data:ConsumeItem(point.Ticket) then return self:Fail(player, 'Board', 'ticket') end
-    self.DepartAt = self.World:GetServerTime() + point.CountdownSec
-    self.Payer = player.UserId
-    print('[MgrFerry] 收船票开船倒计时', player.UserId, point.CountdownSec .. 's')
-    -- 船票消耗立即 UpdateAsync 记账（#92）：断线重连不双份扣票/退票
-    if self.Save then self.Save:Commit(player.UserId, data:Serialize(), 'ferry:ticket') end
-    self.PlayerData:SendItemBar(player)
-    self:Broadcast({ phase = 'countdown', seconds = point.CountdownSec })
-    self:Reply(player, { ok = true, action = 'Board', seconds = point.CountdownSec })
-    return true
+-- 所有财产变更只写 Save 的隔离 draft；同步拒绝仍返回 false，异步接纳返回 true。
+function Mgr:Settle(player, data, kind, transform, done, operation)
+    operation = operation or self.Save:NextOperation(player, kind)
+    if not operation then return false, 'save' end
+    local outcome
+    local accepted, reason = self.Save:Execute(player, data, operation, transform, function(ok, result)
+        outcome = ok
+        if not ok then print('[MgrFerry] 结算失败', player.UserId, operation.id, kind, tostring(result)) end
+        done(ok, result)
+    end)
+    if not accepted then print('[MgrFerry] 结算未接纳', player.UserId, operation.id, kind, tostring(reason)) end
+    return accepted and outcome ~= false, reason
 end
 
-function Mgr:ReturnBack(player, data)
+function Mgr:Board(player, data, operation)
+    local point = GameCfg.Ferry.Outbound
+    if self.DepartAt or self.BoardPending then return self:Fail(player, 'Board', 'sailing') end
+    if not self.Interact:InRange(player, point) then return self:Fail(player, 'Board', 'range') end
+    local flight = { player = player, operation = operation.id }
+    self.BoardPending = flight
+    local accepted, reason = self:Settle(player, data, 'ferry:board', function(draft)
+        if not draft:ConsumeItem(point.Ticket) then return nil, 'ticket' end
+        draft.Extra.recovery.ferry = { operation = operation.id, identity = operation, action = 'Board',
+            ticket = point.Ticket, state = 'pending' }
+        return { ok = true, action = 'Board', seconds = point.CountdownSec, operation = operation }
+    end, function(ok, result)
+        if self.BoardPending ~= flight then return end
+        self.BoardPending = nil
+        if not ok then self:Fail(player, 'Board', result) return end
+        self.Flight = flight
+        self.DepartAt = self.World:GetServerTime() + point.CountdownSec
+        self.Payer = player.UserId
+        print('[MgrFerry] 船票落账，开船倒计时', player.UserId, operation.id)
+        self:Broadcast({ phase = 'countdown', seconds = point.CountdownSec })
+        self:Reply(player, result)
+    end, operation)
+    if not accepted and self.BoardPending == flight then
+        self.BoardPending = nil
+        return self:Fail(player, 'Board', reason or 'save')
+    end
+    return accepted
+end
+
+-- 外部传送结果与补偿各自落账，退款只能改 draft，记录清除与退款是同一次写入。
+function Mgr:FinishTravel(player, data, record, delivered, reason, done)
+    return self:Settle(player, data, delivered and 'ferry:confirm' or 'ferry:refund', function(draft)
+        local pending = draft.Extra.recovery.ferry
+        if not pending or pending.operation ~= record.operation then return nil, 'recovery' end
+        if delivered then
+            if record.zone then draft:SetZone(record.zone) end
+        elseif record.action == 'Board' then
+            if not draft:AddItem(record.ticket) then return nil, 'full' end
+        elseif not draft:AddCoin(record.price, nil, 'ferry:return:refund') then return nil, 'coin' end
+        draft.Extra.recovery.ferry = nil
+        local result = { ok = delivered, action = record.action, price = record.price,
+            operation = record.identity, reason = not delivered and reason or nil }
+        local finals = {}
+        for _, prior in ipairs(draft.SaveMeta.operations) do
+            local kept = draft.Extra.recovery.ferryFinal and draft.Extra.recovery.ferryFinal[prior.id]
+            if kept then finals[prior.id] = kept end
+        end
+        finals[record.operation] = result
+        draft.Extra.recovery.ferryFinal = finals
+        return result
+    end, done)
+end
+
+function Mgr:ReturnBack(player, data, operation)
     local point = GameCfg.Ferry.Return
     if not self.Interact:InRange(player, point) then return self:Fail(player, 'Return', 'range') end
-    if not data:SpendCoin(point.Price, nil, 'ferry:return') then
-        return self:Fail(player, 'Return', 'coin')
+    local record = { operation = operation.id, identity = operation, action = 'Return', price = point.Price,
+        state = 'pending', zone = point.Zone }
+    self.ReturnPending[player.UserId] = record
+    local outcome
+    local accepted, reason = self:Settle(player, data, 'ferry:return', function(draft)
+        if not draft:SpendCoin(point.Price, nil, 'ferry:return') then return nil, 'coin' end
+        draft.Extra.recovery.ferry = record
+        return { ok = true, action = 'Return', price = point.Price, operation = operation }
+    end, function(ok, result)
+        if self.ReturnPending[player.UserId] ~= record then return end
+        if not ok then
+            self.ReturnPending[player.UserId] = nil
+            outcome = false self:Fail(player, 'Return', result) return
+        end
+        local delivered = self:Teleport(player, point.Destination)
+        outcome = delivered
+        self:FinishTravel(player, data, record, delivered, 'teleport', function(written, final)
+            if self.ReturnPending[player.UserId] ~= record then return end
+            self.ReturnPending[player.UserId] = nil
+            if written then self:Reply(player, final) else self:Fail(player, 'Return', final) end
+        end)
+    end, operation)
+    if not accepted and outcome == nil then
+        self.ReturnPending[player.UserId] = nil
+        return self:Fail(player, 'Return', reason or 'save')
     end
-    if not self:Teleport(player, point.Destination) then
-        data:AddCoin(point.Price, nil, 'ferry:return:refund')
-        return self:Fail(player, 'Return', 'teleport')
-    end
-    data:SetZone(point.Zone)
-    print('[MgrFerry] 返程', player.UserId, '-' .. tostring(point.Price),
-        'FishCoin=' .. tostring(data.Data.FishCoin))
-    self:Reply(player, { ok = true, action = 'Return', price = point.Price })
-    return true
+    return accepted and outcome ~= false
 end
 
 local Actions = { Board = 'Board', Return = 'ReturnBack' }
@@ -93,15 +159,63 @@ function Mgr:Handle(player, payload)
     if not method or type(seq) ~= 'number' or seq ~= math.floor(seq) then return false end
     local data = self.PlayerData and self.PlayerData:GetDataInst(player)
     if not data then return false end
+    if not self.Save or not data.Inited or self.Save:IsPaused(player.UserId) then
+        return self:Fail(player, payload.action, 'save')
+    end
+    local kind = payload.action == 'Board' and 'ferry:board' or 'ferry:return'
+    local operation, status = self.Save:ResolveRequest(player, data, kind, payload.requestId or seq)
+    if not operation then return self:Fail(player, payload.action, status) end
+    if status == 'replay' then
+        -- 旧客户端的 seq 重放仍拒绝；显式 requestId 只回历史包，不重新启动外部权益。
+        if payload.requestId == nil then return false end
+        local active = self.Flight and self.Flight.player == player and self.Flight.operation == operation.id
+        if data.Extra.recovery.ferry and not active then
+            self:Recover(player, data)
+            local final = data.Extra.recovery.ferryFinal and data.Extra.recovery.ferryFinal[operation.id]
+            if final then self:Reply(player, final) return true end
+            return self:Fail(player, payload.action, 'pending')
+        end
+        return self:Settle(player, data, kind, function() return nil, 'replay' end, function(ok, result)
+            if ok then
+                local final = data.Extra.recovery.ferryFinal and data.Extra.recovery.ferryFinal[operation.id]
+                self:Reply(player, final or result)
+            else self:Fail(player, payload.action, result) end
+        end, operation)
+    end
     local last = self.LastSeq[player.UserId]
     if last and seq <= last then return false end
     self.LastSeq[player.UserId] = seq
-    return self[method](self, player, data)
+    if data.Extra.recovery.ferry then
+        self:Recover(player, data)
+        return self:Fail(player, payload.action, 'pending')
+    end
+    return self[method](self, player, data, operation)
 end
 
 -- 倒计时到点：带走船上所有人（搭便船）；没赶上船的留在原地，船票不退。
 -- 锚点缺失属场景配置事故：航班取消并把船票退给交票人
+function Mgr:Recover(player, data)
+    local record = data.Extra.recovery.ferry
+    if not record then return false end
+    local flight = self.Flight
+    if flight and flight.player == player and flight.operation == record.operation then return true end
+    if self.Recoveries[player.UserId] then return true end
+    self.Recoveries[player.UserId] = player
+    local accepted = self:FinishTravel(player, data, record, false, 'interrupted', function(ok, result)
+        if self.Recoveries[player.UserId] == player then self.Recoveries[player.UserId] = nil end
+        if ok then self:Reply(player, result) end
+    end)
+    if not accepted then self.Recoveries[player.UserId] = nil end
+    return true
+end
+
 function Mgr:Update()
+    if self.Save then
+        for _, player in ipairs(self:OnlinePlayers()) do
+            local data = self.PlayerData:GetDataInst(player)
+            if data and data.Inited and not self.Save:IsPaused(player.UserId) then self:Recover(player, data) end
+        end
+    end
     if not self.DepartAt then return end
     if self.World:GetServerTime() < self.DepartAt then return end
     self.DepartAt = nil
@@ -113,21 +227,40 @@ function Mgr:Update()
         for _, player in ipairs(self:OnlinePlayers()) do
             if player.UserId == self.Payer then
                 local data = self.PlayerData:GetDataInst(player)
-                if data then data:AddItem(point.Ticket) end
+                if data then
+                    local record = data.Extra.recovery.ferry
+                    if record then
+                        self:FinishTravel(player, data, record, false, 'anchor', function(ok, result)
+                            if ok then self:Reply(player, result) end
+                        end)
+                    end
+                end
             end
         end
-        self.Payer = nil
+        self.Payer, self.Flight = nil, nil
         self:Broadcast({ phase = 'cancelled' })
         return
     end
-    self.Payer = nil
+    local payer = self.Payer
+    self.Payer, self.Flight = nil, nil
     for _, player in ipairs(self:OnlinePlayers()) do
+        local data = self.PlayerData:GetDataInst(player)
         local pos = player.Character and player.Character.Position
-        if pos and flatDistance(pos, center) <= point.BoatRange
-            and self:Teleport(player, point.Destination) then
-            local data = self.PlayerData:GetDataInst(player)
-            if data then data:SetZone(point.Zone) end
-            print('[MgrFerry] 送达', player.UserId, point.Zone)
+        local aboard = pos and flatDistance(pos, center) <= point.BoatRange
+        if data and data.Inited and not self.Save:IsPaused(player.UserId) then
+            local delivered = aboard and self:Teleport(player, point.Destination)
+            if player.UserId == payer and data.Extra.recovery.ferry then
+                local record = data.Extra.recovery.ferry
+                if delivered then record.zone = point.Zone end
+                -- 未赶上船照常消费；角色在船上但传送失败才补偿。
+                self:FinishTravel(player, data, record, not aboard or delivered, 'teleport', function() end)
+            elseif delivered then
+                self:Settle(player, data, 'ferry:ride', function(draft)
+                    draft:SetZone(point.Zone)
+                    return { ok = true, action = 'Board' }
+                end, function() end)
+            end
+            if delivered then print('[MgrFerry] 送达', player.UserId, point.Zone) end
         end
     end
     self:Broadcast({ phase = 'departed' })
@@ -143,6 +276,13 @@ end
 
 function Mgr:OnPlayerRemoving(player)
     self.LastSeq[player.UserId] = nil
+    self.Recoveries[player.UserId] = nil
+    self.ReturnPending[player.UserId] = nil
+    if self.BoardPending and self.BoardPending.player == player then self.BoardPending = nil end
+    if self.Flight and self.Flight.player == player then
+        self.Flight, self.DepartAt, self.Payer = nil, nil, nil
+        self:Broadcast({ phase = 'cancelled' })
+    end
 end
 
 return Mgr

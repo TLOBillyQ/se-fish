@@ -8,6 +8,9 @@
 --   5. 落点不是配置的目的地，或 Zone 不更新（去程 shrimpPond、返程 fishPond1）；
 --   6. seq 重放 / 旧序号重复结算（重复扣票扣金币）；
 --   7. 船范围内有角色缺失的玩家时整个传送崩掉，其余玩家也走不了。
+-- #123 失败方式：持久化前扣费/倒计时/传送/成功回包；并发交票；存储失败重试双扣；
+-- 传送异常裸退款；取消航班退款无身份；断线后的恢复记录丢失；requestId 跨会话重放。
+-- seam：Handle + Update 生命周期，真实 MgrSave/PlayerData，仅替换引擎和 DataStore 边界。
 local lu = require('luaunit')
 
 TestFerry = {}
@@ -44,15 +47,28 @@ function TestFerry:setUp()
     self.saved = {
         game = rawget(_G, 'game'), Vector3 = rawget(_G, 'Vector3'), REUtilG = rawget(_G, 'REUtil'),
         GameCfg = package.loaded['common.GameCfg'],
+        FerryCfg = self.cfg and self.cfg.Ferry,
         REUtil = package.loaded['common.REUtil'],
         PlayerData = package.loaded['server.Mgr.MgrPlayerData'],
+        DataClass = package.loaded['server.Data.PlayerData'],
     }
     package.loaded['common.GameCfg'] = nil
     self.cfg = require('common.GameCfg')
     self.cfg.Debug = { Enabled = false }
+    self.ferryCfg = self.saved.FerryCfg
+        and { HomeZone = self.saved.FerryCfg.HomeZone, Outbound = self.saved.FerryCfg.Outbound,
+            Return = self.saved.FerryCfg.Return }
+        or { HomeZone = self.cfg.Ferry.HomeZone, Outbound = self.cfg.Ferry.Outbound,
+            Return = self.cfg.Ferry.Return }
+    self.cfg.Ferry = {
+        HomeZone = self.ferryCfg.HomeZone,
+        Outbound = self.ferryCfg.Outbound,
+        Return = self.ferryCfg.Return,
+    }
     _G.Vector3 = { New = vec }
 
-    local PlayerData = assert(loadfile('server/Data/PlayerData.lua'))()
+    local PlayerDataClass = require('server.Data.PlayerData')
+    self.PlayerDataClass = PlayerDataClass
     self.players = {
         newPlayer(1, -8, 2.2, 24),   -- 船边（去程锚点 (-8, 1.2, 24.5) 附近）
         newPlayer(2, -9, 2.2, 26),   -- 船边搭便船
@@ -60,7 +76,7 @@ function TestFerry:setUp()
     }
     self.data = {}
     for _, player in ipairs(self.players) do
-        self.data[player.UserId] = PlayerData.New(player, function() end)
+        self.data[player.UserId] = PlayerDataClass.New(player, function() end)
         self.data[player.UserId]:Init()
     end
 
@@ -109,12 +125,233 @@ function TestFerry:setUp()
     }
     self.mgr.PlayerData = package.loaded['server.Mgr.MgrPlayerData']
     self.mgr.OnlinePlayers = function() return env.players end
+    self.values, self.queue = {}, {}
+    self.defer, self.writeFailure, self.loseReply = false, false, false
+    self.store = {
+        GetAsync = function(_, key) return env.values[key] end,
+        UpdateAsync = function(_, key, transform)
+            if env.writeFailure then error('写档失败') end
+            local value = transform(env.values[key])
+            if value then env.values[key] = value end
+            if env.loseReply then env.loseReply = false error('写成功但回包丢失') end
+            return value
+        end,
+    }
+    _G.game = { GetService = function(_, name)
+        if name == 'Task' then return {
+            Spawn = function(_, fn)
+                if env.defer then table.insert(env.queue, fn) else fn() end
+            end,
+            Wait = function() end,
+        } end
+        if name == 'World' then return env.mgr.World end
+        if name == 'Players' then return { GetPlayers = function() return env.players end } end
+        if name == 'DataStoreService' then return { GetDataStore = function() return env.store end } end
+    end }
+    self.save = assert(loadfile('server/Mgr/MgrSave.lua'))()
+    self.mgr.Save = self.save
+    for _, player in ipairs(self.players) do self.save:LoadInto(player, self.data[player.UserId]) end
+end
+
+function TestFerry:drain()
+    while #self.queue > 0 do table.remove(self.queue, 1)() end
+end
+
+function TestFerry:test_board_waits_for_durable_ticket_before_publishing_countdown()
+    self.data[1]:AddItem('shrimpTicket')
+    local before = self.data[1].Data.Containers
+    self.defer = true
+    lu.assertTrue(self:board(1, 1))
+    lu.assertNotNil(before.itemBar[1], '落账前不能删除真实船票')
+    lu.assertNil(self.mgr.DepartAt)
+    lu.assertNil(self.mgr.Payer)
+    lu.assertNil(self:lastReply(1))
+    lu.assertEquals(#self.broadcasts, 0)
+    self:drain()
+    lu.assertEquals(self.data[1]:ItemCount('shrimpTicket'), 0)
+    lu.assertNotNil(self.mgr.DepartAt)
+    lu.assertTrue(self:lastReply(1).ok)
+end
+
+function TestFerry:test_return_waits_for_payment_and_recovery_before_teleport()
+    local player, data = self.players[1], self.data[1]
+    player.Character.Position = vec(101, 6, 103)
+    data:AddCoin(40)
+    self.defer = true
+    lu.assertTrue(self.mgr:Handle(player, { action = 'Return', seq = 1 }))
+    lu.assertEquals(data.Data.FishCoin, 40)
+    lu.assertEquals(player.teleports, 0)
+    lu.assertNil(self:lastReply(1))
+    self:drain()
+    lu.assertEquals(data.Data.FishCoin, 20)
+    lu.assertEquals(player.teleports, 1)
+    lu.assertTrue(self:lastReply(1).ok)
+end
+
+function TestFerry:test_cancelled_flight_refund_is_durable_and_retries_once()
+    self.data[1]:AddItem('shrimpTicket')
+    lu.assertTrue(self:board(1, 1))
+    self.anchors.FerryBoat = nil
+    self.writeFailure = true
+    self:sail()
+    lu.assertEquals(self.data[1]:ItemCount('shrimpTicket'), 0)
+    lu.assertEquals(self.data[1].Data.Containers.itemBar[1].itemId, 'starterRod',
+        '写入失败不能塞回船票；开发赠礼也替代不了恢复记账')
+    lu.assertEquals(self.players[1].teleports, 0)
+    self.writeFailure = false
+    self.loseReply = true
+    self.save:Update()
+    self.mgr:Update()
+    self.mgr:Update()
+    lu.assertEquals(self.data[1]:ItemCount('shrimpTicket'), 1)
+    self.save:LoadInto(self.players[1], self.data[1])
+    lu.assertEquals(self.data[1]:ItemCount('shrimpTicket'), 1)
+end
+
+function TestFerry:test_rejoin_recovers_unfinished_board_once_without_starting_a_flight()
+    self.data[1]:AddItem('shrimpTicket')
+    self:board(1, 1)
+    self.mgr:OnPlayerRemoving(self.players[1])
+    local player = newPlayer(1, -8, 2.2, 24)
+    local data = self.PlayerDataClass.New(player)
+    self.players[1], self.data[1] = player, data
+    self.save:LoadInto(player, data)
+    self.mgr.DepartAt, self.mgr.Payer, self.mgr.Flight = nil, nil, nil
+    self.mgr:Update()
+    lu.assertEquals(data:ItemCount('shrimpTicket'), 1)
+    lu.assertEquals(player.teleports, 0)
+    self.mgr:Update()
+    lu.assertEquals(data:ItemCount('shrimpTicket'), 1)
+    lu.assertNil(self.mgr.DepartAt)
+end
+
+function TestFerry:test_departed_board_stays_consumed_after_rejoin()
+    self.data[1]:AddItem('shrimpTicket')
+    self:board(1, 1)
+    self:sail()
+    local player = newPlayer(1, 100, 6, 103)
+    local data = self.PlayerDataClass.New(player)
+    self.players[1], self.data[1] = player, data
+    self.save:LoadInto(player, data)
+    self.mgr:Update()
+    lu.assertEquals(data:ItemCount('shrimpTicket'), 0)
+    lu.assertEquals(data.Data.Zone, 'shrimpPond')
+end
+
+function TestFerry:test_return_operation_replay_after_rejoin_never_charges_or_teleports()
+    local player, data = self.players[1], self.data[1]
+    player.Character.Position = vec(101, 6, 103)
+    data:AddCoin(40)
+    self.mgr:Handle(player, { action = 'Return', seq = 1 })
+    local operation = self:lastReply(1).operation
+    lu.assertNotNil(operation, '返回服务端操作身份供跨会话补发')
+    self.mgr:OnPlayerRemoving(player)
+    player = newPlayer(1, 101, 6, 103)
+    data = assert(loadfile('server/Data/PlayerData.lua'))().New(player)
+    self.players[1], self.data[1] = player, data
+    self.save:LoadInto(player, data)
+    lu.assertTrue(self.mgr:Handle(player, { action = 'Return', seq = 1, requestId = operation }))
+    lu.assertEquals(data.Data.FishCoin, 20)
+    lu.assertEquals(player.teleports, 0)
+    lu.assertTrue(self:lastReply(1).ok)
+end
+
+function TestFerry:test_leaving_during_payment_does_not_reserve_the_boat_forever()
+    self.data[1]:AddItem('shrimpTicket')
+    self.data[2]:AddItem('shrimpTicket')
+    self.defer = true
+    self:board(1, 1)
+    self.mgr:OnPlayerRemoving(self.players[1])
+    lu.assertTrue(self:board(2, 1))
+    self:drain()
+    lu.assertEquals(self.mgr.Payer, 2)
+    lu.assertEquals(self.data[2]:ItemCount('shrimpTicket'), 0)
+    lu.assertFalse(self:lastReply(1) and self:lastReply(1).ok or false)
+end
+
+function TestFerry:test_return_failure_keeps_durable_refund_until_storage_recovers()
+    local player, data = self.players[1], self.data[1]
+    player.Character.Position = vec(101, 6, 103)
+    data:AddCoin(40)
+    player.Character.SetPosition = function()
+        self.writeFailure = true
+        error('引擎拒绝传送')
+    end
+    self.mgr:Handle(player, { action = 'Return', seq = 1 })
+    lu.assertEquals(data.Data.FishCoin, 20, '退款未落账不能裸加金币')
+    lu.assertNil(self:lastReply(1), '退款未落账不能声称已处理')
+    self.writeFailure = false
+    self.loseReply = true
+    self.save:Update()
+    lu.assertEquals(data.Data.FishCoin, 40)
+    lu.assertFalse(self:lastReply(1).ok)
+    local operation = self:lastReply(1).operation
+    lu.assertTrue(self.mgr:Handle(player, { action = 'Return', seq = 2, requestId = operation }))
+    lu.assertEquals(self:lastReply(1).reason, 'teleport')
+    lu.assertEquals(data.Data.FishCoin, 40)
+    self.save:LoadInto(player, data)
+    self.mgr:Update()
+    lu.assertEquals(data.Data.FishCoin, 40)
+end
+
+function TestFerry:test_pending_board_excludes_second_payer_and_failed_write_grants_nothing()
+    self.data[1]:AddItem('shrimpTicket')
+    self.data[2]:AddItem('shrimpTicket')
+    self.writeFailure = true
+    self:board(1, 1)
+    lu.assertFalse(self:board(2, 1))
+    lu.assertEquals(self.data[2]:ItemCount('shrimpTicket'), 1)
+    lu.assertNil(self.mgr.DepartAt)
+    lu.assertNil(self.mgr.Payer)
+    lu.assertEquals(#self.broadcasts, 0)
+    lu.assertNil(self:lastReply(1))
+    self.writeFailure = false
+    self.save:Update()
+    lu.assertEquals(self.mgr.Payer, 1)
+    lu.assertEquals(self.data[1]:ItemCount('shrimpTicket'), 0)
+end
+
+function TestFerry:test_missing_save_and_forged_request_never_grant_travel()
+    self.data[1]:AddItem('shrimpTicket')
+    self.mgr.Save = nil
+    lu.assertFalse(self:board(1, 1))
+    self.mgr.Save = self.save
+    lu.assertFalse(self.mgr:Handle(self.players[1], { action = 'Board', seq = 2,
+        requestId = { id = '1:99', sequence = 99, kind = 'ferry:board', requestKey = 'forged' } }))
+    lu.assertFalse(self:board(1, math.huge))
+    lu.assertEquals(self.data[1]:ItemCount('shrimpTicket'), 1)
+    lu.assertNil(self.mgr.DepartAt)
+end
+
+function TestFerry:test_return_callback_after_leaving_never_teleports()
+    local player, data = self.players[1], self.data[1]
+    player.Character.Position = vec(101, 6, 103)
+    data:AddCoin(40)
+    self.defer = true
+    self.mgr:Handle(player, { action = 'Return', seq = 1 })
+    self.mgr:OnPlayerRemoving(player)
+    self:drain()
+    lu.assertEquals(player.teleports, 0)
+    lu.assertNil(self:lastReply(1))
+end
+
+function TestFerry:test_board_request_replay_only_returns_receipt_during_countdown()
+    self.data[1]:AddItem('shrimpTicket')
+    self:board(1, 1)
+    local operation = self:lastReply(1).operation
+    local broadcasts = #self.broadcasts
+    lu.assertTrue(self.mgr:Handle(self.players[1], { action = 'Board', seq = 2, requestId = operation }))
+    lu.assertTrue(self:lastReply(1).ok)
+    lu.assertEquals(#self.broadcasts, broadcasts)
+    lu.assertEquals(self.data[1]:ItemCount('shrimpTicket'), 0)
 end
 
 function TestFerry:tearDown()
     package.loaded['common.GameCfg'] = self.saved.GameCfg
+    self.cfg.Ferry = self.ferryCfg
     package.loaded['common.REUtil'] = self.saved.REUtil
     package.loaded['server.Mgr.MgrPlayerData'] = self.saved.PlayerData
+    package.loaded['server.Data.PlayerData'] = self.saved.DataClass
     _G.game = self.saved.game
     _G.Vector3 = self.saved.Vector3
     _G.REUtil = self.saved.REUtilG
