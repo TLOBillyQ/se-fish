@@ -86,6 +86,18 @@ function Mgr:Hooks()
             self:EnterDowned(state, vitalState)
             return true
         end,
+        -- 漏网死亡（绕过致命拦截的引擎死亡）：纳入状态机按死亡处理。断开放鱼由
+        -- MgrFishUnit / MgrReelIn 既有的 Controller.Died 订阅负责，这里不重复。
+        OnDied = function(vitalState)
+            local state = self.States[vitalState.player.UserId]
+            if not state or state.phase == 'dead' then return end
+            state.phase = 'dead'
+            state.downedAt = nil
+            state.deadAt = self:Now()
+            state.engineDeath = true
+            print('[MgrSurvival] 漏网死亡纳入状态机', state.player.UserId)
+            self:SendState(state)
+        end,
     }
 end
 
@@ -122,6 +134,7 @@ function Mgr:WeakRevive(state)
     if not self.Vitals:ApplyRevive(vitalState, health, minHunger) then return end
     state.phase = 'alive'
     state.deadAt = nil
+    state.engineDeath = nil
     self:ApplyWeak(state, c.WeakSec)
     print('[MgrSurvival] 虚弱复活', state.player.UserId, 'health=' .. tostring(health),
         'hunger=' .. tostring(vitalState.hunger))
@@ -140,8 +153,8 @@ function Mgr:OnPlayerRemoving(player)
 end
 
 -- 状态推进：濒死倒计时到转死亡；死亡倒计时到按虚弱复活结算一次。
--- 引擎抢先复活修正：仅当真死过（MgrVitals state.dead=true 的漏网死亡）且血量回正才提前结算——
--- 锁血路径下 Controller 停在 1 血，health>0 不等于复活，不能误判。
+-- 漏网死亡（engineDeath）额外盯引擎抢先复活：Vitals 死亡标记已消（旧 Revive 跑过）或血量回正，
+-- 立即修正为虚弱复活——原生自动复活一旦发生，不能留下满血。锁血路径血停在 1，不看血量。
 function Mgr:Update()
     local now = self:Now()
     local c = cfg()
@@ -153,11 +166,15 @@ function Mgr:Update()
             print('[MgrSurvival] 死亡', state.player.UserId)
             self:SendState(state)
         elseif state.phase == 'dead' then
-            local vitalState = self.Vitals and self.Vitals:GetState(state.player)
-            local health = vitalState and vitalState.dead and healthOf(state.player) or nil
-            if (health and health > 0) or now - state.deadAt >= c.DeadSec then
-                self:WeakRevive(state)
+            local due = now - state.deadAt >= c.DeadSec
+            local engineRevived = false
+            if state.engineDeath and self.Vitals then
+                local vitalState = self.Vitals:GetState(state.player)
+                local health = healthOf(state.player)
+                engineRevived = vitalState ~= nil and vitalState.dead == false
+                    or (health ~= nil and health > 1)
             end
+            if due or engineRevived then self:WeakRevive(state) end
         elseif state.phase == 'alive' and state.weakUntil and now >= state.weakUntil then
             self:ClearWeak(state)
             self:SendState(state)

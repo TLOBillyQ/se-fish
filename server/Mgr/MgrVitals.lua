@@ -226,6 +226,12 @@ function Mgr:OnDied(state)
     state.rebornCalled = false
     self:WriteHealth(state)
     print('[MgrVitals] 死亡', state.player.UserId, 'hunger=' .. tostring(state.hunger))
+    -- T10（#131）：漏网死亡通知生命接缝（MgrSurvival 纳入状态机）；接缝内部只做状态记录，不复活
+    local hooks = self.LifeHooks
+    if hooks and type(hooks.OnDied) == 'function' then
+        local ok, err = pcall(hooks.OnDied, state)
+        if not ok then print('[MgrVitals] 死亡通知接缝失败', state.player.UserId, tostring(err)) end
+    end
 end
 
 -- 复活的唯一入口（轮询 / OnReborn 两个来源，幂等）：两项回满，饥饿从这一秒重新计时
@@ -391,6 +397,13 @@ function Mgr:OnPlayerRemoving(player)
 end
 
 function Mgr:UpdateState(state, now)
+    -- T10（#131）：生命接缝接管（濒死/死亡）时让位——暂停饥饿推进、不做复活轮询与兜底 Reborn，
+    -- 复活结算归 MgrSurvival（虚弱复活）。无接缝或未接管时保持 #53 原流程。
+    local hooks = self.LifeHooks
+    if hooks and type(hooks.LifeStatus) == 'function' then
+        local ok, status = pcall(hooks.LifeStatus, state)
+        if ok and (status == 'downed' or status == 'dead') then return end
+    end
     local c = cfg()
     local health = healthOf(state)
     if state.dead then

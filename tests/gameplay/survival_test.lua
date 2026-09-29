@@ -190,3 +190,72 @@ function TestSurvivalRevive:test_weak_recovers_full_speed_exactly_after_60_secon
     self.s:Update()
     lu.assertEquals(self:ctrl().WalkSpeed, 10)
 end
+
+TestSurvivalTakeover = {}
+
+function TestSurvivalTakeover:setUp()
+    TestSurvivalDowned.setUp(self)
+end
+
+function TestSurvivalTakeover:tearDown()
+    TestSurvivalDowned.tearDown(self)
+end
+
+function TestSurvivalTakeover:ctrl(p) return (p or self.a).Character.Controller end
+
+function TestSurvivalTakeover:tick(seconds, step)
+    step = step or 0.5
+    local target = self.now + seconds
+    while self.now + 1e-9 < target do
+        self.now = math.min(target, self.now + step)
+        self.v:Update()
+        self.s:Update()
+    end
+end
+
+function TestSurvivalTakeover:test_hunger_pauses_while_downed_and_dead()
+    local state = self.v:GetState(self.a)
+    state.hunger = 100
+    state.lastSec = math.floor(self.now)
+    TestSurvivalDowned.enterDowned(self) -- now=100 进濒死
+    self:tick(44.9) -- 100 → 144.9：濒死 15 秒 + 死亡 29.9 秒
+    lu.assertEquals(state.hunger, 100) -- 全程暂停
+    lu.assertEquals(self.v:LifeStatus(self.a), 'dead')
+    self:tick(0.1) -- 145：虚弱复活
+    lu.assertEquals(state.hunger, 100) -- 高于下限不压低
+    lu.assertEquals(self:ctrl().Health, 30)
+    self:tick(1) -- 复活后恢复推进
+    lu.assertEquals(state.hunger, 99)
+end
+
+function TestSurvivalTakeover:test_vitals_fallback_reborn_does_not_fire_during_takeover()
+    -- 漏网死亡：外部直接把 Controller 打死（绕过 OnBeforeDamage 的引擎路径）
+    self:ctrl().Health = 0
+    self:ctrl().Died:Fire()
+    lu.assertTrue(self.v:GetState(self.a).dead)
+    lu.assertEquals(self.v:LifeStatus(self.a), 'dead') -- OnDied 通知纳入状态机
+    self:tick(7.5) -- 超过 ReviveDelaySec+ReviveGraceSec=7：旧兜底不得抢跑
+    lu.assertEquals(self:ctrl().reborns, 0)
+    self:tick(22.5) -- 到 30 秒：MgrSurvival 虚弱复活
+    lu.assertEquals(self:ctrl().Health, 30)
+    lu.assertEquals(self:ctrl().WalkSpeed, 5)
+    lu.assertEquals(self:ctrl().reborns, 0) -- 全程没调引擎 Reborn
+    lu.assertFalse(self.v:GetState(self.a).dead) -- 死亡标记已清
+end
+
+function TestSurvivalTakeover:test_engine_revive_during_dead_is_corrected_once()
+    self:ctrl().Health = 0
+    self:ctrl().Died:Fire() -- now=100 漏网死亡
+    self.now = 105
+    self:ctrl():Reborn() -- 编辑器死亡规则 5 秒自动满血复活（OnReborn → 旧 Revive 满血满饥饿）
+    lu.assertEquals(self:ctrl().Health, 300)
+    self.s:Update() -- 状态机发现引擎抢先复活，立即修正为虚弱复活
+    lu.assertEquals(self:ctrl().Health, 30)
+    lu.assertEquals(self:ctrl().WalkSpeed, 5)
+    lu.assertEquals(self.v:LifeStatus(self.a), 'alive')
+    self.s:Update() -- 幂等：不重复结算
+    lu.assertEquals(self:ctrl().Health, 30)
+    lu.assertEquals(self:ctrl().reborns, 1) -- 只有引擎那一次
+    self:tick(60) -- 虚弱结束恢复全速
+    lu.assertEquals(self:ctrl().WalkSpeed, 10)
+end
