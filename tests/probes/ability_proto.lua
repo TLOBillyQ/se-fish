@@ -195,6 +195,35 @@ check('B 超大 dt 被截断（补算不得一帧跨过围栏）',
     huge.truncated == true and guard.Stats.StepTruncations == 1)
 check('B 防护后坐标始终有限（无 NaN/漂移残留）', finitePoint(guard.Pos))
 
+-- 跃起（沧龙 fish55Elite：每 15 秒高高跃起）：抛物线到 LeapHeight 再回到水面高度。
+-- 用沧龙自己的钓鱼区（volcanoIsland）围栏，而不是白头鹰所在的礁岛。
+local volcano = nil
+for _, entry in ipairs(GameCfg.Zones) do
+    if entry.Id == 'volcanoIsland' then volcano = entry.Scene end
+end
+local leapBounds = FlightPath.BoundsOf(volcano, F)
+check('B 火山岛（沧龙所在区）场景合同给出有限围栏',
+    leapBounds ~= nil and finite(leapBounds.MinX) and finite(leapBounds.CeilingY))
+quantity('B 火山岛围栏', string.format('x[%.1f,%.1f] z[%.1f,%.1f] ground=%.1f ceiling=%.1f',
+    leapBounds.MinX, leapBounds.MaxX, leapBounds.MinZ, leapBounds.MaxZ, leapBounds.GroundY,
+    leapBounds.CeilingY))
+local center = { x = (leapBounds.MinX + leapBounds.MaxX) / 2, z = (leapBounds.MinZ + leapBounds.MaxZ) / 2 }
+local leap = FlightPath.New(leapBounds, F, F.Species.fish55Elite,
+    { x = center.x, y = leapBounds.GroundY, z = center.z }, 0)
+local apex, leapViolations = 0, 0
+for step = 1, 400 do    -- 20 秒
+    FlightPath.Step(leap, step * 0.05, 0.05)
+    if leap.Pos.y - leapBounds.GroundY > apex then apex = leap.Pos.y - leapBounds.GroundY end
+    if leap.Pos.y > leapBounds.CeilingY + 1e-9 or leap.Pos.y < leapBounds.GroundY - 1e-9 then
+        leapViolations = leapViolations + 1
+    end
+end
+quantity('B 沧龙跃起最高点（相对水面）', string.format('%.3f（配置 LeapHeight=%.1f）', apex, F.LeapHeight))
+quantity('B 沧龙 20 秒内跃起次数 / 结束阶段', string.format('%d / %s', leap.Stats.Dives, leap.Phase))
+check('B 沧龙跃起达到配置高度并落回水面（不越界）',
+    leap.Stats.Dives == 1 and apex > F.LeapHeight * 0.95 and apex <= F.LeapHeight
+    and leapViolations == 0 and leap.Phase == 'cruise')
+
 -- =====================================================================================
 -- C 巡航叼人：挂点净空、携带跟随、两个身份先后被叼、释放幂等
 -- =====================================================================================
