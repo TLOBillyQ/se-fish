@@ -377,3 +377,31 @@ function TestLootDrop:test_snapshot_carries_drop_kind_and_warning_flag()
     lu.assertEquals(entry.warn, nil)
     lu.assertEquals(loot.ZoneId, self.loot:RegionAt(loot.Position))
 end
+
+-- 票面「覆盖一切可丢弃品」：船票（过关道具）与首领饵也能丢回地面并原样拾回
+function TestLootDrop:test_ticket_and_boss_bait_round_trip()
+    lu.assertTrue(self.data:AddItem('shrimpTicket', 1))
+    self:operate({ action = 'Operate', op = 'discard', slot = 1 })
+    self:operate({ action = 'Operate', op = 'discard', slot = 1 })
+    local ticket = self:drops()[1]
+    lu.assertEquals(ticket.ItemId, 'shrimpTicket')
+    self.player.Character.Position = ticket.Position
+    lu.assertTrue(self.loot:Pickup(self.player, ticket.Id))
+    lu.assertEquals(self.data:ItemCount('shrimpTicket'), 1)
+    -- 首领饵（鸭子）按物品表没有 bait 容器：拾回进道具栏，不混进普通鱼饵计数
+    lu.assertTrue(self.data:AddItem('duck', 1))
+    local duckSlot
+    for index, entry in pairs(self:bar()) do
+        if entry.itemId == 'duck' then duckSlot = index end
+    end
+    lu.assertNotNil(duckSlot)
+    self:operate({ action = 'Operate', op = 'discard', slot = duckSlot })
+    self:operate({ action = 'Operate', op = 'discard', slot = duckSlot })
+    local bait = self:drops()[1]
+    lu.assertEquals(bait.ItemId, 'duck')
+    lu.assertEquals(self.data:ItemCount('duck'), 0)
+    self.player.Character.Position = bait.Position
+    lu.assertTrue(self.loot:Pickup(self.player, bait.Id))
+    lu.assertEquals(self.data:ItemBarItemCount('duck'), 1)
+    lu.assertNil(self.data.Data.Bait.duck)
+end
