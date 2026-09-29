@@ -593,6 +593,69 @@ function TestMgrWeaponThrow:test_projectile_flies_then_detonates_in_water()
     lu.assertEquals(self.data:ItemCount('item143'), 1) -- Launch 不经存档协议，本用例直接发射不扣
 end
 
+-- ===== 爆炸保底鱼（MgrFishUnit Wild 状态） =====
+TestMgrFishUnitBlastFish = {}
+function TestMgrFishUnitBlastFish:setUp()
+    self.saved = { game = rawget(_G, 'game'), carrier = package.loaded['server.Mgr.MgrFishCarrier'] }
+    self.now = 3000
+    self.despawned = {}
+    self.spawnOpts = {}
+    local env = self
+    package.loaded['server.Mgr.MgrFishCarrier'] = {
+        Spawn = function(_, opts)
+            env.spawnOpts[#env.spawnOpts + 1] = opts
+            return { Body = { Position = opts.Position }, Receiver = { Controller = {} } }, nil
+        end,
+        Despawn = function(_, carrier) env.despawned[#env.despawned + 1] = carrier end,
+        Attach = function() end,
+    }
+    _G.game = { GetService = function(_, name)
+        if name == 'World' then return { GetServerTime = function() return env.now end } end
+        if name == 'Players' then return { GetPlayers = function() return {} end } end
+        return nil
+    end }
+    self.mgr = assert(loadfile('server/Mgr/MgrFishUnit.lua'))()
+    self.owner = { UserId = 55 }
+end
+function TestMgrFishUnitBlastFish:tearDown()
+    _G.game = self.saved.game
+    package.loaded['server.Mgr.MgrFishCarrier'] = self.saved.carrier
+end
+
+function TestMgrFishUnitBlastFish:test_spawn_wild_fish_with_ttl_and_owner()
+    local fish = self.mgr:SpawnBlastFish('tilapia', 1, { x = 1, y = 2, z = 3 }, self.owner)
+    lu.assertNotNil(fish)
+    lu.assertEquals(fish.State, self.mgr.State.Wild)
+    lu.assertEquals(fish.Owner, self.owner)
+    lu.assertEquals(fish.WildUntil, 3000 + GameCfg.Ability.Throw.FishTtlSec)
+    lu.assertEquals(self.mgr.Fish[fish.Id], fish)
+    lu.assertEquals(self.spawnOpts[1].FishId, 'tilapia')
+    lu.assertEquals(self.spawnOpts[1].Position, { x = 1, y = 2, z = 3 })
+    lu.assertEquals(self.spawnOpts[1].MaxHealth, GameCfg.Fish.tilapia.Health)
+    -- Wild 鱼不接抓举：不会发起 Lift（没有 Conns/RequestLift 副作用）
+    lu.assertNil(fish.Conns)
+end
+
+function TestMgrFishUnitBlastFish:test_wild_fish_expire_after_ttl()
+    local fish = self.mgr:SpawnBlastFish('carp', 2, { x = 0, y = 2, z = 0 }, self.owner)
+    self.now = 3000 + GameCfg.Ability.Throw.FishTtlSec - 1
+    self.mgr:Update()
+    lu.assertEquals(self.mgr.Fish[fish.Id], fish) -- 未到期保留
+    self.now = 3000 + GameCfg.Ability.Throw.FishTtlSec
+    self.mgr:Update()
+    lu.assertNil(self.mgr.Fish[fish.Id])          -- 到期移除
+    lu.assertEquals(#self.despawned, 1)
+end
+
+function TestMgrFishUnitBlastFish:test_wild_fish_can_be_killed_for_loot()
+    local fish = self.mgr:SpawnBlastFish('bass', 1, { x = 0, y = 2, z = 0 }, self.owner)
+    local killed = self.mgr:TakeKilled(fish)
+    lu.assertEquals(killed.fishId, 'bass')
+    lu.assertEquals(killed.mult, 1)
+    lu.assertNil(self.mgr.Fish[fish.Id]) -- 只会成功一次
+    lu.assertNil(self.mgr:TakeKilled(fish))
+end
+
 -- ===== 重进恢复 =====
 TestWeaponPersistence = {}
 function TestWeaponPersistence:test_rejoin_restores_equipment_and_full_magazine()

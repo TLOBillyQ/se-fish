@@ -12,7 +12,7 @@ local MgrFishCarrier = require('server.Mgr.MgrFishCarrier')
 local Mgr = { Fish = {}, NextId = 0, Held = {}, Links = {} }
 
 Mgr.State = { AwaitLift = 'awaitLift', Held = 'held', Escaping = 'escaping',
-    Combat = 'combat', Attacking = 'attacking', Sleeping = 'sleeping' }
+    Combat = 'combat', Attacking = 'attacking', Sleeping = 'sleeping', Wild = 'wild' }
 
 local function cfg()
     return GameCfg.FishUnit
@@ -98,6 +98,36 @@ function Mgr:SpawnLanded(player, catch, position)
         end
     end
     self:RequestLift(fish)
+    return fish
+end
+
+-- #129 爆炸保底鱼：与 SpawnLanded 同款载体，但不接抓举（Wild 状态），到期即消失；
+-- 归属投掷者（Owner），被打死走统一 Loot / 任务流
+function Mgr:SpawnBlastFish(fishId, mult, position, owner)
+    local species = GameCfg.Fish[fishId]
+    if not species or type(mult) ~= 'number' or not position then return nil, 'bad-fish' end
+    local carrier, err = MgrFishCarrier:Spawn({
+        Position = position,
+        FishId = fishId,
+        MaxHealth = species.Health,
+        ModelId = species.Model,
+        Player = owner,
+        GravityEnabled = false,
+        LinearDamping = cfg().LinearDamping,
+        AngularDamping = cfg().AngularDamping,
+    })
+    if not carrier then return nil, err end
+    self.NextId = self.NextId + 1
+    local ttl = (GameCfg.Ability.Throw and GameCfg.Ability.Throw.FishTtlSec) or 60
+    local fish = { Id = self.NextId, Owner = owner, FishId = fishId, Mult = mult,
+        Carrier = carrier, State = Mgr.State.Wild, Anchor = position,
+        WildUntil = self:Now() + ttl, Threat = {} }
+    self.Fish[fish.Id] = fish
+    -- 受击体是带 Controller 的 EggyUnit，不关掉会被 Lift() 当成身前目标抓走
+    if carrier.Receiver and carrier.Receiver.Controller then
+        pcall(function() carrier.Receiver.Controller.LiftedEnabled = false end)
+    end
+    self:Isolate(fish)
     return fish
 end
 
@@ -670,6 +700,11 @@ function Mgr:Update()
                     fish.LiftGaveUp = true
                     print('[MgrFishUnit] 抓举未确认，放弃重试', fish.Owner.UserId, 'fish=' .. tostring(fish.Id))
                 end
+            end
+        elseif fish.State == Mgr.State.Wild then
+            if fish.WildUntil and now >= fish.WildUntil then
+                print('[MgrFishUnit] 爆炸保底鱼到期消失', fish.FishId, 'fish=' .. tostring(fish.Id))
+                self:Remove(fish)
             end
         elseif fish.State == Mgr.State.Escaping then
             self:UpdateEscaping(fish, now)
