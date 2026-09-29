@@ -406,3 +406,194 @@ function TestCarryMount:test_step_without_carry_is_a_noop()
     lu.assertEquals(events.Position, nil)
     lu.assertEquals(state.Stats.Frames, 1)
 end
+
+-- 能力 D：首领分阶段（60%/20% 阈值、一帧跨两阈值、途中失目标、死亡打断）。
+-- 失败方式（先列后写）：
+--   1. 阈值抖动：血量在 60%/20% 附近反复横跳时阶段来回切、日志刷屏；
+--   2. 一帧跨两阈值：一次掉到 5% 时补一遍中间阶段或漏掉最终阶段；
+--   3. 招式不确定：同一帧多个招式到期时顺序随机，或血线推进后冷却不重排；
+--   4. 失目标不干净：待发吐息不撤销、目标一回来立刻秒杀、冷却被重置成「白赚」；
+--   5. 死亡残留：死后仍有攻击落地、待发攻击不清空、打断被重复计数。
+TestBossPhase = {}
+
+function TestBossPhase:setUp()
+    self.Cfg = require('common.GameCfg')
+    self.Boss = require('common.BossPhase')
+    self.BossCfg = self.Cfg.Ability.BossPhase
+    self.Target = { x = 1, y = 0, z = 0 }
+end
+
+function TestBossPhase:input(health, target)
+    return { Health = health, MaxHealth = 10000, Alive = true, Target = target }
+end
+
+-- 从 0 推进到 upto 秒，收集本段内触发过的攻击
+function TestBossPhase:run(state, from, upto, input)
+    local fired = {}
+    local step = 0
+    while from + step * 0.05 <= upto + 1e-9 do
+        step = step + 1
+        local now = from + step * 0.05
+        local events = self.Boss.Update(state, now, 0.05, input)
+        if events.Attack then fired[#fired + 1] = events.Attack end
+        if events.Interrupted then fired.Interrupted = events.Reason end
+    end
+    return fired
+end
+
+function TestBossPhase:test_config_matches_spec()
+    local thresholds = self.BossCfg.Thresholds
+    lu.assertEquals(thresholds[1].Percent, 60)
+    lu.assertEquals(thresholds[1].Phase, 'water')
+    lu.assertEquals(thresholds[1].BiteDamage, 1000)
+    lu.assertEquals(thresholds[2].Percent, 20)
+    lu.assertEquals(thresholds[2].Phase, 'enraged')
+    lu.assertEquals(thresholds[2].DamageBonusPercent, 50)
+    lu.assertEquals(thresholds[2].BreathIntervalSec, 10)
+    lu.assertEquals(self.BossCfg.Attacks.claw, { IntervalSec = 2, Damage = 50 })
+    lu.assertEquals(self.BossCfg.Attacks.tail.IntervalSec, 6)
+    lu.assertEquals(self.BossCfg.Attacks.breath.IntervalSec, 30)
+    lu.assertEquals(self.BossCfg.Attacks.breath.Range, 10)
+    lu.assertTrue(self.BossCfg.Attacks.breath.OneShot)
+end
+
+function TestBossPhase:test_thresholds_escalate_only_below_the_line()
+    local state = self.Boss.New(self.BossCfg, 0)
+    -- 满血：正常阶段，也没有日志
+    lu.assertEquals(self.Boss.Update(state, 0.1, 0.1, self:input(10000, self.Target)).Phase, 'normal')
+    -- 正好 60% / 20% 不入下一阶段（正文是「低于 60%」「低于 20%」）
+    lu.assertEquals(self.Boss.Update(state, 0.2, 0.1, self:input(6000, self.Target)).Phase, 'normal')
+    lu.assertEquals(self.Boss.Update(state, 0.3, 0.1, self:input(5990, self.Target)).Phase, 'water')
+    lu.assertEquals(self.Boss.Update(state, 0.4, 0.1, self:input(2000, self.Target)).Phase, 'water')
+    lu.assertEquals(self.Boss.Update(state, 0.5, 0.1, self:input(1990, self.Target)).Phase, 'enraged')
+    lu.assertEquals(state.Stats.Transitions, 2)
+    lu.assertEquals(#state.Log, 2)
+    lu.assertEquals(state.Log[1].From, 'normal')
+    lu.assertEquals(state.Log[1].To, 'water')
+    lu.assertEquals(state.Log[1].Skipped, {})
+    lu.assertEquals(state.Log[2].To, 'enraged')
+    -- 同一档内血量反复变化不产生新日志；回血也不退回上一阶段（只进不退，见模块说明）
+    for i = 1, 20 do
+        self.Boss.Update(state, 0.6 + i * 0.05, 0.05, self:input(1900 + i * 10, self.Target))
+    end
+    lu.assertEquals(state.Stats.Transitions, 2)
+    lu.assertEquals(#state.Log, 2)
+    lu.assertEquals(state.Percent, 21)
+    lu.assertEquals(state.Phase, 'enraged', '回血不倒退阶段')
+end
+
+function TestBossPhase:test_one_frame_crossing_two_thresholds_lands_in_one_phase()
+    local state = self.Boss.New(self.BossCfg, 0)
+    self.Boss.Update(state, 0.1, 0.1, self:input(10000, self.Target))
+    local events = self.Boss.Update(state, 0.2, 0.1, self:input(500, self.Target))
+    lu.assertEquals(events.Phase, 'enraged')
+    lu.assertTrue(events.PhaseChanged)
+    lu.assertEquals(state.Stats.Transitions, 1, '一帧只算一次切换')
+    lu.assertEquals(state.Log[1].From, 'normal')
+    lu.assertEquals(state.Log[1].To, 'enraged')
+    lu.assertEquals(state.Log[1].Skipped, { 'water' }, '被跳过的阶段必须记下来')
+    lu.assertEquals(state.Stats.Skipped, 1)
+    lu.assertEquals(state.Percent, 5)
+end
+
+function TestBossPhase:test_attack_cycle_is_deterministic_and_suspends_without_a_target()
+    local state = self.Boss.New(self.BossCfg, 0)
+    local input = self:input(10000, self.Target)
+    local fired = self:run(state, 0, 2.1, input)
+    lu.assertEquals(#fired, 1)
+    lu.assertEquals(fired[1].Name, 'claw') -- 2 秒爪击
+    lu.assertEquals(fired[1].Damage, 50)
+    lu.assertEquals(state.Stats.Attacks, 1)
+    -- 失目标：不再出招，也不残留待发
+    input.Target = nil
+    local after = state.Stats.Attacks
+    self:run(state, 2.1, 32.1, input)
+    lu.assertEquals(state.Stats.Attacks, after)
+    lu.assertEquals(state.Pending, nil)
+    lu.assertEquals(state.Target, nil)
+    -- 目标回来后接着打（冷却保留：不是从头再等，也不是立刻白赚）
+    input.Target = self.Target
+    local resumed = self:run(state, 32.1, 32.4, input)
+    lu.assertEquals(resumed[1].Name, 'claw')
+    lu.assertEquals(resumed[1].Damage, 50)
+    local names = {}
+    for _, attack in ipairs(resumed) do names[attack.Name] = true end
+    lu.assertTrue(names.tail, '失目标期间冷却保留，目标回来接着出招')
+end
+
+function TestBossPhase:test_windup_is_cancelled_when_the_target_is_lost()
+    local state = self.Boss.New(self.BossCfg, 0)
+    local input = self:input(10000, self.Target)
+    self:run(state, 0, 30.2, input) -- 吐息 30 秒起手，起手 1.5 秒
+    lu.assertNotNil(state.Pending)
+    lu.assertEquals(state.Pending.Name, 'breath')
+    -- 吐息 30 秒到期、起手 1.5 秒；容差按帧粒度（同一帧先落地的爪击会占掉 30 秒那一帧）
+    lu.assertAlmostEquals(state.Pending.ReadyAt, 30 + self.BossCfg.Attacks.breath.WindupSec, 0.15)
+    local attacks = state.Stats.Attacks
+    input.Target = nil
+    local events = self.Boss.Update(state, 30.25, 0.05, input)
+    lu.assertTrue(events.Interrupted)
+    lu.assertEquals(events.Reason, 'lostTarget')
+    lu.assertEquals(events.Attack, nil)
+    lu.assertEquals(state.Pending, nil)
+    lu.assertEquals(state.Stats.Attacks, attacks)
+    lu.assertEquals(state.Stats.Interrupts, 1)
+    -- 目标回来后吐息要重新计时，不能立刻落地
+    input.Target = self.Target
+    local fired = self:run(state, 30.25, 32.25, input)
+    for _, attack in ipairs(fired) do
+        lu.assertNotEquals(attack.Name, 'breath')
+    end
+end
+
+function TestBossPhase:test_death_interrupts_and_leaves_no_residual_attack()
+    local state = self.Boss.New(self.BossCfg, 0)
+    local input = self:input(10000, self.Target)
+    self:run(state, 0, 30.2, input)
+    lu.assertNotNil(state.Pending)
+    local attacks = state.Stats.Attacks
+    input.Alive = false
+    local events = self.Boss.Update(state, 30.25, 0.05, input)
+    lu.assertTrue(events.Interrupted)
+    lu.assertEquals(events.Reason, 'death')
+    lu.assertEquals(events.Attack, nil)
+    lu.assertEquals(state.Pending, nil)
+    lu.assertEquals(state.Stats.Interrupts, 1)
+    -- 死亡后不再有任何攻击落地
+    local after = self:run(state, 30.25, 45.25, input)
+    lu.assertEquals(#after, 0)
+    lu.assertEquals(state.Stats.Attacks, attacks)
+    lu.assertFalse(self.Boss.Update(state, 45.3, 0.05, input).Interrupted, '打断只算一次')
+end
+
+function TestBossPhase:test_enraged_buffs_damage_and_shortens_the_breath()
+    local normal = self.Boss.New(self.BossCfg, 0)
+    self:run(normal, 0, 12, self:input(10000, self.Target))
+    for _, attack in ipairs(normal.AttackLog) do
+        lu.assertNotEquals(attack.Name, 'breath', '正常阶段 30 秒才吐息')
+    end
+    local state = self.Boss.New(self.BossCfg, 0)
+    local fired = self:run(state, 0, 12, self:input(1500, self.Target))
+    lu.assertEquals(state.Phase, 'enraged')
+    lu.assertEquals(fired[1].Name, 'claw')
+    lu.assertEquals(fired[1].Damage, 75, '爪击 50 × 1.5')
+    local breath = false
+    for _, attack in ipairs(state.AttackLog) do
+        if attack.Name == 'breath' then
+            breath = true
+            lu.assertTrue(attack.Lethal, '原子吐息是正前 10 米秒杀')
+        end
+    end
+    lu.assertTrue(breath, '狂暴后吐息改为每 10 秒')
+end
+
+function TestBossPhase:test_water_phase_bites_with_the_phase_damage()
+    local state = self.Boss.New(self.BossCfg, 0)
+    local fired = self:run(state, 0, 12, self:input(5000, self.Target))
+    lu.assertEquals(state.Phase, 'water')
+    lu.assertEquals(fired[1].Name, 'bite')
+    lu.assertEquals(fired[1].Damage, 1000, '入水后咬中 1000')
+    for _, attack in ipairs(state.AttackLog) do
+        lu.assertNotEquals(attack.Name, 'breath', '入水阶段不吐息')
+    end
+end
