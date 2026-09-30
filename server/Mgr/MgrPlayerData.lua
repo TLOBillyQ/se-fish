@@ -129,13 +129,15 @@ end
 
 -- 吃选中的鱼获（#53）：只吃选中格；先问 Vitals 能不能吃（死亡期间不能），再扣格、再恢复。
 -- EatSlot 成功后 PlayerData 内部已同步并推送，无需再 SendItemBar。
+-- #137：烤制倍率随格位带给 Vitals，烤过的按倍率恢复。
 local function eatSlot(mgr, player, data, value)
     if not mgr.Vitals then return end
     local slot = data.Data.SelectedSlot
     local entry = value == slot and data.Data.Containers[GameCfg.Items.ContainerId.ItemBar][slot]
     if not entry or entry.count <= 0 or not mgr.Vitals:CanEat(player, entry.itemId) then return end
+    local cooked = entry.cooked
     local itemId = data:EatSlot(slot)
-    if itemId then mgr.Vitals:Eat(player, itemId) end
+    if itemId then mgr.Vitals:Eat(player, itemId, cooked) end
 end
 
 -- #124 统一分发：吃/药水/丢弃/攻击经同一入口。切手持与实际使用分两次——
@@ -222,7 +224,7 @@ function Mgr:Operate(player, data, payload)
     local function settleEffects(result)
         -- 只有「吃」结算进食；丢弃同样带 itemId，但它不带 action，按 op 判定避免丢弃也喂饱玩家
         if op == 'eat' and result.itemId and result.action ~= 'potion' and self.Vitals then
-            self.Vitals:Eat(player, result.itemId)
+            self.Vitals:Eat(player, result.itemId, result.cooked)
         end
         -- #132 T11：吃了药水就地重算体型（幂等：每次都从存档里的累计数推计划），
         -- 失败只打日志不影响本次操作结果——药水已经持久化了。
@@ -273,10 +275,11 @@ function Mgr:Operate(player, data, payload)
             return { ok = true, op = 'eat', held = false, itemId = heldEntry.itemId, action = 'potion' }
         end
         -- EatSlot 只吃选中格（#53）：分发已验槽位有效，先切选中再吃掉整格
+        -- #137：烤制倍率随结果带出，结算进食时同倍率恢复
         target:SelectSlot(slot)
         local itemId = target:EatSlot(slot)
         if not itemId then return nil, 'empty' end
-        return { ok = true, op = 'eat', held = false, itemId = itemId }
+        return { ok = true, op = 'eat', held = false, itemId = itemId, cooked = heldEntry.cooked }
     end
     if self.Save then
         local requestId = payload.operation

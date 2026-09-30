@@ -728,3 +728,118 @@ function TestGrillWiring:test_server_main_wires_grill()
     lu.assertNotNil(src:find("MgrGrill', MgrMap.MgrGrill, 'BeforeLeave'"),
         '离开前要先结算烧烤会话再序列化存档')
 end
+
+-- ========== 切片四：价格/恢复同倍率（Vitals:Eat 与吃通道带烤制倍率）==========
+
+TestGrillEatVitals = {}
+
+function TestGrillEatVitals:setUp()
+    local env = self
+    self.oldGame = _G.game
+    self.now = 500
+    _G.game = { GetService = function(_, name)
+        if name == 'World' then return { GetServerTime = function() return env.now end } end
+    end }
+    self.vitals = assert(loadfile('server/Mgr/MgrVitals.lua'))()
+    local c = { Health = 100, MaxHealth = 300, HealthChanged = signal(), Died = signal(),
+        OnReborn = signal() }
+    function c:TakeDamage(n) self.Health = math.max(0, self.Health - n) end
+    self.controller = c
+    self.player = { UserId = 9101, attrs = {}, CharacterAdded = signal(),
+        Character = { Controller = c, Position = { x = 0, y = 0, z = 0 }, Size = { y = 2 } } }
+    function self.player:SetAttribute(k, v) self.attrs[k] = v end
+    self.vitals:OnPlayerAdded(self.player)
+    self.vitals:GetState(self.player).hunger = 0 -- 从空饥饿看恢复量
+end
+
+function TestGrillEatVitals:tearDown()
+    self.vitals:OnPlayerRemoving(self.player)
+    _G.game = self.oldGame
+end
+
+-- 恢复量同倍率（验收：价格、恢复量同乘当时倍率）：电鳗头 EatPercent=50，
+-- 烤熟 1.5 倍 → 恢复 75%（225 饥饿）；未烤 → 50%（150）；下降段 0.5 倍 → 25%（75）
+function TestGrillEatVitals:test_eat_restores_scaled_by_cook_rate()
+    lu.assertTrue(self.vitals:Eat(self.player, 'eelHead', 1.5))
+    lu.assertEquals(self.vitals:GetState(self.player).hunger, 225)
+    lu.assertEquals(self.controller.Health, 300, '100 + 225 封顶 300')
+
+    local state = self.vitals:GetState(self.player)
+    state.hunger = 0
+    self.controller.Health = 100
+    lu.assertTrue(self.vitals:Eat(self.player, 'eelHead'))
+    lu.assertEquals(state.hunger, 150, '未烤按原恢复量')
+    lu.assertEquals(self.controller.Health, 250)
+
+    state.hunger = 0
+    self.controller.Health = 100
+    lu.assertTrue(self.vitals:Eat(self.player, 'eelHead', 0.5))
+    lu.assertEquals(state.hunger, 75, '下降段取出恢复量打折')
+    lu.assertEquals(self.controller.Health, 175)
+end
+
+-- 非法倍率按未烤处理，不能吃时（死亡）照旧拒绝
+function TestGrillEatVitals:test_eat_with_bad_rate_falls_back_to_plain()
+    lu.assertTrue(self.vitals:Eat(self.player, 'eelHead', -1))
+    lu.assertEquals(self.vitals:GetState(self.player).hunger, 150)
+end
+
+-- 吃通道接缝：Operate 两步吃烤鱼时把格位倍率带给 Vitals
+TestGrillEatChannel = {}
+
+function TestGrillEatChannel:setUp()
+    local env = self
+    self.oldRE = _G.REUtil
+    self.oldDebug = GameCfg.Debug
+    GameCfg.Debug = { Enabled = false }
+    self.events = {}
+    _G.REUtil = { CheckRECD = function() return false end, GetRE = function(_, name)
+        if not env.events[name] then
+            env.events[name] = { OnServerEvent = signal(),
+                FireClient = function(_, player, payload) player.lastResult = payload end }
+        end
+        return env.events[name]
+    end }
+    self.player = { UserId = 9102, Character = { Name = 'Eggy' },
+        CharacterAdded = signal(), CharacterRemoving = signal(), SetAttribute = function() end }
+    self.eaten = {}
+    self.mgr = assert(loadfile('server/Mgr/MgrPlayerData.lua'))()
+    self.mgr.Vitals = { CanEat = function() return true end,
+        Eat = function(_, player, itemId, rate)
+            env.eaten[#env.eaten + 1] = { itemId = itemId, rate = rate }
+            return true
+        end }
+    self.mgr:Start()
+    self.mgr:OnPlayerAdded(self.player)
+    self.data = self.mgr:GetDataInst(self.player)
+end
+
+function TestGrillEatChannel:tearDown()
+    self.mgr:OnPlayerRemoving(self.player)
+    self.mgr.Vitals = nil
+    _G.REUtil = self.oldRE
+    GameCfg.Debug = self.oldDebug
+end
+
+function TestGrillEatChannel:operate(payload)
+    self.events.ItemBarAction.OnServerEvent:Fire(self.player, payload)
+    return self.player.lastResult
+end
+
+function TestGrillEatChannel:test_operate_eat_passes_cook_rate()
+    lu.assertTrue(self.data:AddItem('carp', 1.5, 1.5))
+    self:operate({ action = 'Operate', op = 'eat', slot = 1 })
+    local second = self:operate({ action = 'Operate', op = 'eat', slot = 1 })
+    lu.assertEquals(second.ok, true)
+    lu.assertEquals(#self.eaten, 1)
+    lu.assertEquals(self.eaten[1].itemId, 'carp')
+    lu.assertEquals(self.eaten[1].rate, 1.5, '烤鱼按倍率恢复')
+end
+
+function TestGrillEatChannel:test_operate_eat_plain_fish_passes_no_rate()
+    lu.assertTrue(self.data:AddItem('carp', 1.5))
+    self:operate({ action = 'Operate', op = 'eat', slot = 1 })
+    self:operate({ action = 'Operate', op = 'eat', slot = 1 })
+    lu.assertEquals(#self.eaten, 1)
+    lu.assertNil(self.eaten[1].rate)
+end

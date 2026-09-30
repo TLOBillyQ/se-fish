@@ -335,11 +335,17 @@ end
 
 -- 吃一件：血量与饥饿各恢复「食用恢复百分比 × 上限」，不超上限；库存由调用方先扣。
 -- #128：负食用（如核废料桶 item126）是伤害，走 ApplyDamage 统一入口，类别 eat，不绕过濒死锁血。
-function Mgr:Eat(player, itemId)
+-- #137：烤制倍率（烧烤取出时的曲线值）同乘恢复量——烤熟 1.5 倍恢复 +50%，下降段打折；
+-- 非法倍率（nil/0/负数/NaN/Inf）按未烤处理。
+function Mgr:Eat(player, itemId, cookRate)
     if not self:CanEat(player, itemId) then return false end
     local state = self:GetState(player)
     local c = cfg()
-    local percent = GameCfg.Items.Definitions[itemId].EatPercent
+    local rate = 1
+    if type(cookRate) == 'number' and cookRate > 0 and cookRate == cookRate and cookRate < math.huge then
+        rate = cookRate
+    end
+    local percent = GameCfg.Items.Definitions[itemId].EatPercent * rate
     state.hunger = Vitals.Restore(state.hunger, c.MaxHunger, percent)
     self:WriteHunger(state)
     if percent < 0 then
