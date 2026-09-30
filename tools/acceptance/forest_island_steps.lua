@@ -183,7 +183,8 @@ return { patterns = {
 
     { '^翻滚同一秒内连续两帧，再进入下一秒$', function(world)
         local env, fish = world.combat, world.fish
-        at(env, 0)
+        at(env, 0.1) -- 必须实际滚动；静止首帧不算接触
+        at(env, 0.2) -- 同秒第二帧不得重复扣血
         local bp = fish.Carrier.Body.Position
         env.other.Character.Position = Vector3.New(bp.x, 2, bp.z + 2)
         at(env, 1)
