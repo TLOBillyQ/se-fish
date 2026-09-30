@@ -346,3 +346,76 @@ function TestStatusEffect:test_straight_escape_uses_real_status_expiration()
     _G.Vector3 = oldVector
     lu.assertEquals(carrier.Body.LinearVelocity.x, base)
 end
+
+-- #139 复核失败方式：状态到期已删除而写速失败，下一帧必须按当前权威状态重算；退出不得继续重试。
+local function rejectableSpeed(env)
+    local value, writes, reject = 7, 0, false
+    env.player.Character.Controller = setmetatable({}, {
+        __index = function(_, k) if k == 'WalkSpeed' then return value end end,
+        __newindex = function(_, k, v)
+            if k == 'WalkSpeed' then
+                writes = writes + 1
+                if reject then error('瞬时拒写WalkSpeed') end
+                value = v
+            end
+        end,
+    })
+    return function(v) reject = v end, function() return value, writes end
+end
+
+function TestStatusEffect:test_status_expiry_write_failure_retries_current_growth_and_other_effects()
+    local reject, read = rejectableSpeed(self)
+    self.potions.item167 = 20
+    self.mgr:RefreshMoveSpeed(self.player)
+    self.mgr:ApplyWeaponEffect(self.player, self.player, { Kind = 'frost' })
+    self.mgr:ApplyWeaponEffect(self.player, self.player, { Kind = 'paralyze' })
+    reject(true)
+    self:advance(0.5) -- 麻痹到期，控制器拒写，仍为0
+    lu.assertEquals(read(), 0)
+    lu.assertFalse(self.mgr:IsParalyzed(self.player))
+    self.potions.item167 = 10 -- 重试读取当前存档，而非失败时的21
+    reject(false)
+    self:advance(0.1)
+    lu.assertAlmostEquals(read(), 9.8, 1e-9) -- 7*2*0.7
+    reject(true)
+    self:advance(2.4) -- 霜冻到期
+    reject(false)
+    self:advance(0.1)
+    lu.assertEquals(read(), 14)
+end
+
+function TestStatusEffect:test_weak_expiry_write_failure_retries_next_frame_without_fake_weak_state()
+    local reject, read = rejectableSpeed(self)
+    local oldRE = package.loaded['common.REUtil']
+    package.loaded['common.REUtil'] = { GetRE = function() return { FireClient = function() end } end }
+    local survival = assert(loadfile('server/Mgr/MgrSurvival.lua'))()
+    package.loaded['common.REUtil'] = oldRE
+    survival.Now = function() return self.now end
+    survival.SpeedWriter = self.mgr
+    survival.SendState, survival.Mirror = function() end, function() end
+    local state = { player = self.player, phase = 'alive' }
+    survival.States[self.player.UserId] = state
+    self.mgr.Survival = survival
+    self.potions.item167 = 20
+    self.mgr:RefreshMoveSpeed(self.player)
+    survival:ApplyWeak(state, 1)
+    lu.assertEquals(read(), 10.5)
+    reject(true)
+    self.now = self.now + 1
+    survival:Update()
+    lu.assertNil(survival:GetState(self.player).weakUntil, '到期标记清除，不保留伪虚弱')
+    reject(false)
+    self.mgr:Update(0.1)
+    lu.assertEquals(read(), 21)
+end
+
+function TestStatusEffect:test_leave_cancels_failed_speed_retry()
+    local reject, read = rejectableSpeed(self)
+    reject(true)
+    self.mgr:RefreshMoveSpeed(self.player)
+    self.mgr:OnPlayerRemoving(self.player)
+    local _, before = read()
+    self:advance(0.1)
+    local _, after = read()
+    lu.assertEquals(after, before, '退出后不继续写控制器或刷失败日志')
+end

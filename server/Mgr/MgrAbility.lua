@@ -299,9 +299,19 @@ end
 
 ---移速唯一写口：基础 × 加速成长 × 虚弱 × 霜冻（麻痹为 0），数值在 common/AttrGrowth.lua 算一次。
 ---任何一侧变化（喝药/虚弱进出/霜冻麻痹起止/重生）都调本函数整体重写，不做增量叠加。
+-- 所有调用路径共用速度重试队列；每名玩家只登记一次，连续失败只记录首个错误，避免心跳刷屏。
+local function queueSpeed(self, player, err)
+	self.PendingSpeed = self.PendingSpeed or {}
+	if not self.PendingSpeed[player.UserId] then
+		print('[MgrAbility] 移速写入失败', player.UserId, tostring(err))
+	end
+	self.PendingSpeed[player.UserId] = player
+	return false, tostring(err)
+end
+
 function Mgr:RefreshMoveSpeed(player)
 	local controller = controllerOf(player)
-	if not controller then return false, "no-controller" end
+	if not controller then return queueSpeed(self, player, "no-controller") end
 	self:CaptureBaseSpeed(player)
 	local base = self.SpeedBase[player.UserId] or GameCfg.Ability.MoveSpeed.Base
 	local weak = false
@@ -318,9 +328,9 @@ function Mgr:RefreshMoveSpeed(player)
 		{ weak = weak, frost = frost, paralyzed = paralyzed })
 	local ok, err = pcall(function() controller.WalkSpeed = speed end)
 	if not ok then
-		print("[MgrAbility] 移速写入失败", player.UserId, tostring(err))
-		return false, tostring(err)
+		return queueSpeed(self, player, err)
 	end
+	if self.PendingSpeed then self.PendingSpeed[player.UserId] = nil end
 	return true
 end
 
@@ -337,11 +347,15 @@ function Mgr:ApplyGrowth(player)
 			errors[#errors + 1] = 'MaxHealth:' .. tostring(reason)
 		end
 	end
+	-- 体型/血量失败需重套成长；速度失败已由唯一写口登记，不能再进入成长队列反复打印/重套。
+	local retryGrowth = #errors > 0
 	local ok, err = self:RefreshMoveSpeed(player)
 	if not ok then errors[#errors + 1] = 'WalkSpeed:' .. tostring(err) end
 	if #errors > 0 then
 		applied.Ok, applied.Error = false, table.concat(errors, '; ')
 		-- 存档已落账；后续 Update 按当前存档重算，角色重建后也会再次尝试。
+	end
+	if retryGrowth then
 		self.PendingGrowth = self.PendingGrowth or {}
 		self.PendingGrowth[player.UserId] = player
 	elseif self.PendingGrowth then self.PendingGrowth[player.UserId] = nil end
@@ -529,12 +543,19 @@ function Mgr:OnPlayerRemoving(player)
 		if entry.kind == 'player' then self:RefreshMoveSpeed(entry.ref) end
 	end
 	if self.PendingGrowth then self.PendingGrowth[player.UserId] = nil end
+	if self.PendingSpeed then self.PendingSpeed[player.UserId] = nil end
 	self.SpeedBase[player.UserId] = nil
 end
 
 function Mgr:Update(deltaTime)
     for fish in pairs(self.PendingFishCleanup) do self:RemoveFish(fish) end
+    -- 只重试本帧开始已有的请求；本帧到期事件失败留到下一帧。刷新始终读取当前存档/权威状态。
+    local retrySpeed = {}
+    for uid, player in pairs(self.PendingSpeed or {}) do retrySpeed[uid] = player end
     self:UpdateEffects()
+    for uid, player in pairs(retrySpeed) do
+        if self.PendingSpeed and self.PendingSpeed[uid] == player then self:RefreshMoveSpeed(player) end
+    end
     for _, player in pairs(self.PendingGrowth or {}) do self:ApplyGrowth(player) end
 end
 
