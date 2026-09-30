@@ -117,6 +117,12 @@ function Mgr:Drain(player)
         print('[MgrCompendium] 图鉴', player.UserId, result.fishId,
             'weight=' .. tostring(result.weight), 'best=' .. tostring(result.best),
             'count=' .. tostring(result.count), 'total=' .. tostring(result.total))
+        -- #149 T28：只有刷新了个人最大重量的那次上岸（result.record）才通知全服纪录，
+        -- 只调用、不改 #133 的个人口径；提交走 MgrRecords:NoteLanding（合并窗口 + CAS），
+        -- 个人图鉴落账与全服纪录写成功是两条独立链路，后者失败不影响前者。
+        if result.record and self.Records then
+            self.Records:NoteLanding(player, result.fishId, result.weight)
+        end
     end)
 end
 

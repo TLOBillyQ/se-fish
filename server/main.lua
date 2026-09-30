@@ -29,6 +29,7 @@ local MgrMap = {
     MgrSurvival = require("server.Mgr.MgrSurvival"),
     MgrWeapon = require("server.Mgr.MgrWeapon"),
     MgrCompendium = require("server.Mgr.MgrCompendium"),
+    MgrRecords = require("server.Mgr.MgrRecords"),
 }
 
 MgrMap.MgrCast.ReelIn = MgrMap.MgrReelIn
@@ -66,6 +67,12 @@ MgrMap.MgrSave.PlayerData = MgrMap.MgrPlayerData
 MgrMap.MgrCompendium.Save = MgrMap.MgrSave
 MgrMap.MgrCompendium.PlayerData = MgrMap.MgrPlayerData
 MgrMap.MgrCast.Compendium = MgrMap.MgrCompendium
+
+--- #149 T28 全服纪录：上岸经 MgrCompendium 的「刷新个人纪录」回调通知 MgrRecords，
+--- 由它做合并窗口写入（DataStore 三元组 CAS）；图鉴查询（RecordsRequest RE）由 MgrRecords 受理并回
+--- RecordsState，平台读不到时报「暂不可用」而不是伪纪录；查询顺带对账（个人纪录更高时补交）。
+MgrMap.MgrCompendium.Records = MgrMap.MgrRecords
+MgrMap.MgrRecords.PlayerData = MgrMap.MgrPlayerData
 
 -- #128 战斗接线：统一伤害入口的依赖单向注入在这里完成。
 -- Vitals 需要鱼受击体解析（ApplyHit 的鱼分支）；Ability / FishUnit / Cast 需要玩家生命状态

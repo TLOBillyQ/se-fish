@@ -192,4 +192,43 @@ function Mgr:OnPlayerRemoving(player)
     if player then self.LastSeq[player.UserId] = nil end
 end
 
+-- #149 T28：图鉴查询协议。客户端只给 { fishId, seq }，回包一律以服务端真实读到的状态为准：
+-- 读到什么回什么（含 'unavailable'），绝不回客户端臆造或本地缓存里已经过期的「确定值」。
+-- seq 单调递增才受理：重放/乱序的旧包不产生第二次回包。
+function Mgr:Handle(player, payload)
+    if not validPlayerId(player) or type(payload) ~= 'table' then return end
+    local fishId, seq = payload.fishId, payload.seq
+    if type(seq) ~= 'number' or seq ~= math.floor(seq) or seq < 1 or seq > 2147483647 then return end
+    local last = self.LastSeq[player.UserId]
+    if last and seq <= last then return end
+    self.LastSeq[player.UserId] = seq
+    self:Read(fishId, function(state)
+        state.seq = seq
+        self:Reconcile(player, state)
+        local re = _G.REUtil and _G.REUtil:GetRE('RecordsState')
+        if re then re:FireClient(player, state) end
+    end)
+end
+
+-- 查询触发的对账：玩家个人最大重量高于刚读到的全服纪录时（上一次提交被平台失败丢掉、
+-- 或换服重进后本服缓存还没热），补交一次。补交同样走 NoteLanding + CAS：
+-- 只可能比当前纪录更高才补，且落地时重新和平台最新值比一次，所以不会用过期候选盖新纪录。
+-- 平台读不到（unavailable）时不补：连当前纪录都不知道，不猜、不写。
+function Mgr:Reconcile(player, state)
+    if state.state == 'unavailable' then return end
+    local data = self.PlayerData and self.PlayerData:GetDataInst(player)
+    local best = data and data.PersonalBestScaled and data:PersonalBestScaled(state.fishId)
+    if not best then return end
+    if state.state == 'ok' and best <= state.scaled then return end
+    self:NoteLanding(player, state.fishId, Records.Unscale(best))
+end
+
+function Mgr:Start()
+    local re = _G.REUtil:GetRE('RecordsRequest')
+    re.OnServerEvent:Connect(function(player, payload)
+        if _G.REUtil:CheckRECD(player, 'RecordsRequest', cfg().RequestCooldownSec) then return end
+        self:Handle(player, payload)
+    end)
+end
+
 return Mgr
