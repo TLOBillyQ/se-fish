@@ -133,7 +133,8 @@ function Mgr:AttackMelee(player, weaponId, data)
     local scale = weaponId and data and data.WeaponDamageScale and data:WeaponDamageScale('melee') or 1
     local damage = mcfg.Damage * scale
     state.meleeAt[key] = now
-    AbilityAPI.StageSwing(player.UserId, { damage = damage, range = mcfg.Range })
+    -- #139：近战大奖的特效（毒/灼烧）随挥砍登记传给 melee_hit，命中成功后才应用
+    AbilityAPI.StageSwing(player.UserId, { damage = damage, range = mcfg.Range, effect = mcfg.Effect })
     local cast = self:CastMelee(player)
     print('[MgrWeapon] 挥砍发起', player.UserId, tostring(weaponId or 'unarmed'),
         'damage=' .. tostring(damage), 'range=' .. tostring(mcfg.Range),
@@ -187,9 +188,16 @@ function Mgr:AttackGun(player, weaponId, gcfg, data)
     local pellets = gcfg.Pellets or 1
     local damage = gcfg.Damage * scale
     if target then
+        local appliedAny = false
         for _ = 1, pellets do
             local hit = self.Vitals:NewHit(player, 'weapon')
-            self.Vitals:ApplyHit(hit, target, damage)
+            local ok = self.Vitals:ApplyHit(hit, target, damage)
+            appliedAny = appliedAny or ok == true
+        end
+        -- #139：枪械大奖特效（霜冻/麻痹）只在伤害被统一入口接受后挂；脱靶与被拒（安全区等）不挂
+        if appliedAny and gcfg.Effect and self.Ability and self.Ability.ApplyWeaponEffect then
+            local ok, err = pcall(self.Ability.ApplyWeaponEffect, self.Ability, player, target, gcfg.Effect)
+            if not ok then print('[MgrWeapon] 武器特效应用失败', weaponId, tostring(err)) end
         end
         print('[MgrWeapon] 枪击命中', player.UserId, weaponId,
             'damage=' .. tostring(damage), pellets > 1 and ('pellets=' .. pellets) or '',

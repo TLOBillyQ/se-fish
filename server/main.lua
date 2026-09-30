@@ -115,6 +115,7 @@ MgrMap.MgrWeapon.PlayerData = MgrMap.MgrPlayerData
 MgrMap.MgrWeapon.FishUnit = MgrMap.MgrFishUnit
 MgrMap.MgrWeapon.FishCarrier = MgrMap.MgrFishCarrier
 MgrMap.MgrWeapon.Save = MgrMap.MgrSave
+MgrMap.MgrWeapon.Ability = MgrMap.MgrAbility -- #139 枪械大奖特效应用口
 
 -- #137 烧烤接线：会话物品进出走 #123 持久协议（Save+PlayerData），烤糊伤害经统一伤害入口
 -- （Vitals）；满格时物品不入地、会话转 ready 保留冻结倍率，腾出格位后重试原倍率发还。
