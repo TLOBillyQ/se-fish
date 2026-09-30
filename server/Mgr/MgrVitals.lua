@@ -80,7 +80,26 @@ function Mgr:IsDowned(player)
 end
 
 function Mgr:CanAct(player)
-    return self:LifeStatus(player) == 'alive'
+    if self:LifeStatus(player) ~= 'alive' then return false end
+    -- #139 行动闸门（麻痹统一封锁攻击/投掷/钓鱼/进食，main.lua 注入「非麻痹」）；
+    -- 闸门故障 fail-open 并记日志，与生命接缝同策略（不把全服锁死）。
+    if self.ActGuard then
+        local ok, allowed = pcall(self.ActGuard, player)
+        if not ok then print('[MgrVitals] 行动闸门失败', player.UserId, tostring(allowed)) return true end
+        if not allowed then return false end
+    end
+    return true
+end
+
+-- #139 按玩家的血量上限：变大药水成长经 MaxHealthProvider（main.lua 注入 MgrAbility:MaxHealth），
+-- 缺省回落全局 cfg().MaxHealth（无注入时保持 #53 旧行为）。
+function Mgr:MaxHealthOf(player)
+    if self.MaxHealthProvider then
+        local ok, max = pcall(self.MaxHealthProvider, player)
+        if ok and type(max) == 'number' and max >= 1 then return max end
+        if not ok then print('[MgrVitals] 血量上限查询失败', player and player.UserId, tostring(max)) end
+    end
+    return cfg().MaxHealth
 end
 
 function Mgr:CanTakeDamage(player, hit)
@@ -115,6 +134,25 @@ local function healthOf(state)
     return ok and tonumber(health) or nil
 end
 
+-- #139 血量上限刷新口（喝变大药水后由 MgrAbility:ApplyGrowth 调一次）：
+-- 提上限不自动回血；降上限（理论路径）把当前血夹到新上限；HUD 属性始终写玩家上限。
+function Mgr:RefreshMaxHealth(player)
+    local state = self:GetState(player)
+    if not state then return false end
+    local maxHealth = self:MaxHealthOf(player)
+    local controller = controllerOf(state)
+    if controller then
+        pcall(function()
+            controller.MaxHealth = maxHealth
+            local health = controller.Health
+            if type(health) == 'number' and health > maxHealth then controller.Health = maxHealth end
+        end)
+        state.baseline = healthOf(state)
+    end
+    self:WriteHealth(state)
+    return true, maxHealth
+end
+
 local function isBadNumber(v)
     return type(v) ~= 'number' or v ~= v or v == math.huge or v == -math.huge
 end
@@ -141,7 +179,7 @@ end
 function Mgr:WriteHealth(state)
     local health = healthOf(state)
     if health then write(state.player, 'Health', math.max(0, math.floor(health))) end
-    write(state.player, 'MaxHealth', cfg().MaxHealth)
+    write(state.player, 'MaxHealth', self:MaxHealthOf(state.player)) -- #139 按玩家上限
 end
 
 function Mgr:WriteHunger(state)
@@ -197,8 +235,8 @@ function Mgr:Bind(state, character)
     if not controller then return end
     state.controllerLinks = {}
     pcall(function()
-        controller.MaxHealth = cfg().MaxHealth
-        if not state.bound then controller.Health = cfg().MaxHealth end
+        controller.MaxHealth = self:MaxHealthOf(state.player) -- #139 按玩家上限
+        if not state.bound then controller.Health = self:MaxHealthOf(state.player) end
     end)
     state.bound = true
     state.baseline = healthOf(state)
@@ -241,7 +279,7 @@ function Mgr:Revive(state, source)
     state.deadAt = nil
     state.hunger = cfg().MaxHunger
     state.lastSec = math.floor(self:Now())
-    self:SetControllerHealth(state, cfg().MaxHealth)
+    self:SetControllerHealth(state, self:MaxHealthOf(state.player)) -- #139 按玩家上限回满
     self:WriteHunger(state)
     print('[MgrVitals] 复活', state.player.UserId, source, 'health=' .. tostring(healthOf(state)),
         'hunger=' .. tostring(state.hunger))
@@ -252,7 +290,7 @@ end
 -- 与 Revive（引擎路径，满血满饥饿）语义分开；不影响 ApplyDamage/ApplyHit 单点。
 function Mgr:ApplyRevive(state, health, minHunger)
     if not state or self.States[state.player.UserId] ~= state then return false end
-    if not isInt(health) or health < 1 or health > cfg().MaxHealth then return false end
+    if not isInt(health) or health < 1 or health > self:MaxHealthOf(state.player) then return false end -- #139 按玩家上限
     state.dead, state.deadAt, state.rebornCalled = false, nil, false
     if isInt(minHunger) and state.hunger < minHunger then state.hunger = minHunger end
     state.lastSec = math.floor(self:Now())
@@ -349,13 +387,13 @@ function Mgr:Eat(player, itemId, cookRate)
     state.hunger = Vitals.Restore(state.hunger, c.MaxHunger, percent)
     self:WriteHunger(state)
     if percent < 0 then
-        local damage = math.floor(c.MaxHealth * -percent / 100)
+        local damage = math.floor(self:MaxHealthOf(player) * -percent / 100) -- #139 按玩家上限
         if damage > 0 then
             self:ApplyDamage(player, damage, self:NewHit(player, 'eat'))
         end
     else
         local health = healthOf(state)
-        if health then self:SetControllerHealth(state, Vitals.Restore(math.floor(health), c.MaxHealth, percent)) end
+        if health then self:SetControllerHealth(state, Vitals.Restore(math.floor(health), self:MaxHealthOf(player), percent)) end -- #139 按玩家上限
     end
     print('[MgrVitals] 吃', player.UserId, itemId, 'health=' .. tostring(healthOf(state)),
         'hunger=' .. tostring(state.hunger))
@@ -375,7 +413,7 @@ end
 -- GM（#53）：设血量；调低走 ApplyDamage 单点（设 0 即走权威死亡），调高直接写 Controller
 function Mgr:SetHealth(player, value)
     local state = self:GetState(player)
-    if not state or state.dead or not isInt(value) or value < 0 or value > cfg().MaxHealth then return false end
+    if not state or state.dead or not isInt(value) or value < 0 or value > self:MaxHealthOf(player) then return false end -- #139 按玩家上限
     local health = healthOf(state)
     if not health then return false end
     if value < health then return self:ApplyDamage(player, health - value, self:NewHit(nil, 'gm')) end
