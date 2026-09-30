@@ -1,4 +1,5 @@
 local GameCfg = require('common.GameCfg')
+local Records = require('common.Records')
 
 local PlayerData = {}
 PlayerData.__index = PlayerData
@@ -959,6 +960,17 @@ function PlayerData:Destroy()
     self.Inited = false
     self.SaveMeta = nil
     self.Revision = nil
+end
+
+-- #149 T28：个人最大重量的整数化读数（图鉴收集口径 extra.collection.weights）。
+-- 只加读数，供全服纪录对账（MgrRecords:Reconcile）；不改 #133 的存储与写入语义
+-- （weights 仍是两位小数，Extra.collection 结构不动）。
+function PlayerData:PersonalBestScaled(fishId)
+    if not self.Inited or type(fishId) ~= 'string' then return nil end
+    local bag = self.Extra and self.Extra.collection
+    local weight = bag and bag.weights and bag.weights[fishId]
+    if type(weight) ~= 'number' then return nil end
+    return Records.Scale(weight)
 end
 
 return PlayerData
