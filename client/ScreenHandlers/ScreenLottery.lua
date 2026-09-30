@@ -334,6 +334,9 @@ function ScreenHandler:Start()
     REUtil:GetRE('LotteryResult').OnClientEvent:Connect(function(result) self:NoteResult(result) end)
     REUtil:GetRE('ItemBarState').OnClientEvent:Connect(function(state) self:NoteItemBar(state) end)
     game:GetService('RunService').Heartbeat:Connect(function(dt) self:UpdateAnim(dt) end)
+    -- 断线恢复主动拉取（照 RequestItemBar 握手先例）：服务端 OnPlayerAdded 的补推可能早于
+    -- 客户端连接而丢失；这里连上回包通道后请求一次，服务端按操作日志补推 recovered 结果
+    REUtil:GetRE('LotteryStateRequest'):FireServer()
     local task = game:GetService('Task')
     task:Spawn(function()
         for _ = 1, 50 do

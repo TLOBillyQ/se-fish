@@ -173,8 +173,10 @@ function Mgr:Handle(player, payload)
 end
 
 -- 断线/关动画恢复：若最近一次持久操作是抽奖，补推同一份结果（recovered 标记，仅展示）；
--- 扣物与发奖早在落账时完成，这里不重复结算。
-function Mgr:OnPlayerAdded(player)
+-- 扣物与发奖早在落账时完成，这里不重复结算。两个入口：玩家就绪（OnPlayerAdded，可能早于客户端
+-- 连接回包丢失）与客户端主动拉取（LotteryStateRequest，照 RequestItemBar 握手先例），
+-- 客户端按 operation.id 去重，同一份结果不会展示两次。
+function Mgr:PushRecovered(player)
     local data = self.PlayerData and self.PlayerData:GetDataInst(player)
     local meta = data and data.SaveMeta
     local operations = meta and meta.operations
@@ -188,10 +190,17 @@ function Mgr:OnPlayerAdded(player)
     self:Reply(player, result)
 end
 
+function Mgr:OnPlayerAdded(player)
+    self:PushRecovered(player)
+end
+
 function Mgr:Start()
     _G.REUtil:GetRE('LotteryAction').OnServerEvent:Connect(function(player, payload)
         if _G.REUtil:CheckRECD(player, 'LotteryAction', GameCfg.Lottery.ActionCooldownSec) then return end
         self:Handle(player, payload)
+    end)
+    _G.REUtil:GetRE('LotteryStateRequest').OnServerEvent:Connect(function(player)
+        self:PushRecovered(player)
     end)
 end
 

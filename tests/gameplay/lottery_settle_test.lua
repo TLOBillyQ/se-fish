@@ -267,6 +267,27 @@ function TestLotterySettle:test_reconnect_recovers_the_same_result_without_doubl
     lu.assertEquals(restored.Data.FishCoin, 0)
 end
 
+-- 客户端主动拉取（LotteryStateRequest 的处理入口）与 OnPlayerAdded 共享同一补推逻辑；
+-- 两个入口都触发时服务端可能各推一次，客户端按 operation.id 去重（见 lottery_ui_test 重播用例）
+function TestLotterySettle:test_state_request_entry_pushes_the_same_recovered_result()
+    self:givePremium('item31')
+    self:persistReady()
+    self:scriptAxes(61, 70, 76) -- 三头鲨三同 → 加速药水回投入格
+    lu.assertTrue(self:draw(1, 1))
+    local settled = self:messages('LotteryResult')[1]
+    self:join()
+    self:drain()
+    local restored = self.players:GetDataInst(self.player)
+    self:clearEvents()
+    self.lottery:PushRecovered(self.player)
+    local recovered = self:messages('LotteryResult')
+    lu.assertEquals(#recovered, 1)
+    lu.assertTrue(recovered[1].recovered)
+    lu.assertEquals(recovered[1].axes, settled.axes)
+    lu.assertEquals(recovered[1].prize, settled.prize)
+    lu.assertEquals(restored:ItemCount('item167'), 1) -- 只展示，不重复发奖
+end
+
 function TestLotterySettle:test_failed_write_never_publishes_the_result()
     self:givePremium('item7')
     self:persistReady()

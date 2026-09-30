@@ -90,6 +90,10 @@ function TestScreenLottery:setUp()
 
     self.handler = assert(loadfile('client/ScreenHandlers/ScreenLottery.lua'))()
     self.handler:Start()
+    -- Start 会主动拉一次断线恢复（LotteryStateRequest）；用例只关心后续交互，重置计数
+    self.startCommands = self.commands
+    self.commands = {}
+    env.commands = self.commands
     -- 根节点挂上 UIRoot，MgrGameUI 按名字找得到
     root.children[self.handler.RootNode.Name] = self.handler.RootNode
 end
@@ -126,6 +130,12 @@ function TestScreenLottery:test_bet_box_rejects_cooked_and_ordinary_and_empty()
     lu.assertFalse(self.handler:DrawEnabled())
     self:snapshot(1, nil) -- 空槽
     lu.assertFalse(self.handler:DrawEnabled())
+end
+
+function TestScreenLottery:test_start_requests_recovered_state_once()
+    -- Start 连上 LotteryResult 回包通道后主动拉一次断线恢复（服务端补推可能早于客户端连接丢失）
+    lu.assertEquals(#self.startCommands, 1)
+    lu.assertEquals(self.startCommands[1].name, 'LotteryStateRequest')
 end
 
 function TestScreenLottery:test_draw_sends_slot_and_seq_once_per_click()
