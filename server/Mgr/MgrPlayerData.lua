@@ -226,12 +226,13 @@ function Mgr:Operate(player, data, payload)
         if op == 'eat' and result.itemId and result.action ~= 'potion' and self.Vitals then
             self.Vitals:Eat(player, result.itemId, result.cooked)
         end
-        -- #132 T11：吃了药水就地重算体型（幂等：每次都从存档里的累计数推计划），
-        -- 失败只打日志不影响本次操作结果——药水已经持久化了。
-        if result.action == 'potion' and self.Ability and self.Ability.ApplyBodyScale then
-            local ok, applied = pcall(self.Ability.ApplyBodyScale, self.Ability, player)
+        -- #132 T11 / #139：吃了药水就地整体重算成长（体型 + 血量上限 + 移速；幂等：每次都从存档里的
+        -- 累计数推计划），失败只打日志不影响本次操作结果——药水已经持久化了。超限被拒不会走到这里。
+        local apply = self.Ability and (self.Ability.ApplyGrowth or self.Ability.ApplyBodyScale)
+        if result.action == 'potion' and apply then
+            local ok, applied = pcall(apply, self.Ability, player)
             if not ok or not applied.Ok then
-                print('[MgrPlayerData] 体型应用失败', player.UserId, tostring(applied))
+                print('[MgrPlayerData] 成长应用失败', player.UserId, tostring(applied))
             end
         end
     end

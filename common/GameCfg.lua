@@ -744,6 +744,20 @@ GameCfg.Ability = {
         item134 = { Damage = 10, IntervalSec = 0.5, Range = 2 },  -- 指虎 商店表!R27
         item135 = { Damage = 15, IntervalSec = 0.5, Range = 3 },  -- 匕首 商店表!R26
         item136 = { Damage = 40, IntervalSec = 1.0, Range = 4 },  -- 斧头 商店表!R25
+        -- #139 抽奖武器大奖（统一规格 §6.3）：匕首组 Range 暂取 3 对齐商店匕首，
+        -- 斧组 Range 暂取 4 对齐商店斧头（原表未给近战射程，待策划确认）。
+        item152 = { Damage = 15, IntervalSec = 0.5, Range = 3,    -- 淬毒匕首（毒 1/s/3s/5 层）
+                    Effect = { Kind = 'poison' } },
+        item153 = { Damage = 18, IntervalSec = 0.5, Range = 3 },  -- 秘银匕首
+        item154 = { Damage = 18, IntervalSec = 0.5, Range = 3 },  -- 黄金匕首
+        item155 = { Damage = 18, IntervalSec = 0.5, Range = 3 },  -- 黑曜石匕首
+        item156 = { Damage = 18, IntervalSec = 0.5, Range = 3 },  -- 锯齿匕首
+        item157 = { Damage = 52, IntervalSec = 1.0, Range = 4 },  -- 银斧
+        item158 = { Damage = 52, IntervalSec = 1.0, Range = 4 },  -- 金斧
+        item159 = { Damage = 40, IntervalSec = 1.0, Range = 4,    -- 炽焰战斧（灼烧 4/s/3s/5 层）
+                    Effect = { Kind = 'burn' } },
+        item160 = { Damage = 60, IntervalSec = 1.0, Range = 4 },  -- 血吼
+        item161 = { Damage = 68, IntervalSec = 1.0, Range = 4 },  -- 无坚不摧之力
     },
     -- 枪械公共：手动/自动换弹均 2 秒（票面）；备弹无限、弹匣有限；射程暂取 30 米
     GunShared = { ReloadSec = 2, Range = 30, ActionCooldownSec = 0.1 },
@@ -755,7 +769,33 @@ GameCfg.Ability = {
         item141 = { Damage = 200, IntervalSec = 1.5, Magazine = 5 },              -- 狙击枪 商店表!R20
         item142 = { Damage = 500, IntervalSec = 2.0, Magazine = 1,               -- 火箭筒 商店表!R19（射速暂取 2 秒）
                     Splash = { Damage = 100, Radius = 5 } },                      -- 周围 5 米 100（票面/原表一致）
+        -- #139 抽奖武器大奖（统一规格 §6.3）
+        item162 = { Damage = 15, IntervalSec = 1.0, Magazine = 15 },              -- 沙漠之鹰
+        item163 = { Damage = 10, IntervalSec = 1.0, Magazine = 10,                -- 霜之新星（霜冻 -30%/3s 不叠加）
+                    Effect = { Kind = 'frost' } },
+        item164 = { Damage = 10, IntervalSec = 1.0, Magazine = 10,                -- 雷霆之力（麻痹 0.5s 不叠加）
+                    Effect = { Kind = 'paralyze' } },
+        item165 = { Damage = 30, IntervalSec = 0.2, Magazine = 30, Auto = true }, -- 黄金AK47
+        item166 = { Damage = 500, IntervalSec = 1.0, Magazine = 10, Auto = true,               -- 连发火箭筒（溅射 5m/100）
+                    Splash = { Damage = 100, Radius = 5 } },
     },
+    -- #139 持续效果钉表（统一规格 §6.3）：毒/灼烧每秒一跳、最多 5 层、持续 3 秒，
+    -- 重复命中叠层并刷新持续；霜冻/麻痹不叠加，重复命中只刷新持续。
+    -- DOT 每跳都重新走 T07/#128 统一伤害入口（MgrVitals:NewHit('dot') + ApplyHit）。
+    StatusEffects = {
+        poison = { MaxStacks = 5, TickSec = 1, DamagePerStack = 1, DurationSec = 3 },
+        burn = { MaxStacks = 5, TickSec = 1, DamagePerStack = 4, DurationSec = 3 },
+        frost = { SlowPercent = 30, DurationSec = 3, Stackable = false },
+        paralyze = { DurationSec = 0.5, Stackable = false },
+    },
+    -- #139 加速药水（item167，统一规格 §2）：每个 +10% 基础移速，最多 20 个，封顶基础 3 倍；
+    -- 上限须与 GameCfg.Items.PotionLimits.item167 同值（钉表测试强制对账）。
+    -- 移速唯一计算口见 common/AttrGrowth.lua 与 MgrAbility:RefreshMoveSpeed：
+    -- 最终移速 = 基础 × (1 + 10%×药水数) × 虚弱 0.5 × 霜冻 0.7（麻痹为 0），不在不同管理器反复乘。
+    SpeedPotion = { Item = 'item167', StepPercent = 10, MaxPotions = 20, MaxFactor = 3 },
+    -- 角色基础移速：BaseController 默认 WalkSpeed 7.0（editor-cli manual BaseController.mdx 已核实）；
+    -- 运行时以角色入图时捕获的控制器速度为准（MgrAbility:CaptureBaseSpeed），此值仅为兜底。
+    MoveSpeed = { Base = 7 },
     Explosives = {
         item143 = { Damage = 50 },   -- 鞭炮 商店表!R18
         item144 = { Damage = 100 },  -- 手雷 商店表!R17

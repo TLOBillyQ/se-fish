@@ -90,6 +90,13 @@ MgrMap.MgrAbility.Vitals = MgrMap.MgrVitals
 MgrMap.MgrFishUnit.Vitals = MgrMap.MgrVitals
 -- #132 T11 三倍体型：吃药水成功后由 MgrPlayerData 就地重算体型（唯一消费口，幂等）。
 MgrMap.MgrPlayerData.Ability = MgrMap.MgrAbility
+-- #139 大奖成长：MgrAbility 读存档药水数、读虚弱标记，是移速/血量上限的唯一计算处；
+-- 虚弱进出经 SpeedWriter 回到它整体重算；麻痹经 Vitals.ActGuard 统一封锁攻击/投掷/钓鱼/进食。
+MgrMap.MgrAbility.PlayerData = MgrMap.MgrPlayerData
+MgrMap.MgrAbility.Survival = MgrMap.MgrSurvival
+MgrMap.MgrSurvival.SpeedWriter = MgrMap.MgrAbility
+MgrMap.MgrVitals.ActGuard = function(player) return not MgrMap.MgrAbility:IsParalyzed(player) end
+MgrMap.MgrVitals.MaxHealthProvider = function(player) return MgrMap.MgrAbility:MaxHealth(player) end
 MgrMap.MgrVitals.FishCarrier = MgrMap.MgrFishCarrier
 MgrMap.MgrCast.Vitals = MgrMap.MgrVitals
 -- #131 生存恢复：经 #128 预留的 LifeHooks 接管濒死/死亡，依赖单向注入在这里完成。
@@ -115,6 +122,7 @@ MgrMap.MgrWeapon.PlayerData = MgrMap.MgrPlayerData
 MgrMap.MgrWeapon.FishUnit = MgrMap.MgrFishUnit
 MgrMap.MgrWeapon.FishCarrier = MgrMap.MgrFishCarrier
 MgrMap.MgrWeapon.Save = MgrMap.MgrSave
+MgrMap.MgrWeapon.Ability = MgrMap.MgrAbility -- #139 枪械大奖特效应用口
 
 -- #137 烧烤接线：会话物品进出走 #123 持久协议（Save+PlayerData），烤糊伤害经统一伤害入口
 -- （Vitals）；满格时物品不入地、会话转 ready 保留冻结倍率，腾出格位后重试原倍率发还。

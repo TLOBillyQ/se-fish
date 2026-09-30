@@ -9,6 +9,7 @@
 
 local MgrVitals = require("server.Mgr.MgrVitals")
 local MgrFishCarrier = require("server.Mgr.MgrFishCarrier")
+local MgrAbility = require("server.Mgr.MgrAbility") -- #139 武器特效应用口（运行时挂接，无加载环）
 
 local M = {}
 
@@ -273,6 +274,7 @@ function M.Attach(anchor_script)
 			hit_box_offset = Vector3.New(0, 1, swing.range / 2)
 			hit_box_scale = Vector3.New(2, 2, swing.range)
 			hit_damage = swing.damage
+			state.effect = swing.effect -- #139 近战大奖特效（毒/灼烧），命中成功后应用
 		end
 		if player then
 			hit_damage = require("server.Mgr.MgrGM"):GetMeleeDamage(player, hit_damage)
@@ -398,6 +400,11 @@ function M.Attach(anchor_script)
 					"target=" .. tostring(tid), "damage=" .. tostring(hit_damage))
 				_applyHitPower(target, hit_power, owner)
 				_createHitSfx(anchor_script, target)
+				-- #139：伤害被统一入口接受后才挂特效；hit_map 去重保证一次判定段对同一目标只挂一次
+				if player and state and state.effect and MgrAbility.ApplyWeaponEffect then
+					local ok, err = pcall(MgrAbility.ApplyWeaponEffect, MgrAbility, player, target, state.effect)
+					if not ok then print("[melee_hit] 武器特效应用失败", tostring(err)) end
+				end
 			end
 		end
 

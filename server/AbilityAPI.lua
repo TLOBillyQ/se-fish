@@ -56,7 +56,7 @@ function AbilityAPI.StageSwing(userId, swing)
     local validId = type(userId) == 'number' and userId == userId and math.abs(userId) < math.huge
         or type(userId) == 'string' and userId ~= ''
     if not validId or type(swing) ~= 'table' then return false end
-    swings[userId] = { damage = swing.damage, range = swing.range, at = swingClock() }
+    swings[userId] = { damage = swing.damage, range = swing.range, effect = swing.effect, at = swingClock() }
     return true
 end
 function AbilityAPI.PeekSwing(userId)

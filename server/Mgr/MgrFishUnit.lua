@@ -252,16 +252,28 @@ local function inWater(pos)
     end
 end
 
+-- #139：鱼移速唯一读取点乘武器持续效果（霜冻 0.7 / 麻痹 0，MgrAbility:FishSpeedFactor）；效果口故障按 1。
 function Mgr:Speed(fish)
     local species = GameCfg.Fish[fish.FishId]
-    return species and species.Speed or cfg().EscapeSpeed
+    local speed = species and species.Speed or cfg().EscapeSpeed
+    if self.Ability and self.Ability.FishSpeedFactor then
+        local ok, factor = pcall(self.Ability.FishSpeedFactor, self.Ability, fish)
+        if ok and type(factor) == 'number' and factor >= 0 and factor <= 1 then speed = speed * factor end
+    end
+    return speed
 end
 
 function Mgr:SetHeading(fish, x, z)
     if not x then return end
     local speed = self:Speed(fish)
     fish.Heading = { x = x, z = z }
-    pcall(function() fish.Carrier.Body.LinearVelocity = Vector3.New(x * speed, 0, z * speed) end)
+    local ok, err = pcall(function() fish.Carrier.Body.LinearVelocity = Vector3.New(x * speed, 0, z * speed) end)
+    if not ok then
+        print("[MgrFishUnit] 逃跑速度写入失败", fish.Id, tostring(err))
+        return false, tostring(err)
+    end
+    fish.AppliedSpeed = speed
+    return true
 end
 
 -- 释放举着的鱼（放下 / 抓举结束 / 持有者死亡）：只处理一次，之后重复触发都是空操作
@@ -455,6 +467,10 @@ function Mgr:UpdateEscaping(fish, now)
         return
     end
     -- 精英逃跑时锁定直线；不走普通鱼的转向与避墙。
+    -- 持续效果可在两次转向之间应用/到期，每帧按当前效果刷新直线速度。
+    if fish.Heading and fish.AppliedSpeed ~= self:Speed(fish) then
+        self:SetHeading(fish, fish.Heading.x, fish.Heading.z)
+    end
     if fish.StraightEscape then return end
     if now >= fish.TurnAt then
         fish.TurnAt = now + cfg().TurnSec
@@ -936,6 +952,14 @@ function Mgr:UpdateCombat(fish, now)
         return
     end
     self:RefreshMovingCombat(fish, now)
+    -- #139 麻痹（雷霆之力）：就地停住，本帧不追咬/不施法/不起招；逃跑时限仍在上面优先结算
+    if self.Ability and self.Ability.FishParalyzed then
+        local ok, paralyzed = pcall(self.Ability.FishParalyzed, self.Ability, fish)
+        if ok and paralyzed then
+            pcall(function() body.LinearVelocity = Vector3.New(0, 0, 0) end)
+            return
+        end
+    end
     -- #136 蟹湖眩晕：shrimp/dragon 的 stunned 由 UpdateShrimpCombat 专属分支处理，
     -- 帝王蟹在这里醒转并重置节拍；蟹老板无眩晕机制，不会进入该分支。
     local combat = GameCfg.Fish[fish.FishId].Combat
