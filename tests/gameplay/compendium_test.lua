@@ -141,6 +141,32 @@ function TestCompendium:test_records_survive_rejoin()
     lu.assertEquals(view.weights.goldfish, 0.2)
 end
 
+-- #134 鱼塘极品六条：各自一条个人最大重量，只增不减、重进保留，不与同名普通鱼混账
+--   （失败方式 6. 极品按普通鱼 ID 记账或被较小重量覆盖；7. 极品重量不落存档）
+function TestCompendium:test_pond_rare_max_weight_per_id_survives_rejoin()
+    local player = self:join(38)
+    local ids = { 'item7', 'item8', 'item9', 'item10', 'item11', 'item12' }
+    local serial = 0
+    for _, fishId in ipairs(ids) do
+        for _, mult in ipairs({ 1.9, 1.2 }) do
+            serial = serial + 1
+            lu.assertTrue(self.comp:RecordLanding(player, { fishId = fishId, mult = mult, reelSerial = serial }))
+            self:drain()
+        end
+    end
+    local rejoined = self:join(38)
+    local view = self.comp:Snapshot(rejoined)
+    lu.assertEquals(view.total, 12)
+    for _, fishId in ipairs(ids) do
+        lu.assertEquals(view.catches[fishId], 2, fishId)
+        lu.assertEquals(view.weights[fishId], self.comp:Weight(fishId, 1.9), fishId)
+    end
+    lu.assertEquals(view.weights.item12, 0.19)
+    lu.assertEquals(view.weights.item10, 3.8)
+    lu.assertNil(view.weights.goldfish)
+    lu.assertNil(view.weights.catfish)
+end
+
 function TestCompendium:test_write_in_flight_defers_instead_of_dropping()
     local player, data = self:join(35)
     local operation = self.save:NextOperation(player, 'other')

@@ -515,6 +515,13 @@ GameCfg.Casting = {
             { Id = 'catfish', Bait = 'worm', RodLevel = 1, DrawWeight = 24 },
             { Id = 'goldfish', Bait = 'worm', RodLevel = 1, DrawWeight = 16 },
             { Id = 'eel', Bait = 'worm', RodLevel = 1, DrawWeight = 10 },
+            -- #134 鱼塘极品六条（钓鱼表 R8–R13）：权重 2/2/2/8/6/4，罗非鱼行任意饵保底
+            { Id = 'item7', Bait = 0, RodLevel = 1, DrawWeight = 2 },
+            { Id = 'item8', Bait = 'worm', RodLevel = 1, DrawWeight = 2 },
+            { Id = 'item9', Bait = 'worm', RodLevel = 1, DrawWeight = 2 },
+            { Id = 'item10', Bait = 'worm', RodLevel = 1, DrawWeight = 8 },
+            { Id = 'item11', Bait = 'worm', RodLevel = 1, DrawWeight = 6 },
+            { Id = 'item12', Bait = 'worm', RodLevel = 1, DrawWeight = 4 },
         },
         -- 虾池（#90，钓鱼表第二区）：虾米任意饵保底；沼虾/小龙虾起用香肠；波龙及以上竿级 2。
         -- 极品权重另列（普通 8/8/8/32/24/16，极品 2/2/2/8/6/4）
@@ -561,11 +568,20 @@ end
 GameCfg.Casting.Catalog = sourceCastRows
 GameCfg.Casting.BossBaitCatalog = bossBaitCatalog
 
--- 首领近战（#88，占位）：Combat='gar' 的鱼上岸放下后 Kinematic 追最近的活着的玩家，
--- BiteRange 米内按 BiteCooldownSec 冷却咬出鱼种 Attack 伤害；移速取鱼种 Speed，
--- 逃跑时限取鱼种 EscapeSec（耗尽走精英直线逃脱）。头伤 / 身后弱点判定后补（任务说明占位即可）。
+-- 首领近战（#88 占位，#134 头部攻击）：Combat='gar' 的鱼上岸放下后 Kinematic 追目标（仇恨 / 最近），
+-- 移速取鱼种 Speed，伤害取鱼种 Attack，逃跑时限取鱼种 EscapeSec（耗尽走精英直线逃脱）。
+-- 头部攻击：目标进入 BiteRange 即锁定朝向起咬（预警），BiteCooldownSec 后结算；只咬「头部区」——
+-- 以鱼身中点为圆心 BiteRange 内、与锁定朝向夹角 < HeadHalfAngleDeg。正侧面与后半圆是后身，绕后即咬空。
+-- 数值来源：追咬 30 / 间隔 1.5 秒来自钓鱼表与正文（GameSpec §12）；BiteRange 沿用 #88 占位；
+-- HeadHalfAngleDeg=90 是把原表「头有伤害，后身是弱点」按鱼身中点切成前后两半的配置细化（GameSpec §12
+-- 允许的预警 / 判定细化，非原表数值），待试玩调；「后身是弱点」原表没有受伤倍率，这里不加伤害加成。
+-- ModelYawOffset：模型头部相对 yaw=0 的偏角（弧度）[未查证]，试玩看头朝向再校。
+-- Warning：7190 为红色方向箭头与环形波纹预警（manual 特效目录），提示锁定朝向与范围；
+-- 不表达精确半圆边界。EffectLength=10 与朝向偏角 [未查证]，须在试玩中核对并校准。
 GameCfg.FishCombat = {
-    gar = { BiteRange = 2.5, BiteCooldownSec = 1.5 },
+    gar = { BiteRange = 2.5, BiteCooldownSec = 1.5, HeadHalfAngleDeg = 90, ModelYawOffset = 0,
+        Warning = { EffectPreset = 'official://preset/7190', EffectLength = 10, GroundOffset = 0.1,
+            EffectYawOffset = 0, GraceSec = 0.5 } },
 }
 
 -- 技能包（ability_system）在本图的接入配置。
@@ -583,15 +599,20 @@ GameCfg.FishCombat = {
 GameCfg.Ability = {
     -- 角色进图时实例化到角色下的技能背包预设
     ManagerPreset = "map://preset/ubdb4a7e737d4eddb87729e9055ba375",
-    -- #86 原型：复用挥砍预设的 0.5 秒施法窗口，半径取现有近战命中盒宽度 3 米；
-    -- 范围、乱甩角度为可调表现参数，睡眠 10 秒来自钓鱼表原案。
+    -- #134 电鳗正式行为（GameSpec §12、策划案已确认结论）：5 米内每秒放电一次、每次 10，
+    -- 连续 DischargeCount 次（持续 DischargeCount × DischargeIntervalSec = 5 秒），之后睡眠 10 秒可受击。
+    -- 每次放电 = 一次技能施法（复用挥砍预设，CastSec 是单次施法窗口，须小于放电间隔，否则下一次会被 InCast 拒绝）；
+    -- 乱甩角度、侧躺角度为可调表现参数。逃跑时限取鱼种 EscapeSec（180 秒）。
     FishAbilities = {
         eel = {
             AssetId = "map://preset/ucc31d1999a543a7ab329eff1fd3c00d",
             Index = 0,
             Anchor = "map://preset/u471a1004c1f43f1ae6ebe4ee2bcd080",
             AnchorBehavior = "eel_discharge",
-            Radius = 3,
+            Radius = 5,
+            Damage = 10,
+            DischargeCount = 5,
+            DischargeIntervalSec = 1,
             CastSec = 0.5,
             SleepSec = 10,
             SleepRollRadians = math.pi / 2, -- 睡眠侧躺，醒来或逃脱时恢复初始朝向
@@ -615,8 +636,11 @@ GameCfg.Ability = {
             Index = 1,
             Anchor = "map://preset/u471a1004c1f43f1ae6ebe4ee2bcd080",
             AnchorBehavior = "melee_hit",
+            -- 技能实例覆盖：CD 归零（间隔由 MgrWeapon 的 IntervalSec 权威控制）；施法时长须 ≥ Duration 且 < 最小 IntervalSec 0.5
+            CdSec = 0,
+            CastSec = 0.3,
             AnchorAttributes = {
-                -- 命中盒存活窗口；必须 ≤ 施法窗口（技能模板默认 CastTime=0.5，已声明属性预设侧改不动，见 issue #7 坑 2）
+                -- 命中盒存活窗口；必须 ≤ 施法窗口（CastSec）
                 Duration = 0.3,
                 ABILITY_ANOSTATE_HITBOX_OFFSET = { x = 0, y = 1, z = 2 }, -- 面前 2 米
                 ABILITY_ANOSTATE_HITBOX_SCALE = { x = 3, y = 2, z = 3 },
@@ -1075,6 +1099,20 @@ GameCfg.DamageFloat = {
     NormalColor = { 255, 255, 255, 255 },
     CriticalColor = { 255, 185, 45, 255 },
     PoolSize = 24,
+}
+
+-- #134 精英鱼头顶状态字（client/FishCombatLabel.lua）：服务端 FishCombatState 广播的逃跑时限条
+-- （电鳗 180 秒、鳄雀鳝 300 秒共用），电鳗另显放电次数与睡眠倒计时。
+GameCfg.FishCombatLabel = {
+    MovingRefreshSec = 0.5, -- 会移动的精英（鳄雀鳝）坐标补发间隔
+    HeadHeight = 2.4,
+    Width = 640,
+    Height = 90,
+    FontSize = 30,
+    BarCells = 10,
+    AttackColor = { 255, 230, 60, 255 },
+    SleepColor = { 140, 200, 255, 255 },
+    IdleColor = { 255, 255, 255, 255 },
 }
 
 return GameCfg

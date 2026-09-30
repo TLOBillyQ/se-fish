@@ -53,7 +53,9 @@ local function swingAlive(entry)
     return entry
 end
 function AbilityAPI.StageSwing(userId, swing)
-    if type(userId) ~= 'number' or type(swing) ~= 'table' then return false end
+    local validId = type(userId) == 'number' and userId == userId and math.abs(userId) < math.huge
+        or type(userId) == 'string' and userId ~= ''
+    if not validId or type(swing) ~= 'table' then return false end
     swings[userId] = { damage = swing.damage, range = swing.range, at = swingClock() }
     return true
 end

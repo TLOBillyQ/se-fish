@@ -3,6 +3,7 @@ local GameCfg = require('common.GameCfg')
 local LocalAttackButton = require('client.LocalAttackButton')
 local PressGesture = require('client.PressGesture')
 local DamageFloat = require('client.DamageFloat')
+local FishCombatLabel = require('client.FishCombatLabel')
 
 local ScreenHandler = { UINodes = {}, UINodeMap = {} }
 
@@ -732,6 +733,7 @@ end
 
 function ScreenHandler:Cleanup()
     DamageFloat:Clear()
+    FishCombatLabel:Clear()
     self:CloseScreen()
     LocalAttackButton:Destroy()
     for _, connection in ipairs(self.Connections or {}) do connection:Disconnect() end
@@ -820,6 +822,7 @@ function ScreenHandler:Init()
     self.EuiResolution = resolution
     local root = self.RootNode
     DamageFloat:Bind(root, resolution)
+    FishCombatLabel:Bind(root, resolution)
     self.LabelCoin = root:FindFirstChild('LabelCoin', true)
     local imageCoin = root:FindFirstChild('ImageCoin', true)
     if self.LabelCoin then self.LabelCoin.Visible = true else print('[ScreenMain] 找不到 LabelCoin 节点') end
@@ -1072,6 +1075,9 @@ function ScreenHandler:Init()
     self:Listen(_G.REUtil:GetRE('DamageNotice').OnClientEvent, function(payload)
         if self.IsOpen then DamageFloat:Show(payload) end
     end)
+    self:Listen(_G.REUtil:GetRE('FishCombatState').OnClientEvent, function(payload)
+        if self.IsOpen then FishCombatLabel:Apply(payload) end
+    end)
     self:Listen(_G.REUtil:GetRE('QuestState').OnClientEvent, function(state) self:ShowQuest(state) end)
     -- 开场对话降级的单行公告（#54，server/Mgr/MgrStory.lua）
     self:Listen(_G.REUtil:GetRE('StoryNotice').OnClientEvent, function(payload)
@@ -1090,6 +1096,7 @@ function ScreenHandler:Init()
             if self.CastFloat and self.IsOpen then self:UpdateCastFeedback() end
             if self.Starving then self:UpdateStarveFx() end
             DamageFloat:Update()
+            FishCombatLabel:Update()
         end)
     end
     -- 进图早期注册 FishCoin 属性监听不稳定，延迟后再挂
@@ -1111,6 +1118,7 @@ end
 
 function ScreenHandler:OpenScreen()
     DamageFloat:Bind(self.RootNode, self.EuiResolution)
+    FishCombatLabel:Bind(self.RootNode, self.EuiResolution)
     self.IsOpen = true
     LocalAttackButton:SetOpen(true)
     -- #133 重开界面不需要通知收线客户端：会话与进度一直在，界面只是重新显示
@@ -1120,12 +1128,26 @@ function ScreenHandler:OpenScreen()
     _G.REUtil:GetRE('RequestItemBar'):FireServer()
     _G.REUtil:GetRE('RequestCastState'):FireServer()
     _G.REUtil:GetRE('RequestQuest'):FireServer()
+    _G.REUtil:GetRE('RequestFishCombat'):FireServer()
+    -- 重开可能落在服务端快照限频窗内；延后补取，并让旧界面的请求失效。
+    local combatRequest = {}
+    self.CombatRequest = combatRequest
+    local task = game:GetService('Task')
+    if task and task.Delay then
+        task:Delay(0.6, function()
+            if self.IsOpen and self.CombatRequest == combatRequest then
+                _G.REUtil:GetRE('RequestFishCombat'):FireServer()
+            end
+        end)
+    end
     -- 开场对话（#54）：服务端每名玩家本局只播一次，重开界面不重播
     _G.REUtil:GetRE('RequestStory'):FireServer()
 end
 
 function ScreenHandler:CloseScreen()
+    self.CombatRequest = nil
     DamageFloat:Clear()
+    FishCombatLabel:Clear()
     self.IsOpen = false
     self.FailureUntil = nil
     self.FailureLanding = nil

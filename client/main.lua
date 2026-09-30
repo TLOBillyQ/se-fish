@@ -16,6 +16,8 @@ local LocalGM = require("client.LocalGM")
 local LocalShop = require("client.LocalShop")
 local ScreenFerry = require("client.ScreenHandlers.ScreenFerry")
 local ScreenSurvival = require("client.ScreenHandlers.ScreenSurvival")
+-- #134 鳄雀鳝头部攻击贴地预警
+local LocalGarBite = require("client.LocalGarBite")
 
 -- 运行时 require 失败只进日志并返回 nil，所以这里判一次再调
 local AbilityAPI = require("client.AbilityAPI")
@@ -33,6 +35,7 @@ Task:Spawn(function()
     _G.MgrGameUI:StartGM()
 end)
 -- 等钓鱼佬单位要轮询，单独起协程免得拖住上面的启动
+Task:Spawn(function() LocalGarBite:Start() end)
 Task:Spawn(function() LocalInteract:Start() end)
 Task:Spawn(function() LocalShop:Start() end)
 Task:Spawn(function() ScreenFerry:Start() end)

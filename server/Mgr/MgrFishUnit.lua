@@ -12,6 +12,7 @@ local MgrFishCarrier = require('server.Mgr.MgrFishCarrier')
 local FlightPath = require('common.FlightPath')
 local CarryMount = require('common.CarryMount')
 local BossPhase = require('common.BossPhase')
+local GarBiteNotice = require('common.GarBiteNotice')
 
 -- AbilityAPI 懒加载：MgrFishUnit 被大量单测用假 game 加载，顶层 require 会连带跑技能包
 -- （包内 api.lua 加载时要 RunService:IsServer()），把无关用例拖挂。
@@ -313,11 +314,12 @@ function Mgr:Release(fish, reason)
         fish.CombatRotation = body.Rotation
         body.LinearVelocity = Vector3.New(0, 0, 0)
         if GameCfg.FishCombat and GameCfg.FishCombat[species.Combat] then
-            -- 首领近战（#88）：首个冷却期是起手预警，不立刻咬
-            fish.NextBiteAt = now + GameCfg.FishCombat[species.Combat].BiteCooldownSec
+            -- 首领近战（#88 / #134）：由 UpdateChase 在目标进入咬距时锁定朝向起咬，每口前都有完整预警
+            fish.BiteAim = nil
         elseif self.Ability then
             self.Ability:EquipFish(fish)
         end
+        self:PublishCombat(fish)
     elseif pos then
         self:SetHeading(fish, towardWater(pos))
     end
@@ -507,27 +509,99 @@ function Mgr:ChooseTarget(fish, pos, params)
     return target, tpos
 end
 
+-- #134 头部攻击：头部区 = 以鱼身中点为圆心 BiteRange 内、与朝向夹角 < HeadHalfAngleDeg；
+-- 其余（正侧面、后半圆）是后身，绕后即咬空。与中点重合时没有方向，按贴脸算进头部区。
+function Mgr.InHeadZone(pos, facing, tpos, params)
+    local dx, dz = tpos.x - pos.x, tpos.z - pos.z
+    local d2 = dx * dx + dz * dz
+    if d2 > params.BiteRange * params.BiteRange then return false end
+    if d2 < 1e-4 or not facing then return true end
+    local limit = math.cos(math.rad(params.HeadHalfAngleDeg or 180))
+    return (dx * facing.x + dz * facing.z) / math.sqrt(d2) > limit + 1e-9
+end
+
+local function withinBite(pos, tpos, params)
+    local dx, dz = tpos.x - pos.x, tpos.z - pos.z
+    return dx * dx + dz * dz <= params.BiteRange * params.BiteRange
+end
+
+-- 预警广播（common/GarBiteNotice）；推送失败只记日志，不打断追咬。测试可替换本方法取载荷。
+function Mgr:PublishBite(payload)
+    GarBiteNotice.Publish(payload)
+end
+
+local function publishBite(self, payload)
+    local ok, err = pcall(self.PublishBite, self, payload)
+    if not ok then print('[MgrFishUnit] 首领咬预警推送失败', payload.kind, 'fish=' .. tostring(payload.fishId), tostring(err)) end
+end
+
+-- 朝向：服务端以 fish.Facing（水平单位向量）为准，并写 body.Rotation 让头朝向在各端可见
+function Mgr:Face(fish, fx, fz, params)
+    if not fx then return end
+    fish.Facing = { x = fx, z = fz }
+    if not Quaternion then return end
+    local yaw = math.atan(fx, fz) + ((params and params.ModelYawOffset) or 0)
+    local ok, err = pcall(function() fish.Carrier.Body.Rotation = Quaternion.FromEulerAngles(0, yaw, 0) end)
+    if not ok then print('[MgrFishUnit] 首领转向失败', 'fish=' .. tostring(fish.Id), tostring(err)) end
+end
+
+-- 收起当前预警（咬出 / 咬空 / 取消 / 鱼没了）；无预警时空操作
+function Mgr:EndBite(fish, reason)
+    if not fish.BiteAim then return end
+    fish.BiteAim = nil
+    publishBite(self, GarBiteNotice.Clear(fish.Id, reason))
+end
+
+-- 锁定朝向起咬：朝向对准目标后不再转，BiteCooldownSec 后结算
+function Mgr:LockBite(fish, target, pos, tpos, now, params)
+    local fx, fz = flatDirection(tpos.x - pos.x, tpos.z - pos.z)
+    if fx then self:Face(fish, fx, fz, params) end
+    fish.BiteAim = { Target = target, StrikeAt = now + params.BiteCooldownSec }
+    local facing = fish.Facing or { x = 0, z = 1 }
+    publishBite(self, GarBiteNotice.Lock(fish.Id, pos, facing.x, facing.z, params.BiteRange,
+        params.HeadHalfAngleDeg, params.BiteCooldownSec))
+    print('[MgrFishUnit] 首领起咬', fish.FishId, 'target=' .. tostring(target.UserId),
+        string.format('facing=%.2f,%.2f', facing.x, facing.z), 'fish=' .. tostring(fish.Id))
+end
+
 function Mgr:UpdateChase(fish, now, pos, params)
     local species = GameCfg.Fish[fish.FishId]
     local body = fish.Carrier.Body
+    local aim = fish.BiteAim
+    if aim then
+        local valid, apos = self:IsTargetValid(aim.Target, pos, params)
+        if not valid or not withinBite(pos, apos, params) then
+            -- 预警中目标濒死 / 离线 / 走出咬距：取消本口，下面重新选目标
+            self:EndBite(fish, 'cancel')
+        else
+            pcall(function() body.LinearVelocity = Vector3.New(0, 0, 0) end)
+            if now < aim.StrikeAt then return end
+            if Mgr.InHeadZone(pos, fish.Facing, apos, params) then
+                self:EndBite(fish, 'bite')
+                local hit = self.Vitals:NewHit(fish, 'fishAttack')
+                self.Vitals:ApplyHit(hit, aim.Target, species.Attack)
+                print('[MgrFishUnit] 首领追咬', fish.FishId, species.Attack, 'fish=' .. tostring(fish.Id))
+            else
+                self:EndBite(fish, 'miss')
+                print('[MgrFishUnit] 首领咬空（绕后）', fish.FishId, 'target=' .. tostring(aim.Target.UserId),
+                    'fish=' .. tostring(fish.Id))
+            end
+        end
+    end
     local target, tpos = self:ChooseTarget(fish, pos, params)
     if not target then
         pcall(function() body.LinearVelocity = Vector3.New(0, 0, 0) end)
         return
     end
-    local best = (tpos.x - pos.x) * (tpos.x - pos.x) + (tpos.z - pos.z) * (tpos.z - pos.z)
-    if best > params.BiteRange * params.BiteRange then
+    if not withinBite(pos, tpos, params) then
         local ux, uz = flatDirection(tpos.x - pos.x, tpos.z - pos.z)
         local speed = self:Speed(fish)
+        self:Face(fish, ux, uz, params)
         pcall(function() body.LinearVelocity = Vector3.New((ux or 0) * speed, 0, (uz or 0) * speed) end)
         return
     end
     pcall(function() body.LinearVelocity = Vector3.New(0, 0, 0) end)
-    if now < (fish.NextBiteAt or 0) then return end
-    fish.NextBiteAt = now + params.BiteCooldownSec
-    local hit = self.Vitals:NewHit(fish, 'fishAttack')
-    self.Vitals:ApplyHit(hit, target, species.Attack)
-    print('[MgrFishUnit] 首领追咬', fish.FishId, species.Attack, 'fish=' .. tostring(fish.Id))
+    self:LockBite(fish, target, pos, tpos, now, params)
 end
 
 -- 战斗只在首次放下后计时；逃跑时限优先于攻击和睡眠。
@@ -541,14 +615,17 @@ function Mgr:UpdateCombat(fish, now)
     end
     if now >= fish.FleeAt or inWater(pos) then
         if self.Ability then self.Ability:RemoveFish(fish) end
+        self:EndBite(fish, 'gone')
         fish.State = Mgr.State.Escaping
         fish.StraightEscape = true
         if fish.CombatRotation then body.Rotation = fish.CombatRotation end
         self:SetHeading(fish, towardWater(pos))
         print('[MgrFishUnit] 精英开始逃脱', fish.FishId, 'fish=' .. tostring(fish.Id))
+        self:PublishCombat(fish)
         self:UpdateEscaping(fish, now)
         return
     end
+    self:RefreshMovingCombat(fish, now)
     -- #132 T11 原型：分阶段首领走自己的状态机（阈值切换 → 招式集 → 咬中叼人）
     if self:BossPhaseEnabled(fish.FishId) then
         self:UpdateBossPhase(fish, now, pos)
@@ -561,32 +638,124 @@ function Mgr:UpdateCombat(fish, now)
         self:UpdateChase(fish, now, pos, chase)
         return
     end
-    local entry = GameCfg.Ability.FishAbilities[combat]
+    self:UpdateEel(fish, now, GameCfg.Ability.FishAbilities[combat])
+end
+
+-- #134 精英鱼（电鳗 180 秒 / 鳄雀鳝 300 秒共用）战斗状态广播：FishCombatState 只读快照，
+-- 客户端据此画逃跑时限条，电鳗另显放电次数与睡眠倒计时；权威状态只在服务端。
+-- 原地不动的技能型精英只在状态切换时发；会移动的追咬型首领按 MovingRefreshSec 限频补发坐标。
+function Mgr:CombatPayload(fish, gone)
+    if gone then return { id = fish.Id, state = 'gone' } end
+    local entry = GameCfg.Ability.FishAbilities[GameCfg.Fish[fish.FishId].Combat]
+    local pos = readPosition(fish.Carrier.Body) or fish.CombatPosition or fish.Anchor
+    return { id = fish.Id, fishId = fish.FishId, state = fish.State,
+        fleeAt = fish.FleeAt, escapeSec = GameCfg.Fish[fish.FishId].EscapeSec,
+        wakeAt = fish.WakeAt, discharges = fish.Discharges or 0, dischargeCount = entry and entry.DischargeCount,
+        position = pos and { x = pos.x, y = pos.y, z = pos.z } }
+end
+
+-- 会移动的精英（无技能表条目）限频补发坐标，头顶逃跑条跟着鱼走。
+function Mgr:RefreshMovingCombat(fish, now)
+    if GameCfg.Ability.FishAbilities[GameCfg.Fish[fish.FishId].Combat] then return end
+    if now < (fish.CombatRefreshAt or 0) then return end
+    fish.CombatRefreshAt = now + GameCfg.FishCombatLabel.MovingRefreshSec
+    self:PublishCombat(fish)
+end
+
+function Mgr:PublishCombat(fish, gone)
+    local species = GameCfg.Fish[fish.FishId]
+    if not (species and species.Combat) then return end
+    if gone and not fish.CombatPublished then return end
+    fish.CombatPublished = not gone and fish.State ~= Mgr.State.Escaping
+    local publish = self.CombatPublisher
+    if not publish and self.CombatRE then
+        publish = function(payload) self.CombatRE:FireAllClients(payload) end
+    end
+    if not publish then return end
+    local ok, err = pcall(publish, self:CombatPayload(fish, gone))
+    if not ok then print('[MgrFishUnit] 战斗状态广播失败', 'fish=' .. tostring(fish.Id), tostring(err)) end
+end
+
+-- 迟加入 / 重开界面的只读快照：逐条回发当前仍在战斗的技能型精英；按玩家限频。
+function Mgr:StartCombatChannel()
+    if self.CombatRequestConn or not game:GetService('RunService') then return end
+    local REUtil = require('common.REUtil')
+    self.CombatRE = REUtil:GetRE('FishCombatState')
+    self.CombatRequestConn = REUtil:GetRE('RequestFishCombat').OnServerEvent:Connect(function(player)
+        if not player or REUtil:CheckRECD(player, 'RequestFishCombat', 0.5) then return end
+        for _, fish in pairs(self.Fish) do
+            if fish.CombatPublished then
+                local ok, err = pcall(function() self.CombatRE:FireClient(player, self:CombatPayload(fish)) end)
+                if not ok then print('[MgrFishUnit] 战斗快照发送失败', player.UserId, tostring(err)) end
+            end
+        end
+    end)
+end
+
+-- #134 电鳗：Combat →（首次施法成功）Attacking 每 DischargeIntervalSec 施法放电一次，共 DischargeCount 次
+-- →（最后一次后再满一个间隔）Sleeping SleepSec → Combat 重新开始。
+-- 每次 Update 最多放电一次、下一次按实际放电时刻 + 间隔排期：重复 Update 不连放，大 dt 不补发连击，
+-- 次数只按施法成功计（施法被拒/打断不计数，下帧重试）。睡眠从实际入睡时刻起算，大 dt 不会吞掉睡眠窗口。
+function Mgr:UpdateEel(fish, now, entry)
+    local body = fish.Carrier.Body
     body.Position = fish.CombatPosition
     body.LinearVelocity = Vector3.New(0, 0, 0)
-    if fish.State == Mgr.State.Attacking then
-        if now < fish.AttackEndsAt then
-            if fish.CombatRotation and Quaternion then
-                body.Rotation = fish.CombatRotation * Quaternion.FromEulerAngles(0,
-                    math.sin((now - fish.AttackAt) * math.pi * 2 * entry.FlailHz) * entry.FlailRadians, 0)
-            end
+    if fish.State == Mgr.State.Sleeping then
+        if now < fish.WakeAt then return end
+        if fish.CombatRotation then body.Rotation = fish.CombatRotation end
+        fish.State = Mgr.State.Combat
+        fish.WakeAt = nil
+        fish.Discharges = 0
+        print('[MgrFishUnit] 电鳗醒来', 'fish=' .. tostring(fish.Id))
+        self:PublishCombat(fish)
+    end
+    local attacking = fish.State == Mgr.State.Attacking
+    local done = fish.Discharges or 0
+    if attacking and done >= entry.DischargeCount then
+        if now < fish.NextDischargeAt then
+            self:FlailEel(fish, now, entry)
             return
         end
-        if fish.CombatRotation then
+        if fish.CombatRotation and Quaternion then
             body.Rotation = fish.CombatRotation * Quaternion.FromEulerAngles(0, 0, entry.SleepRollRadians)
         end
         fish.State = Mgr.State.Sleeping
         fish.WakeAt = now + entry.SleepSec
+        fish.NextDischargeAt = nil
         print('[MgrFishUnit] 电鳗睡眠', 'fish=' .. tostring(fish.Id), 'wakeAt=' .. tostring(fish.WakeAt))
+        self:PublishCombat(fish)
+        return
     end
-    if fish.State == Mgr.State.Sleeping and now < fish.WakeAt then return end
-    if fish.CombatRotation then body.Rotation = fish.CombatRotation end
-    fish.State = Mgr.State.Combat
-    if self.Ability and self.Ability:CastFish(fish) then
+    if attacking then self:FlailEel(fish, now, entry) end
+    if attacking and now < fish.NextDischargeAt then return end
+    local castOk, casted = true, false
+    if self.Ability then castOk, casted = pcall(self.Ability.CastFish, self.Ability, fish) end
+    if not castOk then
+        print('[MgrFishUnit] 电鳗施法异常', 'fish=' .. tostring(fish.Id), tostring(casted))
+    end
+    if not castOk or not casted then
+        if not fish.CastRejected then
+            fish.CastRejected = true
+            print('[MgrFishUnit] 电鳗施法未成功，下帧重试', 'fish=' .. tostring(fish.Id), 'done=' .. tostring(done))
+        end
+        return
+    end
+    fish.CastRejected = nil
+    if not attacking then
         fish.State = Mgr.State.Attacking
         fish.AttackAt = now
-        fish.AttackEndsAt = now + entry.CastSec
-        print('[MgrFishUnit] 电鳗放电', 'fish=' .. tostring(fish.Id))
+        done = 0
+    end
+    fish.Discharges = done + 1
+    fish.NextDischargeAt = now + entry.DischargeIntervalSec
+    print('[MgrFishUnit] 电鳗放电', 'fish=' .. tostring(fish.Id), fish.Discharges .. '/' .. entry.DischargeCount)
+    self:PublishCombat(fish)
+end
+
+function Mgr:FlailEel(fish, now, entry)
+    if fish.CombatRotation and Quaternion then
+        fish.Carrier.Body.Rotation = fish.CombatRotation * Quaternion.FromEulerAngles(0,
+            math.sin((now - fish.AttackAt) * math.pi * 2 * entry.FlailHz) * entry.FlailRadians, 0)
     end
 end
 
@@ -887,7 +1056,9 @@ function Mgr:Remove(fish)
     if not fish or self.Fish[fish.Id] ~= fish then return end
     -- #132 T11：鱼被打死/清场时先把叼着的玩家放下来（否则玩家会跟着一条死鱼卡在空中）
     if fish.Carry then self:ReleaseCarried(fish, nil, 'died') end
+    self:EndBite(fish, 'gone') -- #134：死亡或清场时收起咬预警
     self.Fish[fish.Id] = nil
+    self:PublishCombat(fish, true)
     if self.Ability then self.Ability:RemoveFish(fish) end
     for _, conn in ipairs(fish.Conns or {}) do conn:Disconnect() end
     fish.Conns = nil
@@ -915,6 +1086,7 @@ end
 
 function Mgr:Start()
     self.World = game:GetService('World')
+    self:StartCombatChannel()
 end
 
 function Mgr:ClearLinks(player)
@@ -931,6 +1103,8 @@ function Mgr:Stop()
         if links.Died then links.Died:Disconnect() end
     end
     self.Links = {}
+    if self.CombatRequestConn then self.CombatRequestConn:Disconnect() end
+    self.CombatRequestConn = nil
 end
 
 -- 持有者死亡：放鱼进逃脱，并打断还在抛竿的会话（上钩后的断线由 MgrReelIn 处理）；道具栏不动

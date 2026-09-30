@@ -222,3 +222,30 @@ function TestEelDischargeEntry:test_discharge_uses_fish_hit_and_replay_does_not_
 	lu.assertEquals(behavior.Discharge(self.owner, 5, 15, replay), 0)
 	lu.assertEquals(#self.hits, 2)
 end
+-- #134 范围：按 GameCfg.Ability 的 5 米 / 10 伤害，边界上命中、超出与已死玩家不命中；电鳗已死锚点点火不放电。
+function TestEelDischargeEntry:test_formal_radius_boundary_and_dead_targets()
+	local eel = require('common.GameCfg').Ability.FishAbilities.eel
+	local behavior = assert(loadfile('server/AbilityBehaviors/eel_discharge.lua'))()
+	self.inside.Character.Position = vec(3, 0, 4)
+	self.outside.Character.Position = vec(5.01, 0, 0)
+	lu.assertEquals(behavior.Discharge(self.owner, eel.Radius, eel.Damage), 1)
+	lu.assertEquals(self.hits[1][2], self.inside)
+	lu.assertEquals(self.hits[1][3], 10)
+	self.inside.Character.Controller.Health = 0
+	lu.assertEquals(behavior.Discharge(self.owner, eel.Radius, eel.Damage), 0)
+	local fired
+	local anchor = {
+		FindFirstChild = function() return { Connect = function(_, fn) fired = fn return { Disconnect = function() end } end } end,
+		Destroying = { Connect = function() return { Disconnect = function() end } end },
+		GetAttribute = function(_, key) return key == 'DischargeRadius' and eel.Radius or eel.Damage end,
+	}
+	self.owner.Controller = { Health = 0 }
+	anchor.Parent = { Parent = { Parent = self.owner } }
+	self.inside.Character.Controller.Health = 300
+	behavior.Attach(anchor)
+	fired()
+	lu.assertEquals(#self.hits, 1)
+	self.owner.Controller.Health = 300
+	fired()
+	lu.assertEquals(#self.hits, 2)
+end

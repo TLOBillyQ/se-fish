@@ -218,6 +218,7 @@ function TestFishLoot:test_fish_table_matches_m1_spec()
     -- 鱼种表（#84，GameSpec §5.1/§5.2）：鱼塘 6 普通 + 精英电鳗 + 首领鳄雀鳝；虾池 6 普通 + 6 极品
     local expected = {
         tilapia = 'normal', carp = 'normal', knifeFish = 'normal', bass = 'normal', catfish = 'normal', goldfish = 'normal',
+        item7 = 'rare', item8 = 'rare', item9 = 'rare', item10 = 'rare', item11 = 'rare', item12 = 'rare',
         eel = 'elite', alligatorGar = 'boss',
         shrimp = 'normal', riverShrimp = 'normal', crayfish = 'normal',
         bostonLobster = 'normal', aussieLobster = 'normal', milkLobster = 'normal',
@@ -229,7 +230,7 @@ function TestFishLoot:test_fish_table_matches_m1_spec()
         lu.assertEquals(cfg.Fish[id].Grade, grade, id)
         count = count + 1
     end
-    lu.assertEquals(count, 20)
+    lu.assertEquals(count, 26)
     lu.assertEquals(#cfg.Zones, 7)
     local total = 0
     for _ in pairs(cfg.Fish) do total = total + 1 end
@@ -273,8 +274,102 @@ function TestFishLoot:test_fish_table_matches_m1_spec()
     for zoneId, rows in pairs(cfg.Casting.Zones) do
         for _, row in ipairs(rows) do lu.assertNotNil(cfg.Fish[row.Id], row.Id) end
         if zoneId == 'WaterCircle2' then
-            lu.assertEquals(#rows, 7)
+            lu.assertEquals(#rows, 13) -- #134：6 普通 + 电鳗 + 6 极品
             lu.assertEquals(rows[7], { Id = 'eel', Bait = 'worm', RodLevel = 1, DrawWeight = 10 })
         end
+    end
+end
+
+-- #134 鱼塘极品六条（钓鱼表 R8–R13，物品表 R8–R13）。失败方式（先列后写）：
+--   8. 极品没进鱼塘抽签表，或权重/鱼饵/竿级与鱼种表不一致：蚯蚓钓不出，或不挂饵也能钓出蚯蚓行极品；
+--   9. 缺模型号：活鱼载体与鱼获实体拼出 official://mesh/nil；模型借错鱼（按编号而不按鱼名）；
+--  10. 死亡掉成同名普通鱼获、丢个体倍率，或 Died 重复投递掉两份；
+--  11. 极品鱼获不是「极品食物」、仍标未接入或缺图标，失去抽奖赌注资格或道具栏显示空图。
+local POND_RARES = {
+    { id = 'item7', base = 'tilapia' }, { id = 'item8', base = 'carp' }, { id = 'item9', base = 'knifeFish' },
+    { id = 'item10', base = 'catfish' }, { id = 'item11', base = 'bass' }, { id = 'item12', base = 'goldfish' },
+}
+
+local function selectable(rows, rodLevel, baitId)
+    local FishCatch = require('common.FishCatch')
+    local total = 0
+    for _, row in ipairs(rows) do
+        if row.RodLevel <= rodLevel and (row.Bait == 0 or row.Bait == baitId) then total = total + row.DrawWeight end
+    end
+    local found = {}
+    for roll = 1, total do
+        found[FishCatch.Select(rows, rodLevel, baitId, function() return roll end)] = true
+    end
+    return found
+end
+
+function TestFishLoot:test_pond_rares_match_source_rows_and_are_catchable()
+    local cfg = assert(loadfile('common/GameCfg.lua'))()
+    local rows = cfg.Casting.Zones.WaterCircle2
+    local byId = {}
+    for _, row in ipairs(rows) do byId[row.Id] = row end
+    for _, pair in ipairs(POND_RARES) do
+        local rare, base = cfg.Fish[pair.id], cfg.Fish[pair.base]
+        lu.assertTrue(rare.implemented, pair.id)
+        lu.assertEquals(rare.Name, '极品' .. base.Name, pair.id)
+        -- 模型按鱼名复用同名普通鱼，并在鱼载体表内
+        lu.assertEquals(rare.Model, base.Model, pair.id)
+        lu.assertNotNil(cfg.FishCarrier.Models[rare.Model], pair.id)
+        lu.assertEquals(rare.Drops, { { ItemId = pair.id, Count = 1 } })
+        -- 抽签行与鱼种表（原表）同源
+        lu.assertEquals(byId[pair.id], { Id = pair.id, Bait = rare.Bait, RodLevel = rare.RodLevel, DrawWeight = rare.DrawWeight })
+        -- 抽奖机赌注资格：物品表类别「极品食物」、已接入、有图标
+        local item = cfg.Items.Definitions[pair.id]
+        lu.assertEquals({ item.Name, item.Type, item.implemented }, { rare.Name, '极品食物', true })
+        lu.assertEquals(item.BasePrice, rare.BasePrice, pair.id)
+        lu.assertNotNil(item.Icon, pair.id)
+    end
+    -- 原表数值逐行钉住（血量/重量/鱼饵/竿级/权重/价格；R11/R12 与普通同号行对调，按原表保留）
+    local source = {
+        item7 = { 5, 1, 0, 1, 2, 3 }, item8 = { 10, 5, 'worm', 1, 2, 4 }, item9 = { 15, 0.5, 'worm', 1, 2, 5 },
+        item10 = { 20, 2, 'worm', 1, 8, 6 }, item11 = { 25, 5, 'worm', 1, 6, 7 }, item12 = { 3, 0.1, 'worm', 1, 4, 8 },
+    }
+    for id, values in pairs(source) do
+        local f = cfg.Fish[id]
+        lu.assertEquals({ f.Health, f.BaseWeight, f.Bait, f.RodLevel, f.DrawWeight, f.BasePrice }, values, id)
+        lu.assertEquals({ f.Attack, f.Speed, f.EscapeSec, f.ZoneId, f.Grade }, { 0, 3, 1, 'fishPond', 'rare' }, id)
+    end
+    -- 不挂饵只出罗非鱼保底（含极品）；蚯蚓 1 级竿 13 行全可出
+    lu.assertEquals(selectable(rows, 1, nil), { tilapia = true, item7 = true })
+    local worm = selectable(rows, 1, 'worm')
+    local count = 0
+    for _ in pairs(worm) do count = count + 1 end
+    lu.assertEquals(count, 13)
+    for _, pair in ipairs(POND_RARES) do lu.assertTrue(worm[pair.id], pair.id) end
+    -- 鱼塘外圈条带水域共用同一张表
+    lu.assertEquals(cfg.Casting.Zones.PondWest_1_1, rows)
+end
+
+function TestFishLoot:test_pond_rare_death_drops_one_own_loot_and_pickup_keeps_mult()
+    local cfg = require('common.GameCfg')
+    for index, pair in ipairs(POND_RARES) do
+        local mult = 1 + index / 10
+        local fish = self:land(self.player, pair.id, mult)
+        lu.assertEquals(fish.Carrier.Opts.ModelId, cfg.Fish[pair.id].Model, pair.id)
+        lu.assertEquals(fish.Carrier.Opts.MaxHealth, cfg.Fish[pair.id].Health, pair.id)
+        self:kill(fish)
+        self:kill(fish)
+        local loot = self:onlyLoot()
+        lu.assertEquals({ loot.ItemId, loot.FishId, loot.Mult }, { pair.id, pair.id, mult })
+        local units = self:lootUnits()
+        lu.assertEquals(#units, 1, pair.id)
+        lu.assertEquals(units[1].RenderMeshId, 'official://mesh/' .. cfg.Fish[pair.id].Model)
+        self.player.Character.Position = loot.Position
+        lu.assertTrue(self.loot:Pickup(self.player, loot.Id))
+        lu.assertNil(next(self.loot.Loots))
+        local snapshot = self.data[self.player.UserId]:GetItemBarSnapshot()
+        local found = {}
+        for _, list in ipairs({ snapshot.slots, snapshot.backpack }) do
+            for _, entry in pairs(list) do
+                if entry.itemId == pair.id then found[#found + 1] = entry end
+            end
+        end
+        lu.assertEquals(#found, 1, pair.id)
+        lu.assertEquals(found[1].mult, mult)
     end
 end

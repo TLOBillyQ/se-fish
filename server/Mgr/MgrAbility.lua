@@ -99,6 +99,9 @@ local function equip(character, entry)
 			end
 			local abilityScript = AbilityAPI.AddAbility(character, entry.AssetId, entry.Index)
 			if abilityScript then
+				-- 技能模板默认 CdTime=3 / CastTime=0.5；有配置时覆盖，出手节奏交给 MgrWeapon 的 IntervalSec
+				if entry.CdSec then abilityScript:SetAttribute("CdTime", entry.CdSec) end
+				if entry.CastSec then abilityScript:SetAttribute("CastTime", entry.CastSec) end
 				if entry.Anchor then
 					createAnchor(abilityScript, entry)
 				end
@@ -171,8 +174,8 @@ function Mgr:EquipFish(fish)
                 local anchor = createAnchor(ability, {
                     Anchor = entry.Anchor,
                     AnchorBehavior = entry.AnchorBehavior,
-                    AnchorAttributes = { Duration = 0, DischargeRadius = entry.Radius,
-                        DischargeDamage = species.Attack },
+                    AnchorAttributes = { Duration = 0, StartTime = 0, DischargeRadius = entry.Radius,
+                        DischargeDamage = entry.Damage or species.Attack },
                 })
                 if not anchor then self:RemoveFish(fish) return end
                 record.Ready = true
