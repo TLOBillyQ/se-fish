@@ -46,6 +46,17 @@ local function readPosition(unit)
     end
 end
 
+-- #136 蟹湖节拍初始化：Release 放下与帝王蟹眩晕醒来共用，两处必须一致
+-- （漏一项就会出现醒来后双击 / 冲撞 / 旋转节拍错位）。JabAt / PinchAt 从 -1 起，
+-- 让放下或醒来后的首次进距立刻起手，避免与引擎时间推进错位。
+local function resetCrabRhythm(fish, now, params)
+    if params.ActiveSec then fish.ActiveUntil = now + params.ActiveSec end
+    fish.JabAt = -1
+    fish.PinchAt = -1
+    fish.SpecialAt = now + (params.SpinSec or 0)
+    fish.ChargeAt = now + (params.ChargeSec or 0)
+end
+
 local function noCollide(unit, other)
     if unit and other and unit ~= other and unit.AddNoCollisionPairWithUnit then
         pcall(unit.AddNoCollisionPairWithUnit, unit, other)
@@ -323,14 +334,8 @@ function Mgr:Release(fish, reason)
                 fish.Combo = 0
             elseif species.Combat == 'kingCrab' or species.Combat == 'crabBoss' then
                 -- #136 蟹湖：帝王蟹活动计时；蟹老板冲撞 / 旋转 / 双击各自的节拍。
-                -- 乱刺节拍不在这里排：起手由「进咬距且到 JabAt」驱动，JabAt 从 -1 起
-                -- 让放下后的首次进距立刻起手，避免与 Release 期间引擎时间推进错位。
-                local params = GameCfg.FishCombat[species.Combat]
-                if params.ActiveSec then fish.ActiveUntil = now + params.ActiveSec end
-                fish.JabAt = -1
-                fish.PinchAt = -1
-                fish.SpecialAt = now + (params.SpinSec or 0)
-                fish.ChargeAt = now + (params.ChargeSec or 0)
+                -- 与眩晕醒来共用 resetCrabRhythm，字段清单只有一处。
+                resetCrabRhythm(fish, now, GameCfg.FishCombat[species.Combat])
             end
         elseif self.Ability then
             self.Ability:EquipFish(fish)
@@ -764,6 +769,10 @@ end
 function Mgr:UpdateKingCrabCombat(fish, now, pos, params)
     local body = fish.Carrier.Body
     body.LinearVelocity = Vector3.New(0, 0, 0)
+    -- 追击步长与帧率解耦：dt 取上一战斗帧间隔（与虾池 UpdateShrimpCombat 同口径）；
+    -- 招式期间每帧也刷新 CombatStepAt，收招后首帧 dt 只是一帧间隔，不累积折算成位移。
+    local dt = math.max(0, now - (fish.CombatStepAt or now))
+    fish.CombatStepAt = now
     local move = fish.Move
     if move then
         if move.Name ~= 'jab' then return end
@@ -792,7 +801,7 @@ function Mgr:UpdateKingCrabCombat(fish, now, pos, params)
         local fx, fz = flatDirection(tp.x - pos.x, tp.z - pos.z)
         self:Face(fish, fx, fz, params)
         local distance = math.sqrt((tp.x - pos.x)^2 + (tp.z - pos.z)^2)
-        local step = math.min(self:Speed(fish) * 0.1, math.max(0, distance - params.BiteRange))
+        local step = math.min(self:Speed(fish) * dt, math.max(0, distance - params.BiteRange))
         local moved, err = pcall(function()
             body.Position = Vector3.New(pos.x + (fx or 0) * step, pos.y, pos.z + (fz or 0) * step)
         end)
@@ -812,10 +821,13 @@ end
 function Mgr:UpdateCrabBossCombat(fish, now, pos, params)
     local body = fish.Carrier.Body
     body.LinearVelocity = Vector3.New(0, 0, 0)
+    -- 追击步长与帧率解耦：dt 取上一战斗帧间隔（与帝王蟹 / 虾池同口径）。
+    local dt = math.max(0, now - (fish.CombatStepAt or now))
+    fish.CombatStepAt = now
     local move = fish.Move
     if move then
         if move.Name == 'pinch' then
-            -- local elapsed = now - move.At; pinch strike k 在 At + k × step 起结算
+            -- 双击第 k 击在起手后 k × PinchStepSec 秒起结算
             local elapsed = now - move.At
             local strike = elapsed <= 0 and 0 or math.min(params.PinchStrikes,
                 math.floor(elapsed / params.PinchStepSec + 1e-9))
@@ -885,7 +897,7 @@ function Mgr:UpdateCrabBossCombat(fish, now, pos, params)
         local fx, fz = flatDirection(tp.x - pos.x, tp.z - pos.z)
         self:Face(fish, fx, fz, params)
         local distance = math.sqrt((tp.x - pos.x)^2 + (tp.z - pos.z)^2)
-        local step = math.min(self:Speed(fish) * 0.1, math.max(0, distance - params.BiteRange))
+        local step = math.min(self:Speed(fish) * dt, math.max(0, distance - params.BiteRange))
         local moved, err = pcall(function()
             body.Position = Vector3.New(pos.x + (fx or 0) * step, pos.y, pos.z + (fz or 0) * step)
         end)
@@ -924,21 +936,15 @@ function Mgr:UpdateCombat(fish, now)
         return
     end
     self:RefreshMovingCombat(fish, now)
-    -- #136 蟹湖眩晕：UpdateShrimpCombat 专属 stunned 分支只覆盖虾池，帝王蟹在这里醒转并重置节拍
-    local crabCombat = GameCfg.Fish[fish.FishId].Combat
-    if fish.State == 'stunned' and crabCombat ~= 'shrimp' and crabCombat ~= 'dragon' then
-        local body = fish.Carrier.Body
+    -- #136 蟹湖眩晕：shrimp/dragon 的 stunned 由 UpdateShrimpCombat 专属分支处理，
+    -- 帝王蟹在这里醒转并重置节拍；蟹老板无眩晕机制，不会进入该分支。
+    local combat = GameCfg.Fish[fish.FishId].Combat
+    if fish.State == 'stunned' and combat == 'kingCrab' then
         body.LinearVelocity = Vector3.New(0, 0, 0)
         if now < (fish.WakeAt or math.huge) then return end
         fish.State, fish.WakeAt = Mgr.State.Combat, nil
-        local species = GameCfg.Fish[fish.FishId]
-        local params = GameCfg.FishCombat and GameCfg.FishCombat[species.Combat]
-        if params then
-            if params.ActiveSec then fish.ActiveUntil = now + params.ActiveSec end
-            fish.JabAt = -1
-            fish.SpecialAt = now + (params.SpinSec or 0)
-            fish.ChargeAt = now + (params.ChargeSec or 0)
-        end
+        local params = GameCfg.FishCombat and GameCfg.FishCombat[combat]
+        if params then resetCrabRhythm(fish, now, params) end
         self:PublishCombat(fish)
     end
     -- #132 T11 原型：分阶段首领走自己的状态机（阈值切换 → 招式集 → 咬中叼人）
@@ -947,7 +953,6 @@ function Mgr:UpdateCombat(fish, now)
         return
     end
     -- 首领近战（#88）不走技能装配与睡眠，追咬由 UpdateChase 驱动
-    local combat = GameCfg.Fish[fish.FishId].Combat
     local chase = GameCfg.FishCombat and GameCfg.FishCombat[combat]
     if chase then
         if combat == 'shrimp' or combat == 'dragon' then

@@ -65,6 +65,27 @@ function TestKingCrabCombat:test_jab_combo_six_strikes_every_five_seconds_once_p
     lu.assertEquals(#self.vitalsCalls, 8, '大 dt 不得补刺')
 end
 
+-- 追击步长与帧率解耦：位移 = Speed × 实际帧间隔 dt（审查修复：原为 Speed × 0.1 硬编码，
+-- 60Hz 下追击速度约为鱼种 Speed 的 6 倍）；步长仍被咬距钳制，追进咬距即起手
+function TestKingCrabCombat:test_chase_step_scales_with_frame_dt()
+    local fish = drop(self)
+    local p = fish.Carrier.Body.Position
+    self.player.Character.Position = { x = p.x, y = p.y, z = p.z + 20 } -- 咬距外 20 米
+    self.mgr:Update() -- 首帧 dt=0，不位移
+    local z0 = fish.Carrier.Body.Position.z
+    self.now = 0.5
+    self.mgr:Update()
+    lu.assertAlmostEquals(fish.Carrier.Body.Position.z - z0, 10 * 0.5, 1e-6, '追击步长 = Speed × dt')
+    lu.assertNil(fish.Move, '追击帧不起手')
+    -- 大 dt 帧：步长按实际间隔放大，但被咬距钳制（distance - BiteRange）
+    self.now = 5.5
+    self.mgr:Update()
+    lu.assertAlmostEquals(fish.Carrier.Body.Position.z - z0, 20 - 2.5, 1e-6, '大 dt 一帧追到咬距边')
+    self.now = 5.6
+    self.mgr:Update()
+    lu.assertEquals(fish.Move.Name, 'jab', '追进咬距即起手乱刺')
+end
+
 -- 活动 30 秒眩晕 5 秒：眩晕中不起刺不结算；醒来后重新计活动与乱刺节拍
 function TestKingCrabCombat:test_stun_after_thirty_seconds_no_jab_while_stunned()
     local fish = drop(self)
