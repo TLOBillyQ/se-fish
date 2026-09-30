@@ -233,7 +233,10 @@ function Mgr:WriteJob(userId, job)
         return false, 'conflict'
     end
     s.Revision = value.meta.revision
-    if s.Data and s.Data.Player == s.Player then s.Data.SaveMeta = copy(value.meta) end
+    -- #123：平台回包（DataStore 读回）会给列表补 __count，进内存前剥掉，下一次 Serialize 才不会再写回库。
+    if s.Data and s.Data.Player == s.Player then
+        s.Data.SaveMeta = PlayerData.StripArrayMeta(value.meta, 'stored.meta')
+    end
     self:NoteWrite(userId, value, job.Reason)
     return true, value
 end
