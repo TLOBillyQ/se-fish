@@ -17,6 +17,7 @@ local SpecialItem = require('common.SpecialItem')
 local FlightPath = require('common.FlightPath')
 
 local Mgr = { States = {}, PendingCleanup = {}, CleanupFailures = {} }
+local CLEANUP_HISTORY_LIMIT = 16 -- 仅保留字符串诊断，不持有已销毁引擎对象
 local CLEANUP_RETRIES = 5 -- 离场后最多五次重试，耗尽后保留失败记录而不继续调用引擎
 
 local function cfg()
@@ -332,7 +333,16 @@ function Mgr:Update(dt)
                 self.PendingCleanup[state] = nil
             elseif job.attempts >= CLEANUP_RETRIES then
                 self.PendingCleanup[state] = nil
-                self.CleanupFailures[state] = job -- 保留对象与错误依据，终止重试避免永久刷屏
+                local errors = {}
+                for key, failure in pairs(state.failures or {}) do
+                    errors[#errors + 1] = key .. ': ' .. tostring(failure.error)
+                end
+                self.CleanupFailures[#self.CleanupFailures + 1] = {
+                    userId = tostring(state.player.UserId), at = now, attempts = job.attempts,
+                    errors = table.concat(errors, '; '),
+                }
+                if #self.CleanupFailures > CLEANUP_HISTORY_LIMIT then table.remove(self.CleanupFailures, 1) end
+                -- 队列已移除；摘要不含旧状态/Player/角色引用，允许销毁对象回收。
             else
                 job.nextAt = now + 1
             end

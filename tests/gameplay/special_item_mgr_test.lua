@@ -653,3 +653,20 @@ function TestSpecialItemMgr:test_rejoin_survives_old_cleanup_persistently_failin
     lu.assertTrue(count() <= 6, '旧清理重试必须有界')
     lu.assertEquals(self.mgr.States[1].effect, 'godzilla')
 end
+
+function TestSpecialItemMgr:test_cleanup_failure_history_is_bounded_and_has_no_object_references()
+    for id = 1, 20 do
+        local p = self:addPlayer(id, 6, 5.01, 40, 'item170')
+        self:step(1, 0.05)
+        p.Character.EggyAppearance.ResetAppearance = function() error('reset-permanent') end
+        self.mgr:OnPlayerRemoving(p)
+    end
+    self:step(150, 0.05)
+    lu.assertEquals(#self.mgr.CleanupFailures, 16)
+    lu.assertNil(next(self.mgr.PendingCleanup))
+    for _, record in ipairs(self.mgr.CleanupFailures) do
+        for _, value in pairs(record) do
+            lu.assertTrue(type(value) == 'string' or type(value) == 'number')
+        end
+    end
+end
