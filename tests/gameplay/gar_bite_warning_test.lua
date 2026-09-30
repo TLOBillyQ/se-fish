@@ -40,6 +40,16 @@ local function lock(self, fishId, fx, fz)
         self.cfg.BiteCooldownSec)
 end
 
+function TestGarBiteWarning:test_rain_effect_is_distinct_and_cleared_with_warning()
+    local payload = lock(self, 8, 0, 1)
+    payload.move = 'rain'
+    self.warn:Show(payload)
+    lu.assertEquals(self.effects[2].AssetId, require('common.GameCfg').FishCombat.dragon.RainEffect)
+    self.warn:Show(self.N.Clear(8, 'rain-end'))
+    lu.assertTrue(self.effects[1].Destroyed)
+    lu.assertTrue(self.effects[2].Destroyed)
+end
+
 function TestGarBiteWarning:test_relock_replaces_and_clear_hides()
     self.warn:Show(lock(self, 5, 0, 1))
     self.warn:Show(lock(self, 5, 0, -1))

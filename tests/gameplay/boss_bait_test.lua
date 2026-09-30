@@ -87,12 +87,27 @@ end
 
 -- 配置钉住：首领饵映射与首领近战占位参数
 function TestBossBait:test_config_pins()
-    lu.assertEquals(self.cfg.Casting.BossBait, { duck = 'alligatorGar' })
+    lu.assertEquals(self.cfg.Casting.BossBait, { duck = 'alligatorGar', item121 = 'fish16Boss' })
     lu.assertEquals(self.cfg.Fish.alligatorGar.Combat, 'gar')
     lu.assertNotNil(self.cfg.FishCombat.gar.BiteRange)
     lu.assertNotNil(self.cfg.FishCombat.gar.BiteCooldownSec)
     lu.assertEquals(self.cfg.Fish.alligatorGar.Drops,
         { { ItemId = 'garMeat', Count = 2 }, { ItemId = 'garHead', Count = 1 } })
+end
+
+function TestBossBait:test_pearl_hooks_dragon_in_every_water_and_abort_does_not_refund()
+    lu.assertTrue(self.data:AddItem('starterRod'))
+    lu.assertTrue(self.data:AddItem('item121'))
+    lu.assertTrue(self.data:SelectSlot(1))
+    lu.assertTrue(self.data:SelectBait('item121'))
+    self.cast:Cast(self.player, { slot = 1, itemId = 'starterRod' })
+    lu.assertEquals(self.data:ItemCount('item121'), 0)
+    self.cast:Abort(self.player)
+    lu.assertEquals(self.data:ItemCount('item121'), 0)
+    for _, zone in ipairs(self.cfg.Water.Zones) do
+        local session = self:hookSession('item121', zone.Id)
+        lu.assertEquals(session.fishId, 'fish16Boss', zone.Id)
+    end
 end
 
 function TestBossBait:test_select_duck_requires_duck_in_storage()

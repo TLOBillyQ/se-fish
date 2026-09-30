@@ -316,6 +316,12 @@ function Mgr:Release(fish, reason)
         if GameCfg.FishCombat and GameCfg.FishCombat[species.Combat] then
             -- 首领近战（#88 / #134）：由 UpdateChase 在目标进入咬距时锁定朝向起咬，每口前都有完整预警
             fish.BiteAim = nil
+            if species.Combat == 'shrimp' or species.Combat == 'dragon' then
+                local params = GameCfg.FishCombat[species.Combat]
+                fish.ActiveUntil = now + (params.ActiveSec or params.SpecialSec)
+                fish.SpecialAt = now + (params.SpecialSec or 0)
+                fish.Combo = 0
+            end
         elseif self.Ability then
             self.Ability:EquipFish(fish)
         end
@@ -604,6 +610,143 @@ function Mgr:UpdateChase(fish, now, pos, params)
     self:LockBite(fish, target, pos, tpos, now, params)
 end
 
+-- #135 每招只持有一个权威 Move；清理先摘掉它，重复帧不能再次结算。
+function Mgr:EndMove(fish, reason)
+    if not fish.Move then return end
+    fish.Move, fish.MoveName = nil, nil
+    publishBite(self, GarBiteNotice.Clear(fish.Id, reason))
+    self:PublishCombat(fish)
+end
+
+function Mgr:StartMove(fish, name, pos, target, tpos, now, duration, range)
+    self:EndMove(fish, 'replace')
+    local fx, fz
+    if tpos then fx, fz = flatDirection(tpos.x - pos.x, tpos.z - pos.z) end
+    self:Face(fish, fx, fz)
+    fish.Move = { Name = name, Target = target, At = now, StrikeAt = now + duration,
+        Center = { x = pos.x, y = pos.y, z = pos.z },
+        Destination = tpos and { x = tpos.x, y = pos.y, z = tpos.z } }
+    local facing = fish.Facing or { x = 0, z = 1 }
+    local warningPos = name == 'dive' and fish.Move.Destination or pos
+    warningPos = warningPos or pos
+    local payload = GarBiteNotice.Lock(fish.Id, warningPos, facing.x, facing.z, range, 90, duration)
+    payload.move = name
+    publishBite(self, payload)
+    fish.MoveName = name
+    self:PublishCombat(fish)
+    print('[MgrFishUnit] 招式预警', fish.FishId, name, 'fish=' .. tostring(fish.Id))
+end
+
+function Mgr:StunFish(fish, now, params)
+    self:EndMove(fish, 'stun')
+    fish.State, fish.WakeAt, fish.MoveName = 'stunned', now + params.StunSec, nil
+    fish.Carrier.Body.LinearVelocity = Vector3.New(0, 0, 0)
+    self:PublishCombat(fish)
+    print('[MgrFishUnit] 眩晕', fish.FishId, 'wakeAt=' .. tostring(fish.WakeAt))
+end
+
+function Mgr:UpdateShrimpCombat(fish, now, pos, params, combat)
+    local body = fish.Carrier.Body
+    local dt = math.max(0, now - (fish.CombatStepAt or now))
+    fish.CombatStepAt = now
+    if fish.State == 'stunned' or fish.State == Mgr.State.Sleeping then
+        body.LinearVelocity = Vector3.New(0, 0, 0)
+        if now < (fish.WakeAt or math.huge) then return end
+        fish.State, fish.WakeAt = Mgr.State.Combat, nil
+        fish.ActiveUntil, fish.Combo = now + (params.ActiveSec or params.SpecialSec), 0
+        dt = 0
+        self:PublishCombat(fish)
+    end
+    if combat == 'shrimp' and now >= fish.ActiveUntil then
+        self:StunFish(fish, now, params)
+        return
+    end
+    local move = fish.Move
+    if combat == 'dragon' and now >= fish.SpecialAt and (not move or move.Name == 'peck') then
+        -- 正常帧按首次放下的30秒节拍；大dt不补发多周期，当前周期仍完整执行两招。
+        fish.SpecialAt = now + params.SpecialSec
+        self:StartMove(fish, 'rain', pos, nil, nil, now, params.RainSec, params.RainRadius)
+        fish.Move.LastTick = 0
+        move = fish.Move
+    end
+    if move then
+        dt = 0 -- 预警与施法耗时不能折算成追击位移。
+        body.LinearVelocity = Vector3.New(0, 0, 0)
+        if move.Name == 'rain' then
+            -- 不补历史tick：掉帧时只按当前范围结算一次，持续期固定不延长。
+            local tick = math.min(params.RainSec, math.floor(now - move.At))
+            if tick > move.LastTick then
+                move.LastTick = tick
+                for _, player in ipairs(self:Players()) do
+                    local valid, cp = self:IsTargetValid(player, move.Center)
+                    if valid and (cp.x - move.Center.x)^2 + (cp.z - move.Center.z)^2 <= params.RainRadius^2 then
+                        self:Hit(fish, player, params.RainDamage, 'rain')
+                    end
+                end
+            end
+            if now < move.StrikeAt then return end
+            self:EndMove(fish, 'rain-end')
+            local target, tp = self:ChooseTarget(fish, pos, params)
+            self:StartMove(fish, 'dive', pos, target, tp, now, params.DiveSec, params.DiveRadius)
+            return
+        elseif move.Name == 'dive' then
+            local progress = math.min(1, math.max(0, (now - move.At) / params.DiveSec))
+            local dest = move.Destination or move.Center
+            body.Position = Vector3.New(move.Center.x + (dest.x - move.Center.x) * progress,
+                move.Center.y + math.sin(progress * math.pi) * params.DiveHeight,
+                move.Center.z + (dest.z - move.Center.z) * progress)
+            if now < move.StrikeAt then return end
+            self:EndMove(fish, 'dive-end')
+            for _, player in ipairs(self:Players()) do
+                local valid, cp = self:IsTargetValid(player, dest)
+                if valid and (cp.x - dest.x)^2 + (cp.z - dest.z)^2 <= params.DiveRadius^2 then
+                    self:Hit(fish, player, params.DiveDamage, 'dive')
+                end
+            end
+            self:StunFish(fish, now, params)
+            return
+        end
+        local valid, cp = self:IsTargetValid(move.Target, pos, params)
+        if not valid or not withinBite(pos, cp, params) then
+            self:EndMove(fish, 'cancel')
+        elseif now < move.StrikeAt then return
+        else
+            self:EndMove(fish, 'strike')
+            if Mgr.InHeadZone(pos, fish.Facing, cp, params) then
+                local damage = move.Name == 'tail' and params.TailDamage
+                    or (move.Name == 'peck' and params.PeckDamage or params.ClawDamage)
+                local applied = self:Hit(fish, move.Target, damage, move.Name)
+                if applied and move.Name == 'tail' then
+                    local f = fish.Facing or { x = 0, z = 1 }
+                    local ok, err = pcall(function()
+                        move.Target.Character.Position = Vector3.New(cp.x + f.x * params.KnockHorizontal,
+                            cp.y + params.KnockUp, cp.z + f.z * params.KnockHorizontal)
+                    end)
+                    if not ok then print('[MgrFishUnit] 尾刺击飞失败', fish.Id, tostring(err)) end
+                end
+            end
+            fish.Combo = ((fish.Combo or 0) + 1) % 3
+        end
+    end
+    local target, tp = self:ChooseTarget(fish, pos, params)
+    if not target then body.LinearVelocity = Vector3.New(0, 0, 0); return end
+    if not withinBite(pos, tp, params) then
+        local fx, fz = flatDirection(tp.x - pos.x, tp.z - pos.z)
+        self:Face(fish, fx, fz, params)
+        local distance = math.sqrt((tp.x - pos.x)^2 + (tp.z - pos.z)^2)
+        local step = math.min(self:Speed(fish) * dt, math.max(0, distance - params.BiteRange))
+        body.LinearVelocity = Vector3.New(0, 0, 0)
+        local moved, err = pcall(function()
+            body.Position = Vector3.New(pos.x + (fx or 0) * step, pos.y, pos.z + (fz or 0) * step)
+        end)
+        if not moved then print('[MgrFishUnit] 虾池追击位移失败', fish.Id, tostring(err)) end
+        return
+    end
+    body.LinearVelocity = Vector3.New(0, 0, 0)
+    local name = combat == 'dragon' and 'peck' or ((fish.Combo or 0) == 2 and 'tail' or 'claw')
+    self:StartMove(fish, name, pos, target, tp, now, params.BiteCooldownSec, params.BiteRange)
+end
+
 -- 战斗只在首次放下后计时；逃跑时限优先于攻击和睡眠。
 function Mgr:UpdateCombat(fish, now)
     local body = fish.Carrier.Body
@@ -613,9 +756,19 @@ function Mgr:UpdateCombat(fish, now)
         self:Remove(fish)
         return
     end
-    if now >= fish.FleeAt or inWater(pos) then
+    local diving = fish.Move and fish.Move.Name == 'dive'
+    local airborne = diving and pos.y > fish.Move.Center.y + 0.1
+    if now >= fish.FleeAt or (not airborne and inWater(pos)) then
+        if diving then
+            local ground = fish.Move.Center.y
+            local ok, err = pcall(function() body.Position = Vector3.New(pos.x, ground, pos.z) end)
+            if not ok then print('[MgrFishUnit] 俯冲逃脱落地失败', fish.Id, tostring(err)) end
+            pos = readPosition(body) or pos
+        end
         if self.Ability then self.Ability:RemoveFish(fish) end
         self:EndBite(fish, 'gone')
+        self:EndMove(fish, 'gone')
+        fish.WakeAt, fish.MoveName = nil, nil
         fish.State = Mgr.State.Escaping
         fish.StraightEscape = true
         if fish.CombatRotation then body.Rotation = fish.CombatRotation end
@@ -635,7 +788,11 @@ function Mgr:UpdateCombat(fish, now)
     local combat = GameCfg.Fish[fish.FishId].Combat
     local chase = GameCfg.FishCombat and GameCfg.FishCombat[combat]
     if chase then
-        self:UpdateChase(fish, now, pos, chase)
+        if combat == 'shrimp' or combat == 'dragon' then
+            self:UpdateShrimpCombat(fish, now, pos, chase, combat)
+        else
+            self:UpdateChase(fish, now, pos, chase)
+        end
         return
     end
     self:UpdateEel(fish, now, GameCfg.Ability.FishAbilities[combat])
@@ -650,7 +807,7 @@ function Mgr:CombatPayload(fish, gone)
     local pos = readPosition(fish.Carrier.Body) or fish.CombatPosition or fish.Anchor
     return { id = fish.Id, fishId = fish.FishId, state = fish.State,
         fleeAt = fish.FleeAt, escapeSec = GameCfg.Fish[fish.FishId].EscapeSec,
-        wakeAt = fish.WakeAt, discharges = fish.Discharges or 0, dischargeCount = entry and entry.DischargeCount,
+        wakeAt = fish.WakeAt, move = fish.MoveName, discharges = fish.Discharges or 0, dischargeCount = entry and entry.DischargeCount,
         position = pos and { x = pos.x, y = pos.y, z = pos.z } }
 end
 
@@ -882,9 +1039,11 @@ end
 function Mgr:Hit(fish, target, damage, kind)
     if not target or not self.Vitals or type(damage) ~= 'number' or damage <= 0 then return false end
     local hit = self.Vitals:NewHit(fish, 'fishAttack')
-    self.Vitals:ApplyHit(hit, target, damage)
-    print('[MgrFishUnit] 命中', kind or 'attack', fish.FishId, damage, 'fish=' .. tostring(fish.Id))
-    return true
+    local applied = self.Vitals:ApplyHit(hit, target, damage)
+    if applied then
+        print('[MgrFishUnit] 命中', kind or 'attack', fish.FishId, damage, 'fish=' .. tostring(fish.Id))
+    end
+    return applied == true
 end
 
 ---首领分阶段每帧：血量阈值 → 阶段，阶段招式集 → 落地伤害；咬中即叼人（沧龙式）。
@@ -1057,6 +1216,8 @@ function Mgr:Remove(fish)
     -- #132 T11：鱼被打死/清场时先把叼着的玩家放下来（否则玩家会跟着一条死鱼卡在空中）
     if fish.Carry then self:ReleaseCarried(fish, nil, 'died') end
     self:EndBite(fish, 'gone') -- #134：死亡或清场时收起咬预警
+    self:EndMove(fish, 'gone')
+    fish.WakeAt, fish.MoveName = nil, nil
     self.Fish[fish.Id] = nil
     self:PublishCombat(fish, true)
     if self.Ability then self.Ability:RemoveFish(fish) end
