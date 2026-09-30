@@ -177,6 +177,7 @@ local function HandlePlayerRemoving(player)
     if active then invoke('MgrSurvival', MgrMap.MgrSurvival, 'BeforeLeave', player) end
     -- #137：烧烤会话同样要在序列化前结算一次（放回烤鱼或转待恢复标记），不复制不吞物
     if active then invoke('MgrGrill', MgrMap.MgrGrill, 'BeforeLeave', player) end
+    if active then invoke('MgrSpecialItem', MgrMap.MgrSpecialItem, 'BeforeLeave', player) end
     invoke('MgrPlayerData', MgrMap.MgrPlayerData, 'OnPlayerRemoving', player)
     if active then
         for name, mgr in pairs(MgrMap) do

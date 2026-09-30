@@ -232,6 +232,7 @@ function Mgr:CastBreath(player)
         return self:Fail(player, 'breath', 'cooldown')
     end
     state.lastBreathAt = now
+    self:MirrorCooldown(state, now) -- 施法即镜像，尚未心跳就离线也不能清 CD
     state.breath = {
         castAt = now, tick = 1,
         ledger = SpecialItem.NewBreathLedger(bc),
@@ -348,6 +349,12 @@ function Mgr:OnPlayerAdded(player)
         state.lastBreathAt = self:Now() - (breathCfg().CooldownSec - remaining)
     end
     self:SendState(player)
+end
+
+-- 终镜像在 SaveLeaving 序列化前调用，写入当前剩余冷却（不能依赖上一帧镜像）
+function Mgr:BeforeLeave(player)
+    local state = self.States[player.UserId]
+    if state then self:MirrorCooldown(state, self:Now()) end
 end
 
 -- 摆渡钩子（MgrFerry:Teleport 前调用）：结束飞行运动状态，外观随新区下一帧调和重放

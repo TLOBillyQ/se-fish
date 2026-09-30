@@ -441,3 +441,12 @@ function TestSpecialItemMgr:test_flight_clamps_horizontal_position_inside_the_zo
     self:step(1, 0.05)
     lu.assertTrue(player.Character.Position.z >= -10, 'z ' .. tostring(player.Character.Position.z))
 end
+
+-- 失败方式 15：施法后还没心跳就离线，冷却镜像必须已写入，不能重进清 CD
+function TestSpecialItemMgr:test_cast_immediately_mirrors_cooldown_before_disconnect()
+    local player = self:addPlayer(1, 6, 5.01, 40, 'item170')
+    self:step(1, 0.05)
+    self:fire(player, { action = 'breath' })
+    lu.assertTrue(player.lastResult.ok)
+    lu.assertEquals(self.dataByUser[1].Extra.cooldowns.godzillaBreath, 20)
+end
