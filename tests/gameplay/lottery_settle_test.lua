@@ -288,6 +288,21 @@ function TestLotterySettle:test_state_request_entry_pushes_the_same_recovered_re
     lu.assertEquals(restored:ItemCount('item167'), 1) -- 只展示，不重复发奖
 end
 
+-- 审查回归用例：存档 pending 窗口内的第二次 Handle 被静默丢弃（不回包）——
+-- 客户端闩锁靠超时兜底解除（见 lottery_ui_test 的 test_awaiting_latch_releases_on_reply_timeout）
+function TestLotterySettle:test_pending_window_second_handle_is_dropped_silently()
+    self:givePremium('item7')
+    self:persistReady()
+    self:scriptAxes(1, 22, 23)
+    lu.assertTrue(self.lottery:Handle(self.player, { action = 'Draw', slot = 1, seq = 1 }))
+    -- 不 drain：第一次结算仍在存档 pending 窗口
+    local before = #self.events
+    lu.assertFalse(self.lottery:Handle(self.player, { action = 'Draw', slot = 1, seq = 2 }))
+    lu.assertEquals(#self.events, before) -- 静默：没有失败回包
+    self:drain()
+    lu.assertEquals(#self:messages('LotteryResult'), 1) -- 只有第一次的回包
+end
+
 function TestLotterySettle:test_failed_write_never_publishes_the_result()
     self:givePremium('item7')
     self:persistReady()

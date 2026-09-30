@@ -25,6 +25,10 @@ local FailText = {
     slot = '请先选中一件极品食物',
 }
 
+-- 停轴顺序可配（GameCfg.Lottery.AxisOrder）：轴名 → 界面节点 / result.axes 下标（1 左 2 右 3 中）
+local ReelNodeByAxis = { left = 'LabelReelLeft', right = 'LabelReelRight', middle = 'LabelReelMiddle' }
+local AxisIndexByName = { left = 1, right = 2, middle = 3 }
+
 local function patterns()
     return GameCfg.Lottery.Patterns
 end
@@ -190,6 +194,7 @@ function ScreenHandler:Draw()
     local _, slot = self:BetEntry()
     self.Seq = self.Seq + 1
     self.Awaiting = true
+    self.AwaitingElapsed = 0
     REUtil:GetRE('LotteryAction'):FireServer({ action = 'Draw', slot = slot, seq = self.Seq })
     return true
 end
@@ -241,9 +246,11 @@ function ScreenHandler:NoteResult(result)
         self:ShowResult(result)
         return
     end
+    -- 回包已到：解除等待闩锁，动画期由 Spinning 挡重复点击
+    self.Awaiting = false
+    self.AwaitingElapsed = nil
     self.Spinning = { t = 0, stopped = { false, false, false }, result = result }
     self.AnimationStarts = self.AnimationStarts + 1
-    self.Awaiting = true
     self:RefreshBet()
 end
 
@@ -256,28 +263,42 @@ function ScreenHandler:AxisStopped(axis)
     return self.LastResult ~= nil and self.ResultShown == true
 end
 
--- 停轴动画推进（Heartbeat 驱动；测试直接调用）：滚动 SpinSec 秒后按左→右→中停轴，
--- 停轴图案永远取服务端回包 axes，动画不决定奖项。
+-- 停轴动画推进（Heartbeat 驱动；测试直接调用）：滚动 SpinSec 秒后按 AxisOrder 顺序每隔
+-- AxisStopIntervalSec 停一轴，停轴图案永远取服务端回包 axes，动画不决定奖项。
+-- 附带回包超时兜底：Awaiting 期间服务端可能静默丢弃（限频/存档 pending 窗口），
+-- 超过 ResultTimeoutSec 自动解锁并提示，避免闩锁永久卡死界面。
 function ScreenHandler:UpdateAnim(dt)
+    if type(dt) ~= 'number' then return end
+    if self.Awaiting then
+        self.AwaitingElapsed = (self.AwaitingElapsed or 0) + dt
+        if self.AwaitingElapsed >= GameCfg.Lottery.ResultTimeoutSec then
+            self.Awaiting = false
+            self.AwaitingElapsed = nil
+            notice('抽奖回包超时，请再试一次')
+            self:RefreshBet()
+        end
+    end
     local spinning = self.Spinning
-    if not spinning or type(dt) ~= 'number' then return end
+    if not spinning then return end
     spinning.t = spinning.t + dt
     local cfg = GameCfg.Lottery
-    local reelNames = { 'LabelReelLeft', 'LabelReelRight', 'LabelReelMiddle' }
+    local defaultOrder = { 'left', 'right', 'middle' }
     local allStopped = true
-    for axis = 1, 3 do
-        if not spinning.stopped[axis] then
-            local stopAt = cfg.SpinSec + (axis - 1) * cfg.AxisStopIntervalSec
-            local node = self:Node(reelNames[axis])
+    for stopIndex = 1, 3 do
+        if not spinning.stopped[stopIndex] then
+            local axisName = cfg.AxisOrder[stopIndex] or defaultOrder[stopIndex]
+            local stopAt = cfg.SpinSec + (stopIndex - 1) * cfg.AxisStopIntervalSec
+            local node = self:Node(ReelNodeByAxis[axisName])
             if spinning.t >= stopAt then
-                spinning.stopped[axis] = true
+                spinning.stopped[stopIndex] = true
                 if node then
-                    pcall(function() node.Text = patternName(spinning.result.axes[axis]) end)
+                    local pattern = spinning.result.axes[AxisIndexByName[axisName]]
+                    pcall(function() node.Text = patternName(pattern) end)
                 end
             else
                 allStopped = false
                 if node then
-                    local index = math.floor(spinning.t * 8 + axis * 2) % #patterns() + 1
+                    local index = math.floor(spinning.t * 8 + stopIndex * 2) % #patterns() + 1
                     pcall(function() node.Text = patterns()[index].name end)
                 end
             end

@@ -497,7 +497,10 @@ GameCfg.Lottery.RuleHintText = '抽奖规则'
 GameCfg.Lottery.ActionCooldownSec = 1
 GameCfg.Lottery.SpinSec = 3
 GameCfg.Lottery.AxisStopIntervalSec = 0.5
-GameCfg.Lottery.AxisOrder = { 'left', 'right', 'middle' }
+GameCfg.Lottery.AxisOrder = { 'left', 'right', 'middle' } -- 停轴顺序，客户端 UpdateAnim 消费
+-- 回包超时兜底：服务端限频（CheckRECD）与存档 pending 窗口都静默丢弃请求不回包，
+-- 客户端 Awaiting 闩锁超过该时长自动解锁并提示，避免界面永久卡死（#138 审查）
+GameCfg.Lottery.ResultTimeoutSec = 5
 -- 每区一台抽奖机：锚点名复用 #125 场景合同的 Lottery 实体（Z1_Lottery … Z7_Lottery）；
 -- 现场未建的区取不到单位时交互自然拒绝（范围校验找不到锚点），不伪造可用性。
 function GameCfg.Lottery.MachineAnchors()

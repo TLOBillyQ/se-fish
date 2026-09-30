@@ -224,6 +224,41 @@ function TestScreenLottery:test_recovered_result_shows_without_animation()
     lu.assertEquals(self.nodes.LabelReelLeft.Text, '三头鲨') -- 三轴直接落到结果图案
 end
 
+function TestScreenLottery:test_awaiting_latch_releases_on_reply_timeout()
+    -- 审查回归：服务端限频（CheckRECD）与存档 pending 窗口（resolve 返回 nil）都静默丢弃不回包，
+    -- Awaiting 闩锁必须有超时兜底，否则界面永久卡死
+    self:snapshot(1, self:premiumEntry())
+    lu.assertTrue(self.handler:Draw())
+    lu.assertFalse(self.handler:DrawEnabled())
+    lu.assertFalse(self.handler:Draw()) -- 等待期间重复点击被忽略
+    local timeout = self.cfg.Lottery.ResultTimeoutSec
+    lu.assertTrue(timeout and timeout > 0)
+    self.handler:UpdateAnim(timeout - 0.1) -- 未到超时仍锁
+    lu.assertFalse(self.handler:DrawEnabled())
+    self.handler:UpdateAnim(0.2) -- 越过超时：解锁并提示
+    lu.assertTrue(self.handler:DrawEnabled())
+    lu.assertTrue(#self.notices > 0)
+    -- 解锁后能正常再抽（服务端对重发有序号/幂等保护）
+    lu.assertTrue(self.handler:Draw())
+end
+
+function TestScreenLottery:test_axis_stop_order_follows_config()
+    -- 停轴顺序消费 GameCfg.Lottery.AxisOrder，不硬编码
+    self.cfg.Lottery.AxisOrder = { 'middle', 'left', 'right' }
+    self:snapshot(1, self:premiumEntry())
+    self.handler:Draw()
+    self.handler:NoteResult(result(self, { 1, 1, 2 }, 'pair', { coins = 6, multiplier = 2 }))
+    self.handler:UpdateAnim(3.0) -- 第一个停的是中轴
+    lu.assertTrue(self.handler:AxisStopped(1))
+    lu.assertEquals(self.nodes.LabelReelMiddle.Text, '小白龙') -- axes[3]
+    lu.assertFalse(self.handler:AxisStopped(2))
+    self.handler:UpdateAnim(0.5) -- 第二个停左轴
+    lu.assertEquals(self.nodes.LabelReelLeft.Text, '鳄雀鳝') -- axes[1]
+    self.handler:UpdateAnim(0.5) -- 第三个停右轴
+    lu.assertEquals(self.nodes.LabelReelRight.Text, '鳄雀鳝') -- axes[2]
+    lu.assertStrContains(self.nodes.LabelLotteryResult.Text, '6')
+end
+
 function TestScreenLottery:test_failure_reasons_have_readable_notice()
     local reasons = { ['not-premium'] = true, cooked = true, range = true, slot = true }
     self:snapshot(1, self:premiumEntry())
