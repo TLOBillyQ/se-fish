@@ -85,7 +85,7 @@ if rows then
         if row.Id == 'fish31Elite' then haveElite = true end
         if not GameCfg.Fish[row.Id] then weightsOk = false end
     end
-    check('抽鱼池 13 行且含剑鱼', #rows == 13 and haveElite, #rows)
+    check('抽鱼池 14 行且含剑鱼', #rows == 14 and haveElite, #rows)
     check('抽鱼池行都指向已存在的鱼种', weightsOk)
     local function selectAll(rodLevel, baitId)
         local total = 0
@@ -154,7 +154,8 @@ do
     local bp = fish.Carrier.Body.Position
     env.other.Character.Position = Vector3.New(bp.x, 2, bp.z + 2)
     at(env, 0)
-    at(env, 0)
+    at(env, 0.1) -- 首个真实滚动帧
+    at(env, 0.2) -- 同秒槽重复接触
     local once = #env.hits == 1 and env.hits[1].amount == 25
     local bp2 = fish.Carrier.Body.Position
     env.other.Character.Position = Vector3.New(bp2.x, 2, bp2.z + 2)
