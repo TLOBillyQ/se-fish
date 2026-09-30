@@ -491,6 +491,7 @@ GameCfg.Lottery = ContentLottery
 GameCfg.Lottery.Radius = 5
 GameCfg.Lottery.Slack = 0.5
 GameCfg.Lottery.BubbleHeight = 7
+GameCfg.Lottery.BubblePreset = GameCfg.Shop.BubblePreset -- 复用商店文字泡预设，换提示文案
 GameCfg.Lottery.HintText = '极品食物换大奖'
 GameCfg.Lottery.RuleHintText = '抽奖规则'
 GameCfg.Lottery.ActionCooldownSec = 1
