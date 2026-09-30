@@ -59,7 +59,7 @@ function TestContentCfg:test_lottery_has_seven_patterns_and_independent_prizes()
         weight = weight + pattern.weight
         lu.assertNotNil(pattern.source:match('^抽奖表!R%d+$'))
         lu.assertTrue(pattern.pairMultiplier > 0)
-        lu.assertEquals(pattern.implemented, false)
+        lu.assertEquals(pattern.implemented, true, pattern.source .. ' #138 起接入抽奖机')
     end
     lu.assertEquals(weight, 100)
     lu.assertEquals(lottery.Patterns[1].pairMultiplier, 2)
