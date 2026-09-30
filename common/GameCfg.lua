@@ -1104,6 +1104,40 @@ for index, chain in ipairs(GameCfg.Content.Exchanges) do
     }
 end
 
+-- 烧烤（#137 T16，策划案烧烤段）：第三区起每区一个烧烤点（#125 场景合同 Zones[].Scene.GrillName），
+-- 2 米内可操作；服务端从投入计时按 common/GrillCurve.lua 的曲线 1→1.5→0，4.5 秒烤糊损毁并
+-- 对烤炉周围 3 米玩家造成 30 伤害（经 MgrVitals 统一伤害入口）。按玩家独立会话，取出时价格与
+-- 食用恢复同乘当时倍率；烤过物品不可重烤/抽奖，烤过信物失去兑换资格（操作信物前先提示）。
+GameCfg.Grill = {
+    Radius = 2,                 -- docx：2 米内出现「烧烤」操作文字泡
+    Slack = 0.5,                -- 距离复验宽限（对齐 Interact 惯例）
+    BubbleHeight = 2.5,         -- 文字泡悬浮高度
+    RiseSec = 2,                -- 0-2 秒：1 → 1.5
+    HoldSec = 0.5,              -- 2-2.5 秒：保持 1.5
+    FallSec = 2,                -- 2.5-4.5 秒：1.5 → 0
+    MaxRate = 1.5,              -- 烤熟 1.5 倍价格加成、食用恢复 +50%
+    BurnSec = 4.5,              -- = RiseSec + HoldSec + FallSec；到达即烤糊
+    BurnDamage = 30,            -- docx：烤糊爆炸 30 伤害
+    BurnRadius = 3,             -- docx：周围 3 米
+    BubbleText = '烧烤',
+    NoFishText = '你没有可烤的鱼',
+    BurntText = '你的鱼烤糊了！',
+    CookedPrefix = '烤过的',     -- 烤好的鱼名字加此前缀
+    TokenWarnText = '烤过的信物将失去兑换和抽奖资格，再次点击确认烤制',
+    FullText = '背包已满，烤好的鱼先留在烤炉上',
+    TakeoutText = '取出',
+    source = '策划案--渔力全开.docx#烧烤',
+}
+-- 烧烤点清单：锚点是 #125 场景合同真源（仅三区起有 GrillName），消费端按距离命中
+GameCfg.Grill.Points = {}
+for index, zone in ipairs(GameCfg.Zones) do
+    if zone.Scene.GrillName then
+        GameCfg.Grill.Points[#GameCfg.Grill.Points + 1] = {
+            ZoneId = zone.Id, AnchorName = zone.Scene.GrillName,
+        }
+    end
+end
+
 -- 高频输入契约（M0-V5）：窗口与次数上限的常量，逻辑见 common/RateLimit.lua，
 -- 载荷字段固定 {s=会话 id, n=窗口内点击数, q=单调序号}（C-3）。
 -- 消费者：收线（计数型，M1）+ 按住连发类武器（边沿型，随武器期，共用同一套窗口，C-16）。
