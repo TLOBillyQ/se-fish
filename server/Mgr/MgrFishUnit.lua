@@ -353,6 +353,16 @@ function Mgr:Release(fish, reason)
                 local params = GameCfg.FishCombat[species.Combat]
                 fish.JumpAt = now + params.JumpIntervalSec
                 fish.RollSlot = -1
+            elseif species.Combat == 'walrus' then
+                -- #142 海象：突击节拍（甩头无独立节拍，进身即甩）
+                fish.ChargeAt = now + GameCfg.FishCombat[species.Combat].ChargeSec
+            elseif species.Combat == 'orca' then
+                -- #142 虎鲸：四招节拍互斥（鲸跃 > 虎啸 > 甩尾 > 爪）
+                local params = GameCfg.FishCombat[species.Combat]
+                fish.JumpAt = now + params.JumpIntervalSec
+                fish.RoarAt = now + params.RoarSec
+                fish.TailAt = now + params.TailSec
+                fish.ClawAt = -1
             end
         elseif self.Ability then
             self.Ability:EquipFish(fish)
@@ -668,7 +678,10 @@ function Mgr:EndMove(fish, reason)
     self:PublishCombat(fish)
 end
 
-function Mgr:StartMove(fish, name, pos, target, tpos, now, duration, range)
+-- shape 可覆盖预警形状：'circle' 发整圆（halfAngleDeg=180）。默认前向 90° 扇形；
+-- 真实伤害区不是前向扇形时必须整圆覆盖（#141 鲸跃 / #142 虎啸径向、甩尾身后半圆），
+-- 宁可前向超警（安全方向）不得欠警真实危险区。
+function Mgr:StartMove(fish, name, pos, target, tpos, now, duration, range, shape)
     self:EndMove(fish, 'replace')
     local fx, fz
     if tpos then fx, fz = flatDirection(tpos.x - pos.x, tpos.z - pos.z) end
@@ -681,7 +694,7 @@ function Mgr:StartMove(fish, name, pos, target, tpos, now, duration, range)
     warningPos = warningPos or pos
     local payload = GarBiteNotice.Lock(fish.Id, warningPos, facing.x, facing.z, range, 90, duration)
     payload.move = name
-    if name == 'jump' then payload.shape, payload.halfAngleDeg = 'circle', 180 end
+    if shape == 'circle' or name == 'jump' then payload.shape, payload.halfAngleDeg = 'circle', 180 end
     publishBite(self, payload)
     fish.MoveName = name
     self:PublishCombat(fish)
@@ -1089,6 +1102,212 @@ function Mgr:UpdateSharkCombat(fish, now, pos, params)
     end
 end
 
+-- #142 海象突击推进：ChargeWindupSec 预警段站定（朝向已锁定不跟踪；目标倒下 / 离线即取消），
+-- 随后按起手锁定朝向直线冲刺 ChargeDistance。位移逐帧 pcall，失败即取消招式、不按预定路径结算；
+-- 接触用「DashFrom → 本帧实际位置」的真实冲锋路径线段判定（#141 口径），每玩家只结算一次。
+function Mgr:AdvanceWalrusCharge(fish, now, pos, params)
+    local body = fish.Carrier.Body
+    local move = fish.Move
+    if now < move.WindupAt - 1e-9 then
+        local valid = self:IsTargetValid(move.Target, pos, params)
+        if not valid then self:EndMove(fish, 'cancel') end
+        return
+    end
+    if not move.DashFrom then
+        move.DashFrom = { x = pos.x, y = pos.y, z = pos.z }
+    end
+    local facing = fish.Facing or { x = 0, z = 1 }
+    local progress = math.min(params.ChargeDistance, (now - move.WindupAt) * params.ChargeSpeed)
+    local moved, err = pcall(function()
+        body.Position = Vector3.New(
+            move.DashFrom.x + facing.x * progress, pos.y,
+            move.DashFrom.z + facing.z * progress)
+    end)
+    if not moved then
+        print('[MgrFishUnit] 海象突击位移失败', 'fish=' .. tostring(fish.Id), tostring(err))
+        self:EndMove(fish, 'cancel')
+        return
+    end
+    local actual = readPosition(body)
+    if actual then
+        for _, player in ipairs(self:Players()) do
+            if not move.Hits[player] then
+                local valid, cp = self:IsTargetValid(player, actual, params)
+                if valid and segmentDistanceSq(cp.x, cp.z,
+                        move.DashFrom.x, move.DashFrom.z, actual.x, actual.z)
+                    <= params.ChargeContactRange * params.ChargeContactRange then
+                    move.Hits[player] = true
+                    self:Hit(fish, player, params.ChargeDamage, 'charge')
+                end
+            end
+        end
+    end
+    if now >= move.StrikeAt - 1e-9 then
+        self:EndMove(fish, 'charge-end')
+    end
+end
+
+-- #142 海象：甩头（SwingDamage，起手即锁定朝向，预警期间不转头、绕后落空）+ 40 秒直线突击
+-- （ChargeSec 周期，冲锋 ChargeDistance，对撞到的玩家一次 ChargeDamage）。
+-- 突击优先级高于甩头；两招互斥（单 Move 权威）。追击位移失败记日志、不结算。
+function Mgr:UpdateWalrusCombat(fish, now, pos, params)
+    local body = fish.Carrier.Body
+    body.LinearVelocity = Vector3.New(0, 0, 0)
+    local dt = math.max(0, now - (fish.CombatStepAt or now))
+    fish.CombatStepAt = now
+    local move = fish.Move
+    if move then
+        if move.Name == 'swing' then
+            local valid, tp = self:IsTargetValid(move.Target, pos, params)
+            if not valid or not withinBite(pos, tp, params) then
+                self:EndMove(fish, 'cancel')
+            elseif now < move.StrikeAt - 1e-9 then
+                return
+            else
+                self:EndMove(fish, 'swing')
+                if Mgr.InHeadZone(pos, fish.Facing, tp, params) then
+                    self:Hit(fish, move.Target, params.SwingDamage, 'swing')
+                end
+                return
+            end
+        elseif move.Name == 'charge' then
+            self:AdvanceWalrusCharge(fish, now, pos, params)
+            return
+        else
+            return
+        end
+    end
+    if now >= (fish.ChargeAt or math.huge) then
+        local target, tp = self:ChooseTarget(fish, pos, params)
+        if not target then return end
+        fish.ChargeAt = now + params.ChargeSec
+        -- #142 双轴审查 P2：预警半径必须覆盖真实危险区（20 米冲锋走廊），
+        -- 不能只给接触距离 2.5 米（欠警）。前向扇形随锁头朝向覆盖走廊，
+        -- 走廊两侧之外属横向超警（安全方向）。
+        self:StartMove(fish, 'charge', pos, target, tp, now,
+            params.ChargeWindupSec + params.ChargeDistance / params.ChargeSpeed,
+            params.ChargeDistance)
+        fish.Move.WindupAt = now + params.ChargeWindupSec
+        fish.Move.Hits = {}
+        return
+    end
+    local target, tpos = self:ChooseTarget(fish, pos, params)
+    if not target then return end
+    if withinBite(pos, tpos, params) then
+        self:StartMove(fish, 'swing', pos, target, tpos, now, params.SwingCooldownSec, params.BiteRange)
+        return
+    end
+    local fx, fz = flatDirection(tpos.x - pos.x, tpos.z - pos.z)
+    self:Face(fish, fx, fz, params)
+    local distance = math.sqrt((tpos.x - pos.x)^2 + (tpos.z - pos.z)^2)
+    local step = math.min(self:Speed(fish) * dt, math.max(0, distance - params.BiteRange))
+    local moved, err = pcall(function()
+        body.Position = Vector3.New(pos.x + (fx or 0) * step, pos.y, pos.z + (fz or 0) * step)
+    end)
+    if not moved then
+        print('[MgrFishUnit] 海象追击位移失败', 'fish=' .. tostring(fish.Id), tostring(err))
+        return
+    end
+end
+
+-- #142 虎鲸四招并集、互斥不丢（单 Move 权威；鲸跃 > 虎啸 > 甩尾 > 爪）：
+-- 爪击（claw）：进身（咬距内头部区）触发，ClawDamage / ClawCooldownSec=2 秒；
+-- 虎啸（roar）：RoarSec=10 秒远程虎头炮，RoarDamage=30（未给伤的独立基础披露细化），
+--   结算取锁定目标的直线距离（不看头部区）；甩尾（tail）：TailSec=10 秒，对身后
+--   TailRadius 内全部玩家 TailDamage=160（面朝目标的反侧，绕后有效）；鲸跃（jump）：
+--   复用 StartJump / AdvanceJump（25 秒、随机 15 米外、10 米范围 240）。
+-- 每招起手即重置自己的下一拍，进行中的招式目标倒下 / 离线即取消，均不结算。
+function Mgr:UpdateOrcaCombat(fish, now, pos, params)
+    local body = fish.Carrier.Body
+    body.LinearVelocity = Vector3.New(0, 0, 0)
+    local dt = math.max(0, now - (fish.CombatStepAt or now))
+    fish.CombatStepAt = now
+    local move = fish.Move
+    if move then
+        if move.Name == 'jump' then
+            self:AdvanceJump(fish, now, pos, params)
+            return
+        end
+        if now < move.StrikeAt - 1e-9 then
+            -- 预警中目标倒下 / 离线：取消本招，不结算
+            local valid = self:IsTargetValid(move.Target, pos, params)
+            if not valid then self:EndMove(fish, 'cancel') end
+            return
+        end
+        if move.Name == 'claw' then
+            self:EndMove(fish, 'claw')
+            local valid, tp = self:IsTargetValid(move.Target, pos, params)
+            if valid and withinBite(pos, tp, params)
+                and Mgr.InHeadZone(pos, fish.Facing, tp, params) then
+                self:Hit(fish, move.Target, params.ClawDamage, 'claw')
+            end
+            return
+        end
+        if move.Name == 'roar' then
+            self:EndMove(fish, 'roar')
+            local valid, tp = self:IsTargetValid(move.Target, pos, params)
+            if valid and (tp.x - pos.x)^2 + (tp.z - pos.z)^2 <= params.RoarRange * params.RoarRange then
+                self:Hit(fish, move.Target, params.RoarDamage, 'roar')
+            end
+            return
+        end
+        if move.Name == 'tail' then
+            self:EndMove(fish, 'tail')
+            local facing = fish.Facing or { x = 0, z = 1 }
+            for _, player in ipairs(self:Players()) do
+                local valid, cp = self:IsTargetValid(player, pos, params)
+                if valid and (cp.x - pos.x)^2 + (cp.z - pos.z)^2 <= params.TailRadius * params.TailRadius then
+                    local dx, dz = cp.x - pos.x, cp.z - pos.z
+                    if dx * facing.x + dz * facing.z < 0 then
+                        self:Hit(fish, player, params.TailDamage, 'tail')
+                    end
+                end
+            end
+            return
+        end
+        return
+    end
+    -- 无招式：按优先级起新招；每招起手即重置自己的下一拍（互斥不丢）
+    if now >= (fish.JumpAt or math.huge) then
+        self:StartJump(fish, now, pos, params)
+        return
+    end
+    local target, tp = self:ChooseTarget(fish, pos, params)
+    if not target then return end
+    if now >= (fish.RoarAt or math.huge) then
+        fish.RoarAt = now + params.RoarSec
+        -- #142 双轴审查 P2：虎啸只按锁定目标的径向距离结算，预警发整圆（range=RoarRange）
+        -- 与真实危险区一致；前向 90° 扇形对目标身后 / 侧向的其他人欠警。
+        self:StartMove(fish, 'roar', pos, target, tp, now, params.RoarWindupSec, params.RoarRange, 'circle')
+        return
+    end
+    if now >= (fish.TailAt or math.huge) then
+        fish.TailAt = now + params.TailSec
+        -- #142 双轴审查 P2：甩尾真实伤害区是身后 TailRadius 半圆，前向 90° 扇形盖不住
+        -- 180° 半圆且方向性误导；整圆覆盖（前向超警属安全方向）。
+        self:StartMove(fish, 'tail', pos, target, tp, now, params.TailWindupSec, params.TailRadius, 'circle')
+        return
+    end
+    if now >= (fish.ClawAt or 0) and withinBite(pos, tp, params) then
+        fish.ClawAt = now + params.ClawCooldownSec
+        self:StartMove(fish, 'claw', pos, target, tp, now, params.ClawWindupSec, params.BiteRange)
+        return
+    end
+    if not withinBite(pos, tp, params) then
+        local fx, fz = flatDirection(tp.x - pos.x, tp.z - pos.z)
+        self:Face(fish, fx, fz, params)
+        local distance = math.sqrt((tp.x - pos.x)^2 + (tp.z - pos.z)^2)
+        local step = math.min(self:Speed(fish) * dt, math.max(0, distance - params.BiteRange))
+        local moved, err = pcall(function()
+            body.Position = Vector3.New(pos.x + (fx or 0) * step, pos.y, pos.z + (fz or 0) * step)
+        end)
+        if not moved then
+            print('[MgrFishUnit] 虎鲸追击位移失败', 'fish=' .. tostring(fish.Id), tostring(err))
+            return
+        end
+    end
+end
+
 -- 战斗只在首次放下后计时；逃跑时限优先于攻击和睡眠。
 function Mgr:UpdateCombat(fish, now)
     local body = fish.Carrier.Body
@@ -1169,6 +1388,12 @@ function Mgr:UpdateCombat(fish, now)
         elseif combat == 'shark' then
             -- #141 三头鲨：翻滚追击（接触伤害独立段）+ 扫头 + 周期高跃（15 米外、10 米范围）
             self:UpdateSharkCombat(fish, now, pos, chase)
+        elseif combat == 'walrus' then
+            -- #142 海象：甩头（25）+ 40 秒直线突击（20 米 / 120）
+            self:UpdateWalrusCombat(fish, now, pos, chase)
+        elseif combat == 'orca' then
+            -- #142 虎鲸：爪（30/2 秒）/ 虎啸（10 秒远程）/ 甩尾（10 秒 160）/ 鲸跃（25 秒）四招互斥
+            self:UpdateOrcaCombat(fish, now, pos, chase)
         else
             self:UpdateChase(fish, now, pos, chase)
         end

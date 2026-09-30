@@ -127,11 +127,11 @@ function TestShrimpPond:test_sausage_definition_and_shop_rows()
     lu.assertNotNil(goods)
     lu.assertEquals(goods.Price, 2)
     lu.assertEquals(goods.MinShopLevel, 2)
-    -- 摊位表：一区摊 1 级、虾池摊 2 级、蟹湖摊 3 级、树林岛摊 4 级
-    -- （等级语义：第 N 钓鱼区起售竿级 N，#84；蟹湖摊 #136 接入、树林岛摊 #141 接入）
+    -- 摊位表：一区摊 1 级、虾池摊 2 级、蟹湖摊 3 级、树林岛摊 4 级、沙滩岛摊 5 级
+    -- （等级语义：第 N 钓鱼区起售竿级 N，#84；蟹湖摊 #136、树林岛摊 #141、沙滩岛摊 #142 接入）
     local stands = {}
     for _, stand in ipairs(self.cfg.Shop.Stands) do stands[stand.AnchorName] = stand.Level end
-    lu.assertEquals(stands, { TGUnitShop = 1, TGUnitShopShrimp = 2, Z3_Shop = 3, Z4_Shop = 4 })
+    lu.assertEquals(stands, { TGUnitShop = 1, TGUnitShopShrimp = 2, Z3_Shop = 3, Z4_Shop = 4, Z5_Shop = 5 })
 end
 
 -- 虾池摊买香肠：扣 2 金、进 Bait 计数、不占道具栏格
