@@ -81,7 +81,12 @@ function TestZoneScene125:test_seven_zone_plan_keeps_unbuilt_entities_out_of_act
         end
         lu.assertTrue(fallback, zone.Name .. '缺无饵保底')
         if index >= 3 then
-            lu.assertNil(Cfg.Casting.Zones[zone.WaterId])
+            -- #136 蟹湖（第三区）水域已实测接入：其余未建区仍不得接入活跃抽鱼池
+            if index == 3 then
+                lu.assertNotNil(Cfg.Casting.Zones[zone.WaterId])
+            else
+                lu.assertNil(Cfg.Casting.Zones[zone.WaterId])
+            end
             lu.assertNotNil(water({ x = scene.SafePoint.x, y = scene.Waters[1].SurfaceY,
                 z = scene.Land.MaxZ - 1 + Cfg.Casting.Distance }), zone.Name .. '岸边必须可抛入水')
         end

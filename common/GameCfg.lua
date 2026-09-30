@@ -362,6 +362,8 @@ GameCfg.Shop = {
     Stands = {
         { AnchorName = 'TGUnitShop', Level = 1 },
         { AnchorName = 'TGUnitShopShrimp', Level = 2 },
+        -- #136 蟹湖摊位（3 级）：上架鲱鱼罐头 / 捕蟹竿 / 霰弹枪与 3 级升级行；锚点已盘点在场
+        { AnchorName = 'Z3_Shop', Level = 3 },
     },
     BubblePreset = 'map://preset/uf5ad80a4c6a40d59b7f6e0eb99a58c0',
     BubbleHeight = 7,
@@ -540,15 +542,32 @@ GameCfg.Casting = {
             { Id = 'rareMilkLobster', Bait = 'sausage', RodLevel = 2, DrawWeight = 4 },
             { Id = 'fish15Elite', Bait = 'sausage', RodLevel = 2, DrawWeight = 10 },
         },
+        -- 蟹湖（#136，钓鱼表 R30–R42）：蟛蜞任意饵保底；寄居蟹起用鲱鱼罐头；梭子蟹起竿级 3（捕蟹竿）。
+        -- 极品权重 2/2/2/8/6/4；帝王蟹入池权重 10。蟹老板由首领饵 item122 必出（BossBait），不入池。
+        ['crabLake.water'] = {
+            { Id = 'item33', Bait = 0, RodLevel = 1, DrawWeight = 8 },
+            { Id = 'item34', Bait = 'item115', RodLevel = 1, DrawWeight = 8 },
+            { Id = 'item35', Bait = 'item115', RodLevel = 1, DrawWeight = 8 },
+            { Id = 'item36', Bait = 'item115', RodLevel = 3, DrawWeight = 32 },
+            { Id = 'item37', Bait = 'item115', RodLevel = 3, DrawWeight = 24 },
+            { Id = 'item38', Bait = 'item115', RodLevel = 3, DrawWeight = 16 },
+            { Id = 'item39', Bait = 0, RodLevel = 1, DrawWeight = 2 },
+            { Id = 'item40', Bait = 'item115', RodLevel = 1, DrawWeight = 2 },
+            { Id = 'item41', Bait = 'item115', RodLevel = 1, DrawWeight = 2 },
+            { Id = 'item42', Bait = 'item115', RodLevel = 3, DrawWeight = 8 },
+            { Id = 'item43', Bait = 'item115', RodLevel = 3, DrawWeight = 6 },
+            { Id = 'item44', Bait = 'item115', RodLevel = 3, DrawWeight = 4 },
+            { Id = 'fish23Elite', Bait = 'item115', RodLevel = 3, DrawWeight = 10 },
+        },
     },
     -- 首领饵（#88，GameSpec §12 已确认）：首领饵物品 id → 必出首领鱼种。挂首领饵在任意水区抛竿
     -- 必出对应首领，无视抽签权重、鱼饵-鱼种匹配与竿级；首领饵占道具栏/背包格、不进 Bait 计数，
     -- 抛竿一刻从道具栏（优先）或背包扣 1 只，钓出首领后消耗，脱钩 / 逃脱不返还。
-    BossBait = { duck = 'alligatorGar', item121 = 'fish16Boss' },
+    BossBait = { duck = 'alligatorGar', item121 = 'fish16Boss', item122 = 'fish24Boss' },
 }
 
 -- 源表抽鱼行按钓鱼区分组；水域/钓鱼区映射见下文 Water.ZoneIdByWater。
--- BossBait 启用鱼塘鸭子与虾池夜明珠；其余首领饵待后续区域内容可运行时再启用。
+-- BossBait 启用鱼塘鸭子、虾池夜明珠与蟹湖绿色钞票；其余首领饵待后续区域内容可运行时再启用。
 local sourceCastRows = {}
 local bossBaitCatalog = {}
 for _, species in pairs(GameCfg.Fish) do
@@ -591,6 +610,20 @@ GameCfg.FishCombat = {
     gar = { BiteRange = 2.5, BiteCooldownSec = 1.5, HeadHalfAngleDeg = 90, ModelYawOffset = 0,
         Warning = { EffectPreset = 'official://preset/7190', EffectLength = 10, GroundOffset = 0.1,
             EffectYawOffset = 0, GraceSec = 0.5 } },
+    -- #136 帝王蟹（GameSpec §12 正文与钓鱼表 R42）：每 5 秒对前方蟹钳乱刺，左右各 3 下、
+    -- 每下间隔 0.2 秒、每下 15 伤害；每活动 30 秒眩晕 5 秒。乱刺一轮总时长
+    -- JabStepSec × JabsPerSide × 2 = 1.2 秒；同一刺段只结算一次（不按帧重复）。
+    kingCrab = { BiteRange = 2.5, HeadHalfAngleDeg = 90,
+        JabIntervalSec = 5, JabsPerSide = 3, JabStepSec = 0.2, JabDamage = 15,
+        ActiveSec = 30, StunSec = 5 },
+    -- #136 蟹老板（GameSpec §12 正文与钓鱼表 R43）：正面蟹钳双击、每击 20、冷却 4 秒；
+    -- 每 30 秒冲撞一次（冲向目标、命中 20、冲撞窗口 1.2 秒）；每 25 秒旋转 5 秒、
+    -- 每秒 360 度、碰触伤害 30（同一秒槽同一玩家只结算一次）。三招互斥：旋转与冲撞
+    -- 期间不双击；逃跑 / 移除打断进行中的招式。
+    crabBoss = { BiteRange = 2.5, HeadHalfAngleDeg = 90,
+        PinchDamage = 20, PinchCooldownSec = 4, PinchStrikes = 2, PinchStepSec = 0.2,
+        ChargeSec = 30, ChargeDamage = 20, ChargeWindowSec = 1.2, ChargeRange = 2.5,
+        SpinSec = 25, SpinDurationSec = 5, SpinDamage = 30, SpinRadius = 3 },
 }
 
 -- 技能包（ability_system）在本图的接入配置。
@@ -813,6 +846,10 @@ GameCfg.Water = {
         -- 东北角水区，抛竿落点命中后按 Casting.Zones.ShrimpPool 选鱼。SurfaceY 取水面单位
         -- （深水预设，pos.y=4.2，顶面约 5.2~5.35 批次漂移；取高点再加鱼获落地余量，与既有水区同口径）
         { Id = "ShrimpPool", Center = { x = 105, y = 4.2, z = 106 }, HalfXZ = 3.0, SurfaceY = 5.6 },
+        -- 蟹湖水面（#136）：第三区北侧水区，场景合同 Z3_Water 实测中心 (260,2,144)、
+        -- 80×24 米矩形（HalfX=40/HalfZ=12，MathWaterJudge 长方形口径）。SurfaceY 沿用场景合同
+        -- 值 3（水面单位 pos.y=2、顶面约 3）；与其他水区相距数百米，无重叠。
+        { Id = "crabLake.water", Center = { x = 260, y = 2, z = 144 }, HalfX = 40, HalfZ = 12, SurfaceY = 3 },
     },
 }
 
@@ -852,9 +889,12 @@ addWaterStrip('PondNotch', -24.25, -4.982, 16.25, 35.268)
 -- 仅列已在编辑器配置过并可实际抛竿的水域；新五区水域留给 #125 场景实施。
 GameCfg.Water.ZoneIdByWater = {
     WaterCircle1 = 'fishPond', WaterCircle2 = 'fishPond', ShrimpPool = 'shrimpPond',
+    ['crabLake.water'] = 'crabLake',
 }
 for _, zone in ipairs(GameCfg.Water.Zones) do
-    GameCfg.Water.ZoneIdByWater[zone.Id] = GameCfg.Water.ZoneIdByWater[zone.Id] or 'fishPond'
+    if not GameCfg.Water.ZoneIdByWater[zone.Id] then
+        GameCfg.Water.ZoneIdByWater[zone.Id] = zone.ZoneId or 'fishPond'
+    end
     zone.ZoneId = GameCfg.Water.ZoneIdByWater[zone.Id]
 end
 GameCfg.Water.ContentWaterIds = {}

@@ -127,10 +127,10 @@ function TestShrimpPond:test_sausage_definition_and_shop_rows()
     lu.assertNotNil(goods)
     lu.assertEquals(goods.Price, 2)
     lu.assertEquals(goods.MinShopLevel, 2)
-    -- 摊位表：一区摊 1 级、虾池摊 2 级（等级语义：第 N 钓鱼区起售竿级 N，#84）
+    -- 摊位表：一区摊 1 级、虾池摊 2 级、蟹湖摊 3 级（等级语义：第 N 钓鱼区起售竿级 N，#84；蟹湖摊 #136 接入）
     local stands = {}
     for _, stand in ipairs(self.cfg.Shop.Stands) do stands[stand.AnchorName] = stand.Level end
-    lu.assertEquals(stands, { TGUnitShop = 1, TGUnitShopShrimp = 2 })
+    lu.assertEquals(stands, { TGUnitShop = 1, TGUnitShopShrimp = 2, Z3_Shop = 3 })
 end
 
 -- 虾池摊买香肠：扣 2 金、进 Bait 计数、不占道具栏格
@@ -193,7 +193,10 @@ function TestShrimpPond:test_shrimp_pool_water_zone_registered_and_disjoint()
         if zone.Id ~= 'ShrimpPool' then
             local dx = math.abs(zone.Center.x - pool.Center.x)
             local dz = math.abs(zone.Center.z - pool.Center.z)
-            lu.assertTrue(dx > zone.HalfXZ + pool.HalfXZ or dz > zone.HalfXZ + pool.HalfXZ,
+            -- #136 起蟹湖水区是长方形（HalfX/HalfZ），与正方形 HalfXZ 同口径比较
+            local zx = zone.HalfXZ or zone.HalfX
+            local zz = zone.HalfXZ or zone.HalfZ
+            lu.assertTrue(dx > zx + pool.HalfXZ or dz > zz + pool.HalfXZ,
                 'ShrimpPool 与 ' .. zone.Id .. ' 水平重叠')
         end
     end
