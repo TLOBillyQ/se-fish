@@ -72,6 +72,7 @@ end
 
 local function openWorld(world)
     world.saved = { game = rawget(_G, 'game'), REUtil = rawget(_G, 'REUtil'), Vector3 = rawget(_G, 'Vector3'),
+        Enums = rawget(_G, 'Enums'), Quaternion = rawget(_G, 'Quaternion'),
         wingAsset = GameCfg.Ability.SpecialItem.Wings.AppearanceAssetId,
         skinAsset = GameCfg.Ability.SpecialItem.Godzilla.AppearanceAssetId }
     -- 外观资源待编辑器预设（[未查证]）；验收用占位 id 驱动绑定 / 换肤接缝
@@ -80,6 +81,8 @@ local function openWorld(world)
     local env = { now = 1000, players = {}, datas = {}, events = {} }
     world.env, world.players = env, {}
     _G.Vector3 = { New = function(x, y, z) return { x = x, y = y, z = z } end }
+    _G.Enums = { SkeletalSocketType = { Spine = 'socket_body' } }
+    _G.Quaternion = { Identity = function() return { x = 0, y = 0, z = 0, w = 1 } end }
     _G.game = { GetService = function(_, name)
         if name == 'World' then return { GetServerTime = function() return env.now end } end
         if name == 'Players' then return { GetPlayers = function() return env.players end } end
@@ -106,6 +109,7 @@ local function closeWorld(world)
     GameCfg.Ability.SpecialItem.Wings.AppearanceAssetId = world.saved.wingAsset
     GameCfg.Ability.SpecialItem.Godzilla.AppearanceAssetId = world.saved.skinAsset
     _G.game, _G.REUtil, _G.Vector3 = world.saved.game, world.saved.REUtil, world.saved.Vector3
+    _G.Enums, _G.Quaternion = world.saved.Enums, world.saved.Quaternion
 end
 
 local function fire(world, id, payload)

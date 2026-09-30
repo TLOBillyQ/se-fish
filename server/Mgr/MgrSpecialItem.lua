@@ -122,8 +122,9 @@ function Mgr:Apply(player, state, effect)
         -- 外观件资源待编辑器预设（[未查证]）；空值只开飞行能力、不改外观
         if appearance and wings.AppearanceAssetId and appearance.BindAppearance then
             local ok, bindId = pcall(appearance.BindAppearance, appearance,
-                wings.AppearanceAssetId, wings.Socket,
-                Vector3.New(wings.Offset.x, wings.Offset.y, wings.Offset.z))
+                wings.AppearanceAssetId, Enums.SkeletalSocketType[wings.Socket],
+                Vector3.New(wings.Offset.x, wings.Offset.y, wings.Offset.z),
+                Quaternion.Identity(), Vector3.New(1, 1, 1))
             if ok then state.wingBindId = bindId end
         end
         -- 飞行接管只在空中（长按升 / 松开缓降）由 UpdateFlight 关重力；地面待机保留重力，

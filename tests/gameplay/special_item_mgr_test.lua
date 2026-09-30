@@ -42,8 +42,8 @@ local function newCharacter(x, y, z, fx, fz)
         Calls = {},
     }
     ch.EggyAppearance = {
-        BindAppearance = function(_, appearanceId, socket)
-            ch.Calls[#ch.Calls + 1] = { 'bind', appearanceId, socket }
+        BindAppearance = function(_, appearanceId, socket, offset, rot, scale)
+            ch.Calls[#ch.Calls + 1] = { 'bind', appearanceId, socket, offset, rot, scale }
             return 77
         end,
         UnbindAppearance = function(_, bindId)
@@ -83,12 +83,14 @@ TestSpecialItemMgr = {}
 function TestSpecialItemMgr:setUp()
     local env = self
     self.saved = { Vector3 = rawget(_G, 'Vector3'), game = rawget(_G, 'game'), REUtil = rawget(_G, 'REUtil'),
-        mgr = package.loaded['server.Mgr.MgrSpecialItem'] }
+        mgr = package.loaded['server.Mgr.MgrSpecialItem'], Enums = rawget(_G, 'Enums'), Quaternion = rawget(_G, 'Quaternion') }
     self.now = 1000
     self.players = {}
     self.events = {}
     self.pushed = {}
     _G.Vector3 = { New = vec }
+    _G.Enums = { SkeletalSocketType = { Spine = 'socket_body' } }
+    _G.Quaternion = { Identity = function() return { x = 0, y = 0, z = 0, w = 1 } end }
     _G.game = { GetService = function(_, name)
         if name == 'World' then return { GetServerTime = function() return env.now end } end
         if name == 'Players' then return { GetPlayers = function() return env.players end } end
@@ -144,6 +146,7 @@ end
 function TestSpecialItemMgr:tearDown()
     GameCfg.Ability.SpecialItem.Wings.AppearanceAssetId = self.oldWingAsset
     GameCfg.Ability.SpecialItem.Godzilla.AppearanceAssetId = self.oldSkinAsset
+    _G.Enums, _G.Quaternion = self.saved.Enums, self.saved.Quaternion
     _G.Vector3 = self.saved.Vector3
     _G.game = self.saved.game
     _G.REUtil = self.saved.REUtil
@@ -478,4 +481,22 @@ function TestSpecialItemMgr:test_userdata_player_allowed_only_when_registered_ob
     debug.setmetatable(proxy, mt)
     proxy:close()
     assert(ok, err)
+end
+
+-- 失败方式 17：非空外观资源时挂点不是枚举值，或缺 rot / scale 必需参数
+function TestSpecialItemMgr:test_wing_binding_matches_engine_signature()
+    local p = self:addPlayer(1, 6, 5.01, 40, 'item169')
+    self:step(1, 0.05)
+    local bind
+    for _, call in ipairs(p.Character.Calls) do if call[1] == 'bind' then bind = call end end
+    lu.assertNotNil(bind)
+    lu.assertEquals(bind[3], Enums.SkeletalSocketType.Spine)
+    lu.assertEquals(bind[4], vec(0, 0, 0))
+    lu.assertEquals(bind[5], { x = 0, y = 0, z = 0, w = 1 })
+    lu.assertEquals(bind[6], vec(1, 1, 1))
+    self:selectItem(p, nil)
+    self:step(1, 0.05)
+    local unbind
+    for _, call in ipairs(p.Character.Calls) do if call[1] == 'unbind' then unbind = call end end
+    lu.assertEquals(unbind[2], 77)
 end

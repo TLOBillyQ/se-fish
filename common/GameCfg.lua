@@ -920,7 +920,7 @@ GameCfg.Ability = {
             -- 背负翅膀的外观件：编辑器资源预设待补（官方资源库查询 / AIGC，[未查证]）；
             -- 空值时只开飞行能力、不改外观。
             AppearanceAssetId = nil,
-            Socket = 'Spine',    -- 背负挂点名（暂取，真机核对）
+            Socket = 'Spine',    -- Enums.SkeletalSocketType 的键，调用时解析为 socket_body（本地/在线 API 已核对）
             Offset = { x = 0, y = 0, z = 0 },
         },
         Godzilla = {
