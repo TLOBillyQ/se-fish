@@ -273,3 +273,13 @@ function TestReviveCallback:test_state_marks_platform_pending()
     local resumed = self.messages['SurvivalState']
     lu.assertNil(resumed[#resumed].value.platformPending)
 end
+
+-- #139整合：平台满血复活必须采用玩家成长后的上限，不能退回固定300。
+function TestReviveCallback:test_platform_revive_uses_grown_health_cap()
+    self:enterDead()
+    self.v.MaxHealthProvider = function() return 900 end
+    self:ctrl().MaxHealth = 900
+    lu.assertTrue(self.s:PlatformRevive(self.player, { mode = 'ad', seq = 1 }))
+    self.platformFlow.onResult('success')
+    lu.assertEquals(self:ctrl().Health, 900)
+end

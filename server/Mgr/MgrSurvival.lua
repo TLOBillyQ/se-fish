@@ -392,7 +392,7 @@ function Mgr:FullRevive(state, mode)
     local vitalState = self.Vitals and self.Vitals:GetState(state.player)
     if not vitalState then return false end
     local minHunger = math.floor(GameCfg.Vitals.MaxHunger * cfg().ReviveHungerPercent / 100)
-    if not self.Vitals:ApplyRevive(vitalState, GameCfg.Vitals.MaxHealth, minHunger) then return false end
+    if not self.Vitals:ApplyRevive(vitalState, self.Vitals:MaxHealthOf(state.player), minHunger) then return false end
     state.phase = 'alive'
     state.deadAt = nil
     state.engineDeath = nil
