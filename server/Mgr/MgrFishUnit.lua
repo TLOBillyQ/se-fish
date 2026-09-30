@@ -328,6 +328,7 @@ function Mgr:Release(fish, reason)
                 local params = GameCfg.FishCombat[species.Combat]
                 if params.ActiveSec then fish.ActiveUntil = now + params.ActiveSec end
                 fish.JabAt = -1
+                fish.PinchAt = -1
                 fish.SpecialAt = now + (params.SpinSec or 0)
                 fish.ChargeAt = now + (params.ChargeSec or 0)
             end
@@ -805,6 +806,92 @@ function Mgr:UpdateKingCrabCombat(fish, now, pos, params)
         params.JabStepSec * params.JabsPerSide * 2, params.BiteRange)
 end
 
+-- #136 蟹老板：三招互斥——双击（pinch）、冲撞（charge）、旋转（spin）。
+-- 节拍：SpecialAt（旋转，每 25 秒）、ChargeAt（冲撞，每 30 秒）、PinchAt（双击，冷却 4 秒）。
+-- 旋转 / 冲撞优先级高于双击；旋转优先级高于冲撞（旋转持续期跨过冲撞节拍时冲撞被压住）。
+function Mgr:UpdateCrabBossCombat(fish, now, pos, params)
+    local body = fish.Carrier.Body
+    body.LinearVelocity = Vector3.New(0, 0, 0)
+    local move = fish.Move
+    if move then
+        if move.Name == 'pinch' then
+            -- local elapsed = now - move.At; pinch strike k 在 At + k × step 起结算
+            local elapsed = now - move.At
+            local strike = elapsed <= 0 and 0 or math.min(params.PinchStrikes,
+                math.floor(elapsed / params.PinchStepSec + 1e-9))
+            if strike > (move.LastStrike or 0) and strike >= 1 then
+                move.LastStrike = strike
+                local target, tp = self:IsTargetValid(move.Target, pos, params)
+                if target and withinBite(pos, tp, params)
+                    and Mgr.InHeadZone(pos, fish.Facing, tp, params) then
+                    self:Hit(fish, move.Target, params.PinchDamage, 'pinch')
+                end
+            end
+            if now < move.StrikeAt - 1e-9 then return end
+            self:EndMove(fish, 'pinch-end')
+            return
+        elseif move.Name == 'charge' then
+            -- 冲撞窗口内命中一次（窗口内只结算一次，不按帧重复）
+            if not move.HitDone then
+                local target, tp = self:ChooseTarget(fish, pos, params)
+                if target and tp and (tp.x - pos.x)^2 + (tp.z - pos.z)^2 <= params.ChargeRange^2 then
+                    move.HitDone = true
+                    self:Hit(fish, target, params.ChargeDamage, 'charge')
+                end
+            end
+            if now < move.StrikeAt - 1e-9 then return end
+            self:EndMove(fish, 'charge-end')
+            return
+        elseif move.Name == 'spin' then
+            -- 每秒槽一次碰触：同一秒槽同一玩家只结算一次（秒槽记在 move 上）
+            local tick = math.min(params.SpinDurationSec,
+                math.max(0, math.floor(now - move.At)))
+            if tick > (move.LastTick or 0) then
+                move.LastTick = tick
+                for _, player in ipairs(self:Players()) do
+                    local valid, cp = self:IsTargetValid(player, move.Center)
+                    if valid and (cp.x - pos.x)^2 + (cp.z - pos.z)^2 <= params.SpinRadius^2 then
+                        self:Hit(fish, player, params.SpinDamage, 'spin')
+                    end
+                end
+            end
+            if now < move.StrikeAt - 1e-9 then return end
+            self:EndMove(fish, 'spin-end')
+            return
+        end
+        return
+    end
+    -- 无招式时按节拍起新招：旋转 > 冲撞 > 双击
+    local target, tp = self:ChooseTarget(fish, pos, params)
+    if not target then return end
+    if now >= (fish.SpecialAt or math.huge) then
+        fish.SpecialAt = now + params.SpinSec
+        self:StartMove(fish, 'spin', pos, target, tp, now, params.SpinDurationSec, params.SpinRadius)
+        return
+    end
+    if now >= (fish.ChargeAt or math.huge) then
+        fish.ChargeAt = now + params.ChargeSec
+        self:StartMove(fish, 'charge', pos, target, tp, now, params.ChargeWindowSec, params.ChargeRange)
+        return
+    end
+    if now >= (fish.PinchAt or 0) and withinBite(pos, tp, params) then
+        fish.PinchAt = now + params.PinchCooldownSec
+        self:StartMove(fish, 'pinch', pos, target, tp, now,
+            params.PinchStepSec * params.PinchStrikes, params.BiteRange)
+        return
+    end
+    -- 追击
+    if not withinBite(pos, tp, params) then
+        local fx, fz = flatDirection(tp.x - pos.x, tp.z - pos.z)
+        self:Face(fish, fx, fz, params)
+        local distance = math.sqrt((tp.x - pos.x)^2 + (tp.z - pos.z)^2)
+        local step = math.min(self:Speed(fish) * 0.1, math.max(0, distance - params.BiteRange))
+        local moved, err = pcall(function()
+            body.Position = Vector3.New(pos.x + (fx or 0) * step, pos.y, pos.z + (fz or 0) * step)
+        end)
+        if not moved then print('[MgrFishUnit] 蟹老板追击位移失败', fish.Id, tostring(err)) end
+    end
+end
 -- 战斗只在首次放下后计时；逃跑时限优先于攻击和睡眠。
 function Mgr:UpdateCombat(fish, now)
     local body = fish.Carrier.Body
@@ -872,6 +959,9 @@ function Mgr:UpdateCombat(fish, now)
             else
                 self:UpdateKingCrabCombat(fish, now, pos, chase)
             end
+        elseif combat == 'crabBoss' then
+            -- #136 蟹老板：双击 / 冲撞 / 旋转三招互斥
+            self:UpdateCrabBossCombat(fish, now, pos, chase)
         else
             self:UpdateChase(fish, now, pos, chase)
         end
