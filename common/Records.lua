@@ -9,6 +9,13 @@ local Records = {}
 
 local function cfg() return GameCfg.Records end
 
+-- 平台 UserId 是不透明字符串，原样保存，不转数字、不裁剪；历史正整数纪录仍可读写。
+function Records.ValidUserId(userId)
+    if type(userId) == 'string' then return userId ~= '' end
+    return type(userId) == 'number' and userId < math.huge
+        and userId >= 1 and userId == math.floor(userId)
+end
+
 -- 重量 → 放大整数。非法（非有限数/非正/超上限）返回 nil 与原因，绝不四舍五入成假值。
 -- 上限用配置常量挡，而不是靠平台报错：OrderedDataStore 的整数范围在本轮未实测（[未查证]）。
 function Records.Scale(weight)
@@ -30,7 +37,7 @@ end
 function Records.Entry(scaled, userId, name)
     if type(scaled) ~= 'number' or scaled ~= math.floor(scaled) or scaled < 1
         or scaled > cfg().MaxScaled then return nil, 'invalid' end
-    if type(userId) ~= 'number' or userId ~= math.floor(userId) or userId < 1 then return nil, 'invalid' end
+    if not Records.ValidUserId(userId) then return nil, 'invalid' end
     local display = type(name) == 'string' and name ~= '' and #name <= cfg().MaxNameLength and name or nil
     return { w = scaled, u = userId, n = display }
 end
@@ -44,21 +51,22 @@ function Records.Valid(entry)
     if type(scaled) ~= 'number' or scaled ~= math.floor(scaled) or scaled < 1
         or scaled > cfg().MaxScaled then return nil end
     local userId = entry.u
-    if type(userId) ~= 'number' or userId ~= math.floor(userId) or userId < 1 then return nil end
+    if not Records.ValidUserId(userId) then return nil end
     local name = entry.n
     if name ~= nil and (type(name) ~= 'string' or #name > cfg().MaxNameLength) then name = nil end
     return { w = scaled, u = userId, n = name }
 end
 
--- 决胜：重量大者胜；同重量按 UserID 升序（小者保持），同 UserID 不重复写。
--- 规则只依赖两个候选自身，与到达顺序无关——任意顺序应用两个同重量候选，结果都是 UserID 最小者。
--- 这既是「同值稳定决胜」的可测定义，也让跨服竞态与延迟重试下的结果确定（不是「先到者保持」）。
+-- 决胜：重量大者胜；同重量时数字 ID 按数值升序，字符串按字节序，历史数字排在字符串前。
+-- 不把数字串转成数字，保留前导零与长 ID；数字与字符串分组比较，不混淆身份或跨类型报错。
+-- 规则只依赖候选自身，与到达顺序无关；同类型同 UserId 不重复写。
 function Records.Wins(candidate, current)
     local next_ = Records.Valid(candidate)
     if not next_ then return false end
     local held = Records.Valid(current)
     if not held then return true end
     if next_.w ~= held.w then return next_.w > held.w end
+    if type(next_.u) ~= type(held.u) then return type(next_.u) == 'number' end
     return next_.u < held.u
 end
 

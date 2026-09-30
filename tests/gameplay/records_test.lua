@@ -5,6 +5,8 @@
 --   4. 盲盒/抽奖解锁一条鱼也提交纪录；
 --   5. 平台失败/限流时把「读不到」当成「没有纪录」，或显示上一次的错值冒充当前值；
 --   6. 延迟重试把过期候选盖到更新的纪录上；写频随上岸次数线性增长。
+--   7. 平台字符串身份被拒收，读回丢失类型或混合历史数字身份时决胜报错；
+--   8. 不同字符串玩家的查询序号/存档串扰，客户端伪造身份或重量污染权威纪录。
 -- seam：common/Records 纯逻辑 + MgrRecords 公共接口（注入内存假适配器替换平台边界）+ 客户端数据通道。
 local lu = require('luaunit')
 local GameCfg = require('common.GameCfg')
@@ -66,7 +68,7 @@ function TestRecordsCore:test_entry_keeps_weight_and_holder_together()
     lu.assertEquals(entry, { w = 1234, u = 42, n = '张三' })
     lu.assertNil(Records.Valid({ w = 1234 }))
     lu.assertNil(Records.Valid({ u = 42, n = '张三' }))
-    lu.assertNil(Records.Valid({ w = 1234, u = '42' }))
+    lu.assertEquals(Records.Valid({ w = 1234, u = '42' }), { w = 1234, u = '42' })
     lu.assertNil(Records.Valid('1234'))
     -- 名字超长只降级名字（退兜底），不整条丢掉重量与身份
     local longName = Records.Valid({ w = 1234, u = 42, n = string.rep('x', 200) })
@@ -75,6 +77,31 @@ function TestRecordsCore:test_entry_keeps_weight_and_holder_together()
     lu.assertEquals(nameless.n, nil)
     lu.assertEquals(Records.Holder(nameless), '玩家42', '显示名缺失退成玩家ID，不拿 ID 冒充名字')
     lu.assertEquals(Records.Holder(Records.Entry(1234, 42, '张三')), '张三')
+end
+
+function TestRecordsCore:test_platform_string_identity_round_trips_without_coercion()
+    for _, id in ipairs({ 'aU5A95JB9rit0DUl', '00042', '9007199254740993', 'arxYUgj/dKsUU0QL', '42' }) do
+        local entry = Records.Entry(1234, id, nil)
+        lu.assertEquals(entry, { w = 1234, u = id })
+        lu.assertEquals(Records.Valid(entry), entry)
+        lu.assertEquals(Records.State(entry).userId, id)
+        lu.assertEquals(Records.Holder(entry), '玩家' .. id)
+    end
+    lu.assertEquals(Records.Valid({ w = 1234, u = 42 }), { w = 1234, u = 42 }, '历史数字保持者原样兼容')
+    for _, id in ipairs({ '', false, {}, 0, -1, 1.5, 0 / 0, math.huge, -math.huge }) do
+        lu.assertNil(Records.Entry(1234, id))
+        lu.assertNil(Records.Valid({ w = 1234, u = id }))
+    end
+end
+
+function TestRecordsCore:test_string_and_legacy_identity_tiebreak_has_a_stable_total_order()
+    -- 历史数字仍按数值升序；数字排在字符串前；字符串按原始字节序，不转换数字串。
+    local ids = { 2, 10, '002', '10', '2', 'aU5A95JB9rit0DUl', 'bU5A95JB9rit0DUl' }
+    for i, left in ipairs(ids) do
+        for j, right in ipairs(ids) do
+            lu.assertEquals(Records.Wins(Records.Entry(300, left), Records.Entry(300, right)), i < j)
+        end
+    end
 end
 
 -- 文案：有纪录/暂无/暂不可用三态分开，不可用不等于没有纪录
@@ -457,6 +484,42 @@ function TestRecordsIntegration:window()
     self.clock = self.clock + GameCfg.Records.FlushIntervalSec
     self.rec:Update()
     self:drain()
+end
+
+function TestRecordsIntegration:test_string_players_persist_rejoin_and_query_without_identity_leaks()
+    local id, otherId = 'aU5A95JB9rit0DUl', 'bU5A95JB9rit0DUl'
+    local player, data = self:join(id, '甲')
+    local other, otherData = self:join(otherId, '乙')
+    lu.assertNotEquals(self.save:Key(id), self.save:Key(otherId))
+    lu.assertTrue(self.comp:RecordLanding(player, { fishId = 'goldfish', mult = 2, reelSerial = 1 }))
+    self:drain()
+    self:window()
+    lu.assertEquals(self.records.goldfish, { w = 20, u = id, n = '甲' })
+    lu.assertEquals(data:PersonalBestScaled('goldfish'), 20)
+    lu.assertNil(otherData:PersonalBestScaled('goldfish'))
+    local snapshot = self.values[self.save:Key(id)]
+    lu.assertEquals(snapshot.extra.collection.weights.goldfish, 0.2)
+    lu.assertEquals(snapshot.meta.operations[#snapshot.meta.operations].id:sub(1, #id + 1), id .. ':')
+    self.comp:OnPlayerRemoving(player)
+    self.rec:OnPlayerRemoving(player)
+    player, data = self:join(id, '甲')
+    lu.assertEquals(data:PersonalBestScaled('goldfish'), 20)
+    self.rec.Cache = {}
+    self.rec:Handle(player, { fishId = 'goldfish', seq = 1, userId = otherId, weight = 99999 })
+    self:drain()
+    self.rec:Handle(other, { fishId = 'goldfish', seq = 1, userId = id })
+    self:drain()
+    lu.assertEquals(#self.sent, 2, '同序号的两个字符串玩家分别收到回包')
+    lu.assertEquals(self.sent[1].player, player)
+    lu.assertEquals(self.sent[2].player, other)
+    lu.assertEquals(self.sent[1].payload.userId, id)
+    lu.assertEquals(self.sent[1].payload.scaled, 20, '载荷里伪造的重量与身份不参与纪录')
+    self.rec:Handle(player, { fishId = 'goldfish', seq = 1 })
+    self:drain()
+    lu.assertEquals(#self.sent, 2, '重放只拦当前玩家')
+    self.rec:OnPlayerRemoving(player)
+    lu.assertNil(self.rec.LastSeq[id])
+    lu.assertEquals(self.rec.LastSeq[otherId], 1)
 end
 
 -- 只有刷新了个人最大重量的上岸才提交，且窗口合并后才真的写

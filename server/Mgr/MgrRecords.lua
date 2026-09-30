@@ -36,7 +36,7 @@ end
 
 local function validPlayerId(player)
     local userId = player and player.UserId
-    return type(userId) == 'number' and userId == math.floor(userId) and userId >= 1
+    return Records.ValidUserId(userId)
 end
 
 local function reject(self, player, fishId, detail, reason)
