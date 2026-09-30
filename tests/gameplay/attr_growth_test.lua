@@ -20,9 +20,11 @@ function TestAttrGrowth:test_speed_factor_steps_and_caps()
     lu.assertAlmostEquals(AttrGrowth.SpeedFactor(20), 3.0, 1e-9)
     lu.assertAlmostEquals(AttrGrowth.SpeedFactor(21), 3.0, 1e-9, '第 21 个不得超过 3 倍')
     lu.assertAlmostEquals(AttrGrowth.SpeedFactor(999), 3.0, 1e-9)
-    for _, bad in ipairs({ -1, 1.5, 0 / 0, math.huge, 'x', nil }) do
+    for _, bad in ipairs({ -1, 0 / 0, math.huge, 'x', nil }) do
         lu.assertAlmostEquals(AttrGrowth.SpeedFactor(bad), 1.0, 1e-9, tostring(bad))
     end
+    -- 小数按 BodyScale 同口径取整：1.5 个按 1 个算
+    lu.assertAlmostEquals(AttrGrowth.SpeedFactor(1.5), 1.1, 1e-9)
 end
 
 -- 有效移速单一计算：基础 × 加速成长 × 虚弱 × 霜冻；麻痹为 0
