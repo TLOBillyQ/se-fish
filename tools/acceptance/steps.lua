@@ -2,7 +2,8 @@
 -- acceptance4lua 按原始步骤文本查 handler；具体值在运行期才解析。
 local SOURCES = { 'tools.acceptance.fish_damage_steps', 'tools.acceptance.ability_proto_steps',
   'tools.acceptance.pond_loop_steps', 'tools.acceptance.lottery_steps', 'tools.acceptance.grill_steps',
-  'tools.acceptance.prize_growth_steps', 'tools.acceptance.special_item_steps', 'tools.acceptance.platform_steps' }
+  'tools.acceptance.prize_growth_steps', 'tools.acceptance.special_item_steps', 'tools.acceptance.platform_steps',
+  'tools.acceptance.forest_island_steps' }
 local M = {}
 
 local PATTERNS = {}

@@ -348,6 +348,11 @@ function Mgr:Release(fish, reason)
                 -- #136 蟹湖：帝王蟹活动计时；蟹老板冲撞 / 旋转 / 双击各自的节拍。
                 -- 与眩晕醒来共用 resetCrabRhythm，字段清单只有一处。
                 resetCrabRhythm(fish, now, GameCfg.FishCombat[species.Combat])
+            elseif species.Combat == 'swordfish' or species.Combat == 'shark' then
+                -- #141 树林岛精英 / 首领：准备跳跃节拍；RollSlot 供三头鲨翻滚接触去重。
+                local params = GameCfg.FishCombat[species.Combat]
+                fish.JumpAt = now + params.JumpIntervalSec
+                fish.RollSlot = -1
             end
         elseif self.Ability then
             self.Ability:EquipFish(fish)
@@ -658,7 +663,7 @@ function Mgr:StartMove(fish, name, pos, target, tpos, now, duration, range)
         Center = { x = pos.x, y = pos.y, z = pos.z },
         Destination = tpos and { x = tpos.x, y = pos.y, z = tpos.z } }
     local facing = fish.Facing or { x = 0, z = 1 }
-    local warningPos = name == 'dive' and fish.Move.Destination or pos
+    local warningPos = (name == 'dive' or name == 'jump') and fish.Move.Destination or pos
     warningPos = warningPos or pos
     local payload = GarBiteNotice.Lock(fish.Id, warningPos, facing.x, facing.z, range, 90, duration)
     payload.move = name
@@ -920,6 +925,140 @@ function Mgr:UpdateCrabBossCombat(fish, now, pos, params)
         if not moved then print('[MgrFishUnit] 蟹老板追击位移失败', fish.Id, tostring(err)) end
     end
 end
+-- #141 树林岛精英 / 首领：高跃共用弹道与落地范围伤害。
+-- 落点方向由 math.random 决定（表现细化 [未查证]），落地伤害按参数表 JumpDamage / JumpRadius。
+function Mgr:StartJump(fish, now, pos, params)
+    fish.JumpAt = now + params.JumpIntervalSec
+    local rng = math.random
+    local angle = (rng and rng() or 0.5) * math.pi * 2
+    local dest = { x = pos.x + math.cos(angle) * params.JumpDistance, y = pos.y,
+        z = pos.z + math.sin(angle) * params.JumpDistance }
+    self:StartMove(fish, 'jump', pos, nil, dest, now, params.JumpSec, params.JumpRadius)
+end
+
+-- 腾空弧线：水平线性插值到落点，高度按 sin(进度×π) 抬起；到点结算一次落地范围伤害。
+function Mgr:AdvanceJump(fish, now, pos, params)
+    local body = fish.Carrier.Body
+    local move = fish.Move
+    local dest = move.Destination or move.Center
+    local progress = math.min(1, math.max(0, (now - move.At) / params.JumpSec))
+    local ok, err = pcall(function()
+        body.Position = Vector3.New(
+            move.Center.x + (dest.x - move.Center.x) * progress,
+            move.Center.y + math.sin(progress * math.pi) * params.JumpHeight,
+            move.Center.z + (dest.z - move.Center.z) * progress)
+    end)
+    if not ok then print('[MgrFishUnit] 高跃位移失败', fish.Id, tostring(err)) end
+    if now < move.StrikeAt - 1e-9 then return end
+    self:EndMove(fish, 'jump-end')
+    for _, player in ipairs(self:Players()) do
+        local valid, cp = self:IsTargetValid(player, dest, params)
+        if valid and (cp.x - dest.x)^2 + (cp.z - dest.z)^2 <= params.JumpRadius * params.JumpRadius then
+            self:Hit(fish, player, params.JumpDamage, 'jump')
+        end
+    end
+end
+
+-- 剑鱼：翻滚追击 + 左右挥头（SwingDamage）+ 周期高跃。
+-- 挥头起手即锁定朝向（StartMove），预警期间不转头，绕后落空；起手时长取 SwingCooldownSec（配置细化）。
+function Mgr:UpdateSwordfishCombat(fish, now, pos, params)
+    local body = fish.Carrier.Body
+    body.LinearVelocity = Vector3.New(0, 0, 0)
+    local dt = math.max(0, now - (fish.CombatStepAt or now))
+    fish.CombatStepAt = now
+    local move = fish.Move
+    if move then
+        if move.Name == 'jump' then
+            self:AdvanceJump(fish, now, pos, params)
+            return
+        end
+        local valid, tp = self:IsTargetValid(move.Target, pos, params)
+        if not valid or not withinBite(pos, tp, params) then
+            self:EndMove(fish, 'cancel')
+        elseif now < move.StrikeAt - 1e-9 then
+            return
+        else
+            self:EndMove(fish, 'swing')
+            if Mgr.InHeadZone(pos, fish.Facing, tp, params) then
+                self:Hit(fish, move.Target, params.SwingDamage, 'swing')
+            end
+            return
+        end
+    end
+    if now >= (fish.JumpAt or math.huge) then
+        self:StartJump(fish, now, pos, params)
+        return
+    end
+    local target, tpos = self:ChooseTarget(fish, pos, params)
+    if not target then return end
+    if withinBite(pos, tpos, params) then
+        self:StartMove(fish, 'swing', pos, target, tpos, now, params.SwingCooldownSec, params.BiteRange)
+        return
+    end
+    local fx, fz = flatDirection(tpos.x - pos.x, tpos.z - pos.z)
+    self:Face(fish, fx, fz, params)
+    local distance = math.sqrt((tpos.x - pos.x)^2 + (tpos.z - pos.z)^2)
+    local step = math.min(self:Speed(fish) * dt, math.max(0, distance - params.BiteRange))
+    pcall(function()
+        body.Position = Vector3.New(pos.x + (fx or 0) * step, pos.y, pos.z + (fz or 0) * step)
+    end)
+end
+
+-- 三头鲨：翻滚追击（贴身接触伤害 RollDamage，独立段，同一秒槽每玩家只结算一次）+ 扫头（SweepDamage）+ 周期高跃。
+function Mgr:UpdateSharkCombat(fish, now, pos, params)
+    local body = fish.Carrier.Body
+    body.LinearVelocity = Vector3.New(0, 0, 0)
+    local dt = math.max(0, now - (fish.CombatStepAt or now))
+    fish.CombatStepAt = now
+    local move = fish.Move
+    if move then
+        if move.Name == 'jump' then
+            self:AdvanceJump(fish, now, pos, params)
+            return
+        end
+        local valid, tp = self:IsTargetValid(move.Target, pos, params)
+        if not valid or not withinBite(pos, tp, params) then
+            self:EndMove(fish, 'cancel')
+        elseif now < move.StrikeAt - 1e-9 then
+            return
+        else
+            self:EndMove(fish, 'sweep')
+            if Mgr.InHeadZone(pos, fish.Facing, tp, params) then
+                self:Hit(fish, move.Target, params.SweepDamage, 'sweep')
+            end
+            return
+        end
+    end
+    if now >= (fish.JumpAt or math.huge) then
+        self:StartJump(fish, now, pos, params)
+        return
+    end
+    local target, tpos = self:ChooseTarget(fish, pos, params)
+    if not target then return end
+    if withinBite(pos, tpos, params) then
+        self:StartMove(fish, 'sweep', pos, target, tpos, now, params.SweepCooldownSec, params.BiteRange)
+        return
+    end
+    -- 翻滚：把身边的其它玩家撞出一次伤害；同一秒槽每玩家只结算一次（秒槽记在鱼上）。
+    local slot = math.floor(now)
+    if slot > (fish.RollSlot or -1) then
+        fish.RollSlot = slot
+        for _, player in ipairs(self:Players()) do
+            local valid, cp = self:IsTargetValid(player, pos, params)
+            if valid and (cp.x - pos.x)^2 + (cp.z - pos.z)^2 <= params.BiteRange * params.BiteRange then
+                self:Hit(fish, player, params.RollDamage, 'roll')
+            end
+        end
+    end
+    local fx, fz = flatDirection(tpos.x - pos.x, tpos.z - pos.z)
+    self:Face(fish, fx, fz, params)
+    local distance = math.sqrt((tpos.x - pos.x)^2 + (tpos.z - pos.z)^2)
+    local step = math.min(self:Speed(fish) * dt, math.max(0, distance - params.BiteRange))
+    pcall(function()
+        body.Position = Vector3.New(pos.x + (fx or 0) * step, pos.y, pos.z + (fz or 0) * step)
+    end)
+end
+
 -- 战斗只在首次放下后计时；逃跑时限优先于攻击和睡眠。
 function Mgr:UpdateCombat(fish, now)
     local body = fish.Carrier.Body
@@ -929,13 +1068,16 @@ function Mgr:UpdateCombat(fish, now)
         self:Remove(fish)
         return
     end
-    local diving = fish.Move and fish.Move.Name == 'dive'
-    local airborne = diving and pos.y > fish.Move.Center.y + 0.1
+    local moveName = fish.Move and fish.Move.Name
+    local diving = moveName == 'dive'
+    local jumping = moveName == 'jump'
+    -- 俯冲（dragon）与高跃（#141 swordfish / shark）腾空期间不算落水，避免空中误判逃脱。
+    local airborne = (diving or jumping) and pos.y > fish.Move.Center.y + 0.1
     if now >= fish.FleeAt or (not airborne and inWater(pos)) then
-        if diving then
+        if diving or jumping then
             local ground = fish.Move.Center.y
             local ok, err = pcall(function() body.Position = Vector3.New(pos.x, ground, pos.z) end)
-            if not ok then print('[MgrFishUnit] 俯冲逃脱落地失败', fish.Id, tostring(err)) end
+            if not ok then print('[MgrFishUnit] 腾空逃脱落地失败', fish.Id, tostring(err)) end
             pos = readPosition(body) or pos
         end
         if self.Ability then self.Ability:RemoveFish(fish) end
@@ -991,6 +1133,12 @@ function Mgr:UpdateCombat(fish, now)
         elseif combat == 'crabBoss' then
             -- #136 蟹老板：双击 / 冲撞 / 旋转三招互斥
             self:UpdateCrabBossCombat(fish, now, pos, chase)
+        elseif combat == 'swordfish' then
+            -- #141 剑鱼：翻滚追击 + 左右挥头 + 周期高跃（10 米外、5 米范围）
+            self:UpdateSwordfishCombat(fish, now, pos, chase)
+        elseif combat == 'shark' then
+            -- #141 三头鲨：翻滚追击（接触伤害独立段）+ 扫头 + 周期高跃（15 米外、10 米范围）
+            self:UpdateSharkCombat(fish, now, pos, chase)
         else
             self:UpdateChase(fish, now, pos, chase)
         end
