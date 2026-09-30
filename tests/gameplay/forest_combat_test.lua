@@ -10,7 +10,10 @@
 --   4. 跳跃周期错：提前 / 不到点就跳（剑鱼 50 秒、三头鲨 20 秒），或落点距离 / 范围 / 伤害与原表不符；
 --   5. 翻滚接触：不结算、伤害不取 25、或同一秒槽同一玩家重复结算（超额伤害）；
 --   6. 空中跳跃期间按落水误判直接逃脱，或落地前后位移 / 高度不连续；
---   7. 逃跑时限到 / 被移除不打断进行中的招式，仍结算剩余伤害。
+--   7. 逃跑时限到 / 被移除不打断进行中的招式，仍结算剩余伤害；
+--   8. 高跃位移失败（引擎拒绝写 Position）仍按预定落点结算落地伤害、不收招式 / 预警；
+--   9. 追击位移失败后仍按「没滚到的」目标位置结算，而不是按真实位置；
+--  10. 单一玩家被翻滚追击贴到时不结算接触伤害（只有多人贴身才算），或接触与扫头同帧并发多扣。
 local lu = require('luaunit')
 require('tests.gameplay.gar_combat_test')
 
@@ -34,6 +37,21 @@ local function drop(self, fishId, dz)
     self.player.Character.Position = vec(p.x, 2, p.z + (dz or 2))
     self.other.Character.Controller.Health = 0
     return fish, damages
+end
+
+-- 把载体 Body 换成「写 Position 会报错、其余透传」的代理，模拟引擎位移失败（真实边界）。
+local function breakPosition(fish)
+    local real = fish.Carrier.Body
+    fish.Carrier.Body = setmetatable({}, {
+        __index = function(_, key)
+            if key == 'Position' then return real.Position end
+            return real[key]
+        end,
+        __newindex = function(_, key, value)
+            if key == 'Position' then error('position-write-failed') end
+            real[key] = value
+        end,
+    })
 end
 
 -- ===== 剑鱼 =====
@@ -154,6 +172,8 @@ function TestForestCombat:test_shark_roll_contact_25_dedup_per_second_slot()
     self.other.Character.Position = vec(body.Position.x, 2, body.Position.z + 2)
     self.now = 0
     self.mgr:Update()
+    self.now = 0.1
+    self.mgr:Update() -- 首个真实滚动帧才结算接触
     lu.assertEquals(rolled, { 25 })
     self.mgr:Update() -- 同秒槽重复帧不重复结算
     lu.assertEquals(rolled, { 25 })
@@ -175,6 +195,8 @@ function TestForestCombat:test_shark_jumps_every_20s_fifteen_meters_ten_radius_t
     self.mgr:Update()
     lu.assertNil(fish.Move, '20 秒前不得起跳')
     self.now = 20
+    damages = {} -- 只记录本次高跃，此前真实翻滚接触另有用例覆盖
+    self.player.Character.Controller.TakeDamage = function(_, d) damages[#damages + 1] = d end
     self.mgr:Update()
     lu.assertEquals(fish.Move.Name, 'jump')
     local dest = fish.Move.Destination
@@ -195,3 +217,124 @@ function TestForestCombat:test_combat_payload_carries_move_names()
     lu.assertEquals(payloads[#payloads].move, 'sweep')
     lu.assertEquals(payloads[#payloads].fishId, 'fish32Boss')
 end
+
+-- ===== 位移失败（引擎拒绝写 Position）：招式作废、不按预定落点结算 =====
+
+function TestForestCombat:test_jump_midflight_displacement_failure_cancels_without_landing_damage()
+    local fish, damages = drop(self, 'fish31Elite', 20)
+    local savedRandom = math.random
+    math.random = function() return 0 end
+    self.now = 0
+    self.mgr:Update()
+    self.now = 50
+    self.mgr:Update()
+    lu.assertEquals(fish.Move.Name, 'jump')
+    local dest = fish.Move.Destination
+    math.random = savedRandom
+    self.player.Character.Position = vec(dest.x, 2, dest.z) -- 落点范围内有玩家
+    breakPosition(fish)
+    self.now = 50 + 1.5 * 0.5
+    self.mgr:Update() -- 飞行中段位移失败
+    lu.assertNil(fish.Move, '中段位移失败必须取消招式 / 收起预警')
+    lu.assertEquals(damages, {}, '位移失败不得按预定落点结算落地伤害')
+    self.now = 50 + 1.5
+    self.mgr:Update() -- 到点也不得补结算
+    lu.assertEquals(damages, {}, '取消后不得补结算落地伤害')
+end
+
+function TestForestCombat:test_jump_final_frame_displacement_failure_cancels_without_landing_damage()
+    local fish, damages = drop(self, 'fish31Elite', 20)
+    local savedRandom = math.random
+    math.random = function() return 0 end
+    self.now = 0
+    self.mgr:Update()
+    self.now = 50
+    self.mgr:Update()
+    local dest = fish.Move.Destination
+    math.random = savedRandom
+    self.player.Character.Position = vec(dest.x, 2, dest.z)
+    breakPosition(fish)
+    self.now = 50 + 1.5
+    self.mgr:Update() -- 结算帧位移失败
+    lu.assertNil(fish.Move, '最终帧位移失败必须取消招式 / 收起预警')
+    lu.assertEquals(damages, {}, '最终帧位移失败不得结算落地伤害')
+end
+
+-- ===== 翻滚接触：单人追击贴到也结算，且按真实位置 =====
+
+function TestForestCombat:test_shark_roll_contact_hits_the_single_chased_target()
+    local fish, damages = drop(self, 'fish32Boss', 20) -- other 已倒下，唯一玩家就是目标
+    self.now = 0
+    self.mgr:Update() -- 首帧 dt=0 不位移
+    lu.assertEquals(damages, {})
+    self.now = 2
+    self.mgr:Update() -- 翻滚 17.5 米贴到咬距边缘：滚到唯一玩家
+    lu.assertEquals(damages, { 25 }, '单人追击也要结算翻滚接触伤害')
+    lu.assertNil(fish.Move, '接触伤害是独立段，不与扫头同帧并发')
+end
+
+function TestForestCombat:test_roll_contact_uses_actual_position_when_chase_fails()
+    local fish = drop(self, 'fish32Boss', 20)
+    self.other.Character.Controller.Health = 9000
+    local rolled = {}
+    self.other.Character.Controller.TakeDamage = function(_, d) rolled[#rolled + 1] = d end
+    self.now = 0
+    self.mgr:Update()
+    local start = fish.Carrier.Body.Position
+    -- 第二名玩家摆在「本该滚到」的位置（追击路径中段）
+    self.other.Character.Position = vec(start.x, 2, start.z + 10)
+    breakPosition(fish) -- 位移失败：鱼实际没有滚过去
+    self.now = 1
+    self.mgr:Update()
+    lu.assertEquals(rolled, {}, '位移失败不得按未到达的滚动路径结算接触')
+end
+
+-- ===== 追击失败必须可诊断，且不能造成计划路径伤害 =====
+function TestForestCombat:test_chase_failure_logs_module_operation_fish_and_error()
+    for _, id in ipairs({ 'fish31Elite', 'fish32Boss' }) do
+        local fish, damages = drop(self, id, 20)
+        self.now = 0
+        self.mgr:Update()
+        breakPosition(fish)
+        local savedPrint, lines = print, {}
+        print = function(...)
+            local words = {}
+            for _, value in ipairs({ ... }) do words[#words + 1] = tostring(value) end
+            lines[#lines + 1] = table.concat(words, ' ')
+        end
+        self.now = 1
+        local ok, err = pcall(function() self.mgr:Update() end)
+        print = savedPrint
+        lu.assertTrue(ok, tostring(err))
+        local text = table.concat(lines, '\n')
+        lu.assertStrContains(text, '[MgrFishUnit]')
+        lu.assertStrContains(text, '追击位移失败')
+        lu.assertStrContains(text, 'fish=' .. tostring(fish.Id))
+        lu.assertStrContains(text, 'position-write-failed')
+        lu.assertEquals(damages, {})
+        self.mgr:Remove(fish)
+    end
+end
+
+-- ===== 高跃预警：整圆范围（含后方），不是 90° 扇形 =====
+
+function TestForestCombat:test_jump_warning_is_full_circle_landing_range()
+    local fish = drop(self, 'fish31Elite', 20)
+    local savedRandom = math.random
+    math.random = function() return 0 end
+    self.now = 0
+    self.mgr:Update()
+    self.notices = {}
+    self.now = 50
+    self.mgr:Update()
+    math.random = savedRandom
+    local lock
+    for _, notice in ipairs(self.notices) do
+        if notice.kind == 'lock' and notice.move == 'jump' then lock = notice end
+    end
+    lu.assertNotNil(lock, '到点没有起跳预警')
+    lu.assertEquals(lock.shape, 'circle', '高跃落地是整圆范围，不是 90° 扇形')
+    lu.assertEquals(lock.halfAngleDeg, 180)
+    lu.assertAlmostEquals(lock.range, 5, 1e-9, '预警半径取 JumpRadius')
+end
+

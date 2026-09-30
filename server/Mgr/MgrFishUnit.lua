@@ -567,6 +567,20 @@ local function withinBite(pos, tpos, params)
     return dx * dx + dz * dz <= params.BiteRange * params.BiteRange
 end
 
+-- 点到线段的最短水平距离平方（#141 翻滚接触：判定玩家是否落在本帧「真实滚动段」上）。
+local function segmentDistanceSq(px, pz, ax, az, bx, bz)
+    local dx, dz = bx - ax, bz - az
+    local lenSq = dx * dx + dz * dz
+    if lenSq <= 1e-12 then
+        local ex, ez = px - ax, pz - az
+        return ex * ex + ez * ez
+    end
+    local t = ((px - ax) * dx + (pz - az) * dz) / lenSq
+    if t < 0 then t = 0 elseif t > 1 then t = 1 end
+    local ex, ez = px - (ax + t * dx), pz - (az + t * dz)
+    return ex * ex + ez * ez
+end
+
 -- 预警广播（common/GarBiteNotice）；推送失败只记日志，不打断追咬。测试可替换本方法取载荷。
 function Mgr:PublishBite(payload)
     GarBiteNotice.Publish(payload)
@@ -667,6 +681,7 @@ function Mgr:StartMove(fish, name, pos, target, tpos, now, duration, range)
     warningPos = warningPos or pos
     local payload = GarBiteNotice.Lock(fish.Id, warningPos, facing.x, facing.z, range, 90, duration)
     payload.move = name
+    if name == 'jump' then payload.shape, payload.halfAngleDeg = 'circle', 180 end
     publishBite(self, payload)
     fish.MoveName = name
     self:PublishCombat(fish)
@@ -948,7 +963,11 @@ function Mgr:AdvanceJump(fish, now, pos, params)
             move.Center.y + math.sin(progress * math.pi) * params.JumpHeight,
             move.Center.z + (dest.z - move.Center.z) * progress)
     end)
-    if not ok then print('[MgrFishUnit] 高跃位移失败', fish.Id, tostring(err)) end
+    if not ok then
+        print('[MgrFishUnit] 高跃位移失败', 'fish=' .. tostring(fish.Id), tostring(err))
+        self:EndMove(fish, 'cancel')
+        return
+    end
     if now < move.StrikeAt - 1e-9 then return end
     self:EndMove(fish, 'jump-end')
     for _, player in ipairs(self:Players()) do
@@ -999,9 +1018,13 @@ function Mgr:UpdateSwordfishCombat(fish, now, pos, params)
     self:Face(fish, fx, fz, params)
     local distance = math.sqrt((tpos.x - pos.x)^2 + (tpos.z - pos.z)^2)
     local step = math.min(self:Speed(fish) * dt, math.max(0, distance - params.BiteRange))
-    pcall(function()
+    local moved, err = pcall(function()
         body.Position = Vector3.New(pos.x + (fx or 0) * step, pos.y, pos.z + (fz or 0) * step)
     end)
+    if not moved then
+        print('[MgrFishUnit] 剑鱼追击位移失败', 'fish=' .. tostring(fish.Id), tostring(err))
+        return
+    end
 end
 
 -- 三头鲨：翻滚追击（贴身接触伤害 RollDamage，独立段，同一秒槽每玩家只结算一次）+ 扫头（SweepDamage）+ 周期高跃。
@@ -1039,24 +1062,31 @@ function Mgr:UpdateSharkCombat(fish, now, pos, params)
         self:StartMove(fish, 'sweep', pos, target, tpos, now, params.SweepCooldownSec, params.BiteRange)
         return
     end
-    -- 翻滚：把身边的其它玩家撞出一次伤害；同一秒槽每玩家只结算一次（秒槽记在鱼上）。
-    local slot = math.floor(now)
-    if slot > (fish.RollSlot or -1) then
-        fish.RollSlot = slot
-        for _, player in ipairs(self:Players()) do
-            local valid, cp = self:IsTargetValid(player, pos, params)
-            if valid and (cp.x - pos.x)^2 + (cp.z - pos.z)^2 <= params.BiteRange * params.BiteRange then
-                self:Hit(fish, player, params.RollDamage, 'roll')
-            end
-        end
-    end
     local fx, fz = flatDirection(tpos.x - pos.x, tpos.z - pos.z)
     self:Face(fish, fx, fz, params)
     local distance = math.sqrt((tpos.x - pos.x)^2 + (tpos.z - pos.z)^2)
     local step = math.min(self:Speed(fish) * dt, math.max(0, distance - params.BiteRange))
-    pcall(function()
+    if step <= 0 then return end
+    local moved, err = pcall(function()
         body.Position = Vector3.New(pos.x + (fx or 0) * step, pos.y, pos.z + (fz or 0) * step)
     end)
+    if not moved then
+        print('[MgrFishUnit] 三头鲨追击位移失败', 'fish=' .. tostring(fish.Id), tostring(err))
+        return
+    end
+    -- 成功移动后用实际滚动线段判接触；每玩家独立去重，不消耗本秒其它玩家的接触机会。
+    local actual = readPosition(body)
+    if not actual or (actual.x == pos.x and actual.z == pos.z) then return end
+    local slot = math.floor(now)
+    if fish.RollSlot ~= slot then fish.RollSlot, fish.RollHits = slot, {} end
+    for _, player in ipairs(self:Players()) do
+        local valid, cp = self:IsTargetValid(player, actual, params)
+        if valid and not fish.RollHits[player]
+            and segmentDistanceSq(cp.x, cp.z, pos.x, pos.z, actual.x, actual.z) <= params.BiteRange^2 then
+            fish.RollHits[player] = true
+            self:Hit(fish, player, params.RollDamage, 'roll')
+        end
+    end
 end
 
 -- 战斗只在首次放下后计时；逃跑时限优先于攻击和睡眠。

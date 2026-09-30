@@ -29,13 +29,15 @@ function LocalGarBite:Show(payload)
     if payload.kind ~= 'lock' then return end
     local c = cfg()
     local world = game:GetService('World')
-    local ok, units = pcall(world.CreateAsset, world, c.EffectPreset)
+    local circle = payload.shape == 'circle'
+    local preset = circle and c.CirclePreset or c.EffectPreset
+    local ok, units = pcall(world.CreateAsset, world, preset)
     local effect = ok and type(units) == 'table' and units[1] or nil
     if not effect then
         print('[LocalGarBite] 预警特效创建失败', c.EffectPreset, 'fish=' .. tostring(fishId), tostring(units))
         return
     end
-    local p, scale = payload.position, payload.range / c.EffectLength
+    local p, scale = payload.position, payload.range / (circle and c.CircleRadius or c.EffectLength)
     local placed, err = pcall(function()
         effect.Position = Vector3.New(p.x, p.y + c.GroundOffset, p.z)
         effect.Rotation = Quaternion.FromEulerAngles(0, payload.yaw + c.EffectYawOffset, 0)

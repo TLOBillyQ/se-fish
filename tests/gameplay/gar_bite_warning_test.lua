@@ -40,6 +40,23 @@ local function lock(self, fishId, fx, fz)
         self.cfg.BiteCooldownSec)
 end
 
+-- #141 圆形落点必须由生产消费者创建整圆预设，缩放按官方半径10米，clear 收起。
+function TestGarBiteWarning:test_jump_circle_consumer_places_full_landing_warning_and_clears()
+    for _, radius in ipairs({ 5, 10 }) do
+        local payload = self.N.Lock(141, { x = 15, y = 2, z = 30 }, 0, 1, radius, 180, 1.5)
+        payload.move, payload.shape = 'jump', 'circle'
+        self.warn:Show(payload)
+        local effect = self.effects[#self.effects]
+        lu.assertEquals(effect.AssetId, 'official://preset/7191')
+        lu.assertEquals(effect.Position, { x = 15, y = 2.1, z = 30 })
+        lu.assertEquals(effect.Scale.x, radius == 5 and 0.5 or 1)
+        lu.assertEquals(effect.Scale.z, radius == 5 and 0.5 or 1)
+        self.warn:Show(self.N.Clear(141, 'cancel'))
+        lu.assertTrue(effect.Destroyed)
+        lu.assertNil(self.warn.Active[141])
+    end
+end
+
 function TestGarBiteWarning:test_rain_effect_is_distinct_and_cleared_with_warning()
     local payload = lock(self, 8, 0, 1)
     payload.move = 'rain'

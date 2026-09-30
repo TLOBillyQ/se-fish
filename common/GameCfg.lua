@@ -720,6 +720,8 @@ GameCfg.FishCombat = {
         DiveSec = 2, DiveHeight = 6, DiveRadius = 2.5, DiveDamage = 50, StunSec = 5 },
     gar = { BiteRange = 2.5, BiteCooldownSec = 1.5, HeadHalfAngleDeg = 90, ModelYawOffset = 0,
         Warning = { EffectPreset = 'official://preset/7190', EffectLength = 10, GroundOffset = 0.1,
+            -- 官方技能包 CirclePointer 使用7191，基准半径10米；高跃整圆落点共用此预设。
+            CirclePreset = 'official://preset/7191', CircleRadius = 10,
             EffectYawOffset = 0, GraceSec = 0.5 } },
     -- #136 帝王蟹（GameSpec §12 正文与钓鱼表 R42）：每 5 秒对前方蟹钳乱刺，左右各 3 下、
     -- 每下间隔 0.2 秒、每下 15 伤害；每活动 30 秒眩晕 5 秒。乱刺一轮总时长
