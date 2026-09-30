@@ -325,7 +325,8 @@ local function validated(drop)
     local mult = drop.mult
     if mult ~= nil and (type(mult) ~= 'number' or mult < 1 or mult > 2) then return nil, 'bad-item' end
     local cooked = drop.cooked
-    if cooked ~= nil and (type(cooked) ~= 'number' or cooked < 1 or cooked ~= cooked or cooked >= math.huge) then
+    -- 烤制倍率（#137）：烧烤下降段取出可以是 (0, 1) 的数值；0/负数（烤糊产物）不进库存也不落地
+    if cooked ~= nil and (type(cooked) ~= 'number' or cooked <= 0 or cooked ~= cooked or cooked >= math.huge) then
         return nil, 'bad-item'
     end
     return { itemId = itemId, mult = mult, cooked = cooked }

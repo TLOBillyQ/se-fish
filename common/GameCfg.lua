@@ -463,17 +463,35 @@ GameCfg.Content.Exchanges = {
 -- saved.cooked（PlayerData 序列化原样保留格位的未知字段，不额外占位）。
 GameCfg.Items.CookedFlag = 'cooked'
 GameCfg.Items.CookedPriceScale = 1.5
--- 物品表没有的物品返回 nil（不可回收，属配置事故；调用方按「没得喂」处理）
+-- 烤制倍率统一读取（#137）：取出倍率是 (0, 1.5] 的数值——内存格位/快照在 entry.cooked，
+-- 读档还原在 entry.saved.k；#127 之前的旧布尔标记 saved.cooked==true 等价烤熟价倍率。
+-- 返回数值倍率，没烤过或数值非法（0/负数/NaN/Inf）返回 nil。
+function GameCfg.Items.CookRate(entry)
+    if type(entry) ~= 'table' then return nil end
+    local rate = entry.cooked
+    if type(rate) ~= 'number' and type(entry.saved) == 'table' then
+        rate = entry.saved.k
+        if type(rate) ~= 'number' and entry.saved[GameCfg.Items.CookedFlag] == true then
+            rate = GameCfg.Items.CookedPriceScale
+        end
+    end
+    if type(rate) ~= 'number' or rate <= 0 or rate ~= rate or rate >= math.huge then return nil end
+    return rate
+end
+-- 物品表没有的物品返回 nil（不可回收，属配置事故；调用方按「没得喂」处理）。
+-- cooked 可以是数值倍率（#137 烧烤取出）、布尔 true（旧标记，按烤熟价倍率）或 nil/false（未烤）。
 function GameCfg.Items.SalePrice(itemId, mult, cooked)
+    local rate = cooked == true and GameCfg.Items.CookedPriceScale
+        or type(cooked) == 'number' and cooked or nil
     local species = type(itemId) == 'string' and GameCfg.Fish[itemId]
     if species then
-        return cooked and FishCatch.CookedPrice(species, mult) or FishCatch.Price(species, mult)
+        return rate and FishCatch.CookedPrice(species, mult, rate) or FishCatch.Price(species, mult)
     end
     local definition = type(itemId) == 'string' and GameCfg.Items.Definitions[itemId]
     local base = definition and definition.BasePrice
     if type(base) ~= 'number' then return nil end
     local factor = type(mult) == 'number' and mult or 1
-    return math.floor(base * factor * (cooked and GameCfg.Items.CookedPriceScale or 1) + 1e-9)
+    return math.floor(base * factor * (rate or 1) + 1e-9)
 end
 
 -- 最终成就（#127 第七区，GameSpec §8.1「哥斯拉头 → 通关成就」）：兑换产物是 'achievement.<id>'
@@ -1102,6 +1120,40 @@ for index, chain in ipairs(GameCfg.Content.Exchanges) do
         Exchange = { [chain.EliteToken] = chain.BossBait, [chain.BossToken] = chain.Result },
         Chain = index,
     }
+end
+
+-- 烧烤（#137 T16，策划案烧烤段）：第三区起每区一个烧烤点（#125 场景合同 Zones[].Scene.GrillName），
+-- 2 米内可操作；服务端从投入计时按 common/GrillCurve.lua 的曲线 1→1.5→0，4.5 秒烤糊损毁并
+-- 对烤炉周围 3 米玩家造成 30 伤害（经 MgrVitals 统一伤害入口）。按玩家独立会话，取出时价格与
+-- 食用恢复同乘当时倍率；烤过物品不可重烤/抽奖，烤过信物失去兑换资格（操作信物前先提示）。
+GameCfg.Grill = {
+    Radius = 2,                 -- docx：2 米内出现「烧烤」操作文字泡
+    Slack = 0.5,                -- 距离复验宽限（对齐 Interact 惯例）
+    BubbleHeight = 2.5,         -- 文字泡悬浮高度
+    RiseSec = 2,                -- 0-2 秒：1 → 1.5
+    HoldSec = 0.5,              -- 2-2.5 秒：保持 1.5
+    FallSec = 2,                -- 2.5-4.5 秒：1.5 → 0
+    MaxRate = 1.5,              -- 烤熟 1.5 倍价格加成、食用恢复 +50%
+    BurnSec = 4.5,              -- = RiseSec + HoldSec + FallSec；到达即烤糊
+    BurnDamage = 30,            -- docx：烤糊爆炸 30 伤害
+    BurnRadius = 3,             -- docx：周围 3 米
+    BubbleText = '烧烤',
+    NoFishText = '你没有可烤的鱼',
+    BurntText = '你的鱼烤糊了！',
+    CookedPrefix = '烤',         -- 烤好的鱼名字加此前缀（CONTEXT.md 烤鱼条 Avoid「烤过的鱼」，用「烤」构成菜名式称呼）
+    TokenWarnText = '信物烤制后将失去兑换和抽奖资格，再次点击确认烤制',
+    FullText = '背包已满，烤好的鱼先留在烤炉上',
+    TakeoutText = '取出',
+    source = '策划案--渔力全开.docx#烧烤',
+}
+-- 烧烤点清单：锚点是 #125 场景合同真源（仅三区起有 GrillName），消费端按距离命中
+GameCfg.Grill.Points = {}
+for index, zone in ipairs(GameCfg.Zones) do
+    if zone.Scene.GrillName then
+        GameCfg.Grill.Points[#GameCfg.Grill.Points + 1] = {
+            ZoneId = zone.Id, AnchorName = zone.Scene.GrillName,
+        }
+    end
 end
 
 -- 高频输入契约（M0-V5）：窗口与次数上限的常量，逻辑见 common/RateLimit.lua，

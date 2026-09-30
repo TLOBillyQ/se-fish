@@ -52,10 +52,10 @@ local function selectedEntry(data)
     if entry and entry.count > 0 then return slot, entry end
 end
 
--- 烤制标记（#127）：写在存档格位的 saved.cooked 上；烤过的信物只售卖，不再走兑换
+-- 烤制标记（#127 / #137）：旧布尔写在存档格位的 saved.cooked 上；烧烤取出的数值倍率在
+-- entry.cooked / saved.k（GameCfg.Items.CookRate 统一读取）。烤过的信物只售卖，不再走兑换
 local function isCooked(entry)
-    local saved = entry.saved
-    return type(saved) == 'table' and saved[GameCfg.Items.CookedFlag] == true
+    return GameCfg.Items.CookRate(entry) ~= nil
 end
 
 local Points = {
@@ -95,11 +95,11 @@ end
 local function saleable(data, point)
     local slot, entry = selectedEntry(data)
     if entry then
-        local cooked = isCooked(entry)
-        local price = GameCfg.Items.SalePrice(entry.itemId, entry.mult, cooked)
+        local rate = GameCfg.Items.CookRate(entry)
+        local price = GameCfg.Items.SalePrice(entry.itemId, entry.mult, rate)
         if price then
             return price, function(d) d.Containers[ITEM_BAR][slot] = nil end,
-                entry.itemId .. (cooked and '(烤)' or '') .. ' x' .. tostring(entry.mult or 1) .. ' slot=' .. tostring(slot),
+                entry.itemId .. (rate and '(烤)' or '') .. ' x' .. tostring(entry.mult or 1) .. ' slot=' .. tostring(slot),
                 entry.itemId, GameCfg.Fish[entry.itemId] and 'fish' or 'item'
         end
     end
