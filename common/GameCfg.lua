@@ -367,6 +367,8 @@ GameCfg.Shop = {
         { AnchorName = 'TGUnitShopShrimp', Level = 2 },
         -- #136 蟹湖摊位（3 级）：上架鲱鱼罐头 / 捕蟹竿 / 霰弹枪与 3 级升级行；锚点已盘点在场
         { AnchorName = 'Z3_Shop', Level = 3 },
+        -- #141 树林岛摊位（4 级）：上架蚂蟥 / 普通鱼竿 / 冲锋枪与 4 级升级行（场景合同 Z4_Shop）
+        { AnchorName = 'Z4_Shop', Level = 4 },
     },
     BubblePreset = 'map://preset/uf5ad80a4c6a40d59b7f6e0eb99a58c0',
     BubbleHeight = 7,
@@ -650,11 +652,29 @@ GameCfg.Casting = {
             { Id = 'item44', Bait = 'item115', RodLevel = 3, DrawWeight = 4 },
             { Id = 'fish23Elite', Bait = 'item115', RodLevel = 3, DrawWeight = 10 },
         },
+        -- 树林岛（#141，GameSpec §5.4 / 钓鱼表 R44–R57）：海胆任意饵保底；比目鱼/三文鱼起用蚂蟥、
+        -- 竿级 1；翻车鲀/鳐鱼/旗鱼起竿级 4（普通鱼竿）。极品权重 2/2/2/8/6/4；剑鱼入池权重 10。
+        -- 三头鲨由首领饵 item123（牛腿）必出（BossBait），不入池。
+        ['forestIsland.water'] = {
+            { Id = 'item49', Bait = 0, RodLevel = 1, DrawWeight = 8 },
+            { Id = 'item50', Bait = 'item116', RodLevel = 1, DrawWeight = 8 },
+            { Id = 'item51', Bait = 'item116', RodLevel = 1, DrawWeight = 8 },
+            { Id = 'item52', Bait = 'item116', RodLevel = 4, DrawWeight = 32 },
+            { Id = 'item53', Bait = 'item116', RodLevel = 4, DrawWeight = 24 },
+            { Id = 'item54', Bait = 'item116', RodLevel = 4, DrawWeight = 16 },
+            { Id = 'item55', Bait = 0, RodLevel = 1, DrawWeight = 2 },
+            { Id = 'item56', Bait = 'item116', RodLevel = 1, DrawWeight = 2 },
+            { Id = 'item57', Bait = 'item116', RodLevel = 1, DrawWeight = 2 },
+            { Id = 'item58', Bait = 'item116', RodLevel = 4, DrawWeight = 8 },
+            { Id = 'item59', Bait = 'item116', RodLevel = 4, DrawWeight = 6 },
+            { Id = 'item60', Bait = 'item116', RodLevel = 4, DrawWeight = 4 },
+            { Id = 'fish31Elite', Bait = 'item116', RodLevel = 4, DrawWeight = 10 },
+        },
     },
     -- 首领饵（#88，GameSpec §12 已确认）：首领饵物品 id → 必出首领鱼种。挂首领饵在任意水区抛竿
     -- 必出对应首领，无视抽签权重、鱼饵-鱼种匹配与竿级；首领饵占道具栏/背包格、不进 Bait 计数，
     -- 抛竿一刻从道具栏（优先）或背包扣 1 只，钓出首领后消耗，脱钩 / 逃脱不返还。
-    BossBait = { duck = 'alligatorGar', item121 = 'fish16Boss', item122 = 'fish24Boss' },
+    BossBait = { duck = 'alligatorGar', item121 = 'fish16Boss', item122 = 'fish24Boss', item123 = 'fish32Boss' },
 }
 
 -- 源表抽鱼行按钓鱼区分组；水域/钓鱼区映射见下文 Water.ZoneIdByWater。
@@ -700,6 +720,8 @@ GameCfg.FishCombat = {
         DiveSec = 2, DiveHeight = 6, DiveRadius = 2.5, DiveDamage = 50, StunSec = 5 },
     gar = { BiteRange = 2.5, BiteCooldownSec = 1.5, HeadHalfAngleDeg = 90, ModelYawOffset = 0,
         Warning = { EffectPreset = 'official://preset/7190', EffectLength = 10, GroundOffset = 0.1,
+            -- 官方技能包 CirclePointer 使用7191，基准半径10米；高跃整圆落点共用此预设。
+            CirclePreset = 'official://preset/7191', CircleRadius = 10,
             EffectYawOffset = 0, GraceSec = 0.5 } },
     -- #136 帝王蟹（GameSpec §12 正文与钓鱼表 R42）：每 5 秒对前方蟹钳乱刺，左右各 3 下、
     -- 每下间隔 0.2 秒、每下 15 伤害；每活动 30 秒眩晕 5 秒。乱刺一轮总时长
@@ -715,6 +737,25 @@ GameCfg.FishCombat = {
         PinchDamage = 20, PinchCooldownSec = 4, PinchStrikes = 2, PinchStepSec = 0.2,
         ChargeSec = 30, ChargeDamage = 20, ChargeWindowSec = 1.2, ChargeRange = 2.5,
         SpinSec = 25, SpinDurationSec = 5, SpinDamage = 30, SpinRadius = 3 },
+    -- #141 剑鱼（fish31Elite，Combat='swordfish'，GameSpec §12 / 钓鱼表 R56）：
+    -- 左右挥头按表基础攻击 20（SwingDamage）；跳跃周期按表 50 秒（JumpIntervalSec，覆盖正文旧 20 秒）。
+    -- 跳跃落点为随机 10 米外（JumpDistance）、落地 5 米范围 100 伤害（JumpRadius / JumpDamage），取正文。
+    -- 挥头节拍原表与正文均未给，SwingCooldownSec=2 是已有近战公共节拍的**配置细化**（非原表数值，
+    -- 须在试玩中校准）；JumpSec / JumpHeight 是跳跃弹道表现细化 [未查证]。
+    swordfish = { BiteRange = 2.5, HeadHalfAngleDeg = 90,
+        SwingDamage = 20, SwingCooldownSec = 2,
+        JumpIntervalSec = 50, JumpDistance = 10, JumpRadius = 5, JumpDamage = 100,
+        JumpSec = 1.5, JumpHeight = 6 },
+    -- #141 三头鲨（fish32Boss，Combat='shark'，GameSpec §12 / 钓鱼表 R57）：
+    -- 扫头按表基础攻击 25、冷却 3 秒（SweepDamage / SweepCooldownSec，覆盖正文旧 2.5 秒）；
+    -- 翻滚移动有接触伤害，按基础攻击 25（RollDamage）作独立段，同一秒槽每玩家只结算一次。
+    -- 表未给跳跃周期，取正文每 20 秒（JumpIntervalSec）、随机 15 米外（JumpDistance）、
+    -- 落地 10 米范围 200（JumpRadius / JumpDamage）。JumpSec / JumpHeight 为弹道表现细化 [未查证]。
+    shark = { BiteRange = 2.5, HeadHalfAngleDeg = 90,
+        SweepDamage = 25, SweepCooldownSec = 3,
+        RollDamage = 25,
+        JumpIntervalSec = 20, JumpDistance = 15, JumpRadius = 10, JumpDamage = 200,
+        JumpSec = 1.5, JumpHeight = 6 },
 }
 
 -- 技能包（ability_system）在本图的接入配置。
@@ -1020,6 +1061,10 @@ GameCfg.Water = {
         -- 80×24 米矩形（HalfX=40/HalfZ=12，MathWaterJudge 长方形口径）。SurfaceY 沿用场景合同
         -- 值 3（水面单位 pos.y=2、顶面约 3）；与其他水区相距数百米，无重叠。
         { Id = "crabLake.water", Center = { x = 260, y = 2, z = 144 }, HalfX = 40, HalfZ = 12, SurfaceY = 3 },
+        -- 树林岛水面（#141）：第四区北侧水区，场景合同（Zones[4].Scene 派生）水面中心 (460,2,144)、
+        -- 80×24 米矩形（HalfX=40/HalfZ=12，MathWaterJudge 长方形口径）。SurfaceY 沿用场景合同值 3；
+        -- 与蟹湖相距 200 米（> 两个半宽之和），无重叠。
+        { Id = "forestIsland.water", Center = { x = 460, y = 2, z = 144 }, HalfX = 40, HalfZ = 12, SurfaceY = 3 },
     },
 }
 
@@ -1060,6 +1105,7 @@ addWaterStrip('PondNotch', -24.25, -4.982, 16.25, 35.268)
 GameCfg.Water.ZoneIdByWater = {
     WaterCircle1 = 'fishPond', WaterCircle2 = 'fishPond', ShrimpPool = 'shrimpPond',
     ['crabLake.water'] = 'crabLake',
+    ['forestIsland.water'] = 'forestIsland',
 }
 for _, zone in ipairs(GameCfg.Water.Zones) do
     if not GameCfg.Water.ZoneIdByWater[zone.Id] then
