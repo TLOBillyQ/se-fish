@@ -220,6 +220,7 @@ function Mgr:UpdateFlight(player, state, dt)
     if not bounds then return end -- 无边界不飞（FlightPath 契约）
     if not state.flightGroundY then state.flightGroundY = character.Position.y end
     bounds.GroundY = state.flightGroundY
+    bounds.CeilingY = math.min(bounds.CeilingY, state.flightGroundY + bounds.MaxHeight)
     -- 高度上限仍取七区合同，低于安全点起飞不被第一帧抬高
 
     -- 空中接管 y：重力关闭（角色重建 / 外部改动后下一帧纠正）
@@ -327,10 +328,10 @@ function Mgr:Update(dt)
             if state.leaving then
                 if self:Restore(player, state) then self.States[player.UserId] = nil end
             else
-            self:Reconcile(player, state)
-            if not state.restoring and state.effect == 'wings' then self:UpdateFlight(player, state, dt) end
-            if state.breath then self:UpdateBreath(player, state, now) end
-            self:MirrorCooldown(state, now)
+                self:Reconcile(player, state)
+                if not state.restoring and state.effect == 'wings' then self:UpdateFlight(player, state, dt) end
+                if state.breath then self:UpdateBreath(player, state, now) end
+                self:MirrorCooldown(state, now)
             end
         end
     end

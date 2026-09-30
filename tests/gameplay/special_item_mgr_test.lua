@@ -566,6 +566,8 @@ function TestSpecialItemMgr:test_takeoff_below_safe_point_integrates_without_tel
     lu.assertAlmostEquals(p.Character.Position.y, 1.8, 0.001)
     self:fire(p, { action = 'fly', holding = false }) self:step(1, 0.1)
     lu.assertAlmostEquals(p.Character.Position.y, 1.5, 0.001)
+    self:fire(p, { action = 'fly', holding = true }) self:step(80, 0.1)
+    lu.assertAlmostEquals(p.Character.Position.y, 21, 0.001, '实际起飞地面上限20米')
 end
 
 function TestSpecialItemMgr:test_ferry_public_teleport_cancels_breath_and_appearance_keeps_cooldown()
