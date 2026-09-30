@@ -158,8 +158,13 @@ function TestEconomyPersistence:test_save_injection_preserves_business_rejection
     lu.assertEquals(self:messages('ShopResult')[1].reason, 'full')
     self.shop:Handle(self.player, { action = 'UpgradeStorage', seq = 2 })
     lu.assertEquals(self:messages('ShopResult')[2].reason, 'coin')
+    -- #127 起满格不再是喂食的业务拒绝：信物兑换先交付选中格、再按交付后的容量校验，
+    -- 满格也能用本次交付释放出的格位成交；钓鱼佬侧仍然真实的业务拒绝是「选中格为空」。
+    -- 取消选中是本次用例的输入，不算「被拒绝的请求改动了数据」。
+    self.data.Data.SelectedSlot = nil
+    before.selectedSlot = nil
     self.interact:Handle(self.player, { target = 'fisherman', action = 'Feed', seq = 1 })
-    lu.assertEquals(self:messages('InteractResult')[1].reason, 'full')
+    lu.assertEquals(self:messages('InteractResult')[1].reason, 'nothing')
     self.shop:Handle(self.player, { action = 'Buy', itemId = 'gold', seq = 3 })
     lu.assertEquals(self:messages('ShopResult')[3].reason, 'item')
     self.player.Character.Position.x = 999
@@ -299,6 +304,46 @@ function TestEconomyPersistence:test_exchange_keeps_token_until_write_and_publis
     self:join()
     self:drain()
     lu.assertEquals(self.players:GetDataInst(self.player):ItemCount('shrimpTicket'), 1)
+end
+
+-- #127 容量口径：Save 注入下满格也能兑换——先交付选中信物释放该格，再按交付后的容量发放产物
+function TestEconomyPersistence:test_exchange_uses_released_slot_when_storage_is_full()
+    lu.assertTrue(self.data:AddItem('garHead'))
+    lu.assertTrue(self.data:SelectSlot(1))
+    while self.data:AddItem('tilapia') do end
+    lu.assertEquals(self.data:AddItem('tilapia'), false, '前置：道具栏与背包都满了')
+    self:persistSetup()
+    lu.assertTrue(self.interact:Handle(self.player, { target = 'fisherman', action = 'Feed', seq = 1 }))
+    self:drain()
+    lu.assertEquals(self.data:ItemCount('garHead'), 0)
+    lu.assertEquals(self.data:ItemCount('shrimpTicket'), 1)
+    lu.assertEquals(self.data.Data.Containers.itemBar[1].itemId, 'shrimpTicket')
+    lu.assertEquals(self.data.Data.FishCoin, 0)
+    lu.assertEquals(self:messages('InteractResult')[1].exchange, { from = 'garHead', to = 'shrimpTicket' })
+end
+
+-- #127 验收 (c)：重进地图后用响应里的完整 operation 重试，只回原结果，产物不重复发放
+function TestEconomyPersistence:test_exchange_replay_after_rejoin_grants_product_once()
+    lu.assertTrue(self.data:AddItem('garHead'))
+    lu.assertTrue(self.data:SelectSlot(1))
+    self:persistSetup()
+    lu.assertTrue(self.interact:Handle(self.player, { target = 'fisherman', action = 'Feed', seq = 1 }))
+    self:drain()
+    local original = self:messages('InteractResult')[1]
+    lu.assertNotNil(original.operation)
+    self.interact:OnPlayerRemoving(self.player)
+    self:join()
+    self:drain()
+    self.data = self.players:GetDataInst(self.player)
+    self:clearEvents()
+    -- 重进后位置可以完全不同（回放不看距离），但只回原结果
+    self.player.Character.Position.x = 999
+    lu.assertTrue(self.interact:Handle(self.player,
+        { target = 'fisherman', action = 'Feed', seq = 1, operation = original.operation }))
+    self:drain()
+    lu.assertEquals(self:messages('InteractResult'), { original })
+    lu.assertEquals(self.data:ItemCount('garHead'), 0)
+    lu.assertEquals(self.data:ItemCount('shrimpTicket'), 1)
 end
 
 function TestEconomyPersistence:test_feed_selected_fish_waits_for_write_before_coins_animation_and_quest()

@@ -244,10 +244,13 @@ function TestShrimpPond:test_shrimp_pool_cast_table_gating()
         rareBostonLobster = 8, rareAussieLobster = 6, rareMilkLobster = 4 })
 end
 
--- 钓鱼佬多锚点：两个锚点都在 Fisherman.AnchorNames；虾池钓鱼佬旁喂鱼获照价结算
+-- 钓鱼佬按区分派（#127）：一区锚点 TGUnitFish、虾池锚点 TGUnitFishShrimp 各一个；
+-- 虾池钓鱼佬旁喂鱼获照价结算，一区钓鱼佬旁同样可用
 function TestShrimpPond:test_fisherman_multi_anchor_feeds_at_shrimp_pond()
-    local names = self.cfg.Interact.Fisherman.AnchorNames
-    lu.assertEquals(names, { 'TGUnitFish', 'TGUnitFishShrimp' })
+    lu.assertEquals(self.cfg.Interact.Fishermen[1].AnchorNames, { 'TGUnitFish' })
+    lu.assertEquals(self.cfg.Interact.Fishermen[1].ZoneId, 'fishPond')
+    lu.assertEquals(self.cfg.Interact.Fishermen[2].AnchorNames, { 'TGUnitFishShrimp' })
+    lu.assertEquals(self.cfg.Interact.Fishermen[2].ZoneId, 'shrimpPond')
     _G.game = { GetService = function() return {} end }
     local mgr = assert(loadfile('server/Mgr/MgrInteract.lua'))()
     mgr.FindAnchor = function(_, name)
@@ -272,7 +275,7 @@ function TestShrimpPond:test_fisherman_multi_anchor_feeds_at_shrimp_pond()
     lu.assertTrue(mgr:Handle(self.me, { target = 'fisherman', action = 'Feed', seq = 1 }))
     lu.assertEquals(self.data.Data.FishCoin, 10)
     lu.assertTrue(replies[#replies].ok)
-    -- 一区钓鱼佬旁同样可用（多锚点不回退一区）
+    -- 一区钓鱼佬旁同样可用（按区分派：各自只认本区锚点，互不借用）
     self:moveTo('TGUnitFish')
     lu.assertTrue(self.data:AddItem('carp'))
     for index = 1, 8 do

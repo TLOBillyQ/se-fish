@@ -35,4 +35,9 @@ function FishCatch.Price(species, mult)
     return math.floor(species.BasePrice * percent(mult or 1) / 100 + 1e-9)
 end
 
+-- 烤熟价（整数金币，向下取整）= floor(基础出售价 × 倍率 × 1.5)，倍率缺省 1（GameSpec §4.3 / #127）
+function FishCatch.CookedPrice(species, mult)
+    return math.floor(species.BasePrice * percent(mult or 1) / 100 * 1.5 + 1e-9)
+end
+
 return FishCatch

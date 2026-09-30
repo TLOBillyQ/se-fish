@@ -4,6 +4,7 @@ local ContentFish = require('common.cfg.Fish')
 local ContentShop = require('common.cfg.Shop')
 local ContentLottery = require('common.cfg.Lottery')
 local ContentBlindbox = require('common.cfg.Blindbox')
+local FishCatch = require('common.FishCatch')
 
 -- 钓鱼区 ID 用于内容与后续场景锚点；存档旧值在 LegacyZoneIdMap 中解析。
 -- WaterId 是内容层稳定 ID，现场 Water.Zones[*].Id 保留已有编辑器单位名称。
@@ -298,26 +299,22 @@ GameCfg.CastFeedback = {
     FloatColor = { 255, 225, 70, 255 },
 }
 
--- 交互点（#44，#27 规格）：场景既有触发器单位登记为可交互目标，当前只有钓鱼佬（一区 TGUnitFish、
--- 虾池 TGUnitFishShrimp，#90 多锚点；退役入口 LocalFishEnter 用 TGUnitFish 做靠近判定）。Radius 米内（只看 x/z：触发器中心在高处）显示「对话」「喂食」，
--- 服务端复验多给 Slack 米容差。喂食即出售：鱼获 floor(BasePrice × mult)，鱼饵每只 BaitPrice 金币。
+-- 交互点（#44，#27 规格）：场景既有触发器单位登记为可交互目标。当前只有钓鱼佬：
+-- Radius 米内（只看 x/z：触发器中心在高处）显示「对话」「喂食」，服务端复验多给 Slack 米容差。
+-- 喂食即出售（#127 改为按物品表回收）：未烤的本区信物优先走本区链 1:1 兑换（表见 Interact.Fishermen），
+-- 其余选中物品按基础价 × 实例倍率结金币、烤过的按烤熟价；选中的鱼饵按 BaitPrice 每只结算。
 -- 钓鱼佬的可见模型是官方「咸鱼」（official://preset/102179，场景单位名见 ModelName）；
 -- 模型无 Eat 动画（EatAnimation 留空，服务端播动画自动跳过），喂食吃动作为客户端缩放脉冲
 -- （LocalInteract 播，仅喂食者本机可见）。文字泡相对触发器中心（y=-1）抬高 9.5 米，露出高岸地面（y≈8.03）。
+-- 本表只放七区共享的表现与鱼饵价；每区的锚点与兑换链见下方 GameCfg.Interact.Fishermen（#127）。
 GameCfg.Interact = {
     Fisherman = {
-        -- 多锚点（#90）：第一钓鱼区 TGUnitFish + 虾池 TGUnitFishShrimp，范围内任一即命中；
-        -- 配置、台词、回收价全共享（虾池钓鱼佬同样什么都吃、信物兑换一样走 Exchange）
-        AnchorNames = { 'TGUnitFish', 'TGUnitFishShrimp' },
         ModelName = 'FishermanModel',
         Radius = 5,
         Slack = 0.5,
         BubbleHeight = 9.5,
         DialogText = '我好饿啊，什么都吃！',
         BaitPrice = { worm = 1 },
-        -- 信物兑换（#87，GameSpec §8.1 已确认）：选中格是信物时走 1:1 兑换、不给金币；
-        -- 精英信物 → 首领饵，首领信物 → 船票；道具栏 + 背包全满时拒绝且不消耗信物
-        Exchange = { eelHead = 'duck', garHead = 'shrimpTicket' },
     },
 }
 
@@ -428,37 +425,41 @@ GameCfg.Content.Exchanges = {
     { ZoneId = 'reefIsland', EliteFish = 'fish47Elite', EliteToken = 'item95', BossBait = 'item125', BossFish = 'fish48Boss', BossToken = 'item96', Result = 'item151', source = 'GameSpec.md#8.1-礁石岛' },
     { ZoneId = 'volcanoIsland', EliteFish = 'fish55Elite', EliteToken = 'item111', BossBait = 'item126', BossFish = 'fish56Boss', BossToken = 'item112', Result = 'achievement.final', source = 'GameSpec.md#8.1-火山岛' },
 }
+-- #127 T06 回收价与最终成就（行为在 server/Mgr/MgrInteract.lua）。喂钓鱼佬即回收：
+-- 鱼获的基础价随鱼种表走 FishCatch（含个体倍率），其余物品取物品表的 BasePrice；
+-- 烤过的按烤熟价 = 基础价 × 倍率 × 1.5（GameSpec §4.3）。烤制标记落在存档格位的
+-- saved.cooked（PlayerData 序列化原样保留格位的未知字段，不额外占位）。
+GameCfg.Items.CookedFlag = 'cooked'
+GameCfg.Items.CookedPriceScale = 1.5
+-- 物品表没有的物品返回 nil（不可回收，属配置事故；调用方按「没得喂」处理）
+function GameCfg.Items.SalePrice(itemId, mult, cooked)
+    local species = type(itemId) == 'string' and GameCfg.Fish[itemId]
+    if species then
+        return cooked and FishCatch.CookedPrice(species, mult) or FishCatch.Price(species, mult)
+    end
+    local definition = type(itemId) == 'string' and GameCfg.Items.Definitions[itemId]
+    local base = definition and definition.BasePrice
+    if type(base) ~= 'number' then return nil end
+    local factor = type(mult) == 'number' and mult or 1
+    return math.floor(base * factor * (cooked and GameCfg.Items.CookedPriceScale or 1) + 1e-9)
+end
+
+-- 最终成就（#127 第七区，GameSpec §8.1「哥斯拉头 → 通关成就」）：兑换产物是 'achievement.<id>'
+-- 时写进 Extra.achievements[<id>]（不占道具格，重进照旧保留），这里只给客户端提示用的名字。
+GameCfg.Achievements = {
+    final = { Name = '通关成就' },
+}
 GameCfg.Shop.Catalog = ContentShop.Goods
 GameCfg.Shop.Excluded = ContentShop.Excluded
 GameCfg.Lottery = ContentLottery
 GameCfg.Blindbox = ContentBlindbox
 
--- 摆渡（#89，GameSpec §8.3 已确认细则）：去程一人在船边交 1 张船票，倒计时 CountdownSec 秒后
--- 带走 BoatRange 米内（只看 x/z）所有玩家到虾池落点，无票同行者搭便船合法；倒计时中再交票拒绝且不扣。
--- 返程在虾池侧锚点按人付 Price 金币、立即传送回第一钓鱼区。船与虾池都是占位表现（#90 才铺虾池内容）；
--- 区域名写入 PlayerData.Data.Zone（#92 存档用），HomeZone 是开局区域。返程票价为占位值，待策划校准。
+-- 摆渡（#89 定细则，#127 T06 扩到七区六航线）：去程一人在船边交 1 张船票，倒计时 CountdownSec 秒后
+-- 带走 BoatRange 米内（只看 x/z）所有玩家到本航线目的区落点，无票同行者搭便船合法；倒计时中再交票拒绝且不扣。
+-- 返程按人付 Price 金币、立即传送回出发区。票、价、锚点、落点、区域名全部由航线（Ferry.Routes，见下）
+-- 提供；区域名写入 PlayerData.Data.Zone（#92 存档用），HomeZone 是开局区域。
+-- 具体的 Outbound / Return 两条腿在 PlannedRoutes 之后由航线派生（#127 前只有第一段是既有现场）。
 GameCfg.Ferry = {
-    HomeZone = 'fishPond1',
-    Outbound = {
-        AnchorName = 'FerryBoat',
-        Ticket = 'shrimpTicket',
-        CountdownSec = 10,
-        BoatRange = 6,
-        Radius = 5,
-        Slack = 0.5,
-        BubbleHeight = 6,
-        Destination = { x = 100, y = 6, z = 100 }, -- 虾池落点（占位平台，随场景摆位校准）
-        Zone = 'shrimpPond',
-    },
-    Return = {
-        AnchorName = 'FerryReturn',
-        Price = 20,
-        Radius = 5,
-        Slack = 0.5,
-        BubbleHeight = 6,
-        Destination = { x = 6.26, y = 5.01, z = 39.29 }, -- 第一钓鱼区出生点旁
-        Zone = 'fishPond1',
-    },
 }
 
 -- 抛竿选鱼（钓鱼表）。Zones 每行：Id=鱼种，Bait=需要的鱼饵（0 = 不挂饵也可），RodLevel=鱼竿等级下限
@@ -828,6 +829,60 @@ for index = 1, 6 do
         Outbound = { AnchorName = outName, Ticket = GameCfg.Content.Exchanges[index].Result,
             CountdownSec = 5, Destination = to.Scene.SafePoint },
         Return = { AnchorName = returnName, Price = plannedReturnPrices[index], Destination = from.Scene.SafePoint },
+    }
+end
+
+-- #127 T06 六条航线（路线图 §8.2）：一条航线 = 一段去程（第 i 区 → 第 i+1 区）+ 一段返程（第 i+1 区 → 第 i 区），
+-- 去程与返程各有**独立标识与独立状态**，不同航线互不占用倒计时。Id 是服务端唯一的航线凭证：
+-- 请求里带 Id 才能拿到这条航线的 NPC 锚点、目的地、船票（去程）与票价（返程），查不到就拒收。
+-- 票与价都随本区链推进：去程票 = 本区首领信物的产物（Content.Exchanges[i].Result，#126），
+-- 返程价 = 10 × 3^(到达区序 − 2)，即 10 / 30 / 90 / 270 / 810 / 2430。
+-- 腿的公共几何（BoatRange / Radius / Slack / BubbleHeight）与 #89 保持一致，逐条航线可单独覆盖。
+GameCfg.Ferry.Routes = {}
+local ferryLegGeometry = { BoatRange = 6, Radius = 5, Slack = 0.5, BubbleHeight = 6 }
+for index = 1, 6 do
+    local planned = GameCfg.Ferry.PlannedRoutes[index]
+    local from, to = GameCfg.Zones[index], GameCfg.Zones[index + 1]
+    local outbound, back = {}, {}
+    for key, value in pairs(ferryLegGeometry) do outbound[key], back[key] = value, value end
+    for key, value in pairs(planned.Outbound) do outbound[key] = value end
+    for key, value in pairs(planned.Return) do back[key] = value end
+    outbound.Zone = to.Id      -- 到达区（去程落点写进 Data.Zone）
+    back.Zone = from.Id        -- 返程回出发区
+    GameCfg.Ferry.Routes[index] = {
+        Id = from.Id .. '>' .. to.Id,
+        FromZoneId = from.Id,
+        ToZoneId = to.Id,
+        Outbound = outbound,
+        Return = back,
+    }
+end
+
+-- 第一段（鱼塘 ⇄ 虾池）是既有现场（#89 已实装）：这两个别名让老消费者与老用例不必认识 Routes。
+GameCfg.Ferry.HomeZone = GameCfg.Zones[1].Id
+GameCfg.Ferry.Outbound = GameCfg.Ferry.Routes[1].Outbound
+GameCfg.Ferry.Return = GameCfg.Ferry.Routes[1].Return
+
+-- 航线 id 校验（#127）：只有登记在 Routes 里的字符串 id 才算数，伪造成别的区号或数字一律查不到。
+function GameCfg.Ferry.Route(routeId)
+    if type(routeId) ~= 'string' then return nil end
+    for _, route in ipairs(GameCfg.Ferry.Routes) do
+        if route.Id == routeId then return route end
+    end
+end
+
+-- #127 T06 七区兑换：每区一个钓鱼佬，锚点取本区场景合同（Zones[].Scene.FishermanName，#125 的真源），
+-- 兑换链取本区信物链（Content.Exchanges）。共享表现参数与鱼饵价留在 Interact.Fisherman，
+-- 消费端（server/Mgr/MgrInteract.lua）把两者合成一个完整交互点，避免把共享参数抄七份。
+GameCfg.Interact.Fishermen = {}
+for index, chain in ipairs(GameCfg.Content.Exchanges) do
+    local zone = GameCfg.Zones[index]
+    GameCfg.Interact.Fishermen[index] = {
+        ZoneId = zone.Id,
+        AnchorNames = { zone.Scene.FishermanName },
+        -- 未烤信物 1:1：精英信物 → 本区首领饵，首领信物 → 本区产物（第七区是 achievement.final）
+        Exchange = { [chain.EliteToken] = chain.BossBait, [chain.BossToken] = chain.Result },
+        Chain = index,
     }
 end
 
