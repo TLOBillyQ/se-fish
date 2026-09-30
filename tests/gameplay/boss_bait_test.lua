@@ -87,7 +87,8 @@ end
 
 -- 配置钉住：首领饵映射与首领近战占位参数
 function TestBossBait:test_config_pins()
-    lu.assertEquals(self.cfg.Casting.BossBait, { duck = 'alligatorGar', item121 = 'fish16Boss' })
+    lu.assertEquals(self.cfg.Casting.BossBait,
+        { duck = 'alligatorGar', item121 = 'fish16Boss', item122 = 'fish24Boss' })
     lu.assertEquals(self.cfg.Fish.alligatorGar.Combat, 'gar')
     lu.assertNotNil(self.cfg.FishCombat.gar.BiteRange)
     lu.assertNotNil(self.cfg.FishCombat.gar.BiteCooldownSec)

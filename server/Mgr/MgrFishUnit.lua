@@ -46,6 +46,17 @@ local function readPosition(unit)
     end
 end
 
+-- #136 蟹湖节拍初始化：Release 放下与帝王蟹眩晕醒来共用，两处必须一致
+-- （漏一项就会出现醒来后双击 / 冲撞 / 旋转节拍错位）。JabAt / PinchAt 从 -1 起，
+-- 让放下或醒来后的首次进距立刻起手，避免与引擎时间推进错位。
+local function resetCrabRhythm(fish, now, params)
+    if params.ActiveSec then fish.ActiveUntil = now + params.ActiveSec end
+    fish.JabAt = -1
+    fish.PinchAt = -1
+    fish.SpecialAt = now + (params.SpinSec or 0)
+    fish.ChargeAt = now + (params.ChargeSec or 0)
+end
+
 local function noCollide(unit, other)
     if unit and other and unit ~= other and unit.AddNoCollisionPairWithUnit then
         pcall(unit.AddNoCollisionPairWithUnit, unit, other)
@@ -321,6 +332,10 @@ function Mgr:Release(fish, reason)
                 fish.ActiveUntil = now + (params.ActiveSec or params.SpecialSec)
                 fish.SpecialAt = now + (params.SpecialSec or 0)
                 fish.Combo = 0
+            elseif species.Combat == 'kingCrab' or species.Combat == 'crabBoss' then
+                -- #136 蟹湖：帝王蟹活动计时；蟹老板冲撞 / 旋转 / 双击各自的节拍。
+                -- 与眩晕醒来共用 resetCrabRhythm，字段清单只有一处。
+                resetCrabRhythm(fish, now, GameCfg.FishCombat[species.Combat])
             end
         elseif self.Ability then
             self.Ability:EquipFish(fish)
@@ -747,6 +762,148 @@ function Mgr:UpdateShrimpCombat(fish, now, pos, params, combat)
     self:StartMove(fish, name, pos, target, tp, now, params.BiteCooldownSec, params.BiteRange)
 end
 
+-- #136 帝王蟹：放下即锁定最近目标起手乱刺；每轮左右钳各 JabsPerSide 下、每下间隔
+-- JabStepSec、每下 JabDamage。同一刺段（0.2 秒槽）只结算一次；掉帧大 dt 只补当前槽不追溯。
+-- 一轮结束招式清除、预警收起，下一轮 JabAt + JabIntervalSec 后重新起手；活动 ActiveSec 秒
+-- 眩晕 StunSec 秒（眩晕由通用 stunned 分支处理，醒来重置节拍）。
+function Mgr:UpdateKingCrabCombat(fish, now, pos, params)
+    local body = fish.Carrier.Body
+    body.LinearVelocity = Vector3.New(0, 0, 0)
+    -- 追击步长与帧率解耦：dt 取上一战斗帧间隔（与虾池 UpdateShrimpCombat 同口径）；
+    -- 招式期间每帧也刷新 CombatStepAt，收招后首帧 dt 只是一帧间隔，不累积折算成位移。
+    local dt = math.max(0, now - (fish.CombatStepAt or now))
+    fish.CombatStepAt = now
+    local move = fish.Move
+    if move then
+        if move.Name ~= 'jab' then return end
+        -- 起手帧（now <= At）是预警帧，不结算；槽 k 在 At + (k+1) × JabStepSec 起结算，
+        -- 钳与钳之间完整隔一个 JabStepSec；StrikeAt = At + 钳数 × step，末槽（第 6 钳）
+        -- 与收招同帧：先结算末钳再收招。掉帧只补当前槽不追溯。
+        local elapsed = now - move.At
+        local slot = elapsed <= 0 and -1 or math.min(params.JabsPerSide * 2 - 1,
+            math.floor(elapsed / params.JabStepSec + 1e-9) - 1)
+        if slot > (move.LastSlot or -1) then
+            move.LastSlot = slot
+            local target, tp = self:IsTargetValid(move.Target, pos, params)
+            if target and withinBite(pos, tp, params)
+                and Mgr.InHeadZone(pos, fish.Facing, tp, params) then
+                self:Hit(fish, move.Target, params.JabDamage, 'jab')
+            end
+        end
+        if now < move.StrikeAt - 1e-9 then return end
+        self:EndMove(fish, 'jab-end')
+        return
+    end
+    local target, tp = self:ChooseTarget(fish, pos, params)
+    if not target then return end
+    if now < (fish.JabAt or 0) then return end
+    if not withinBite(pos, tp, params) then
+        local fx, fz = flatDirection(tp.x - pos.x, tp.z - pos.z)
+        self:Face(fish, fx, fz, params)
+        local distance = math.sqrt((tp.x - pos.x)^2 + (tp.z - pos.z)^2)
+        local step = math.min(self:Speed(fish) * dt, math.max(0, distance - params.BiteRange))
+        local moved, err = pcall(function()
+            body.Position = Vector3.New(pos.x + (fx or 0) * step, pos.y, pos.z + (fz or 0) * step)
+        end)
+        if not moved then print('[MgrFishUnit] 帝王蟹追击位移失败', fish.Id, tostring(err)) end
+        return
+    end
+    -- 起手乱刺：预警时长 = 钳数 × JabStepSec（起手帧 + 每钳一个间隔），
+    -- 收招帧（now == StrikeAt）先结算末钳再收招。
+    fish.JabAt = now + params.JabIntervalSec
+    self:StartMove(fish, 'jab', pos, target, tp, now,
+        params.JabStepSec * params.JabsPerSide * 2, params.BiteRange)
+end
+
+-- #136 蟹老板：三招互斥——双击（pinch）、冲撞（charge）、旋转（spin）。
+-- 节拍：SpecialAt（旋转，每 25 秒）、ChargeAt（冲撞，每 30 秒）、PinchAt（双击，冷却 4 秒）。
+-- 旋转 / 冲撞优先级高于双击；旋转优先级高于冲撞（旋转持续期跨过冲撞节拍时冲撞被压住）。
+function Mgr:UpdateCrabBossCombat(fish, now, pos, params)
+    local body = fish.Carrier.Body
+    body.LinearVelocity = Vector3.New(0, 0, 0)
+    -- 追击步长与帧率解耦：dt 取上一战斗帧间隔（与帝王蟹 / 虾池同口径）。
+    local dt = math.max(0, now - (fish.CombatStepAt or now))
+    fish.CombatStepAt = now
+    local move = fish.Move
+    if move then
+        if move.Name == 'pinch' then
+            -- 双击第 k 击在起手后 k × PinchStepSec 秒起结算
+            local elapsed = now - move.At
+            local strike = elapsed <= 0 and 0 or math.min(params.PinchStrikes,
+                math.floor(elapsed / params.PinchStepSec + 1e-9))
+            if strike > (move.LastStrike or 0) and strike >= 1 then
+                move.LastStrike = strike
+                local target, tp = self:IsTargetValid(move.Target, pos, params)
+                if target and withinBite(pos, tp, params)
+                    and Mgr.InHeadZone(pos, fish.Facing, tp, params) then
+                    self:Hit(fish, move.Target, params.PinchDamage, 'pinch')
+                end
+            end
+            if now < move.StrikeAt - 1e-9 then return end
+            self:EndMove(fish, 'pinch-end')
+            return
+        elseif move.Name == 'charge' then
+            -- 冲撞窗口内命中一次（窗口内只结算一次，不按帧重复）
+            if not move.HitDone then
+                local target, tp = self:ChooseTarget(fish, pos, params)
+                if target and tp and (tp.x - pos.x)^2 + (tp.z - pos.z)^2 <= params.ChargeRange^2 then
+                    move.HitDone = true
+                    self:Hit(fish, target, params.ChargeDamage, 'charge')
+                end
+            end
+            if now < move.StrikeAt - 1e-9 then return end
+            self:EndMove(fish, 'charge-end')
+            return
+        elseif move.Name == 'spin' then
+            -- 每秒槽一次碰触：同一秒槽同一玩家只结算一次（秒槽记在 move 上）
+            local tick = math.min(params.SpinDurationSec,
+                math.max(0, math.floor(now - move.At)))
+            if tick > (move.LastTick or 0) then
+                move.LastTick = tick
+                for _, player in ipairs(self:Players()) do
+                    local valid, cp = self:IsTargetValid(player, move.Center)
+                    if valid and (cp.x - pos.x)^2 + (cp.z - pos.z)^2 <= params.SpinRadius^2 then
+                        self:Hit(fish, player, params.SpinDamage, 'spin')
+                    end
+                end
+            end
+            if now < move.StrikeAt - 1e-9 then return end
+            self:EndMove(fish, 'spin-end')
+            return
+        end
+        return
+    end
+    -- 无招式时按节拍起新招：旋转 > 冲撞 > 双击
+    local target, tp = self:ChooseTarget(fish, pos, params)
+    if not target then return end
+    if now >= (fish.SpecialAt or math.huge) then
+        fish.SpecialAt = now + params.SpinSec
+        self:StartMove(fish, 'spin', pos, target, tp, now, params.SpinDurationSec, params.SpinRadius)
+        return
+    end
+    if now >= (fish.ChargeAt or math.huge) then
+        fish.ChargeAt = now + params.ChargeSec
+        self:StartMove(fish, 'charge', pos, target, tp, now, params.ChargeWindowSec, params.ChargeRange)
+        return
+    end
+    if now >= (fish.PinchAt or 0) and withinBite(pos, tp, params) then
+        fish.PinchAt = now + params.PinchCooldownSec
+        self:StartMove(fish, 'pinch', pos, target, tp, now,
+            params.PinchStepSec * params.PinchStrikes, params.BiteRange)
+        return
+    end
+    -- 追击
+    if not withinBite(pos, tp, params) then
+        local fx, fz = flatDirection(tp.x - pos.x, tp.z - pos.z)
+        self:Face(fish, fx, fz, params)
+        local distance = math.sqrt((tp.x - pos.x)^2 + (tp.z - pos.z)^2)
+        local step = math.min(self:Speed(fish) * dt, math.max(0, distance - params.BiteRange))
+        local moved, err = pcall(function()
+            body.Position = Vector3.New(pos.x + (fx or 0) * step, pos.y, pos.z + (fz or 0) * step)
+        end)
+        if not moved then print('[MgrFishUnit] 蟹老板追击位移失败', fish.Id, tostring(err)) end
+    end
+end
 -- 战斗只在首次放下后计时；逃跑时限优先于攻击和睡眠。
 function Mgr:UpdateCombat(fish, now)
     local body = fish.Carrier.Body
@@ -779,17 +936,37 @@ function Mgr:UpdateCombat(fish, now)
         return
     end
     self:RefreshMovingCombat(fish, now)
+    -- #136 蟹湖眩晕：shrimp/dragon 的 stunned 由 UpdateShrimpCombat 专属分支处理，
+    -- 帝王蟹在这里醒转并重置节拍；蟹老板无眩晕机制，不会进入该分支。
+    local combat = GameCfg.Fish[fish.FishId].Combat
+    if fish.State == 'stunned' and combat == 'kingCrab' then
+        body.LinearVelocity = Vector3.New(0, 0, 0)
+        if now < (fish.WakeAt or math.huge) then return end
+        fish.State, fish.WakeAt = Mgr.State.Combat, nil
+        local params = GameCfg.FishCombat and GameCfg.FishCombat[combat]
+        if params then resetCrabRhythm(fish, now, params) end
+        self:PublishCombat(fish)
+    end
     -- #132 T11 原型：分阶段首领走自己的状态机（阈值切换 → 招式集 → 咬中叼人）
     if self:BossPhaseEnabled(fish.FishId) then
         self:UpdateBossPhase(fish, now, pos)
         return
     end
     -- 首领近战（#88）不走技能装配与睡眠，追咬由 UpdateChase 驱动
-    local combat = GameCfg.Fish[fish.FishId].Combat
     local chase = GameCfg.FishCombat and GameCfg.FishCombat[combat]
     if chase then
         if combat == 'shrimp' or combat == 'dragon' then
             self:UpdateShrimpCombat(fish, now, pos, chase, combat)
+        elseif combat == 'kingCrab' then
+            -- #136 帝王蟹：活动 30 秒眩晕 5 秒优先于起手
+            if now >= (fish.ActiveUntil or math.huge) then
+                self:StunFish(fish, now, chase)
+            else
+                self:UpdateKingCrabCombat(fish, now, pos, chase)
+            end
+        elseif combat == 'crabBoss' then
+            -- #136 蟹老板：双击 / 冲撞 / 旋转三招互斥
+            self:UpdateCrabBossCombat(fish, now, pos, chase)
         else
             self:UpdateChase(fish, now, pos, chase)
         end

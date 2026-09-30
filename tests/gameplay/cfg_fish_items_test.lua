@@ -135,8 +135,12 @@ function TestCfgFishItems:testUnimplementedContentAndInventorySemanticsRemainExp
     local fish = require('common.cfg.Fish')
     local items = require('common.cfg.Items')
     for _, row in pairs(fish.Definitions) do
-        if row.ZoneId ~= 'fishPond' and row.ZoneId ~= 'shrimpPond' or row.Grade == 'elite' or row.Grade == 'boss' then
-            lu.assertFalse(row.implemented, row.source)
+        -- #136：蟹湖 14 行已随本单实装；其余未实装区与全部精英/首领仍保持 implemented=false
+        if row.ZoneId ~= 'fishPond' and row.ZoneId ~= 'shrimpPond' and row.ZoneId ~= 'crabLake'
+            or row.Grade == 'elite' or row.Grade == 'boss' then
+            if row.Id ~= 'fish23Elite' and row.Id ~= 'fish24Boss' then
+                lu.assertFalse(row.implemented, row.source)
+            end
         end
     end
     for sourceId = 152, 171 do
