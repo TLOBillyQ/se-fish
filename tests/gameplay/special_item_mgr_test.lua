@@ -116,8 +116,13 @@ function TestSpecialItemMgr:setUp()
     self.hits = {}
     self.mgr.Vitals = {
         CanAct = function(_, player) return env.alive[player.UserId] == true end,
-        NewHit = function(_, source, category) return { source = source, category = category } end,
+        NewHit = function(_, source, category)
+            return { source = source, category = category, targets = {} }
+        end,
+        -- 与 MgrVitals:ApplyHit 同契约：同一命中身份对同一目标只结算一次（DOT 每段须重新 NewHit）
         ApplyHit = function(_, hit, target, amount)
+            if hit.targets[target] then return false end
+            hit.targets[target] = true
             env.hits[#env.hits + 1] = { category = hit.category, target = target, amount = amount,
                 source = hit.source }
             return true

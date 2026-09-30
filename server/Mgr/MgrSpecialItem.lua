@@ -4,8 +4,8 @@
 --   * 调和（Reconcile）：每帧把「期望生效效果」（选中槽物品 × CanAct）与「已应用效果」对齐，
 --     切换 / 丢弃 / 死亡 / 复活 / 摆渡 / 重进全走这一条路，不保留事件式残留；
 --   * 引擎接缝：背负翅膀（EggyAppearance:BindAppearance / UnbindAppearance）、变身换肤
---     （SetAppearanceByAssetId / ResetAppearance）、飞行接管（Controller.GravityEnabled +
---     逐帧写 Character.Position，#132 叼人已验证的接缝）、吐息结算（Vitals:NewHit/ApplyHit）；
+--     （SetAppearanceByAssetId / ResetAppearance）、飞行接管（仅空中关 Controller.GravityEnabled +
+--     逐帧写 Character.Position，#132 叼人已验证的接缝）、吐息结算（每段 Vitals:NewHit/ApplyHit）；
 --   * 冷却镜像：吐息 CD 以剩余秒数写 Extra.cooldowns（与 MgrSurvival.Mirror 同口径），
 --     重进恢复成绝对时刻；冷却只依赖绝对时刻，切换 / 死亡清不掉。
 -- 首领哥斯拉（BossPhase.Attacks.breath，10 米 OneShot 秒杀）与玩家吐息（本模块
@@ -217,7 +217,7 @@ end
 
 -- ===== 原子吐息 =====
 
--- 施法校验：变身中、活着、冷却就绪；一本台账 + 一个命中身份管全程
+-- 施法校验：变身中、活着、冷却就绪；一本台账管全程（每目标按段结算、总额恰 1000）
 function Mgr:CastBreath(player)
     local state = self:GetState(player)
     if state.effect ~= 'godzilla' then return self:Fail(player, 'breath', 'not-godzilla') end
@@ -234,7 +234,6 @@ function Mgr:CastBreath(player)
     state.lastBreathAt = now
     state.breath = {
         castAt = now, tick = 1,
-        hit = self.Vitals:NewHit(player, 'specialBreath'),
         ledger = SpecialItem.NewBreathLedger(bc),
         origin = { x = pos.x, y = pos.y, z = pos.z },
         forward = flatForward(character.Rotation),
@@ -244,13 +243,16 @@ function Mgr:CastBreath(player)
     return true
 end
 
--- 单段结算：走廊内每个目标经台账取本段伤害（无重复段、不超 1000），过统一伤害入口
+-- 单段结算：走廊内每个目标经台账取本段伤害（无重复段、不超 1000），过统一伤害入口。
+-- 每段颁发新命中身份：Vitals 同一身份对同一目标只结算一次（#128「DOT 下一 tick 须重新 NewHit」），
+-- 整次施法共用一个身份会让每个目标只吃到第 1 段；段内去重仍由台账与该身份共同保证。
 function Mgr:BreathTick(player, breath, tick)
     local bc = breathCfg()
+    local hit = self.Vitals:NewHit(player, 'specialBreath')
     local function settle(target, key, pos)
         if pos and inCorridor(breath.origin, breath.forward, pos, bc) then
             local amount = SpecialItem.BreathHit(breath.ledger, key, tick)
-            if amount then self.Vitals:ApplyHit(breath.hit, target, amount) end
+            if amount then self.Vitals:ApplyHit(hit, target, amount) end
         end
     end
     for _, p in ipairs(self:OnlinePlayers() or {}) do
