@@ -92,6 +92,15 @@ local function startCharge(env, fish)
     return fish.Move, fish.Carrier.Body.Position
 end
 
+-- 从预警记录里捞某招的 Lock payload（双轴审查 P2：预警形状 / 半径必须与真实危险区一致）
+local function findLock(env, moveName)
+    local lock
+    for _, notice in ipairs(env.notices) do
+        if notice.kind == 'lock' and notice.move == moveName then lock = notice end
+    end
+    return lock
+end
+
 -- ===== 1. 水区 / 抽鱼池 =====
 local waterId = GameCfg.Zones[5].WaterId
 local rows = GameCfg.Casting.Zones[waterId]
@@ -150,6 +159,10 @@ do
         move.Name == 'charge' and midNoHit and #env.hits == 1 and env.hits[1].amount == 120
         and math.abs(fish.Carrier.Body.Position.z - bp.z - GameCfg.FishCombat.walrus.ChargeDistance) < 1e-6,
         'move=' .. tostring(move.Name) .. ' hits=' .. #env.hits)
+    local chargeLock = findLock(env, 'charge')
+    check('突击预警覆盖 20 米冲锋走廊', chargeLock ~= nil
+        and math.abs(chargeLock.range - GameCfg.FishCombat.walrus.ChargeDistance) < 1e-9,
+        'range=' .. tostring(chargeLock and chargeLock.range))
     quantity('海象突击周期秒', GameCfg.FishCombat.walrus.ChargeSec)
     quantity('海象突击伤害', GameCfg.FishCombat.walrus.ChargeDamage)
     close(env)
@@ -191,6 +204,11 @@ do
     at(env, 11)
     check('虎鲸 10 秒虎啸远程：咬距外也结算 30', windupNoHit and #env.hits == 1 and env.hits[1].amount == 30,
         'roar=' .. tostring(roar) .. ' hits=' .. #env.hits)
+    local roarLock = findLock(env, 'roar')
+    check('虎啸预警为整圆（径向结算）', roarLock ~= nil and roarLock.shape == 'circle'
+        and roarLock.halfAngleDeg == 180
+        and math.abs(roarLock.range - GameCfg.FishCombat.orca.RoarRange) < 1e-9,
+        'shape=' .. tostring(roarLock and roarLock.shape))
     quantity('虎啸周期秒', GameCfg.FishCombat.orca.RoarSec)
     close(env)
 end
@@ -217,6 +235,11 @@ do
     end
     check('虎鲸甩尾只打身后 160（身前目标不沾）', roar and #env.hits == 1 and rearOnly,
         'roar=' .. tostring(roar) .. ' hits=' .. #env.hits)
+    local tailLock = findLock(env, 'tail')
+    check('甩尾预警为整圆（真实伤害区是身后半圆）', tailLock ~= nil and tailLock.shape == 'circle'
+        and tailLock.halfAngleDeg == 180
+        and math.abs(tailLock.range - GameCfg.FishCombat.orca.TailRadius) < 1e-9,
+        'shape=' .. tostring(tailLock and tailLock.shape))
     quantity('甩尾伤害', GameCfg.FishCombat.orca.TailDamage)
     close(env)
 end

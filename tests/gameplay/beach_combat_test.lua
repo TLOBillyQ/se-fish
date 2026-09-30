@@ -162,6 +162,22 @@ function TestBeachCombat:test_walrus_charge_misses_player_off_path()
     lu.assertEquals(damages, {}, '路径外的玩家不得被冲锋撞到')
 end
 
+-- 突击预警必须覆盖真实危险区：20 米冲锋走廊（双轴审查 P2，与 #141 同类合并前修复；
+-- 预警 range 只给接触距离 2.5 米属严重欠警）。朝向目标的前向扇形 + 冲程半径可覆盖走廊，
+-- 走廊两侧之外属横向超警（安全方向）。
+function TestBeachCombat:test_walrus_charge_telegraph_covers_corridor()
+    local fish = drop(self, 'fish39Elite', 20)
+    local params = walrusParams()
+    startCharge(self, fish)
+    local lock
+    for _, notice in ipairs(self.notices) do
+        if notice.kind == 'lock' and notice.move == 'charge' then lock = notice end
+    end
+    lu.assertNotNil(lock, '突击没有发预警')
+    lu.assertAlmostEquals(lock.range, params.ChargeDistance, 1e-9,
+        '突击预警半径必须取冲程 20 米（走廊），不能只给接触距离')
+end
+
 function TestBeachCombat:test_walrus_charge_displacement_failure_cancels_without_damage()
     local fish, damages = drop(self, 'fish39Elite', 20)
     local params = walrusParams()
@@ -334,6 +350,51 @@ function TestBeachCombat:test_orca_tail_160_hits_rear_player_only()
         for _, d in ipairs(damages) do if d == 160 then return true end end
         return false
     end)(), '身前的目标不得被甩尾打到')
+end
+
+-- 甩尾预警必须是整圆：真实伤害打身后 TailRadius 半圆，前向 90° 扇形盖不住 180° 半圆、
+-- 且方向性误导（双轴审查 P2，与 #141 合并前修复同类）。整圆覆盖身后，前向超警属安全方向。
+function TestBeachCombat:test_orca_tail_telegraph_is_full_circle()
+    local fish = drop(self, 'fish40Boss', 2)
+    for t = 0.5, 9.5, 0.5 do self.now = t self.mgr:Update() end
+    self.now = 10
+    self.mgr:Update() -- 虎啸先起手（同 10 秒节拍，优先级压住甩尾）
+    lu.assertEquals(fish.Move.Name, 'roar')
+    local guard = 0
+    while (not fish.Move or fish.Move.Name ~= 'tail') and guard < 50 do
+        self.now = self.now + 0.1
+        self.mgr:Update()
+        guard = guard + 1
+    end
+    lu.assertEquals(fish.Move.Name, 'tail')
+    local params = require('common.GameCfg').FishCombat.orca
+    local lock
+    for _, notice in ipairs(self.notices) do
+        if notice.kind == 'lock' and notice.move == 'tail' then lock = notice end
+    end
+    lu.assertNotNil(lock, '甩尾没有发预警')
+    lu.assertEquals(lock.shape, 'circle', '甩尾预警必须是整圆（真实伤害区是身后半圆）')
+    lu.assertEquals(lock.halfAngleDeg, 180)
+    lu.assertAlmostEquals(lock.range, params.TailRadius, 1e-9, '预警半径取 TailRadius')
+end
+
+-- 虎啸预警对齐径向结算：实际只按锁定目标的径向距离结算，前向 90° 扇形对目标身后 /
+-- 侧向的其他人欠警。整圆（range=RoarRange）与真实危险区一致，覆盖且不误导。
+function TestBeachCombat:test_orca_roar_telegraph_is_radial_circle()
+    local fish = drop(self, 'fish40Boss', 2)
+    for t = 0.5, 9.5, 0.5 do self.now = t self.mgr:Update() end
+    self.now = 10
+    self.mgr:Update() -- 虎啸起手
+    lu.assertEquals(fish.Move.Name, 'roar')
+    local params = require('common.GameCfg').FishCombat.orca
+    local lock
+    for _, notice in ipairs(self.notices) do
+        if notice.kind == 'lock' and notice.move == 'roar' then lock = notice end
+    end
+    lu.assertNotNil(lock, '虎啸没有发预警')
+    lu.assertEquals(lock.shape, 'circle', '虎啸预警必须是整圆（径向距离结算）')
+    lu.assertEquals(lock.halfAngleDeg, 180)
+    lu.assertAlmostEquals(lock.range, params.RoarRange, 1e-9, '预警半径取 RoarRange')
 end
 
 -- ===== 虎鲸：鲸跃 25 秒、随机 15 米外落点、10 米范围 240；整圆预警 =====

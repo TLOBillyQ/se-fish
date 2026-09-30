@@ -678,7 +678,10 @@ function Mgr:EndMove(fish, reason)
     self:PublishCombat(fish)
 end
 
-function Mgr:StartMove(fish, name, pos, target, tpos, now, duration, range)
+-- shape 可覆盖预警形状：'circle' 发整圆（halfAngleDeg=180）。默认前向 90° 扇形；
+-- 真实伤害区不是前向扇形时必须整圆覆盖（#141 鲸跃 / #142 虎啸径向、甩尾身后半圆），
+-- 宁可前向超警（安全方向）不得欠警真实危险区。
+function Mgr:StartMove(fish, name, pos, target, tpos, now, duration, range, shape)
     self:EndMove(fish, 'replace')
     local fx, fz
     if tpos then fx, fz = flatDirection(tpos.x - pos.x, tpos.z - pos.z) end
@@ -691,7 +694,7 @@ function Mgr:StartMove(fish, name, pos, target, tpos, now, duration, range)
     warningPos = warningPos or pos
     local payload = GarBiteNotice.Lock(fish.Id, warningPos, facing.x, facing.z, range, 90, duration)
     payload.move = name
-    if name == 'jump' then payload.shape, payload.halfAngleDeg = 'circle', 180 end
+    if shape == 'circle' or name == 'jump' then payload.shape, payload.halfAngleDeg = 'circle', 180 end
     publishBite(self, payload)
     fish.MoveName = name
     self:PublishCombat(fish)
@@ -1178,9 +1181,12 @@ function Mgr:UpdateWalrusCombat(fish, now, pos, params)
         local target, tp = self:ChooseTarget(fish, pos, params)
         if not target then return end
         fish.ChargeAt = now + params.ChargeSec
+        -- #142 双轴审查 P2：预警半径必须覆盖真实危险区（20 米冲锋走廊），
+        -- 不能只给接触距离 2.5 米（欠警）。前向扇形随锁头朝向覆盖走廊，
+        -- 走廊两侧之外属横向超警（安全方向）。
         self:StartMove(fish, 'charge', pos, target, tp, now,
             params.ChargeWindupSec + params.ChargeDistance / params.ChargeSpeed,
-            params.ChargeContactRange)
+            params.ChargeDistance)
         fish.Move.WindupAt = now + params.ChargeWindupSec
         fish.Move.Hits = {}
         return
@@ -1270,12 +1276,16 @@ function Mgr:UpdateOrcaCombat(fish, now, pos, params)
     if not target then return end
     if now >= (fish.RoarAt or math.huge) then
         fish.RoarAt = now + params.RoarSec
-        self:StartMove(fish, 'roar', pos, target, tp, now, params.RoarWindupSec, params.RoarRange)
+        -- #142 双轴审查 P2：虎啸只按锁定目标的径向距离结算，预警发整圆（range=RoarRange）
+        -- 与真实危险区一致；前向 90° 扇形对目标身后 / 侧向的其他人欠警。
+        self:StartMove(fish, 'roar', pos, target, tp, now, params.RoarWindupSec, params.RoarRange, 'circle')
         return
     end
     if now >= (fish.TailAt or math.huge) then
         fish.TailAt = now + params.TailSec
-        self:StartMove(fish, 'tail', pos, target, tp, now, params.TailWindupSec, params.TailRadius)
+        -- #142 双轴审查 P2：甩尾真实伤害区是身后 TailRadius 半圆，前向 90° 扇形盖不住
+        -- 180° 半圆且方向性误导；整圆覆盖（前向超警属安全方向）。
+        self:StartMove(fish, 'tail', pos, target, tp, now, params.TailWindupSec, params.TailRadius, 'circle')
         return
     end
     if now >= (fish.ClawAt or 0) and withinBite(pos, tp, params) then
