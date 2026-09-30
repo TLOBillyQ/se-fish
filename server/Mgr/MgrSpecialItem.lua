@@ -311,8 +311,12 @@ function Mgr:Update(dt)
 end
 
 function Mgr:Handle(player, payload)
-    if type(payload) ~= 'table' or type(player) ~= 'table' then return false end
-    local state = self:GetState(player)
+    if type(payload) ~= 'table' or not player then return false end
+    -- 引擎 Player 并非 Lua table；校验登记身份对象，既兼容引擎也拒绝伪造 / 尚未载入存档的请求
+    local ok, userId = pcall(function() return player.UserId end)
+    local state = ok and self.States[userId]
+    if not state or state.player ~= player then return false end
+    self:Reconcile(player, state) -- 请求时复核选中槽，不能利用心跳前的旧 effect 施法
     if payload.action == 'fly' then
         -- 未装备翅膀或不能行动时指令无效：holding 强制清空，杜绝「幽灵升空」
         if state.effect ~= 'wings' or not self:CanAct(player) then

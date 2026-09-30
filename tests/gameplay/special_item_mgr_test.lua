@@ -450,3 +450,32 @@ function TestSpecialItemMgr:test_cast_immediately_mirrors_cooldown_before_discon
     lu.assertTrue(player.lastResult.ok)
     lu.assertEquals(self.dataByUser[1].Extra.cooldowns.godzillaBreath, 20)
 end
+
+-- 失败方式 16：Player 在引擎中不是 Lua table，不能按 type(player) 拒绝；身份须与注册对象一致
+function TestSpecialItemMgr:test_unregistered_player_cannot_create_state_through_request()
+    local impostor = { UserId = 999, Character = newCharacter(6, 5.01, 40) }
+    lu.assertFalse(self.mgr:Handle(impostor, { action = 'fly', holding = true }))
+    lu.assertNil(self.mgr.States[999], '未经 OnPlayerAdded 的请求不能创建状态')
+end
+
+-- 用 userdata 代理复现引擎 Player 的类型边界，身份必须精确匹配登记对象
+function TestSpecialItemMgr:test_userdata_player_allowed_only_when_registered_object_matches()
+    local original = self:addPlayer(1, 6, 5.01, 40, 'item169')
+    self:step(1, 0.05)
+    local proxy = assert(io.tmpfile())
+    local mt = getmetatable(proxy)
+    debug.setmetatable(proxy, { __index = original })
+    local ok, err = pcall(function()
+        lu.assertEquals(type(proxy), 'userdata')
+        -- 同 UserId 不同对象仍拒绝
+        lu.assertFalse(self.mgr:Handle(proxy, { action = 'fly', holding = true }))
+        self.mgr.States[1].player = proxy
+        lu.assertTrue(self.mgr:Handle(proxy, { action = 'fly', holding = true }))
+        lu.assertTrue(self.mgr.States[1].holding)
+        lu.assertFalse(self.mgr:Handle(original, { action = 'fly', holding = false }))
+        lu.assertTrue(self.mgr.States[1].holding, '冒用 UserId 不得修改已登记玩家状态')
+    end)
+    debug.setmetatable(proxy, mt)
+    proxy:close()
+    assert(ok, err)
+end
