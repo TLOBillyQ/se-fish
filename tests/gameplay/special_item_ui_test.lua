@@ -35,7 +35,9 @@ function TestSpecialItemUI:setUp()
     self.nodes = {}
     self.created = {}
     local testCase = self
-    local world = { Created = self.created }
+    self.now = 100
+    self.heartbeat = signal()
+    local world = { Created = self.created, GetServerTime = function() return self.now end }
     function world:CreateUnit(kind, attrs)
         local node = { Kind = kind, OnClicked = signal(),
             OnTouchBegan = signal(), OnTouchEnded = signal() }
@@ -52,6 +54,7 @@ function TestSpecialItemUI:setUp()
     end
     _G.game = { GetService = function(_, name)
         if name == 'World' then return world end
+        if name == 'RunService' then return { Heartbeat = self.heartbeat } end
         return {}
     end }
     _G.Vector2 = { New = function(x, y) return { x = x, y = y } end }
@@ -60,12 +63,14 @@ function TestSpecialItemUI:setUp()
         GetDeviceResolution = function() return { x = 1920, y = 1080 } end,
     } end, GetUIRoot = function() return self.uiRoot end }
     self.commands = {}
+    self.snapshotRequests = 0
     self.events = {}
     self.notices = {}
     _G.LocalMsgNotice = function(text) self.notices[#self.notices + 1] = text end
     _G.REUtil = { GetRE = function(_, name)
         if not self.events[name] then
             self.events[name] = { OnClientEvent = signal(), FireServer = function(_, payload)
+                if name == 'SpecialItemStateRequest' then self.snapshotRequests = self.snapshotRequests + 1 end
                 if name == 'SpecialItemAction' or name == 'ItemBarAction' then
                     self.commands[#self.commands + 1] = payload
                 end
@@ -158,4 +163,25 @@ function TestSpecialItemUI:test_fishing_phase_keeps_reel_semantics_over_special_
     lu.assertEquals(self.nodes.BtnItemActionLabel.Text, '收竿')
     self.nodes.ItemAction2.OnClicked:Fire()
     lu.assertEquals(#self:specialCommands(), 0, '收线阶段不得发吐息')
+end
+
+function TestSpecialItemUI:test_cooldown_works_without_os_and_expires_on_server_time()
+    local previous = _G.os
+    _G.os = nil
+    local ok, err = pcall(function()
+        self:pushState({ effect = 'godzilla', breathRemaining = 20 })
+        lu.assertFalse(self.nodes.ItemAction2.TouchEnabled)
+        self.now = self.now + 21
+        self.heartbeat:Fire()
+        lu.assertEquals(self.nodes.BtnItemActionLabel.Text, '原子吐息')
+        lu.assertTrue(self.nodes.ItemAction2.TouchEnabled)
+    end)
+    _G.os = previous
+    assert(ok, err)
+end
+
+function TestSpecialItemUI:test_listeners_request_initial_special_snapshot()
+    lu.assertEquals(self.snapshotRequests, 1)
+    self:pushState({ effect = 'godzilla', breathRemaining = 12 })
+    lu.assertFalse(self.nodes.ItemAction2.TouchEnabled)
 end

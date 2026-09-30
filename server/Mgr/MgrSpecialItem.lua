@@ -53,8 +53,8 @@ end
 
 local function setGravity(character, enabled)
     local controller = character and character.Controller
-    if not controller then return end
-    pcall(function() controller.GravityEnabled = enabled end)
+    if not controller then return false, "no-controller" end
+    return pcall(function() controller.GravityEnabled = enabled end)
 end
 
 function Mgr:Now()
@@ -81,7 +81,7 @@ function Mgr:SendState(player)
     local state = self.States[player.UserId]
     if not state then return end
     _G.REUtil:GetRE('SpecialItemState'):FireClient(player, {
-        effect = state.effect,
+        effect = not state.restoring and state.effect or nil,
         airborne = state.airborne,
         breathRemaining = SpecialItem.CooldownRemaining(state.lastBreathAt, self:Now(), breathCfg().CooldownSec),
     })
@@ -113,67 +113,87 @@ end
 
 -- ===== 效果应用与恢复 =====
 
+-- 每个引擎操作每秒最多重试一次；只在首次失败时记录对象与错误，成功后删除重试依据。
+function Mgr:EngineCall(state, key, object, fn)
+    state.failures = state.failures or {}
+    local failure = state.failures[key]
+    if failure and self:Now() < failure.nextAt then return false end
+    local ok, result = pcall(fn)
+    if ok and result ~= false then
+        state.failures[key] = nil
+        return true, result
+    end
+    if not failure then print('[MgrSpecialItem] 引擎操作失败', key, tostring(object), tostring(result)) end
+    state.failures[key] = { object = object, error = result, nextAt = self:Now() + 1 }
+    return false
+end
+
 function Mgr:Apply(player, state, effect)
     local character = player.Character
-    state.effect = effect
-    if effect == 'wings' then
+    local appearance = character and character.EggyAppearance
+    if effect == 'wings' and cfg().Wings.AppearanceAssetId then
         local wings = cfg().Wings
-        local appearance = character and character.EggyAppearance
-        -- 外观件资源待编辑器预设（[未查证]）；空值只开飞行能力、不改外观
-        if appearance and wings.AppearanceAssetId and appearance.BindAppearance then
-            local ok, bindId = pcall(appearance.BindAppearance, appearance,
-                wings.AppearanceAssetId, Enums.SkeletalSocketType[wings.Socket],
+        local ok, id = self:EngineCall(state, 'bind', appearance, function()
+            return appearance:BindAppearance(wings.AppearanceAssetId, Enums.SkeletalSocketType[wings.Socket],
                 Vector3.New(wings.Offset.x, wings.Offset.y, wings.Offset.z),
                 Quaternion.Identity(), Vector3.New(1, 1, 1))
-            if ok then state.wingBindId = bindId end
-        end
-        -- 飞行接管只在空中（长按升 / 松开缓降）由 UpdateFlight 关重力；地面待机保留重力，
-        -- 否则跳跃 / 走下台阶即漂浮（GravityEnabled「关闭后单位将漂浮」）
-    elseif effect == 'godzilla' then
-        local appearance = character and character.EggyAppearance
-        local assetId = cfg().Godzilla.AppearanceAssetId
-        -- 皮肤资源待 AIGC / 编辑器预设（[未查证]）；空值不变外观，吐息照常
-        if appearance and assetId and appearance.SetAppearanceByAssetId then
-            local ok = pcall(appearance.SetAppearanceByAssetId, appearance, assetId)
-            state.skinApplied = ok
-        end
+        end)
+        if not ok or type(id) ~= 'number' then return false end
+        state.wingBindId, state.appearance = id, appearance
+    elseif effect == 'godzilla' and cfg().Godzilla.AppearanceAssetId then
+        if not self:EngineCall(state, 'skin', appearance, function()
+            appearance:SetAppearanceByAssetId(cfg().Godzilla.AppearanceAssetId)
+        end) then return false end
+        state.skinApplied, state.appearance = true, appearance
     end
+    state.effect = effect
+    return true
 end
 
--- 恢复原外观与运动状态：解绑翅膀 / 复位皮肤、重力恢复、中止飞行与吐息。
--- 冷却（lastBreathAt）不动——切换 / 死亡清不掉冷却。
+function Mgr:Gravity(player, state, enabled)
+    local character = state.gravityCharacter or player.Character
+    local ok = self:EngineCall(state, 'gravity', character, function()
+        local success, err = setGravity(character, enabled)
+        if not success then error(err) end
+    end)
+    if ok then
+        state.gravityOff = not enabled
+        state.gravityCharacter = not enabled and character or nil
+    end
+    return ok
+end
+
 function Mgr:Restore(player, state)
-    local character = player.Character
-    local appearance = character and character.EggyAppearance
-    if state.wingBindId and appearance and appearance.UnbindAppearance then
-        pcall(appearance.UnbindAppearance, appearance, state.wingBindId)
+    state.holding, state.airborne, state.flightY, state.breath = false, false, nil, nil
+    state.flightGroundY = nil
+    local appearance = state.appearance or (player.Character and player.Character.EggyAppearance)
+    if state.wingBindId then
+        if self:EngineCall(state, 'unbind', appearance, function()
+            return appearance:UnbindAppearance(state.wingBindId)
+        end) then state.wingBindId = nil end
     end
-    state.wingBindId = nil
-    if state.skinApplied and appearance and appearance.ResetAppearance then
-        pcall(appearance.ResetAppearance, appearance)
+    if state.skinApplied then
+        if self:EngineCall(state, 'reset', appearance, function() appearance:ResetAppearance() end) then
+            state.skinApplied = false
+        end
     end
-    state.skinApplied = false
-    if state.gravityOff then setGravity(character, true) end
-    state.gravityOff = false
-    state.airborne = false
-    state.holding = false
-    state.flightY = nil
-    state.breath = nil
-    state.effect = nil
+    if state.gravityOff then self:Gravity(player, state, true) end
+    if state.wingBindId or state.skinApplied or state.gravityOff then
+        state.restoring = true
+        return false
+    end
+    state.restoring, state.effect, state.appearance = false, nil, nil
+    return true
 end
 
--- 调和：期望（选中 × CanAct）与已应用对齐；切换 / 丢弃 / 死亡 / 复活全走这条路
 function Mgr:Reconcile(player, state)
     local data = self.PlayerData and self.PlayerData:GetDataInst(player)
-    local desired = nil
-    if data and self:CanAct(player) then
-        desired = SpecialItem.Desired(selectedItemId(data))
-    end
-    if desired == state.effect then return end
-    self:Restore(player, state)
-    if desired and player.Character then
-        self:Apply(player, state, desired)
-    end
+    local selected = selectedItemId(data)
+    if state.suspendedItem and selected ~= state.suspendedItem then state.suspendedItem = nil end
+    local desired = data and self:CanAct(player) and not state.suspendedItem and SpecialItem.Desired(selected) or nil
+    if desired == state.effect and not state.restoring then return end
+    if not self:Restore(player, state) then return end
+    if desired and player.Character then self:Apply(player, state, desired) end
     self:SendState(player)
 end
 
@@ -190,18 +210,20 @@ function Mgr:UpdateFlight(player, state, dt)
     end
     if not state.holding and not state.airborne then
         -- 地面待机 / 刚落地：交还重力，实际地形低于区地面基准时由引擎接着落下
-        if state.gravityOff then setGravity(character, true) end
-        state.gravityOff = false
-        state.flightY = nil
+        if state.gravityOff then self:Gravity(player, state, true) end
+        state.flightY, state.flightGroundY = nil, nil
         return
     end
     local data = self.PlayerData and self.PlayerData:GetDataInst(player)
     local scene = data and zoneScene(GameCfg.ResolveZoneId(data.Data.Zone))
     local bounds = scene and FlightPath.BoundsOf(scene, GameCfg.Ability.Flight)
     if not bounds then return end -- 无边界不飞（FlightPath 契约）
+    if not state.flightGroundY then state.flightGroundY = character.Position.y end
+    bounds.GroundY = state.flightGroundY
+    -- 高度上限仍取七区合同，低于安全点起飞不被第一帧抬高
+
     -- 空中接管 y：重力关闭（角色重建 / 外部改动后下一帧纠正）
-    setGravity(character, false)
-    state.gravityOff = true
+    if not self:Gravity(player, state, false) then return end
     local y, airborne = SpecialItem.StepFlightY(wings,
         { Y = state.flightY or character.Position.y, Airborne = state.airborne },
         state.holding, dt, bounds)
@@ -210,9 +232,8 @@ function Mgr:UpdateFlight(player, state, dt)
     state.flightY = y
     state.airborne = airborne
     if not airborne then -- 降到区地面基准：本帧即交还重力
-        setGravity(character, true)
-        state.gravityOff = false
-        state.flightY = nil
+        self:Gravity(player, state, true)
+        state.flightY, state.flightGroundY = nil, nil
     end
 end
 
@@ -221,7 +242,7 @@ end
 -- 施法校验：变身中、活着、冷却就绪；一本台账管全程（每目标按段结算、总额恰 1000）
 function Mgr:CastBreath(player)
     local state = self:GetState(player)
-    if state.effect ~= 'godzilla' then return self:Fail(player, 'breath', 'not-godzilla') end
+    if state.restoring or state.effect ~= 'godzilla' then return self:Fail(player, 'breath', 'not-godzilla') end
     if not self:CanAct(player) then return self:Fail(player, 'breath', 'not-alive') end
     local character = player.Character
     local pos = character and character.Position
@@ -303,10 +324,14 @@ function Mgr:Update(dt)
     for _, state in pairs(self.States) do
         local player = state.player
         if player then
+            if state.leaving then
+                if self:Restore(player, state) then self.States[player.UserId] = nil end
+            else
             self:Reconcile(player, state)
-            if state.effect == 'wings' then self:UpdateFlight(player, state, dt) end
+            if not state.restoring and state.effect == 'wings' then self:UpdateFlight(player, state, dt) end
             if state.breath then self:UpdateBreath(player, state, now) end
             self:MirrorCooldown(state, now)
+            end
         end
     end
 end
@@ -320,7 +345,7 @@ function Mgr:Handle(player, payload)
     self:Reconcile(player, state) -- 请求时复核选中槽，不能利用心跳前的旧 effect 施法
     if payload.action == 'fly' then
         -- 未装备翅膀或不能行动时指令无效：holding 强制清空，杜绝「幽灵升空」
-        if state.effect ~= 'wings' or not self:CanAct(player) then
+        if state.restoring or state.effect ~= 'wings' or not self:CanAct(player) then
             state.holding = false
             return self:Fail(player, 'fly', 'not-wings')
         end
@@ -333,7 +358,18 @@ function Mgr:Handle(player, payload)
     return false
 end
 
+function Mgr:Query(player)
+    if not player then return false end
+    local ok, id = pcall(function() return player.UserId end)
+    local state = ok and self.States[id]
+    if not state or state.player ~= player or state.leaving then return false end
+    if _G.REUtil:CheckRECD(player, 'SpecialItemStateRequest', cfg().ReLimitSec) then return false end
+    self:SendState(player)
+    return true
+end
+
 function Mgr:Start()
+    _G.REUtil:GetRE('SpecialItemStateRequest').OnServerEvent:Connect(function(player) self:Query(player) end)
     _G.REUtil:GetRE('SpecialItemAction').OnServerEvent:Connect(function(player, payload)
         -- 松开只会让角色停止上升，不限频：快速点按时松开紧跟按下，被吞掉会让 holding 卡死升到顶
         local release = type(payload) == 'table' and payload.action == 'fly' and payload.holding ~= true
@@ -366,11 +402,10 @@ end
 function Mgr:OnTeleport(player)
     local state = self.States[player.UserId]
     if not state then return end
-    if state.gravityOff and player.Character then setGravity(player.Character, true) end
-    state.gravityOff = false
-    state.airborne = false
-    state.holding = false
-    state.flightY = nil
+    local data = self.PlayerData and self.PlayerData:GetDataInst(player)
+    state.suspendedItem = selectedItemId(data)
+    self:Restore(player, state)
+    self:SendState(player)
 end
 
 function Mgr:OnPlayerRemoving(player)
@@ -379,7 +414,8 @@ function Mgr:OnPlayerRemoving(player)
         -- 离场前尽力恢复原外观与运动状态（角色可能已销毁，pcall 兜底）
         pcall(function() self:Restore(player, state) end)
     end
-    self.States[player.UserId] = nil
+    if not state or not state.restoring then self.States[player.UserId] = nil
+    else state.leaving = true end
 end
 
 return Mgr

@@ -62,10 +62,9 @@ function ScreenHandler:SlotAtPosition(pos)
 end
 
 -- ===== #129 投掷（爆炸物槽位手势：点按=直接投 20 米，长按=瞄准选点） =====
--- 墙钟兜底 os.clock：手势只关心相对时长，部分环境（测试/早期加载）World 无 GetServerTime
+-- 手势与冷却统一使用服务器时刻；SE 沙盒不提供 os
 local function nowSec()
-    if World.GetServerTime then return World:GetServerTime() end
-    return os.clock()
+    return World.GetServerTime and World:GetServerTime() or 0
 end
 
 function ScreenHandler:SlotDefinition(index)
@@ -384,7 +383,7 @@ local function showSpecialAction(self, effect)
         self.BtnItemAction.TouchEnabled = self.IsOpen == true
         self.BtnItemActionLabel.Text = '长按飞行'
     elseif effect == 'godzilla' then
-        local left = self.BreathCooldownUntil and (self.BreathCooldownUntil - os.clock()) or 0
+        local left = self.BreathCooldownUntil and (self.BreathCooldownUntil - World:GetServerTime()) or 0
         local onCooldown = left > 0
         self.BtnItemAction.TouchEnabled = self.IsOpen == true and not onCooldown
         self.BtnItemActionLabel.Text = onCooldown
@@ -985,7 +984,7 @@ function ScreenHandler:Init()
         -- #140：特殊道具生效且空闲时，点击 = 原子吐息（风神之翼走长按，点击不做事）
         if phase == 'idle' and self.SpecialEffect then
             if self.SpecialEffect == 'godzilla'
-                and not (self.BreathCooldownUntil and self.BreathCooldownUntil > os.clock()) then
+                and not (self.BreathCooldownUntil and self.BreathCooldownUntil > World:GetServerTime()) then
                 _G.REUtil:GetRE('SpecialItemAction'):FireServer({ action = 'breath' })
             end
             return
@@ -1051,7 +1050,7 @@ function ScreenHandler:Init()
         if type(state) ~= 'table' then return end
         self.SpecialEffect = state.effect
         if type(state.breathRemaining) == 'number' and state.breathRemaining > 0 then
-            self.BreathCooldownUntil = os.clock() + state.breathRemaining
+            self.BreathCooldownUntil = World:GetServerTime() + state.breathRemaining
         else
             self.BreathCooldownUntil = nil
         end
@@ -1166,7 +1165,7 @@ function ScreenHandler:Init()
             if self.ReelBar and self.ReelBar.Visible then self:ShowCast() end
             -- #140：吐息冷却中逐帧刷新倒计时文案
             if self.BreathCooldownUntil and self.SpecialEffect == 'godzilla' then
-                if self.BreathCooldownUntil > os.clock() then
+                if self.BreathCooldownUntil > World:GetServerTime() then
                     self:ShowCast()
                 else
                     self.BreathCooldownUntil = nil
@@ -1205,6 +1204,7 @@ function ScreenHandler:OpenScreen()
     self:ShowCast()
     self:ShowCoin()
     self:ShowVitals()
+    _G.REUtil:GetRE('SpecialItemStateRequest'):FireServer()
     _G.REUtil:GetRE('RequestItemBar'):FireServer()
     _G.REUtil:GetRE('RequestCastState'):FireServer()
     _G.REUtil:GetRE('RequestQuest'):FireServer()

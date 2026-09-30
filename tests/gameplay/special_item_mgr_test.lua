@@ -259,8 +259,11 @@ function TestSpecialItemMgr:test_teleport_hook_ends_flight_motion()
     lu.assertTrue(player.Character.Controller.GravityEnabled)
     lu.assertFalse(self.mgr.States[1].airborne)
     lu.assertFalse(self.mgr.States[1].holding)
-    -- 调和仍认为翅膀选中：到新区地面待机保持重力，再长按才重新接管
+    -- 摆渡后必须重新选中，不能自动重挂外观
     self:step(1, 0.05)
+    lu.assertNil(self.mgr.States[1].effect)
+    self:selectItem(player, nil) self:step(1, 0.05)
+    self:selectItem(player, 'item169') self:step(1, 0.05)
     lu.assertEquals(self.mgr.States[1].effect, 'wings')
     lu.assertTrue(player.Character.Controller.GravityEnabled)
     self:fire(player, { action = 'fly', holding = true })
@@ -499,4 +502,104 @@ function TestSpecialItemMgr:test_wing_binding_matches_engine_signature()
     local unbind
     for _, call in ipairs(p.Character.Calls) do if call[1] == 'unbind' then unbind = call end end
     lu.assertEquals(unbind[2], 77)
+end
+
+-- 引擎抛错不能当成功，清理失败必须保留对象与标志以便重试
+function TestSpecialItemMgr:test_engine_failures_keep_cleanup_and_retry()
+    local p = self:addPlayer(1, 6, 5.01, 40, 'item169')
+    local appearance = p.Character.EggyAppearance
+    local bind = appearance.BindAppearance
+    appearance.BindAppearance = function() error('bind-failed') end
+    self:step(1, 0.05)
+    lu.assertNil(self.mgr.States[1].effect)
+    appearance.BindAppearance = bind
+    self:step(30, 0.05)
+    lu.assertEquals(self.mgr.States[1].effect, 'wings')
+    local unbind = appearance.UnbindAppearance
+    appearance.UnbindAppearance = function() error('unbind-failed') end
+    self:selectItem(p, nil) self:step(1, 0.05)
+    lu.assertEquals(self.mgr.States[1].wingBindId, 77)
+    appearance.UnbindAppearance = unbind
+    self:step(30, 0.05)
+    lu.assertNil(self.mgr.States[1].wingBindId)
+    self:selectItem(p, 'item170') self:step(1, 0.05)
+    local reset = appearance.ResetAppearance
+    appearance.ResetAppearance = function() error('reset-failed') end
+    self:selectItem(p, nil) self:step(1, 0.05)
+    lu.assertTrue(self.mgr.States[1].skinApplied)
+    appearance.ResetAppearance = reset
+    self:step(30, 0.05)
+    lu.assertFalse(self.mgr.States[1].skinApplied)
+end
+
+function TestSpecialItemMgr:test_gravity_exception_retains_restore_flag()
+    local p = self:addPlayer(1, 6, 5.01, 40, 'item169')
+    self:step(1, 0.05)
+    self:fire(p, { action = 'fly', holding = true }) self:step(1, 0.05)
+    local original = p.Character.Controller
+    p.Character.Controller = setmetatable({}, { __newindex = function() error('gravity-failed') end })
+    self:selectItem(p, nil) self:step(1, 0.05)
+    lu.assertTrue(self.mgr.States[1].gravityOff)
+    p.Character.Controller = original
+    self:step(30, 0.05)
+    lu.assertFalse(self.mgr.States[1].gravityOff)
+    lu.assertTrue(original.GravityEnabled)
+end
+
+function TestSpecialItemMgr:test_query_recovers_dropped_initial_snapshot_without_mutation()
+    local p = self:addPlayer(1, 6, 5.01, 40, 'item170')
+    self:step(1, 0.05) self:fire(p, { action = 'breath' })
+    local castAt = self.mgr.States[1].lastBreathAt
+    p.lastState = nil
+    self.events.SpecialItemStateRequest.OnServerEvent:Fire(p)
+    lu.assertEquals(p.lastState.effect, 'godzilla')
+    lu.assertAlmostEquals(p.lastState.breathRemaining, 20, 0.001)
+    lu.assertEquals(self.mgr.States[1].lastBreathAt, castAt)
+end
+
+function TestSpecialItemMgr:test_takeoff_below_safe_point_integrates_without_teleport()
+    local p = self:addPlayer(1, 6, 1, 40, 'item169')
+    self:step(1, 0.05) self:fire(p, { action = 'fly', holding = true })
+    self.mgr:Update(0)
+    lu.assertEquals(p.Character.Position.y, 1)
+    self:step(1, 0.1)
+    lu.assertAlmostEquals(p.Character.Position.y, 1.8, 0.001)
+    self:fire(p, { action = 'fly', holding = false }) self:step(1, 0.1)
+    lu.assertAlmostEquals(p.Character.Position.y, 1.5, 0.001)
+end
+
+function TestSpecialItemMgr:test_ferry_public_teleport_cancels_breath_and_appearance_keeps_cooldown()
+    local p = self:addPlayer(1, 6, 5.01, 40, 'item170')
+    self:addPlayer(2, 6, 5.01, 50)
+    self:step(1, 0.05) self:fire(p, { action = 'breath' }) self:step(1, 0.05)
+    local count, castAt = #self.hits, self.mgr.States[1].lastBreathAt
+    local ferry = assert(loadfile('server/Mgr/MgrFerry.lua'))()
+    ferry.SpecialItem = self.mgr
+    lu.assertTrue(ferry:Teleport(p, { x = 100, y = 6, z = 100 }))
+    self:step(80, 0.05)
+    lu.assertEquals(#self.hits, count, '摆渡后旧区不能继续吃吐息段')
+    lu.assertNil(self.mgr.States[1].breath)
+    lu.assertNil(self.mgr.States[1].effect)
+    lu.assertFalse(self.mgr.States[1].skinApplied)
+    lu.assertEquals(self.mgr.States[1].lastBreathAt, castAt)
+    self:selectItem(p, 'item169') self:step(1, 0.05)
+    self:fire(p, { action = 'fly', holding = true }) self:step(1, 0.05)
+    lu.assertTrue(ferry:Teleport(p, { x = 6, y = 5.01, z = 40 }))
+    self:step(1, 0.05)
+    lu.assertNil(self.mgr.States[1].wingBindId)
+    lu.assertNil(self.mgr.States[1].effect)
+    lu.assertTrue(p.Character.Controller.GravityEnabled)
+end
+
+function TestSpecialItemMgr:test_skin_apply_exception_does_not_report_effect()
+    local p = self:addPlayer(1, 6, 5.01, 40, 'item170')
+    local appearance = p.Character.EggyAppearance
+    local original = appearance.SetAppearanceByAssetId
+    appearance.SetAppearanceByAssetId = function() error('skin-failed') end
+    self:step(1, 0.05)
+    lu.assertNil(self.mgr.States[1].effect)
+    lu.assertFalse(self.mgr.States[1].skinApplied)
+    appearance.SetAppearanceByAssetId = original
+    self:step(30, 0.05)
+    lu.assertEquals(self.mgr.States[1].effect, 'godzilla')
 end
