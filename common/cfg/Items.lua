@@ -1,6 +1,6 @@
 -- #122 物品全量基线。source 使用原 xlsx 物理行号（含表头）；BasePrice 仅为回收价。
 -- 旧 ID 保留，新 ID 固定为 item + 物品表编号；SourceIdMap 供商店、奖池等按源表关联。
--- implemented 只表示现有基础使用链已接入；新增行为及特殊道具仍由后续任务实现。
+-- implemented 只表示现有基础使用链已接入；特殊道具 169/170 随 #140 接入，其余新增行为仍由后续任务实现。
 -- SourceDescription 保留原表备注，不作为已实现效果；无图标的新物品不编造资产引用。
 return {
     Definitions = {
@@ -186,8 +186,8 @@ return {
         -- 属性、特殊与自救道具
         item167 = { Id = 'item167', SourceId = 167, Name = '加速药水', Type = '属性道具', BasePrice = 1, source = '物品表!R168', implemented = false, SourceDescription = '吃掉增加移动速度，最多吃20个' },
         item168 = { Id = 'item168', SourceId = 168, Name = '变大药水', Type = '属性道具', BasePrice = 1, source = '物品表!R169', implemented = false, SourceDescription = '抽奖获得，吃掉增加体型和血量，最多吃10个' },
-        item169 = { Id = 'item169', SourceId = 169, Name = '风神之翼', Type = '特殊道具', BasePrice = 1, source = '物品表!R170', implemented = false, SourceDescription = '抽奖获得，使用时可以飞行' },
-        item170 = { Id = 'item170', SourceId = 170, Name = '哥斯拉', Type = '特殊道具', BasePrice = 1, source = '物品表!R171', implemented = false, SourceDescription = '抽奖获得，使用时更换皮肤，可以使用原子吐息' },
+        item169 = { Id = 'item169', SourceId = 169, Name = '风神之翼', Type = '特殊道具', BasePrice = 1, source = '物品表!R170', implemented = true, SourceDescription = '抽奖获得，使用时可以飞行' },
+        item170 = { Id = 'item170', SourceId = 170, Name = '哥斯拉', Type = '特殊道具', BasePrice = 1, source = '物品表!R171', implemented = true, SourceDescription = '抽奖获得，使用时更换皮肤，可以使用原子吐息' },
         item171 = { Id = 'item171', SourceId = 171, Name = '肾上腺素', Type = '自救道具', BasePrice = 1, source = '物品表!R172', implemented = false, SourceDescription = '购买获得，自救使用。' },
     },
     SourceIdMap = {
