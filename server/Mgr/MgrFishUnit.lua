@@ -252,9 +252,15 @@ local function inWater(pos)
     end
 end
 
+-- #139：鱼移速唯一读取点乘武器持续效果（霜冻 0.7 / 麻痹 0，MgrAbility:FishSpeedFactor）；效果口故障按 1。
 function Mgr:Speed(fish)
     local species = GameCfg.Fish[fish.FishId]
-    return species and species.Speed or cfg().EscapeSpeed
+    local speed = species and species.Speed or cfg().EscapeSpeed
+    if self.Ability and self.Ability.FishSpeedFactor then
+        local ok, factor = pcall(self.Ability.FishSpeedFactor, self.Ability, fish)
+        if ok and type(factor) == 'number' and factor >= 0 and factor <= 1 then speed = speed * factor end
+    end
+    return speed
 end
 
 function Mgr:SetHeading(fish, x, z)
@@ -936,6 +942,14 @@ function Mgr:UpdateCombat(fish, now)
         return
     end
     self:RefreshMovingCombat(fish, now)
+    -- #139 麻痹（雷霆之力）：就地停住，本帧不追咬/不施法/不起招；逃跑时限仍在上面优先结算
+    if self.Ability and self.Ability.FishParalyzed then
+        local ok, paralyzed = pcall(self.Ability.FishParalyzed, self.Ability, fish)
+        if ok and paralyzed then
+            pcall(function() body.LinearVelocity = Vector3.New(0, 0, 0) end)
+            return
+        end
+    end
     -- #136 蟹湖眩晕：shrimp/dragon 的 stunned 由 UpdateShrimpCombat 专属分支处理，
     -- 帝王蟹在这里醒转并重置节拍；蟹老板无眩晕机制，不会进入该分支。
     local combat = GameCfg.Fish[fish.FishId].Combat
