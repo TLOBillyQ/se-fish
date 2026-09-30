@@ -95,6 +95,8 @@ MgrMap.MgrBlindbox.Save = MgrMap.MgrSave
 MgrMap.MgrBlindbox.PlayerData = MgrMap.MgrPlayerData
 MgrMap.MgrBlindbox.Platform = MgrMap.MgrPlatform
 MgrMap.MgrBlindbox.Loot = MgrMap.MgrLoot
+--- 平台复活（广告 / 5 金豆满血复活）与濒死无药拉起肾上腺素购买入口都经 MgrPlatform。
+MgrMap.MgrSurvival.Platform = MgrMap.MgrPlatform
 
 -- #128 战斗接线：统一伤害入口的依赖单向注入在这里完成。
 -- Vitals 需要鱼受击体解析（ApplyHit 的鱼分支）；Ability / FishUnit / Cast 需要玩家生命状态
