@@ -900,6 +900,42 @@ GameCfg.Ability = {
         -- 阶段首领的追击口径（与 #88 的 GameCfg.FishCombat 同字段；此处不依赖鱼的 Combat 标签）
         Chase = { BiteRange = 4, BiteCooldownSec = 2 },
     },
+    -- T19（#140）特殊道具：风神之翼（item169，物品表!R170「使用时可以飞行」）与
+    -- 哥斯拉变身（item170，物品表!R171「更换皮肤，可以使用原子吐息」）。
+    -- 两者都是 GameSpec §3.2 两步规则的例外：选中即生效（翅膀背负 / 变身），再按道具键
+    -- 触发主动行为（长按飞行 / 原子吐息）。纯逻辑见 common/SpecialItem.lua，
+    -- 装配见 server/Mgr/MgrSpecialItem.lua。标「暂取」的值票面未给，真机表现待试玩。
+    SpecialItem = {
+        -- 选中槽物品 → 生效效果（Desired 的唯一数据源）
+        Items = { item169 = 'wings', item170 = 'godzilla' },
+        Wings = {
+            -- 长按升空 / 松开缓降（票面）；高度上限与跨区围栏取场景合同
+            -- （FlightPath.BoundsOf：CeilingY = GroundY + Boundary.MaxFlightHeight = 20）。
+            ClimbSpeed = 8,      -- 上升速度（暂取：与 #132 鱼飞行 ClimbSpeed 同口径，票面未给）
+            DescendSpeed = 3,    -- 松开缓降速度（暂取）
+            MaxStepSec = 0.25,   -- 单帧步长上限（与 Ability.Flight 同口径，防一帧跨过围栏）
+            -- 背负翅膀的外观件：编辑器资源预设待补（官方资源库查询 / AIGC，[未查证]）；
+            -- 空值时只开飞行能力、不改外观。
+            AppearanceAssetId = nil,
+            Socket = 'Spine',    -- 背负挂点名（暂取，真机核对）
+            Offset = { x = 0, y = 0, z = 0 },
+        },
+        Godzilla = {
+            -- 变身皮肤资源：官方模型库无哥斯拉（docs/技术难点识别.md §7），
+            -- 待 AIGC / 编辑器预设（[未查证]）；空值时变身不改外观，其余行为照常。
+            -- 变身体型：票面未要求变大，本单不改体型——三倍体型药水叠加由 BodyScale 独立管理。
+            AppearanceAssetId = nil,
+            Breath = {
+                -- 原子吐息：3 秒直线 30 米、每个目标总计 1000、冷却 20 秒（issue #140 票面）。
+                -- 与首领哥斯拉 BossPhase.Attacks.breath（正前 10 米 OneShot 秒杀）严格区分，
+                -- 两处配置互不读取。
+                DurationSec = 3, Range = 30, TotalDamage = 1000,
+                TickSec = 0.25,        -- 结算节奏（暂取：3 秒 / 0.25 秒 = 12 段）
+                Width = 3,             -- 光束走廊半宽（暂取）
+                CooldownSec = 20,      -- 冷却（票面）
+            },
+        },
+    },
 }
 
 -- 水判定：同一钓鱼区可用多条正方形拼接。Center 只用到 x/z（y 留作场景溯源），HalfXZ 是水平半宽（米），
