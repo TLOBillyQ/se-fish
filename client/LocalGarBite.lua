@@ -34,7 +34,7 @@ function LocalGarBite:Show(payload)
     local ok, units = pcall(world.CreateAsset, world, preset)
     local effect = ok and type(units) == 'table' and units[1] or nil
     if not effect then
-        print('[LocalGarBite] 预警特效创建失败', c.EffectPreset, 'fish=' .. tostring(fishId), tostring(units))
+        print('[LocalGarBite] 预警特效创建失败', preset, 'fish=' .. tostring(fishId), tostring(units))
         return
     end
     local p, scale = payload.position, payload.range / (circle and c.CircleRadius or c.EffectLength)
