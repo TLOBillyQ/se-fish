@@ -86,7 +86,8 @@ function Validate.Check(cfg)
         elseif reward.kind == 'item' then
             if not items[reward.itemKey] then fail(row.source, '三同物品不存在 ' .. tostring(reward.itemKey)) end
         else fail(row.source, '三同奖项无效') end
-        if row.implemented ~= false then fail(row.source, '未实现抽奖不能标可用') end
+        -- #138 起抽奖机接入（server/Mgr/MgrLottery.lua）：七个图案全部标可用；回退为 false 视为内容事故
+        if row.implemented ~= true then fail(row.source, '抽奖图案须随 #138 标可用') end
     end
     local blindboxWeight, jackpotCount, blindboxKeys = 0, 0, {}
     for _, row in ipairs(blindbox) do

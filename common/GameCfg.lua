@@ -484,6 +484,32 @@ GameCfg.Achievements = {
 GameCfg.Shop.Catalog = ContentShop.Goods
 GameCfg.Shop.Excluded = ContentShop.Excluded
 GameCfg.Lottery = ContentLottery
+-- 抽奖机运行参数（#138 T17，GameSpec §14 与策划案抽奖段）：内容表（七图案/权重/倍数/大奖）
+-- 在 common/cfg/Lottery.lua；这里是行为参数。投注为投入物的实际回收价值
+-- （GameCfg.Items.SalePrice 未烤口径）；结果服务端先定并持久化，动画只是表现：
+-- 滚动 SpinSec 秒后按 AxisOrder 顺序每隔 AxisStopIntervalSec 停一轴。
+GameCfg.Lottery.Radius = 5
+GameCfg.Lottery.Slack = 0.5
+GameCfg.Lottery.BubbleHeight = 7
+GameCfg.Lottery.BubblePreset = GameCfg.Shop.BubblePreset -- 复用商店文字泡预设，换提示文案
+GameCfg.Lottery.HintText = '极品食物换大奖'
+GameCfg.Lottery.RuleHintText = '抽奖规则'
+GameCfg.Lottery.ActionCooldownSec = 1
+GameCfg.Lottery.SpinSec = 3
+GameCfg.Lottery.AxisStopIntervalSec = 0.5
+GameCfg.Lottery.AxisOrder = { 'left', 'right', 'middle' } -- 停轴顺序，客户端 UpdateAnim 消费
+-- 回包超时兜底：服务端限频（CheckRECD）与存档 pending 窗口都静默丢弃请求不回包，
+-- 客户端 Awaiting 闩锁超过该时长自动解锁并提示，避免界面永久卡死（#138 审查）
+GameCfg.Lottery.ResultTimeoutSec = 5
+-- 每区一台抽奖机：锚点名复用 #125 场景合同的 Lottery 实体（Z1_Lottery … Z7_Lottery）；
+-- 现场未建的区取不到单位时交互自然拒绝（范围校验找不到锚点），不伪造可用性。
+function GameCfg.Lottery.MachineAnchors()
+    local names = {}
+    for _, zone in ipairs(GameCfg.Zones) do
+        if zone.Scene and zone.Scene.LotteryName then names[#names + 1] = zone.Scene.LotteryName end
+    end
+    return names
+end
 GameCfg.Blindbox = ContentBlindbox
 
 -- 摆渡（#89 定细则，#127 T06 扩到七区六航线）：去程一人在船边交 1 张船票，倒计时 CountdownSec 秒后
