@@ -85,7 +85,8 @@ if rows then
         if row.Id == 'fish31Elite' then haveElite = true end
         if not GameCfg.Fish[row.Id] then weightsOk = false end
     end
-    check('抽鱼池 14 行且含剑鱼', #rows == 14 and haveElite, #rows)
+    check('普通抽鱼池13行，加首领饵独立鱼种共14种且含剑鱼', #rows == 13 and haveElite
+        and GameCfg.Casting.BossBait.item123 == 'fish32Boss', #rows)
     check('抽鱼池行都指向已存在的鱼种', weightsOk)
     local function selectAll(rodLevel, baitId)
         local total = 0
