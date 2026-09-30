@@ -908,6 +908,7 @@ GameCfg.Ability = {
     SpecialItem = {
         -- 选中槽物品 → 生效效果（Desired 的唯一数据源）
         Items = { item169 = 'wings', item170 = 'godzilla' },
+        ReLimitSec = 0.1, -- SpecialItemAction 通道限频（暂取，与 WeaponAction 同口径）
         Wings = {
             -- 长按升空 / 松开缓降（票面）；高度上限与跨区围栏取场景合同
             -- （FlightPath.BoundsOf：CeilingY = GroundY + Boundary.MaxFlightHeight = 20）。
