@@ -14,7 +14,9 @@
 --   8. 玩家吐息误用首领配置（BossPhase 的 10 米 OneShot 秒杀），或首领路径误读玩家配置；
 --   9. 两玩家状态串扰（身份隔离）；
 --  10. 吐息打中自己，或打中走廊外 / 背后 / 超 30 米的目标；
---  11. 未选中翅膀也能收 fly 指令升空。
+--  11. 未选中翅膀也能收 fly 指令升空；
+--  12. 地面待机也关重力（跳跃 / 走下台阶即漂浮滞空），或落地后不交还重力；
+--  13. 缓降被高于区地面基准的地形托住时仍判空中、重力一直关闭（站在礁石上滞空）。
 local lu = require('luaunit')
 local GameCfg = require('common.GameCfg')
 
@@ -174,7 +176,11 @@ function TestSpecialItemMgr:test_selecting_wings_binds_appearance_and_takes_over
     self:step(1, 0.05)
     lu.assertEquals(self.mgr.States[1].effect, 'wings')
     lu.assertTrue(hasCall(player.Character, 'bind'))
-    lu.assertFalse(player.Character.Controller.GravityEnabled)
+    -- 失败方式 12：地面待机保留重力（关重力会让跳跃 / 走下台阶直接漂浮）
+    lu.assertTrue(player.Character.Controller.GravityEnabled, '地面待机不接管重力')
+    self:fire(player, { action = 'fly', holding = true })
+    self:step(1, 0.05)
+    lu.assertFalse(player.Character.Controller.GravityEnabled, '长按起飞才接管 y')
 end
 
 -- 失败方式 2：切换 / 丢弃后恢复原外观与运动状态（解绑、重力恢复、不滞空）
@@ -244,9 +250,12 @@ function TestSpecialItemMgr:test_teleport_hook_ends_flight_motion()
     lu.assertTrue(player.Character.Controller.GravityEnabled)
     lu.assertFalse(self.mgr.States[1].airborne)
     lu.assertFalse(self.mgr.States[1].holding)
-    -- 调和仍认为翅膀选中：重力重新接管（飞到新区仍可再长按升空）
+    -- 调和仍认为翅膀选中：到新区地面待机保持重力，再长按才重新接管
     self:step(1, 0.05)
     lu.assertEquals(self.mgr.States[1].effect, 'wings')
+    lu.assertTrue(player.Character.Controller.GravityEnabled)
+    self:fire(player, { action = 'fly', holding = true })
+    self:step(1, 0.05)
     lu.assertFalse(player.Character.Controller.GravityEnabled)
 end
 
@@ -376,7 +385,27 @@ function TestSpecialItemMgr:test_flight_climbs_to_ceiling_then_descends_and_land
     self:step(80, 0.1) -- 8 秒缓降：3 m/s 降 24 米，早该落地
     lu.assertAlmostEquals(player.Character.Position.y, 5.01, 0.01)
     lu.assertFalse(self.mgr.States[1].airborne)
-    lu.assertFalse(player.Character.Controller.GravityEnabled, '翅膀生效中重力保持关闭')
+    -- 失败方式 12：落地即交还重力；实际地形低于区地面基准时由引擎重力接着落下，不悬在基准面
+    lu.assertTrue(player.Character.Controller.GravityEnabled, '落地后重力恢复')
+end
+
+-- 失败方式 13：缓降途中被地形（礁石 / 屋顶，高于区地面基准）托住 → 判落地、交还重力
+function TestSpecialItemMgr:test_descent_blocked_by_terrain_lands_and_restores_gravity()
+    local player = self:addPlayer(1, 6, 5.01, 40, 'item169')
+    self:step(1, 0.05)
+    self:fire(player, { action = 'fly', holding = true })
+    self:step(20, 0.1) -- 升到 CeilingY 25.01
+    self:fire(player, { action = 'fly', holding = false })
+    local terrainY = 15
+    for _ = 1, 60 do
+        self:step(1, 0.1)
+        -- 引擎碰撞：角色不会穿进地形，被顶回地形表面
+        local pos = player.Character.Position
+        if pos.y < terrainY then player.Character.Position = vec(pos.x, terrainY, pos.z) end
+    end
+    lu.assertFalse(self.mgr.States[1].airborne, '被地形托住应判落地')
+    lu.assertTrue(player.Character.Controller.GravityEnabled, '落地后重力恢复')
+    lu.assertAlmostEquals(player.Character.Position.y, terrainY, 0.01)
 end
 
 -- 失败方式（跨区）：空中水平越界被钳回本区（不能借飞行跨区）

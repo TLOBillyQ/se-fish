@@ -126,9 +126,8 @@ function Mgr:Apply(player, state, effect)
                 Vector3.New(wings.Offset.x, wings.Offset.y, wings.Offset.z))
             if ok then state.wingBindId = bindId end
         end
-        -- 飞行接管：翅膀生效期间重力关闭，y 由 UpdateFlight 驱动（长按升 / 松开缓降）
-        setGravity(character, false)
-        state.gravityOff = true
+        -- 飞行接管只在空中（长按升 / 松开缓降）由 UpdateFlight 关重力；地面待机保留重力，
+        -- 否则跳跃 / 走下台阶即漂浮（GravityEnabled「关闭后单位将漂浮」）
     elseif effect == 'godzilla' then
         local appearance = character and character.EggyAppearance
         local assetId = cfg().Godzilla.AppearanceAssetId
@@ -182,23 +181,38 @@ end
 function Mgr:UpdateFlight(player, state, dt)
     local character = player.Character
     if not character or not character.Position then return end
-    -- 翅膀生效期间重力保持关闭（角色重建 / 外部改动后下一帧纠正）
-    if not state.gravityOff then
-        setGravity(character, false)
-        state.gravityOff = true
+    local wings = cfg().Wings
+    -- 缓降被地形托住（引擎把角色顶回到上一帧写入的 y 之上）：视为落地
+    if state.airborne and not state.holding and state.flightY
+        and character.Position.y > state.flightY + wings.LandEpsilon then
+        state.airborne = false
     end
-    if not state.holding and not state.airborne then return end -- 地面待机不接管
+    if not state.holding and not state.airborne then
+        -- 地面待机 / 刚落地：交还重力，实际地形低于区地面基准时由引擎接着落下
+        if state.gravityOff then setGravity(character, true) end
+        state.gravityOff = false
+        state.flightY = nil
+        return
+    end
     local data = self.PlayerData and self.PlayerData:GetDataInst(player)
     local scene = data and zoneScene(GameCfg.ResolveZoneId(data.Data.Zone))
     local bounds = scene and FlightPath.BoundsOf(scene, GameCfg.Ability.Flight)
     if not bounds then return end -- 无边界不飞（FlightPath 契约）
-    local y, airborne = SpecialItem.StepFlightY(cfg().Wings,
+    -- 空中接管 y：重力关闭（角色重建 / 外部改动后下一帧纠正）
+    setGravity(character, false)
+    state.gravityOff = true
+    local y, airborne = SpecialItem.StepFlightY(wings,
         { Y = state.flightY or character.Position.y, Airborne = state.airborne },
         state.holding, dt, bounds)
     local cx, cz = SpecialItem.ClampXZ(bounds, character.Position.x, character.Position.z)
     pcall(function() character.Position = Vector3.New(cx, y, cz) end)
     state.flightY = y
     state.airborne = airborne
+    if not airborne then -- 降到区地面基准：本帧即交还重力
+        setGravity(character, true)
+        state.gravityOff = false
+        state.flightY = nil
+    end
 end
 
 -- ===== 原子吐息 =====

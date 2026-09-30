@@ -915,6 +915,8 @@ GameCfg.Ability = {
             ClimbSpeed = 8,      -- 上升速度（暂取：与 #132 鱼飞行 ClimbSpeed 同口径，票面未给）
             DescendSpeed = 3,    -- 松开缓降速度（暂取）
             MaxStepSec = 0.25,   -- 单帧步长上限（与 Ability.Flight 同口径，防一帧跨过围栏）
+            -- 缓降落地判定：角色实际 y 高出上一帧写入值超过此量，视为被地形托住（暂取）
+            LandEpsilon = 0.05,
             -- 背负翅膀的外观件：编辑器资源预设待补（官方资源库查询 / AIGC，[未查证]）；
             -- 空值时只开飞行能力、不改外观。
             AppearanceAssetId = nil,
