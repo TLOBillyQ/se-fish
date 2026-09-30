@@ -321,6 +321,15 @@ function Mgr:Release(fish, reason)
                 fish.ActiveUntil = now + (params.ActiveSec or params.SpecialSec)
                 fish.SpecialAt = now + (params.SpecialSec or 0)
                 fish.Combo = 0
+            elseif species.Combat == 'kingCrab' or species.Combat == 'crabBoss' then
+                -- #136 蟹湖：帝王蟹活动计时；蟹老板冲撞 / 旋转 / 双击各自的节拍。
+                -- 乱刺节拍不在这里排：起手由「进咬距且到 JabAt」驱动，JabAt 从 -1 起
+                -- 让放下后的首次进距立刻起手，避免与 Release 期间引擎时间推进错位。
+                local params = GameCfg.FishCombat[species.Combat]
+                if params.ActiveSec then fish.ActiveUntil = now + params.ActiveSec end
+                fish.JabAt = -1
+                fish.SpecialAt = now + (params.SpinSec or 0)
+                fish.ChargeAt = now + (params.ChargeSec or 0)
             end
         elseif self.Ability then
             self.Ability:EquipFish(fish)
@@ -747,6 +756,55 @@ function Mgr:UpdateShrimpCombat(fish, now, pos, params, combat)
     self:StartMove(fish, name, pos, target, tp, now, params.BiteCooldownSec, params.BiteRange)
 end
 
+-- #136 帝王蟹：放下即锁定最近目标起手乱刺；每轮左右钳各 JabsPerSide 下、每下间隔
+-- JabStepSec、每下 JabDamage。同一刺段（0.2 秒槽）只结算一次；掉帧大 dt 只补当前槽不追溯。
+-- 一轮结束招式清除、预警收起，下一轮 JabAt + JabIntervalSec 后重新起手；活动 ActiveSec 秒
+-- 眩晕 StunSec 秒（眩晕由通用 stunned 分支处理，醒来重置节拍）。
+function Mgr:UpdateKingCrabCombat(fish, now, pos, params)
+    local body = fish.Carrier.Body
+    body.LinearVelocity = Vector3.New(0, 0, 0)
+    local move = fish.Move
+    if move then
+        if move.Name ~= 'jab' then return end
+        -- 起手帧（now <= At）是预警帧，不结算；槽 k 在 At + (k+1) × JabStepSec 起结算，
+        -- 钳与钳之间完整隔一个 JabStepSec；StrikeAt = At + 钳数 × step，末槽（第 6 钳）
+        -- 与收招同帧：先结算末钳再收招。掉帧只补当前槽不追溯。
+        local elapsed = now - move.At
+        local slot = elapsed <= 0 and -1 or math.min(params.JabsPerSide * 2 - 1,
+            math.floor(elapsed / params.JabStepSec + 1e-9) - 1)
+        if slot > (move.LastSlot or -1) then
+            move.LastSlot = slot
+            local target, tp = self:IsTargetValid(move.Target, pos, params)
+            if target and withinBite(pos, tp, params)
+                and Mgr.InHeadZone(pos, fish.Facing, tp, params) then
+                self:Hit(fish, move.Target, params.JabDamage, 'jab')
+            end
+        end
+        if now < move.StrikeAt - 1e-9 then return end
+        self:EndMove(fish, 'jab-end')
+        return
+    end
+    local target, tp = self:ChooseTarget(fish, pos, params)
+    if not target then return end
+    if now < (fish.JabAt or 0) then return end
+    if not withinBite(pos, tp, params) then
+        local fx, fz = flatDirection(tp.x - pos.x, tp.z - pos.z)
+        self:Face(fish, fx, fz, params)
+        local distance = math.sqrt((tp.x - pos.x)^2 + (tp.z - pos.z)^2)
+        local step = math.min(self:Speed(fish) * 0.1, math.max(0, distance - params.BiteRange))
+        local moved, err = pcall(function()
+            body.Position = Vector3.New(pos.x + (fx or 0) * step, pos.y, pos.z + (fz or 0) * step)
+        end)
+        if not moved then print('[MgrFishUnit] 帝王蟹追击位移失败', fish.Id, tostring(err)) end
+        return
+    end
+    -- 起手乱刺：预警时长 = 钳数 × JabStepSec（起手帧 + 每钳一个间隔），
+    -- 收招帧（now == StrikeAt）先结算末钳再收招。
+    fish.JabAt = now + params.JabIntervalSec
+    self:StartMove(fish, 'jab', pos, target, tp, now,
+        params.JabStepSec * params.JabsPerSide * 2, params.BiteRange)
+end
+
 -- 战斗只在首次放下后计时；逃跑时限优先于攻击和睡眠。
 function Mgr:UpdateCombat(fish, now)
     local body = fish.Carrier.Body
@@ -779,6 +837,23 @@ function Mgr:UpdateCombat(fish, now)
         return
     end
     self:RefreshMovingCombat(fish, now)
+    -- #136 蟹湖眩晕：UpdateShrimpCombat 专属 stunned 分支只覆盖虾池，帝王蟹在这里醒转并重置节拍
+    local crabCombat = GameCfg.Fish[fish.FishId].Combat
+    if fish.State == 'stunned' and crabCombat ~= 'shrimp' and crabCombat ~= 'dragon' then
+        local body = fish.Carrier.Body
+        body.LinearVelocity = Vector3.New(0, 0, 0)
+        if now < (fish.WakeAt or math.huge) then return end
+        fish.State, fish.WakeAt = Mgr.State.Combat, nil
+        local species = GameCfg.Fish[fish.FishId]
+        local params = GameCfg.FishCombat and GameCfg.FishCombat[species.Combat]
+        if params then
+            if params.ActiveSec then fish.ActiveUntil = now + params.ActiveSec end
+            fish.JabAt = -1
+            fish.SpecialAt = now + (params.SpinSec or 0)
+            fish.ChargeAt = now + (params.ChargeSec or 0)
+        end
+        self:PublishCombat(fish)
+    end
     -- #132 T11 原型：分阶段首领走自己的状态机（阈值切换 → 招式集 → 咬中叼人）
     if self:BossPhaseEnabled(fish.FishId) then
         self:UpdateBossPhase(fish, now, pos)
@@ -790,6 +865,13 @@ function Mgr:UpdateCombat(fish, now)
     if chase then
         if combat == 'shrimp' or combat == 'dragon' then
             self:UpdateShrimpCombat(fish, now, pos, chase, combat)
+        elseif combat == 'kingCrab' then
+            -- #136 帝王蟹：活动 30 秒眩晕 5 秒优先于起手
+            if now >= (fish.ActiveUntil or math.huge) then
+                self:StunFish(fish, now, chase)
+            else
+                self:UpdateKingCrabCombat(fish, now, pos, chase)
+            end
         else
             self:UpdateChase(fish, now, pos, chase)
         end
