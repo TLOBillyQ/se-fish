@@ -267,7 +267,13 @@ function Mgr:SetHeading(fish, x, z)
     if not x then return end
     local speed = self:Speed(fish)
     fish.Heading = { x = x, z = z }
-    pcall(function() fish.Carrier.Body.LinearVelocity = Vector3.New(x * speed, 0, z * speed) end)
+    local ok, err = pcall(function() fish.Carrier.Body.LinearVelocity = Vector3.New(x * speed, 0, z * speed) end)
+    if not ok then
+        print("[MgrFishUnit] 逃跑速度写入失败", fish.Id, tostring(err))
+        return false, tostring(err)
+    end
+    fish.AppliedSpeed = speed
+    return true
 end
 
 -- 释放举着的鱼（放下 / 抓举结束 / 持有者死亡）：只处理一次，之后重复触发都是空操作
@@ -461,6 +467,10 @@ function Mgr:UpdateEscaping(fish, now)
         return
     end
     -- 精英逃跑时锁定直线；不走普通鱼的转向与避墙。
+    -- 持续效果可在两次转向之间应用/到期，每帧按当前效果刷新直线速度。
+    if fish.Heading and fish.AppliedSpeed ~= self:Speed(fish) then
+        self:SetHeading(fish, fish.Heading.x, fish.Heading.z)
+    end
     if fish.StraightEscape then return end
     if now >= fish.TurnAt then
         fish.TurnAt = now + cfg().TurnSec

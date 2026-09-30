@@ -861,3 +861,43 @@ function TestSurvivalOffline:test_old_recover_callback_cannot_touch_a_newer_stat
     lu.assertNotIs(self.s:GetState(self.a), old)
     lu.assertNil(old.weakUntil) -- 旧状态没被旧回调改动
 end
+
+-- #139 审查失败方式：成长后免费复活/抢救仍按300恢复30；同角色复活无CharacterAdded，成长漏重套。
+local function installGrowth(env)
+    env.growthCalls = 0
+    env.v.MaxHealthProvider = function() return 900 end
+    env.v:RefreshMaxHealth(env.a)
+    env.s.SpeedWriter = {
+        RefreshMoveSpeed = function(_, p)
+            p.Character.Controller.WalkSpeed = env.s:GetState(p).weakUntil and 10.5 or 21
+            return true
+        end,
+        ApplyGrowth = function(_, p)
+            env.growthCalls = env.growthCalls + 1
+            env.v:RefreshMaxHealth(p)
+            p.Character.Controller.WalkSpeed = env.s:GetState(p).weakUntil and 10.5 or 21
+            return { Ok = true }
+        end,
+    }
+end
+function TestSurvivalRevive:test_grown_free_revive_uses_900_health_and_reapplies_growth_without_character_event()
+    installGrowth(self)
+    self:enterDead()
+    self.now = 145; self.s:Update()
+    lu.assertEquals(self:ctrl().Health, 90)
+    lu.assertEquals(self:ctrl().MaxHealth, 900)
+    lu.assertEquals(self.growthCalls, 1)
+    lu.assertEquals(self:ctrl().WalkSpeed, 10.5)
+    self.now = 205; self.s:Update()
+    lu.assertEquals(self:ctrl().WalkSpeed, 21)
+    lu.assertEquals(self:ctrl().MaxHealth, 900)
+    lu.assertEquals(self:ctrl().reborns, 0)
+end
+function TestSurvivalRescue:test_grown_rescue_uses_900_health_and_reapplies_growth()
+    installGrowth(self)
+    TestSurvivalDowned.enterDowned(self)
+    lu.assertTrue(self.v:Rescue(self.a, self.b))
+    lu.assertEquals(self:ctrl().Health, 90)
+    lu.assertEquals(self:ctrl().WalkSpeed, 21)
+    lu.assertEquals(self.growthCalls, 1)
+end

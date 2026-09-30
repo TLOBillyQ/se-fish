@@ -776,7 +776,7 @@ GameCfg.Ability = {
         item164 = { Damage = 10, IntervalSec = 1.0, Magazine = 10,                -- 雷霆之力（麻痹 0.5s 不叠加）
                     Effect = { Kind = 'paralyze' } },
         item165 = { Damage = 30, IntervalSec = 0.2, Magazine = 30, Auto = true }, -- 黄金AK47
-        item166 = { Damage = 500, IntervalSec = 1.0, Magazine = 10,               -- 连发火箭筒（溅射 5m/100）
+        item166 = { Damage = 500, IntervalSec = 1.0, Magazine = 10, Auto = true,               -- 连发火箭筒（溅射 5m/100）
                     Splash = { Damage = 100, Radius = 5 } },
     },
     -- #139 持续效果钉表（统一规格 §6.3）：毒/灼烧每秒一跳、最多 5 层、持续 3 秒，

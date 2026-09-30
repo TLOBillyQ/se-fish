@@ -259,3 +259,44 @@ function TestPrizeGrowthWiring:test_server_main_wires_growth_and_effects()
     lu.assertStrContains(src, 'MgrMap.MgrVitals.MaxHealthProvider = function(player)')
     lu.assertStrContains(src, 'MgrMap.MgrAbility:MaxHealth(player)')
 end
+
+-- 直线逃跑不会转向：状态应用与到期须在下一帧刷新速度，而非等 TurnSec。
+function TestFishStatusGate:test_straight_escape_refreshes_status_velocity_each_frame()
+    local body = { Position = vec(9999, 500, 9999) }
+    local fish = { Id = 3, FishId = 'alligatorGar', StraightEscape = true,
+        Heading = { x = 1, z = 0 }, Carrier = { Body = body } }
+    self.factor = 0
+    self.mgr:UpdateEscaping(fish, self.now)
+    lu.assertEquals(body.LinearVelocity, vec(0, 0, 0))
+    self.now, self.factor = self.now + 0.5, 0.7
+    self.mgr:UpdateEscaping(fish, self.now)
+    lu.assertAlmostEquals(body.LinearVelocity.x, GameCfg.Fish.alligatorGar.Speed * 0.7, 1e-9)
+    self.now, self.factor = self.now + 2.5, 1
+    self.mgr:UpdateEscaping(fish, self.now)
+    lu.assertEquals(body.LinearVelocity.x, GameCfg.Fish.alligatorGar.Speed)
+end
+
+-- 公共客户端输入：连发火箭筒按住按1秒间隔持续请求，不进入长按换弹。
+TestPrizeRocketInput = {}
+function TestPrizeRocketInput:test_long_press_rocket_requests_repeated_attacks()
+    local oldGame, oldRE = _G.game, _G.REUtil
+    local now, requests = 0, {}
+    _G.game = { GetService = function(_, name)
+        if name == 'World' then return { GetServerTime = function() return now end } end
+        if name == 'Players' then return { LocalPlayer = { Character = {} } } end
+    end }
+    _G.REUtil = { GetRE = function() return { FireServer = function(_, p)
+        requests[#requests + 1] = p.action end } end }
+    local button = assert(loadfile('client/LocalAttackButton.lua'))()
+    button.Gesture = require('client.PressGesture').New({ LongPressSec = 0.5 })
+    button.Root, button.Container, button.IsOpen = { Visible = true }, { Visible = true }, true
+    button:SetEquipped({ selectedWeapon = 'item166', weapons = { item166 = 1 } })
+    button:OnPressBegin()
+    button:Tick()
+    now = 0.9; button:Tick()
+    now = 1; button:Tick()
+    now = 2; button:Tick()
+    button:OnPressEnd()
+    _G.game, _G.REUtil = oldGame, oldRE
+    lu.assertEquals(requests, { 'attack', 'attack', 'attack' })
+end

@@ -97,12 +97,23 @@ end
 -- 抢救（濒死中被救起；队友抢救接缝与肾上腺素自救共用）：恢复 ReviveHealthPercent% 血量回到活动，
 -- 不带虚弱（虚弱只属于死亡后的虚弱复活）。饥饿沿用——濒死期间已暂停，ApplyRevive 让它从这一秒
 -- 重新计时，不补濒死期间的秒数。结算经 MgrVitals:ApplyRevive 单点，phase 守卫保证每轮濒死只结算一次。
+-- 同角色原地复活不会触发 CharacterAdded：通过唯一成长装配口重新套体型、上限与移速。
+local function reapplyGrowth(self, state)
+    if not self.SpeedWriter or not self.SpeedWriter.ApplyGrowth then return end
+    local called, result = pcall(self.SpeedWriter.ApplyGrowth, self.SpeedWriter, state.player)
+    if not called or not result or not result.Ok then
+        print('[MgrSurvival] 复活成长重套失败', state.player.UserId,
+            tostring(called and result and result.Error or result))
+    end
+end
+
 function Mgr:RescueDowned(state, vitalState)
     if not state or state.phase ~= 'downed' or not self.Vitals then return false end
-    local health = math.floor(GameCfg.Vitals.MaxHealth * cfg().ReviveHealthPercent / 100)
+    local health = math.floor(self.Vitals:MaxHealthOf(state.player) * cfg().ReviveHealthPercent / 100)
     if not self.Vitals:ApplyRevive(vitalState, health) then return false end
     state.phase = 'alive'
     state.downedAt = nil
+    reapplyGrowth(self, state)
     print('[MgrSurvival] 抢救', state.player.UserId, 'health=' .. tostring(health))
     self:SendState(state)
     return true
@@ -153,8 +164,13 @@ end
 -- #139：注入 SpeedWriter（MgrAbility）后，移速只由其 RefreshMoveSpeed 按「基础 × 永久成长 × 虚弱 × 霜冻」
 -- 整体重算，本管理器只维护 weakUntil 标记，不再私写 WalkSpeed；未注入时保留下面的旧逻辑兜底。
 local function refreshSpeed(self, state)
-    local ok, err = pcall(self.SpeedWriter.RefreshMoveSpeed, self.SpeedWriter, state.player)
-    if not ok then print('[MgrSurvival] 移速重算失败', state.player.UserId, tostring(err)) end
+    local called, ok, err = pcall(self.SpeedWriter.RefreshMoveSpeed, self.SpeedWriter, state.player)
+    if not called or ok == false then
+        local reason = called and err or ok
+        print('[MgrSurvival] 移速重算失败', state.player.UserId, tostring(reason))
+        return false, tostring(reason)
+    end
+    return true
 end
 
 function Mgr:ApplyWeakSpeed(state)
@@ -194,13 +210,14 @@ function Mgr:WeakRevive(state)
     local vitalState = self.Vitals and self.Vitals:GetState(state.player)
     if not vitalState then return end
     local c = cfg()
-    local health = math.floor(GameCfg.Vitals.MaxHealth * c.ReviveHealthPercent / 100)
+    local health = math.floor(self.Vitals:MaxHealthOf(state.player) * c.ReviveHealthPercent / 100)
     local minHunger = math.floor(GameCfg.Vitals.MaxHunger * c.ReviveHungerPercent / 100)
     if not self.Vitals:ApplyRevive(vitalState, health, minHunger) then return end
     state.phase = 'alive'
     state.deadAt = nil
     state.engineDeath = nil
     self:ApplyWeak(state, c.WeakSec)
+    reapplyGrowth(self, state)
     print('[MgrSurvival] 虚弱复活', state.player.UserId, 'health=' .. tostring(health),
         'hunger=' .. tostring(vitalState.hunger))
     self:SendState(state)

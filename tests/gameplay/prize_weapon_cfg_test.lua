@@ -47,7 +47,7 @@ function TestPrizeWeaponCfg:test_prize_guns_match_spec()
         item163 = { Damage = 10, IntervalSec = 1.0, Magazine = 10 }, -- 霜之新星（霜冻 -30%/3s）
         item164 = { Damage = 10, IntervalSec = 1.0, Magazine = 10 }, -- 雷霆之力（麻痹 0.5s）
         item165 = { Damage = 30, IntervalSec = 0.2, Magazine = 30, Auto = true }, -- 黄金AK47
-        item166 = { Damage = 500, IntervalSec = 1.0, Magazine = 10 }, -- 连发火箭筒（溅射 5m/100）
+        item166 = { Damage = 500, IntervalSec = 1.0, Magazine = 10, Auto = true }, -- 连发火箭筒（溅射 5m/100）
     }
     for itemId, want in pairs(expect) do
         local got = guns[itemId]

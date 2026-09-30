@@ -141,12 +141,17 @@ function Mgr:RefreshMaxHealth(player)
     if not state then return false end
     local maxHealth = self:MaxHealthOf(player)
     local controller = controllerOf(state)
+    if not controller then return false, "no-controller" end
     if controller then
-        pcall(function()
+        local ok, err = pcall(function()
             controller.MaxHealth = maxHealth
             local health = controller.Health
             if type(health) == 'number' and health > maxHealth then controller.Health = maxHealth end
         end)
+        if not ok then
+            print("[MgrVitals] 血量上限写入失败", player.UserId, tostring(err))
+            return false, tostring(err)
+        end
         state.baseline = healthOf(state)
     end
     self:WriteHealth(state)

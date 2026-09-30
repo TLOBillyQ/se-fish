@@ -154,3 +154,15 @@ function TestVitalsGrowth:test_default_behavior_without_injections()
     lu.assertTrue(plain:CanAct(p))
     lu.assertFalse(plain:ApplyRevive(plain:GetState(p), 301, 0))
 end
+
+-- 审查边界：控制器写上限抛错时不能继续报告成功；可在下一次刷新重试。
+function TestVitalsGrowth:test_refresh_max_health_write_error_is_reported_and_retryable()
+    local controller = self:ctrl()
+    controller.MaxHealth = nil
+    setmetatable(controller, { __newindex = function(_, key) error('拒绝写属性:' .. key) end })
+    local ok, err = self.mgr:RefreshMaxHealth(self.player)
+    lu.assertFalse(ok)
+    lu.assertStrContains(tostring(err), 'MaxHealth')
+    setmetatable(controller, nil)
+    lu.assertTrue(self.mgr:RefreshMaxHealth(self.player))
+end

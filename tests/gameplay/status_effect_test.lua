@@ -55,7 +55,7 @@ function TestStatusEffect:setUp()
                 source = hit.source }
             return true
         end,
-        RefreshMaxHealth = function(_, player) env.refreshedMaxHealth[#env.refreshedMaxHealth + 1] = player end,
+        RefreshMaxHealth = function(_, player) env.refreshedMaxHealth[#env.refreshedMaxHealth + 1] = player; return true end,
         FishCarrier = nil, -- 按需在各用例里装
     }
     -- 假 PlayerData / Survival
@@ -278,4 +278,71 @@ function TestStatusEffect:test_apply_growth_applies_scale_health_and_speed()
     lu.assertEquals(self.bodyScales[#self.bodyScales], 3)
     lu.assertEquals(self.refreshedMaxHealth[1], self.player)
     lu.assertAlmostEquals(self.player.Character.Controller.WalkSpeed, 21, 1e-9)
+end
+
+-- 审查边界：引擎拒绝速度写入与上限刷新失败必须传播到整体成长结果，不伪装体型成功。
+function TestStatusEffect:test_growth_propagates_controller_write_failure_and_retries()
+    local c = self.player.Character.Controller
+    self.mgr:CaptureBaseSpeed(self.player)
+    c.WalkSpeed = nil
+    setmetatable(c, { __newindex = function(_, key) error('拒绝写属性:' .. key) end })
+    local applied = self.mgr:ApplyGrowth(self.player)
+    lu.assertFalse(applied.Ok)
+    lu.assertStrContains(tostring(applied.Error), 'WalkSpeed')
+    setmetatable(c, nil)
+    self.potions.item167 = 20
+    self.mgr:Update(0.1) -- 生产心跳重试当前存档属性
+    lu.assertEquals(c.WalkSpeed, 21)
+    lu.assertTrue(self.mgr:ApplyGrowth(self.player).Ok)
+    self.mgr.Vitals.RefreshMaxHealth = function() return false, '拒绝写MaxHealth' end
+    applied = self.mgr:ApplyGrowth(self.player)
+    lu.assertFalse(applied.Ok)
+    lu.assertStrContains(tostring(applied.Error), 'MaxHealth')
+end
+
+-- 来源退出策略：取消其所有效果；真实 Vitals 在退出前签发来源身份，退出后不再产生无来源 DOT。
+function TestStatusEffect:test_source_leave_cancels_dot_via_public_lifecycle()
+    local v = assert(loadfile('server/Mgr/MgrVitals.lua'))()
+    v.Now = function() return self.now end
+    v:OnPlayerAdded(self.player)
+    local fish, carrier = self:installFish()
+    local seen, calls = {}, 0
+    v.FishCarrier = self.mgr.Vitals.FishCarrier
+    v.FishCarrier.Damage = function(_, _, amount, hit)
+        calls = calls + 1
+        seen[calls] = v:ResolveHitSource(hit)
+        lu.assertEquals(amount, 1)
+        return true, amount
+    end
+    self.mgr.Vitals = v
+    self.mgr:ApplyWeaponEffect(self.player, fish, { Kind = 'poison' })
+    self:advance(1)
+    lu.assertEquals(seen, { self.player })
+    v:OnPlayerRemoving(self.player)
+    self.mgr:OnPlayerRemoving(self.player)
+    self:advance(1)
+    lu.assertEquals(calls, 1, '来源离场后取消效果，不再生成无来源DOT')
+end
+
+-- 真实效果计时 + 真实逃跑更新：麻痹0.5秒到期恢复霜冻速度，霜冻3秒到期恢复原速。
+function TestStatusEffect:test_straight_escape_uses_real_status_expiration()
+    local oldVector = _G.Vector3
+    _G.Vector3 = { New = function(x, y, z) return { x = x, y = y, z = z } end }
+    local unit = assert(loadfile('server/Mgr/MgrFishUnit.lua'))()
+    unit.Ability = self.mgr
+    local fish, carrier = self:installFish()
+    fish.FishId, fish.StraightEscape, fish.Heading = 'alligatorGar', true, { x = 1, z = 0 }
+    carrier.Body.Position = { x = 9999, y = 500, z = 9999 }
+    local base = GameCfg.Fish.alligatorGar.Speed
+    self.mgr:ApplyWeaponEffect(self.player, fish, { Kind = 'frost' })
+    self.mgr:ApplyWeaponEffect(self.player, fish, { Kind = 'paralyze' })
+    unit:UpdateEscaping(fish, self.now)
+    lu.assertEquals(carrier.Body.LinearVelocity.x, 0)
+    self:advance(0.5)
+    unit:UpdateEscaping(fish, self.now)
+    lu.assertAlmostEquals(carrier.Body.LinearVelocity.x, base * 0.7, 1e-9)
+    self:advance(2.5)
+    unit:UpdateEscaping(fish, self.now)
+    _G.Vector3 = oldVector
+    lu.assertEquals(carrier.Body.LinearVelocity.x, base)
 end

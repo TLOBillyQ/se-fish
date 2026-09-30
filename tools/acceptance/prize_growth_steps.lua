@@ -27,7 +27,7 @@ local function ensure(world)
             world.hits[#world.hits + 1] = { category = hit.category, target = target, amount = amount }
             return true
         end,
-        RefreshMaxHealth = function() end,
+        RefreshMaxHealth = function() return true end,
     }
     mgr.PlayerData = { GetDataInst = function() return {
         PotionCount = function(_, itemId) return world.potions[itemId] or 0 end } end }

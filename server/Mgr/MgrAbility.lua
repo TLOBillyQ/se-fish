@@ -301,7 +301,7 @@ end
 ---任何一侧变化（喝药/虚弱进出/霜冻麻痹起止/重生）都调本函数整体重写，不做增量叠加。
 function Mgr:RefreshMoveSpeed(player)
 	local controller = controllerOf(player)
-	if not controller then return end
+	if not controller then return false, "no-controller" end
 	self:CaptureBaseSpeed(player)
 	local base = self.SpeedBase[player.UserId] or GameCfg.Ability.MoveSpeed.Base
 	local weak = false
@@ -316,17 +316,35 @@ function Mgr:RefreshMoveSpeed(player)
 	local speed = AttrGrowth.EffectiveSpeed(base,
 		self:PotionCount(player, GameCfg.Ability.SpeedPotion.Item),
 		{ weak = weak, frost = frost, paralyzed = paralyzed })
-	pcall(function() controller.WalkSpeed = speed end)
+	local ok, err = pcall(function() controller.WalkSpeed = speed end)
+	if not ok then
+		print("[MgrAbility] 移速写入失败", player.UserId, tostring(err))
+		return false, tostring(err)
+	end
+	return true
 end
 
 ---喝属性药水后的一站应用：体型 + 血量上限 + 移速。存档计数已落账，这里全部重算。
 function Mgr:ApplyGrowth(player)
 	local applied = self:ApplyBodyScale(player)
+	local errors = {}
+	if not applied.Ok then errors[#errors + 1] = tostring(applied.Error) end
 	if self.Vitals and self.Vitals.RefreshMaxHealth then
-		local ok, err = pcall(self.Vitals.RefreshMaxHealth, self.Vitals, player)
-		if not ok then print('[MgrAbility] 血量上限刷新失败', tostring(err)) end
+		local called, ok, err = pcall(self.Vitals.RefreshMaxHealth, self.Vitals, player)
+		if not called or ok ~= true then
+			local reason = called and err or ok
+			print('[MgrAbility] 血量上限刷新失败', player.UserId, tostring(reason))
+			errors[#errors + 1] = 'MaxHealth:' .. tostring(reason)
+		end
 	end
-	self:RefreshMoveSpeed(player)
+	local ok, err = self:RefreshMoveSpeed(player)
+	if not ok then errors[#errors + 1] = 'WalkSpeed:' .. tostring(err) end
+	if #errors > 0 then
+		applied.Ok, applied.Error = false, table.concat(errors, '; ')
+		-- 存档已落账；后续 Update 按当前存档重算，角色重建后也会再次尝试。
+		self.PendingGrowth = self.PendingGrowth or {}
+		self.PendingGrowth[player.UserId] = player
+	elseif self.PendingGrowth then self.PendingGrowth[player.UserId] = nil end
 	return applied
 end
 
@@ -502,12 +520,22 @@ function Mgr:OnPlayerRemoving(player)
 	self.Managers[player.UserId] = nil
 	-- #139 目标离场清理：持续效果与移速基准随玩家移除
 	self.Effects['p:' .. tostring(player.UserId)] = nil
+	-- 来源退出策略：取消该来源在所有目标上的效果，避免下一跳丢失权威来源身份。
+	for _, entry in pairs(self.Effects) do
+		for _, kind in ipairs({ 'poison', 'burn', 'frost', 'paralyze' }) do
+			local st = entry[kind]
+			if st and st.source == player then entry[kind] = nil end
+		end
+		if entry.kind == 'player' then self:RefreshMoveSpeed(entry.ref) end
+	end
+	if self.PendingGrowth then self.PendingGrowth[player.UserId] = nil end
 	self.SpeedBase[player.UserId] = nil
 end
 
 function Mgr:Update(deltaTime)
     for fish in pairs(self.PendingFishCleanup) do self:RemoveFish(fish) end
     self:UpdateEffects()
+    for _, player in pairs(self.PendingGrowth or {}) do self:ApplyGrowth(player) end
 end
 
 return Mgr
