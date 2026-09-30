@@ -178,7 +178,11 @@ function Screen:NoteResult(result)
         return
     end
     if self.Awaiting and result.seq and result.seq ~= self.RequestSeq then return end
-    if result.requestId then self.RequestId = result.requestId end
+    if result.requestId then
+        self.RequestId = result.requestId
+        -- 当前请求收到服务端关联后接管原未决意图；无关迟到回包已在上方过滤。
+        if result.deliveryPending and result.originalSeq then self.RequestSeq = result.originalSeq end
+    end
     if not result.ok then
         if result.deliveryPending or result.reason == 'unknown' then
             self.Awaiting, self.AwaitingElapsed = true, 0

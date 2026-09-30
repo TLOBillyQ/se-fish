@@ -523,3 +523,20 @@ function TestBlindboxSettle:test_query_identity_cannot_create_purchase()
     lu.assertEquals(self:lastResult().reason, 'expired')
     lu.assertEquals(self.platform.NextFlowId, flows)
 end
+
+function TestBlindboxSettle:test_new_request_receives_original_pending_identity()
+    self:draw(1, 1)
+    local key = next(self.data.Extra.lottery.intents)
+    self:draw(1, 2)
+    local result = self:lastResult()
+    lu.assertEquals(result.seq, 2)
+    lu.assertEquals(result.originalSeq, 1)
+    lu.assertEquals(result.requestId, key)
+    self.rolls = {1000}
+    self.platform:HandleTestAction(self.player, {action='ResolveFlow',outcome='success'})
+    self:drain()
+    self.blindbox:Handle(self.player, {action='Query',count=1,seq=1,requestId=key})
+    lu.assertTrue(self:lastResult().ok)
+    lu.assertEquals(self:lastResult().seq, 1)
+    lu.assertEquals(self.data:ItemCount('item7'), 1)
+end

@@ -178,7 +178,7 @@ function Mgr:Handle(player, payload)
     for pendingKey, intent in pairs(bag(data).intents) do
         if intent.state == 'awaiting' or intent.state == 'paid' then
             self:Reply(player, {ok=false, reason=intent.token ~= session.Token and intent.state == 'awaiting'
-                and not self.Outcomes[pendingKey] and 'unknown' or 'busy', requestId=pendingKey,
+                and not self.Outcomes[pendingKey] and 'unknown' or 'busy', requestId=pendingKey, originalSeq=intent.seq,
                 deliveryPending=true}); return true
         end
     end

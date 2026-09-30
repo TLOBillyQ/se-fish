@@ -277,3 +277,18 @@ function TestScreenBlindbox:test_old_response_cannot_unlock_new_request()
     lu.assertTrue(self.screen.Awaiting)
     lu.assertEquals(self.screen.Seq, 2)
 end
+
+function TestScreenBlindbox:test_pending_adopts_original_identity_after_lost_state()
+    self:fireItemBar(snapshotWithFree(15))
+    self.screen.Seq = 1 -- State 握手丢失，新请求撞上原未决意图
+    self.screen:Draw(1)
+    self:fireResult({ok=false, reason='busy', seq=2, originalSeq=1,
+        requestId='original', deliveryPending=true})
+    self.heartbeat:Fire(self.cfg.Blindbox.ResultTimeoutSec)
+    local query = sent(self, 'BlindboxAction')[2]
+    lu.assertEquals(query.seq, 1)
+    lu.assertEquals(query.requestId, 'original')
+    self:fireResult({ok=true, seq=1, requestId='original', operation={id='original'}, draws={}})
+    lu.assertFalse(self.screen.Awaiting)
+    lu.assertTrue(self.screen:Draw(1))
+end
