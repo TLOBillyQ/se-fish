@@ -21,6 +21,7 @@ local MgrMap = {
     MgrInteract = require("server.Mgr.MgrInteract"),
     MgrGM = require("server.Mgr.MgrGM"),
     MgrShop = require("server.Mgr.MgrShop"),
+    MgrLottery = require("server.Mgr.MgrLottery"),
     MgrQuest = require("server.Mgr.MgrQuest"),
     MgrVitals = require("server.Mgr.MgrVitals"),
     MgrStory = require("server.Mgr.MgrStory"),
@@ -62,6 +63,11 @@ MgrMap.MgrFerry.Save = MgrMap.MgrSave
 MgrMap.MgrShop.Save = MgrMap.MgrSave
 MgrMap.MgrFerry.Save = MgrMap.MgrSave
 MgrMap.MgrSave.PlayerData = MgrMap.MgrPlayerData
+--- #138 T17 抽奖机：结算走 #123 持久操作协议（扣物/发奖与结果同键落账），距离复验复用
+--- MgrInteract 的锚点范围判定；断线重进由 OnPlayerAdded 补推最近一次抽奖结果（仅展示）。
+MgrMap.MgrLottery.PlayerData = MgrMap.MgrPlayerData
+MgrMap.MgrLottery.Save = MgrMap.MgrSave
+MgrMap.MgrLottery.Interact = MgrMap.MgrInteract
 --- #133 图鉴写入：上岸事实经 MgrCompendium 记进 extra.collection，写入走 #123 持久操作协议，
 --- 所以条目与个人最大重量和操作日志同键落账、重进保留；只有上岸这一个写入口（击杀与掉落走 MgrLoot）。
 MgrMap.MgrCompendium.Save = MgrMap.MgrSave
