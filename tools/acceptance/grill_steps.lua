@@ -28,7 +28,7 @@ local function grillWorld(world)
     world.saved = { game = rawget(_G, 'game'), REUtil = rawget(_G, 'REUtil'), Debug = GameCfg.Debug }
     GameCfg.Debug = { Enabled = false }
     local env = { now = 1000, values = {}, queue = {}, events = {}, datas = {}, hits = {}, hitSeq = 0,
-        playerList = {}, alive = {}, drops = {}, seq = 0 }
+        playerList = {}, alive = {}, seq = 0 }
     world.env = env
     env.store = {
         GetAsync = function(_, key) return env.values[key] end,
@@ -87,10 +87,6 @@ local function grillWorld(world)
             return true, amount
         end,
     }
-    world.mgr.Loot = { SpawnItem = function(_, itemId, mult, cooked)
-        env.drops[#env.drops + 1] = { itemId = itemId, mult = mult, cooked = cooked }
-        return { Id = #env.drops }
-    end }
     world.mgr.Save = world.save
     world.mgr:Start()
     world.drain = function() while #env.queue > 0 do table.remove(env.queue, 1)() end end

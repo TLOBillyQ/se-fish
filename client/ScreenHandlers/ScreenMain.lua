@@ -184,9 +184,9 @@ function ScreenHandler:Show(state)
         slot.Background.TouchEnabled = index <= capacity
         slot.Icon.Visible = index <= capacity and definition ~= nil
         if definition then slot.Icon.Image = definition.Icon end
-        -- #137：烤过的物品（cooked 倍率在档）名字加「烤过的」前缀
+        -- #137：烤过的物品名字加前缀；CookRate 统一口径（含旧布尔档 saved.cooked==true）
         slot.Label.Text = definition
-            and ((entry.cooked ~= nil and GameCfg.Grill.CookedPrefix or '') .. definition.Name) or ''
+            and ((GameCfg.Items.CookRate(entry) ~= nil and GameCfg.Grill.CookedPrefix or '') .. definition.Name) or ''
         slot.Label.Visible = index <= capacity and definition ~= nil
         slot.Count.Text = definition and tostring(entry.count) or ''
         slot.Count.Visible = index <= capacity and definition ~= nil
@@ -651,9 +651,9 @@ function ScreenHandler:ShowBackpack()
         slot.Button.Visible = visible
         slot.Button.TouchEnabled = visible and definition ~= nil
         slot.Label.Visible = visible
-        -- #137：烤过的物品（cooked 倍率在档）名字加「烤过的」前缀
+        -- #137：烤过的物品名字加前缀；CookRate 统一口径（含旧布尔档 saved.cooked==true）
         slot.Label.Text = definition
-            and ((entry.cooked ~= nil and GameCfg.Grill.CookedPrefix or '') .. definition.Name) or '空'
+            and ((GameCfg.Items.CookRate(entry) ~= nil and GameCfg.Grill.CookedPrefix or '') .. definition.Name) or '空'
         slot.Button.ButtonNormalColor = index == self.SelectedBackpackSlot
             and Color.New(36, 130, 94, 255) or Color.New(54, 100, 140, 255)
     end

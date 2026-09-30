@@ -99,7 +99,9 @@ end
 
 -- 放回可用格位：道具栏优先（落道具栏即保持选中），背包兜底；满格返回 false。
 -- 目标既可以是真 PlayerData，也可以是 #123 的隔离 draft。
-local function place(data, itemId, mult, rate)
+-- 放回首个空格；selectSlot=true 时落进快捷栏才改写选中格（取出路径的规格要求），
+-- 恢复/自动结算路径不传，避免服务端替玩家改选中。
+local function place(data, itemId, mult, rate, selectSlot)
     for _, pair in ipairs({ { ITEM_BAR, data:ItemBarCapacity() }, { BACKPACK, data:BackpackCapacity() } }) do
         local items = data.Data.Containers[pair[1]]
         for index = 1, pair[2] do
@@ -107,7 +109,7 @@ local function place(data, itemId, mult, rate)
             if not entry or entry.count <= 0 then
                 items[index] = { itemId = itemId, count = 1, containerId = pair[1], mult = mult,
                     cooked = rate, saved = rate and { k = rate } or nil }
-                if pair[1] == ITEM_BAR then data.Data.SelectedSlot = index end
+                if selectSlot and pair[1] == ITEM_BAR then data.Data.SelectedSlot = index end
                 return true
             end
         end
@@ -381,6 +383,9 @@ function Mgr:RequestTakeout(player, seq)
     local session = self.Sessions[player.UserId]
     if not session then return fail('no-session') end
     if self.Vitals and not self.Vitals:CanAct(player) then return fail('not-alive') end
+    -- #137 审查修复：玩家主动取出必须在烧烤点旁（与 Start 同口径），防止开烤后走远远程取出；
+    -- 恢复/自动结算不经过这里，不受影响。重放请求已在上方 resolve 提前返回，不会被误拦。
+    if not self:InRange(player) then return fail('out-of-range') end
     if session.state == 'cooking' then
         local elapsed = self:Now() - session.startedAt
         if GrillCurve.IsBurnt(elapsed, cfg()) then
@@ -393,7 +398,7 @@ function Mgr:RequestTakeout(player, seq)
     local rate = session.rate
     return self.Save:Execute(player, data, operation, function(draft)
         draft.Extra.recovery.grill = nil
-        if not place(draft, session.itemId, session.mult, rate) then
+        if not place(draft, session.itemId, session.mult, rate, true) then
             draft.Extra.recovery.grill = { itemId = session.itemId, mult = session.mult, cooked = rate }
             return nil, 'full'
         end

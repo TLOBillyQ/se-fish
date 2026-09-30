@@ -129,13 +129,13 @@ end
 
 -- 吃选中的鱼获（#53）：只吃选中格；先问 Vitals 能不能吃（死亡期间不能），再扣格、再恢复。
 -- EatSlot 成功后 PlayerData 内部已同步并推送，无需再 SendItemBar。
--- #137：烤制倍率随格位带给 Vitals，烤过的按倍率恢复。
+-- #137：烤制倍率随格位带给 Vitals，烤过的按倍率恢复；走 CookRate 统一口径（含旧布尔档）
 local function eatSlot(mgr, player, data, value)
     if not mgr.Vitals then return end
     local slot = data.Data.SelectedSlot
     local entry = value == slot and data.Data.Containers[GameCfg.Items.ContainerId.ItemBar][slot]
     if not entry or entry.count <= 0 or not mgr.Vitals:CanEat(player, entry.itemId) then return end
-    local cooked = entry.cooked
+    local cooked = GameCfg.Items.CookRate(entry)
     local itemId = data:EatSlot(slot)
     if itemId then mgr.Vitals:Eat(player, itemId, cooked) end
 end
@@ -275,11 +275,11 @@ function Mgr:Operate(player, data, payload)
             return { ok = true, op = 'eat', held = false, itemId = heldEntry.itemId, action = 'potion' }
         end
         -- EatSlot 只吃选中格（#53）：分发已验槽位有效，先切选中再吃掉整格
-        -- #137：烤制倍率随结果带出，结算进食时同倍率恢复
+        -- #137：烤制倍率随结果带出，结算进食时同倍率恢复；走 CookRate 统一口径（含旧布尔档）
         target:SelectSlot(slot)
         local itemId = target:EatSlot(slot)
         if not itemId then return nil, 'empty' end
-        return { ok = true, op = 'eat', held = false, itemId = itemId, cooked = heldEntry.cooked }
+        return { ok = true, op = 'eat', held = false, itemId = itemId, cooked = GameCfg.Items.CookRate(heldEntry) }
     end
     if self.Save then
         local requestId = payload.operation

@@ -20,7 +20,7 @@ ScreenHandler.UINodeMap = {}
 
 local FailText = {
     ['not-premium'] = '只有极品食物才能抽奖',
-    cooked = '烤过的食物不能抽奖',
+    cooked = '烤鱼不能抽奖',
     range = '离抽奖机太远了',
     slot = '请先选中一件极品食物',
 }

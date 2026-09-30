@@ -1,8 +1,9 @@
 -- 抽奖机投入资格（#134 可调用，#138 复用）：纯函数，只判「这一件能不能投」，不抽样、不扣物、不结算。
 -- GameSpec §14：投入一件未烤制极品食物（极品鱼获或信物）；§13：烤鱼不可抽奖，烤过信物失去抽奖资格。
 -- 条目取真实库存格位 { itemId, count, mult, saved } 或 GetItemBarSnapshot 的格位 { itemId, count, mult, cooked }：
---   * 烤制以库存格位 saved[GameCfg.Items.CookedFlag] == true 为权威（同 MgrInteract）；
---   * 同时接受顶层 cooked（快照/读档/落物的烤制倍率，数值 > 0，#137 起下降段取出可以 <1），便于 common 侧展示；
+--   * 烤制判定与 MgrInteract 同口径（见 GameCfg.Items.CookRate）：顶层 cooked 数值 > 0 为权威
+--     （快照/读档/落物的烤制倍率，#137 起下降段取出可以 <1，仍算烤过）；
+--   * 兼容旧布尔档 saved[GameCfg.Items.CookedFlag] == true（等价 CookRate 映射 1.5）；
 --   * 序列化存档的 slot.k 是压缩存档协议，不是库存字段，这里不读。
 -- 返回 true，或 false, reason：'malformed' | 'bad-item' | 'not-premium' | 'cooked'。
 local GameCfg = require('common.GameCfg')

@@ -32,7 +32,7 @@ function TestGrillConfig:test_values_match_design_doc()
     lu.assertEquals(cfg.BurnRadius, 3)      -- docx：周围 3 米
     lu.assertEquals(cfg.NoFishText, '你没有可烤的鱼')
     lu.assertEquals(cfg.BurntText, '你的鱼烤糊了！')
-    lu.assertEquals(cfg.CookedPrefix, '烤过的')
+    lu.assertEquals(cfg.CookedPrefix, '烤')  -- CONTEXT.md 烤鱼条 Avoid「烤过的鱼」，前缀用「烤」
     lu.assertNotNil(cfg.TokenWarnText)
 end
 
@@ -354,11 +354,6 @@ function TestGrillMgr:setUp()
             return true, amount
         end,
     }
-    self.drops = {}
-    self.mgr.Loot = { SpawnItem = function(_, itemId, mult, cooked, pos)
-        env.drops[#env.drops + 1] = { itemId = itemId, mult = mult, cooked = cooked }
-        return { Id = #env.drops }
-    end }
     self.mgr.Save = self.save
     self.mgr:Start()
     self.seq = 0
@@ -474,6 +469,25 @@ function TestGrillMgr:test_takeout_returns_to_free_slot_and_keeps_selection()
     lu.assertTrue(self:act(player, { action = 'Takeout' }).ok)
     lu.assertEquals(data.Data.Containers[GameCfg.Items.ContainerId.ItemBar][1].itemId, 'carp')
     lu.assertEquals(data.Data.SelectedSlot, 1, '取出后保持选中')
+end
+
+-- #137 审查修复：取出与 Start 同口径要求玩家在烧烤点旁——走远取出被拒（会话不消费、不发还），
+-- 靠近后取出成功。恢复/自动结算路径不经过 RequestTakeout，不受此校验影响
+function TestGrillMgr:test_takeout_requires_player_near_grill()
+    local player, data = self:join(8141)
+    self:giveSelected(data, 'carp', 1.5)
+    lu.assertTrue(self:act(player, { action = 'Start' }).ok)
+    self:advance(2)
+    player.Character.Position = { x = self.anchorPos.x + 100, y = self.anchorPos.y, z = self.anchorPos.z }
+    local rejected = self:act(player, { action = 'Takeout' })
+    lu.assertFalse(rejected.ok)
+    lu.assertEquals(rejected.reason, 'out-of-range')
+    lu.assertEquals(countItem(data, 'carp'), 0, '远程取出被拒不能发还物品')
+    lu.assertEquals(player.grillState.state, 'cooking', '会话仍在烤，未被远程取出消费')
+    player.Character.Position = { x = self.anchorPos.x + 1, y = self.anchorPos.y, z = self.anchorPos.z }
+    lu.assertTrue(self:act(player, { action = 'Takeout' }).ok)
+    lu.assertEquals(countItem(data, 'carp'), 1)
+    lu.assertEquals(data.Data.SelectedSlot, 1, '靠近后取出成功且保持选中')
 end
 
 -- 4.5 秒烤糊：物品损毁一次、对烤炉 3 米内玩家各结算 30 伤害一次、状态下发 burnt
@@ -724,7 +738,7 @@ function TestGrillWiring:test_server_main_wires_grill()
     lu.assertStrContains(src, 'MgrMap.MgrGrill.Vitals = MgrMap.MgrVitals')
     lu.assertStrContains(src, 'MgrMap.MgrGrill.PlayerData = MgrMap.MgrPlayerData')
     lu.assertStrContains(src, 'MgrMap.MgrGrill.Save = MgrMap.MgrSave')
-    lu.assertStrContains(src, 'MgrMap.MgrGrill.Loot = MgrMap.MgrLoot')
+    lu.assertNil(src:find('MgrMap.MgrGrill.Loot'), '满格走 ready 冻结重试，不接 MgrLoot')
     lu.assertNotNil(src:find("MgrGrill', MgrMap.MgrGrill, 'BeforeLeave'"),
         '离开前要先结算烧烤会话再序列化存档')
 end
@@ -855,4 +869,15 @@ function TestGrillEatChannel:test_operate_eat_plain_fish_passes_no_rate()
     self:operate({ action = 'Operate', op = 'eat', slot = 1 })
     lu.assertEquals(#self.eaten, 1)
     lu.assertNil(self.eaten[1].rate)
+end
+
+-- #137 审查修复：吃通道走 CookRate 统一口径，#127 之前的旧布尔档 saved.cooked==true 按烤熟价倍率恢复
+function TestGrillEatChannel:test_operate_eat_legacy_boolean_archive_passes_scale()
+    lu.assertTrue(self.data:AddItem('carp', 1.5))
+    local entry = self.data.Data.Containers[GameCfg.Items.ContainerId.ItemBar][1]
+    entry.saved = { [GameCfg.Items.CookedFlag] = true }
+    self:operate({ action = 'Operate', op = 'eat', slot = 1 })
+    self:operate({ action = 'Operate', op = 'eat', slot = 1 })
+    lu.assertEquals(#self.eaten, 1)
+    lu.assertEquals(self.eaten[1].rate, GameCfg.Items.CookedPriceScale, '旧布尔档按烤熟价倍率恢复')
 end

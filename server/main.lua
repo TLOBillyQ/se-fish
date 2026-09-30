@@ -117,12 +117,11 @@ MgrMap.MgrWeapon.FishCarrier = MgrMap.MgrFishCarrier
 MgrMap.MgrWeapon.Save = MgrMap.MgrSave
 
 -- #137 烧烤接线：会话物品进出走 #123 持久协议（Save+PlayerData），烤糊伤害经统一伤害入口
--- （Vitals），满格溢出的极端兜底复用 #126 地面实例（Loot:SpawnItem）。离开前结算挂在下面
--- HandlePlayerRemoving 里 MgrSurvival 终镜像之后、MgrPlayerData 序列化之前。
+-- （Vitals）；满格时物品不入地、会话转 ready 保留冻结倍率，腾出格位后重试原倍率发还。
+-- 离开前结算挂在下面 HandlePlayerRemoving 里 MgrSurvival 终镜像之后、MgrPlayerData 序列化之前。
 MgrMap.MgrGrill.Vitals = MgrMap.MgrVitals
 MgrMap.MgrGrill.PlayerData = MgrMap.MgrPlayerData
 MgrMap.MgrGrill.Save = MgrMap.MgrSave
-MgrMap.MgrGrill.Loot = MgrMap.MgrLoot
 
 -- 存档就绪前不创建 Vitals/Ability 等玩家状态；退出先撤销就绪标记，再清理管理器。
 local ActivePlayers = {}
