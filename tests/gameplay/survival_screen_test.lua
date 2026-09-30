@@ -109,3 +109,39 @@ function TestScreenSurvival:test_client_main_starts_the_screen()
     lu.assertStrContains(src, 'ScreenSurvival = require("client.ScreenHandlers.ScreenSurvival")')
     lu.assertStrContains(src, 'ScreenSurvival:Start()')
 end
+
+-- #147 平台满血复活：死亡相位才显示广告 / 5 金豆两枚按钮，上行带 mode；
+-- platformPending 期间隐藏按钮并显示等待文案（倒计时已被服务端冻结）
+function TestScreenSurvival:test_dead_phase_offers_platform_revive_buttons()
+    local cfg = require('common.GameCfg').Survival
+    self.events.SurvivalState.OnClientEvent:Fire({ phase = 'downed', endsAt = 1015 })
+    lu.assertFalse(self.nodes['SurvivalAdRevive'].Visible) -- 濒死没有平台复活
+    self.events.SurvivalState.OnClientEvent:Fire({ phase = 'dead', endsAt = 1040 })
+    lu.assertTrue(self.nodes['SurvivalAdRevive'].Visible)
+    lu.assertTrue(self.nodes['SurvivalPaidRevive'].Visible)
+    lu.assertEquals(self.nodes['SurvivalPaidReviveText'].Text, cfg.PaidReviveText)
+    self.nodes['SurvivalAdRevive'].OnClicked:Fire()
+    lu.assertEquals(self.requests[1], { action = 'FullRevive', mode = 'ad', seq = 1 })
+    self.nodes['SurvivalPaidRevive'].OnClicked:Fire()
+    lu.assertEquals(self.requests[2], { action = 'FullRevive', mode = 'goods', seq = 2 })
+    self.events.SurvivalState.OnClientEvent:Fire({ phase = 'dead', endsAt = 1040, platformPending = 'ad' })
+    lu.assertFalse(self.nodes['SurvivalAdRevive'].Visible)
+    lu.assertEquals(self.nodes['SurvivalTitle'].Text, cfg.PlatformWaitText)
+    self.events.SurvivalState.OnClientEvent:Fire({ phase = 'dead', endsAt = 1047 }) -- 取消后平移
+    lu.assertTrue(self.nodes['SurvivalAdRevive'].Visible)
+    lu.assertStrContains(self.nodes['SurvivalTitle'].Text, '47 秒')
+    self.events.SurvivalState.OnClientEvent:Fire({ phase = 'alive' })
+    lu.assertFalse(self.nodes['SurvivalPaidRevive'].Visible)
+end
+
+function TestScreenSurvival:test_platform_revive_failures_have_readable_notices()
+    local cfg = require('common.GameCfg').Survival
+    self.events.SurvivalResult.OnClientEvent:Fire({ action = 'FullRevive', ok = false, reason = 'unavailable' })
+    lu.assertEquals(self.notices[#self.notices], cfg.PlatformPendingText)
+    self.events.SurvivalResult.OnClientEvent:Fire({ action = 'FullRevive', ok = false, reason = 'timeout' })
+    lu.assertEquals(self.notices[#self.notices], cfg.PlatformResumeText)
+    local count = #self.notices
+    self.events.SurvivalResult.OnClientEvent:Fire({ action = 'FullRevive', ok = false, reason = 'not-dead' })
+    self.events.SurvivalResult.OnClientEvent:Fire({ action = 'FullRevive', ok = true, mode = 'ad' })
+    lu.assertEquals(#self.notices, count) -- 安静结局不刷提示
+end

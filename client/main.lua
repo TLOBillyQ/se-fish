@@ -20,6 +20,9 @@ local ScreenFerry = require("client.ScreenHandlers.ScreenFerry")
 local ScreenSurvival = require("client.ScreenHandlers.ScreenSurvival")
 -- #137 烧烤文字泡与烤炉进度面板（运行时自绘，不经 MgrGameUI）
 local ScreenGrill = require("client.ScreenHandlers.ScreenGrill")
+-- #147 T26 盲盒与平台购买（肾上腺素报价、测试支付驱动、金币页入口）界面
+local ScreenBlindbox = require("client.ScreenHandlers.ScreenBlindbox")
+local ScreenPlatform = require("client.ScreenHandlers.ScreenPlatform")
 -- #134 鳄雀鳝头部攻击贴地预警
 local LocalGarBite = require("client.LocalGarBite")
 
@@ -48,6 +51,8 @@ Task:Spawn(function() LocalLottery:Start() end)
 Task:Spawn(function() ScreenFerry:Start() end)
 Task:Spawn(function() ScreenSurvival:Start() end)
 Task:Spawn(function() ScreenGrill:Start() end)
+Task:Spawn(function() ScreenBlindbox:Start() end)
+Task:Spawn(function() ScreenPlatform:Start() end)
 Task:Delay(1, function() 
     _G.MgrGameUI:OpenScreen("ScreenMsg")
 end)

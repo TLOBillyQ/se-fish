@@ -292,3 +292,21 @@ function TestPlatformSeam:test_malformed_calls_are_rejected()
     lu.assertFalse(self.platform:HandleTestAction(self.player, { action = 'ResolveFlow', outcome = 'explode' }))
     lu.assertFalse(self.platform:ShowAd(self.player, 'no-such-ad', 'revive', function() end))
 end
+
+-- 测试 flow 开 / 关通知客户端驱动按钮；真实平台 flow 不发（生产也就看不到驱动入口）
+function TestPlatformSeam:test_test_flow_notifies_client_driver()
+    lu.assertTrue(self.platform:Purchase(self.player, 'blindboxTen', 'blindbox', function() end))
+    local opened = self:messages('PlatformResult')
+    lu.assertEquals(#opened, 1)
+    lu.assertEquals(opened[1].action, 'TestFlow')
+    lu.assertTrue(opened[1].open)
+    lu.assertEquals(opened[1].key, 'blindboxTen')
+    self.platform:HandleTestAction(self.player, { action = 'ResolveFlow', outcome = 'cancel' })
+    local closed = self:messages('PlatformResult')
+    lu.assertEquals(#closed, 2)
+    lu.assertFalse(closed[2].open)
+    self.events = {}
+    GameCfg.Platform.Goods.adrenaline1.goodsId = 'goodsAdr1'
+    lu.assertTrue(self.platform:Purchase(self.player, 'adrenaline1', 'adrenaline', function() end))
+    lu.assertEquals(self:messages('PlatformResult'), {}) -- 真实 flow 不发驱动通知
+end

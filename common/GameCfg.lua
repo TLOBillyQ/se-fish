@@ -130,6 +130,9 @@ GameCfg.Survival = {
     PaidReviveText = '5金豆满血复活',
     NoAdrenalineText = '没有肾上腺素，可前往地图商店购买',
     PlatformPendingText = '平台复活即将开放，请等待倒计时虚弱复活',
+    -- #147 平台复活 flow 在飞：免费倒计时暂停期间的提示；取消/失败/超时后倒计时从暂停处继续
+    PlatformWaitText = '平台处理中，免费复活倒计时已暂停',
+    PlatformResumeText = '未完成满血复活，免费复活倒计时继续',
     WeakText = '虚弱中：移动速度减半',
     UnavailableText = '操作暂时不可用，请稍后再试',
 }
@@ -562,6 +565,16 @@ GameCfg.Platform = {
         revive = { name = '广告满血复活' },
     },
     UnavailableText = '平台功能暂不可用，请稍后再试',
+    -- 平台流程失败原因 → 玩家可读文案（客户端 ScreenPlatform / ScreenBlindbox 共用）
+    ReasonText = {
+        busy = '已有一笔平台购买正在处理，请稍候',
+        cancel = '已取消购买',
+        fail = '购买失败，未扣除金豆',
+        timeout = '平台未响应，本次购买已结束',
+        pending = '存档同步中，请稍后再试',
+    },
+    OfferTitle = '购买肾上腺素',
+    TestDriverTitle = '测试支付（仅调试构建）',
 }
 
 -- 摆渡（#89 定细则，#127 T06 扩到七区六航线）：去程一人在船边交 1 张船票，倒计时 CountdownSec 秒后

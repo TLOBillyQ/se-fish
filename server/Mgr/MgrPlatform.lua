@@ -46,8 +46,18 @@ function Mgr:HasFlow(player)
 end
 
 -- 结算在飞 flow：清空后回调 onResult(outcome, payload)，回调报错只记日志
+-- 测试 flow（Debug 构建、未走真实平台）开 / 关时通知客户端显示或收起测试驱动按钮；
+-- 生产构建不会建测试 flow，所以这条通知在生产不出现
+local function notifyTestFlow(mgr, player, flow, open)
+    if flow.real then return end
+    local ok, err = pcall(mgr.Reply, mgr, player, { ok = true, action = 'TestFlow', open = open,
+        kind = flow.kind, key = flow.goods or flow.ad, purpose = flow.purpose })
+    if not ok then print('[MgrPlatform] 测试 flow 通知失败', player.UserId, tostring(err)) end
+end
+
 local function resolve(mgr, player, flow, outcome, payload)
     if mgr.Flows[player.UserId] == flow then mgr.Flows[player.UserId] = nil end
+    notifyTestFlow(mgr, player, flow, false)
     print('[MgrPlatform] flow 结算', player.UserId, flow.kind, tostring(flow.goods or flow.ad), outcome)
     if type(flow.onResult) == 'function' then
         local ok, err = pcall(flow.onResult, outcome, payload)
@@ -100,6 +110,7 @@ local function openFlow(self, player, intent, onResult)
     self.Flows[player.UserId] = flow
     print('[MgrPlatform] flow 建立', player.UserId, intent.kind, tostring(intent.goods or intent.ad),
         real and '真实' or '测试', 'flow=' .. tostring(flow.id))
+    notifyTestFlow(self, player, flow, true)
     return true
 end
 
@@ -117,7 +128,9 @@ end
 function Mgr:CancelFlow(player)
     if not self:HasFlow(player) then return false end
     print('[MgrPlatform] flow 被业务取消', player.UserId)
+    local flow = self.Flows[player.UserId]
     self.Flows[player.UserId] = nil
+    notifyTestFlow(self, player, flow, false)
     return true
 end
 
