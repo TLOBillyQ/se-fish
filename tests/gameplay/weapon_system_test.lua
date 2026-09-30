@@ -64,14 +64,20 @@ function TestWeaponConfig:test_weapon_ids_registered_in_shop_and_items()
     for _, goods in ipairs(GameCfg.Content.Shop.Goods) do
         if goods.page == '武器' and goods.itemKey then shopGoods[goods.itemKey] = true end
     end
-    for id, _ in pairs(GameCfg.Ability.MeleeWeapons) do
-        lu.assertTrue(shopGoods[id], id .. ' 不在商店武器页')
-        lu.assertEquals(GameCfg.Items.Definitions[id].Type, '近战武器')
+    -- #139 起武器来源不止商店：抽奖武器大奖（weaponChoice 组）也进同两张表，
+    -- 口径改为「每件武器要么在商店武器页、要么是抽奖大奖」，且物品表分类正确。
+    local lotteryPrizes = {}
+    for _, entry in ipairs(GameCfg.Content.Lottery.Patterns) do
+        if entry.tripleReward and entry.tripleReward.kind == 'weaponChoice' then
+            for _, itemKey in ipairs(entry.tripleReward.itemKeys) do lotteryPrizes[itemKey] = true end
+        end
     end
-    for id, _ in pairs(GameCfg.Ability.Guns) do
-        lu.assertTrue(shopGoods[id], id .. ' 不在商店武器页')
-        lu.assertEquals(GameCfg.Items.Definitions[id].Type, '远程武器')
+    local function checkSource(id, wantType)
+        lu.assertTrue(shopGoods[id] or lotteryPrizes[id], id .. ' 既不在商店武器页也不是抽奖大奖')
+        lu.assertEquals(GameCfg.Items.Definitions[id].Type, wantType)
     end
+    for id, _ in pairs(GameCfg.Ability.MeleeWeapons) do checkSource(id, '近战武器') end
+    for id, _ in pairs(GameCfg.Ability.Guns) do checkSource(id, '远程武器') end
     for id, _ in pairs(GameCfg.Ability.Explosives) do
         lu.assertTrue(shopGoods[id], id .. ' 不在商店武器页')
         lu.assertEquals(GameCfg.Items.Definitions[id].Type, '爆炸物')
