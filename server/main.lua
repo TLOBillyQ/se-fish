@@ -33,6 +33,8 @@ local MgrMap = {
     MgrCompendium = require("server.Mgr.MgrCompendium"),
     MgrRecords = require("server.Mgr.MgrRecords"),
     MgrGrill = require("server.Mgr.MgrGrill"),
+    MgrPlatform = require("server.Mgr.MgrPlatform"),
+    MgrBlindbox = require("server.Mgr.MgrBlindbox"),
 }
 
 MgrMap.MgrCast.ReelIn = MgrMap.MgrReelIn
@@ -81,6 +83,18 @@ MgrMap.MgrCast.Compendium = MgrMap.MgrCompendium
 --- RecordsState，平台读不到时报「暂不可用」而不是伪纪录；查询顺带对账（个人纪录更高时补交）。
 MgrMap.MgrCompendium.Records = MgrMap.MgrRecords
 MgrMap.MgrRecords.PlayerData = MgrMap.MgrPlayerData
+
+--- #147 T26 平台功能本地接缝：商品购买/广告的唯一服务端入口是 MgrPlatform（真实商品 ID
+--- 未交付时入口明确不可用，Debug 开时 pending flow + 测试驱动器结算，生产构建拒绝驱动器）；
+--- 盲盒结算（MgrBlindbox）先经平台购买 flow 收费，成功才在 #123 持久操作里逐抽发奖并写回
+--- 保底计数（Extra.lottery.pity），满格溢出经 MgrLoot 按区落地。
+MgrMap.MgrPlatform.Save = MgrMap.MgrSave
+MgrMap.MgrPlatform.PlayerData = MgrMap.MgrPlayerData
+MgrMap.MgrPlatform.Loot = MgrMap.MgrLoot
+MgrMap.MgrBlindbox.Save = MgrMap.MgrSave
+MgrMap.MgrBlindbox.PlayerData = MgrMap.MgrPlayerData
+MgrMap.MgrBlindbox.Platform = MgrMap.MgrPlatform
+MgrMap.MgrBlindbox.Loot = MgrMap.MgrLoot
 
 -- #128 战斗接线：统一伤害入口的依赖单向注入在这里完成。
 -- Vitals 需要鱼受击体解析（ApplyHit 的鱼分支）；Ability / FishUnit / Cast 需要玩家生命状态
