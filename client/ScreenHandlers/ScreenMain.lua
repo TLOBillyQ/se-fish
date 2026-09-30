@@ -1056,6 +1056,7 @@ function ScreenHandler:Init()
         end
         if self.BtnItemAction then self:ShowCast() end
     end)
+    _G.REUtil:GetRE('SpecialItemStateRequest'):FireServer() -- 安装状态监听后补取可能丢失的首包
     -- #140 特殊道具回包：冷却 / 未变身 / 未装备翅膀等失败给具体提示
     self:Listen(_G.REUtil:GetRE('SpecialItemResult').OnClientEvent, function(result)
         if type(result) ~= 'table' or result.ok ~= false then return end
