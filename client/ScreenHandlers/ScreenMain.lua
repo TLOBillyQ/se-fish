@@ -62,10 +62,9 @@ function ScreenHandler:SlotAtPosition(pos)
 end
 
 -- ===== #129 投掷（爆炸物槽位手势：点按=直接投 20 米，长按=瞄准选点） =====
--- 墙钟兜底 os.clock：手势只关心相对时长，部分环境（测试/早期加载）World 无 GetServerTime
+-- 手势与冷却统一使用服务器时刻；SE 沙盒不提供 os
 local function nowSec()
-    if World.GetServerTime then return World:GetServerTime() end
-    return os.clock()
+    return World.GetServerTime and World:GetServerTime() or 0
 end
 
 function ScreenHandler:SlotDefinition(index)
@@ -373,6 +372,25 @@ local function showCastAction(self, phase, rod, drop, active, alertNow)
         or drop and '放下' or rod and '抛竿' or '使用'
 end
 
+-- #140 特殊道具：空闲且服务端生效效果（SpecialItemState.effect）存在时，
+-- 2 号位从钓鱼语义切换为「长按飞行」（风神之翼）/「原子吐息」（哥斯拉）；
+-- 冷却用本地墙钟倒计时展示（服务端每次状态推送带来权威剩余秒数）。
+local function showSpecialAction(self, effect)
+    self.BtnItemAction.Visible = true
+    self.BtnItemActionLabel.Visible = true
+    self.BtnItemAction.ButtonNormalColor = Color.New(54, 100, 140, 255)
+    if effect == 'wings' then
+        self.BtnItemAction.TouchEnabled = self.IsOpen == true
+        self.BtnItemActionLabel.Text = '长按飞行'
+    elseif effect == 'godzilla' then
+        local left = self.BreathCooldownUntil and (self.BreathCooldownUntil - World:GetServerTime()) or 0
+        local onCooldown = left > 0
+        self.BtnItemAction.TouchEnabled = self.IsOpen == true and not onCooldown
+        self.BtnItemActionLabel.Text = onCooldown
+            and string.format('吐息冷却 %d秒', math.ceil(left)) or '原子吐息'
+    end
+end
+
 local function castProgress(self, reel, active)
     local result = reel and reel.LastResult
     -- 收线中显示本地反馈并平滑追平权威进度（#38）；其余时候显示最后一次权威值
@@ -467,7 +485,12 @@ function ScreenHandler:ShowCast()
     -- 上钩提示（#54）：本收线会话的前 DurationSec 秒按钮呼吸式高亮、文字改为提示语
     local now = active == true and self.HookAlertUntil ~= nil and World:GetServerTime()
     local alerting = now and now < self.HookAlertUntil
-    showCastAction(self, phase, rod, drop, active, alerting and now)
+    -- #140：空闲且特殊道具生效时按钮让给飞行 / 吐息；钓鱼各阶段保持钓鱼语义
+    if phase == 'idle' and not drop and self.SpecialEffect then
+        showSpecialAction(self, self.SpecialEffect)
+    else
+        showCastAction(self, phase, rod, drop, active, alerting and now)
+    end
     local progress = castProgress(self, reel, active)
     if type(progress) ~= 'number' or progress ~= progress then progress = 50 end
     progress = math.max(0, math.min(100, progress))
@@ -958,6 +981,14 @@ function ScreenHandler:Init()
     self:Listen(self.BtnItemAction.OnClicked, function()
         if not self.IsOpen then return end
         local phase = self.CastState and self.CastState.phase or 'idle'
+        -- #140：特殊道具生效且空闲时，点击 = 原子吐息（风神之翼走长按，点击不做事）
+        if phase == 'idle' and self.SpecialEffect then
+            if self.SpecialEffect == 'godzilla'
+                and not (self.BreathCooldownUntil and self.BreathCooldownUntil > World:GetServerTime()) then
+                _G.REUtil:GetRE('SpecialItemAction'):FireServer({ action = 'breath' })
+            end
+            return
+        end
         if phase == 'hooked' and self.IsOpen
             and _G.LocalReelIn.SessionId == self.CastState.reelSession then
             _G.LocalReelIn:Click()
@@ -983,6 +1014,20 @@ function ScreenHandler:Init()
         end
     end)
     self:Listen(self.BtnBait.OnClicked, function() self:Action('SelectBait', GameCfg.Items.Id.Worm) end)
+    -- #140 风神之翼：长按升空、松开缓降（按下 / 松开成对发送，服务端以调和为准）
+    if self.BtnItemAction.OnTouchBegan and self.BtnItemAction.OnTouchEnded then
+        self:Listen(self.BtnItemAction.OnTouchBegan, function()
+            if self.IsOpen and self.SpecialEffect == 'wings'
+                and (not self.CastState or self.CastState.phase == 'idle') then
+                _G.REUtil:GetRE('SpecialItemAction'):FireServer({ action = 'fly', holding = true })
+            end
+        end)
+        self:Listen(self.BtnItemAction.OnTouchEnded, function()
+            if self.SpecialEffect == 'wings' then
+                _G.REUtil:GetRE('SpecialItemAction'):FireServer({ action = 'fly', holding = false })
+            end
+        end)
+    end
     self:Listen(self.BtnDuck.OnClicked, function() self:Action('SelectBait', GameCfg.Items.Id.Duck) end)
     self:Listen(self.BtnSausage.OnClicked, function() self:Action('SelectBait', GameCfg.Items.Id.Sausage) end)
     self:Listen(self.BtnNone.OnClicked, function() self:Action('SelectBait') end)
@@ -1000,6 +1045,28 @@ function ScreenHandler:Init()
         end
     end)
     self:Listen(_G.REUtil:GetRE('ItemBarState').OnClientEvent, function(state) self:Show(state) end)
+    -- #140 特殊道具状态：按钮语义随服务端生效效果切换；冷却按权威剩余秒数起本地倒计时
+    self:Listen(_G.REUtil:GetRE('SpecialItemState').OnClientEvent, function(state)
+        if type(state) ~= 'table' then return end
+        self.SpecialEffect = state.effect
+        if type(state.breathRemaining) == 'number' and state.breathRemaining > 0 then
+            self.BreathCooldownUntil = World:GetServerTime() + state.breathRemaining
+        else
+            self.BreathCooldownUntil = nil
+        end
+        if self.BtnItemAction then self:ShowCast() end
+    end)
+    _G.REUtil:GetRE('SpecialItemStateRequest'):FireServer() -- 安装状态监听后补取可能丢失的首包
+    -- #140 特殊道具回包：冷却 / 未变身 / 未装备翅膀等失败给具体提示
+    self:Listen(_G.REUtil:GetRE('SpecialItemResult').OnClientEvent, function(result)
+        if type(result) ~= 'table' or result.ok ~= false then return end
+        local hints = { cooldown = '原子吐息冷却中', ['not-godzilla'] = '需要选中哥斯拉变身',
+            ['not-wings'] = '需要选中风神之翼', ['not-alive'] = '现在不能行动',
+            ['no-character'] = '角色未就绪' }
+        if _G.LocalMsgNotice then
+            _G.LocalMsgNotice(hints[result.reason] or ('操作失败 ' .. tostring(result.reason)))
+        end
+    end)
     -- #124 操作回包：失败给具体提示；operation 身份随回包带回，凭它可跨重连重试
     self:Listen(_G.REUtil:GetRE('ItemBarResult').OnClientEvent, function(result)
         if type(result) ~= 'table' or result.ok ~= false then return end
@@ -1097,6 +1164,15 @@ function ScreenHandler:Init()
     if runService and runService.Heartbeat then
         self:Listen(runService.Heartbeat, function()
             if self.ReelBar and self.ReelBar.Visible then self:ShowCast() end
+            -- #140：吐息冷却中逐帧刷新倒计时文案
+            if self.BreathCooldownUntil and self.SpecialEffect == 'godzilla' then
+                if self.BreathCooldownUntil > World:GetServerTime() then
+                    self:ShowCast()
+                else
+                    self.BreathCooldownUntil = nil
+                    self:ShowCast()
+                end
+            end
             if self.CastFloat and self.IsOpen then self:UpdateCastFeedback() end
             if self.Starving then self:UpdateStarveFx() end
             DamageFloat:Update()
@@ -1129,6 +1205,7 @@ function ScreenHandler:OpenScreen()
     self:ShowCast()
     self:ShowCoin()
     self:ShowVitals()
+    _G.REUtil:GetRE('SpecialItemStateRequest'):FireServer()
     _G.REUtil:GetRE('RequestItemBar'):FireServer()
     _G.REUtil:GetRE('RequestCastState'):FireServer()
     _G.REUtil:GetRE('RequestQuest'):FireServer()

@@ -29,6 +29,7 @@ local MgrMap = {
     MgrSave = require("server.Mgr.MgrSave"),
     MgrSurvival = require("server.Mgr.MgrSurvival"),
     MgrWeapon = require("server.Mgr.MgrWeapon"),
+    MgrSpecialItem = require("server.Mgr.MgrSpecialItem"),
     MgrCompendium = require("server.Mgr.MgrCompendium"),
     MgrRecords = require("server.Mgr.MgrRecords"),
     MgrGrill = require("server.Mgr.MgrGrill"),
@@ -131,6 +132,13 @@ MgrMap.MgrGrill.Vitals = MgrMap.MgrVitals
 MgrMap.MgrGrill.PlayerData = MgrMap.MgrPlayerData
 MgrMap.MgrGrill.Save = MgrMap.MgrSave
 
+-- #140 T19 特殊道具：选中调和每帧对齐「期望 × CanAct」，切换/丢弃/死亡/复活/摆渡/重进
+-- 全走调和恢复；吐息结算经统一伤害入口（Vitals），摆渡前由 MgrFerry:Teleport 通知结束飞行。
+MgrMap.MgrSpecialItem.Vitals = MgrMap.MgrVitals
+MgrMap.MgrSpecialItem.PlayerData = MgrMap.MgrPlayerData
+MgrMap.MgrSpecialItem.FishUnit = MgrMap.MgrFishUnit
+MgrMap.MgrFerry.SpecialItem = MgrMap.MgrSpecialItem
+
 -- 存档就绪前不创建 Vitals/Ability 等玩家状态；退出先撤销就绪标记，再清理管理器。
 local ActivePlayers = {}
 local Started = false
@@ -169,6 +177,7 @@ local function HandlePlayerRemoving(player)
     if active then invoke('MgrSurvival', MgrMap.MgrSurvival, 'BeforeLeave', player) end
     -- #137：烧烤会话同样要在序列化前结算一次（放回烤鱼或转待恢复标记），不复制不吞物
     if active then invoke('MgrGrill', MgrMap.MgrGrill, 'BeforeLeave', player) end
+    if active then invoke('MgrSpecialItem', MgrMap.MgrSpecialItem, 'BeforeLeave', player) end
     invoke('MgrPlayerData', MgrMap.MgrPlayerData, 'OnPlayerRemoving', player)
     if active then
         for name, mgr in pairs(MgrMap) do

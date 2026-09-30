@@ -689,3 +689,14 @@ function TestFerry:test_board_request_replay_only_returns_receipt_during_countdo
     lu.assertEquals(#self.broadcasts, broadcasts)
     lu.assertEquals(self.data[1]:ItemCount(self.route.Outbound.Ticket), 0)
 end
+
+-- #140 T19：传送前必须通知特殊道具结束飞行（摆渡不得把关重力/滞空带到新区）；
+-- 未注入 SpecialItem 时传送照旧（其余用例即此路径的回归）。
+function TestFerry:test_teleport_notifies_special_item_before_moving()
+    local calls = {}
+    self.mgr.SpecialItem = { OnTeleport = function(_, player) calls[#calls + 1] = player.UserId end }
+    local dest = { x = 100, y = 6, z = 100 }
+    lu.assertTrue(self.mgr:Teleport(self.players[1], dest))
+    lu.assertEquals(calls, { 1 })
+    lu.assertEquals(self.players[1].Character.Position.x, 100)
+end

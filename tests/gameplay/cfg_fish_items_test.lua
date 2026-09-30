@@ -143,8 +143,14 @@ function TestCfgFishItems:testUnimplementedContentAndInventorySemanticsRemainExp
             end
         end
     end
+    -- #140：风神之翼（169）与哥斯拉（170）已随本单接入；其余大奖与药水仍待后续任务
     for sourceId = 152, 171 do
-        lu.assertFalse(items.Definitions[items.SourceIdMap[sourceId]].implemented)
+        local row = items.Definitions[items.SourceIdMap[sourceId]]
+        if sourceId == 169 or sourceId == 170 then
+            lu.assertTrue(row.implemented, row.source)
+        else
+            lu.assertFalse(row.implemented, row.source)
+        end
     end
     for sourceId = 113, 119 do
         lu.assertEquals(items.Definitions[items.SourceIdMap[sourceId]].Container, 'bait')
