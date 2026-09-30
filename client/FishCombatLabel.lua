@@ -34,7 +34,8 @@ function FishCombatLabel.Text(payload, now)
     elseif payload.move then
         local dragon = GameCfg.FishCombat.dragon
         local moves = { claw = '虾钳攻击', tail = '尾刺击飞', peck = '啄击',
-            rain = string.format('雨云：%g米内每秒%g伤害', dragon.RainRadius, dragon.RainDamage), dive = '飞起俯冲' }
+            rain = string.format('雨云：%g米内每秒%g伤害', dragon.RainRadius, dragon.RainDamage), dive = '飞起俯冲',
+            jab = '蟹钳乱刺', pinch = '蟹钳双击', charge = '冲撞', spin = '旋转' }
         return string.format('%s %s | %s', name, moves[payload.move] or '攻击', flee), 'attack'
     elseif payload.state == 'sleeping' and finite(payload.wakeAt) then
         return string.format('%s 睡眠 %d 秒 | %s', name, math.max(0, math.ceil(payload.wakeAt - now)), flee), 'sleep'

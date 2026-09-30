@@ -268,6 +268,14 @@ function TestFishCombatLabel:test_text_shows_discharges_sleep_and_flee_bar()
     lu.assertEquals(kind, 'idle')
     lu.assertNil(text:find('放电', 1, true))
 end
+-- #136 蟹类招式中文名：帝王蟹乱刺 / 蟹老板双击、冲撞、旋转
+function TestFishCombatLabel:test_crab_move_names_render_chinese_labels()
+    for move, name in pairs({ jab = '蟹钳乱刺', pinch = '蟹钳双击', charge = '冲撞', spin = '旋转' }) do
+        local text, kind = self.label.Text(with(self.base, { fishId = 'fish24Boss', state = 'combat', move = move }), 90)
+        lu.assertEquals(kind, 'attack')
+        lu.assertStrContains(text, name)
+    end
+end
 function TestFishCombatLabel:test_valid_rejects_malformed_payloads()
     lu.assertTrue(self.label.Valid(with(self.base, { state = 'attacking' })))
     lu.assertTrue(self.label.Valid({ id = 1, state = 'gone' }))
