@@ -8,11 +8,22 @@ local GameCfg = require('common.GameCfg')
 local FishCatch = require('common.FishCatch')
 local MathWaterJudge = require('common.MathWaterJudge')
 local MgrFishCarrier = require('server.Mgr.MgrFishCarrier')
+-- #132 T11 原型：飞行/俯冲、叼人、首领分阶段的纯逻辑。本文件只做引擎驱动（读坐标、写位置、结算伤害）。
+local FlightPath = require('common.FlightPath')
+local CarryMount = require('common.CarryMount')
+local BossPhase = require('common.BossPhase')
+
+-- AbilityAPI 懒加载：MgrFishUnit 被大量单测用假 game 加载，顶层 require 会连带跑技能包
+-- （包内 api.lua 加载时要 RunService:IsServer()），把无关用例拖挂。
+local function abilityApi()
+    return require('server.AbilityAPI')
+end
 
 local Mgr = { Fish = {}, NextId = 0, Held = {}, Links = {} }
 
 Mgr.State = { AwaitLift = 'awaitLift', Held = 'held', Escaping = 'escaping',
-    Combat = 'combat', Attacking = 'attacking', Sleeping = 'sleeping', Wild = 'wild' }
+    Combat = 'combat', Attacking = 'attacking', Sleeping = 'sleeping', Wild = 'wild',
+    Flying = 'flying' }
 
 local function cfg()
     return GameCfg.FishUnit
@@ -277,7 +288,25 @@ function Mgr:Release(fish, reason)
     fish.RayAt = now
     local pos = readPosition(body) or origin
     local species = GameCfg.Fish[fish.FishId]
-    if species.Combat then
+    if self:FlightProfile(fish.FishId) then
+        -- #132 T11 原型：飞行鱼放下后起飞（俯冲由 UpdateFlying 驱动，空中仍可被 #128 的受击体打到）
+        fish.FleeAt = now + (species.EscapeSec or 180)
+        body.LinearVelocity = Vector3.New(0, 0, 0)
+        if not self:StartFlight(fish, now) then
+            print('[MgrFishUnit] 飞行档案或边界缺失，回落普通逃脱', fish.FishId, 'fish=' .. tostring(fish.Id))
+            self:SetHeading(fish, towardWater(pos))
+        end
+    elseif self:BossPhaseEnabled(fish.FishId) then
+        -- #132 T11 原型：分阶段首领放下后进战斗（阶段机由 UpdateCombat 分支驱动）
+        fish.State = Mgr.State.Combat
+        fish.FleeAt = now + (species.EscapeSec or 300)
+        fish.CombatPosition = pos
+        fish.CombatRotation = body.Rotation
+        fish.Phase = BossPhase.New(GameCfg.Ability.BossPhase, now, pos)
+        fish.PhaseAt = now
+        fish.Yaw = 0
+        body.LinearVelocity = Vector3.New(0, 0, 0)
+    elseif species.Combat then
         fish.State = Mgr.State.Combat
         fish.FleeAt = now + species.EscapeSec
         fish.CombatPosition = pos
@@ -520,6 +549,11 @@ function Mgr:UpdateCombat(fish, now)
         self:UpdateEscaping(fish, now)
         return
     end
+    -- #132 T11 原型：分阶段首领走自己的状态机（阈值切换 → 招式集 → 咬中叼人）
+    if self:BossPhaseEnabled(fish.FishId) then
+        self:UpdateBossPhase(fish, now, pos)
+        return
+    end
     -- 首领近战（#88）不走技能装配与睡眠，追咬由 UpdateChase 驱动
     local combat = GameCfg.Fish[fish.FishId].Combat
     local chase = GameCfg.FishCombat and GameCfg.FishCombat[combat]
@@ -554,6 +588,257 @@ function Mgr:UpdateCombat(fish, now)
         fish.AttackEndsAt = now + entry.CastSec
         print('[MgrFishUnit] 电鳗放电', 'fish=' .. tostring(fish.Id))
     end
+end
+
+-- ============================================================================================
+-- #132 T11 高风险能力原型：飞行 / 俯冲、叼人、首领分阶段。
+-- 纯逻辑（边界钳制、挂点净空与跟随、阈值状态机）在 common/FlightPath.lua、common/CarryMount.lua、
+-- common/BossPhase.lua；本段只做引擎驱动：读坐标、写位置、经 MgrVitals 结算伤害。
+-- 本单未试玩：真机贴地/撞墙、玩家被叼走的手感、首领动画驱动都待编辑器窗口（见 issue #132 待办清单）。
+-- ============================================================================================
+
+local function zoneScene(zoneId)
+    for _, zone in ipairs(GameCfg.Zones or {}) do
+        if zone.Id == zoneId then return zone.Scene end
+    end
+end
+
+---该鱼种是否走飞行（GameCfg.Ability.Flight.Species 按鱼种 Id 登记）
+function Mgr:FlightProfile(fishId)
+    local species = GameCfg.Ability.Flight.Species
+    return species and species[fishId] or nil
+end
+
+---该鱼种是否走分阶段首领（GameCfg.Ability.BossPhase.Species 按鱼种 Id 登记）
+function Mgr:BossPhaseEnabled(fishId)
+    local species = GameCfg.Ability.BossPhase.Species
+    return type(species) == 'table' and species[fishId] == true
+end
+
+---飞行边界：优先本区场景合同（#125 的 Scene.Boundary），缺失时用配置兜底围栏；
+---两者都拿不到就不飞（返回 nil），绝不无边界乱飞。
+function Mgr:FlightBounds(fishId)
+    local species = GameCfg.Fish[fishId]
+    local scene = species and zoneScene(species.ZoneId)
+    local bounds = FlightPath.BoundsOf(scene, GameCfg.Ability.Flight)
+    if bounds then return bounds end
+    local fallback = GameCfg.Ability.Flight.FallbackBounds
+    if not fallback then return nil end
+    return FlightPath.BoundsOf({ Boundary = fallback, SafePoint = { x = 0, y = 0, z = 0 } }, GameCfg.Ability.Flight)
+end
+
+---起飞：建立飞行状态并切 State.Flying。没有档案或没有边界时返回 false（调用方回落普通逃脱）。
+function Mgr:StartFlight(fish, now)
+    local profile = self:FlightProfile(fish.FishId)
+    local bounds = self:FlightBounds(fish.FishId)
+    if not profile or not bounds then return false end
+    local pos = readPosition(fish.Carrier.Body)
+    fish.Flight = FlightPath.New(bounds, GameCfg.Ability.Flight, profile, pos, now)
+    fish.FlightAt = now
+    fish.State = Mgr.State.Flying
+    fish.DiveActive = false
+    -- 飞行期间由脚本给速度驱动：Kinematic 不受重力影响（与在逃鱼同口径，BodyType=2 见本文件 280 行注释）
+    pcall(function() fish.Carrier.Body.BodyType = 2 end)
+    print('[MgrFishUnit] 起飞', fish.FishId, 'fish=' .. tostring(fish.Id))
+    return true
+end
+
+---结束飞行，回落到既有的在逃逻辑（入水即销毁）。
+function Mgr:ExitFlight(fish, now, reason)
+    fish.Flight = nil
+    fish.DiveActive = false
+    if self.Fish[fish.Id] ~= fish then return end
+    fish.State = Mgr.State.Escaping
+    fish.StraightEscape = true
+    fish.EscapeAt = now
+    fish.EscapeBy = nil
+    fish.TurnAt = now + cfg().TurnSec
+    fish.RayAt = now
+    if fish.CombatRotation then pcall(function() fish.Carrier.Body.Rotation = fish.CombatRotation end) end
+    self:SetHeading(fish, towardWater(readPosition(fish.Carrier.Body) or fish.Anchor))
+    print('[MgrFishUnit] 结束飞行', reason or '', fish.FishId, 'fish=' .. tostring(fish.Id))
+end
+
+---飞行/俯冲每帧：轨迹与钳制由 FlightPath 保证，这里只把结果写回引擎并结算俯冲命中。
+function Mgr:UpdateFlying(fish, now)
+    local state = fish.Flight
+    local body = fish.Carrier.Body
+    if not state then
+        self:Remove(fish)
+        return
+    end
+    local pos = readPosition(body)
+    if not pos then
+        print('[MgrFishUnit] 飞行鱼坐标异常，移除', fish.Id)
+        self:Remove(fish)
+        return
+    end
+    if (fish.FleeAt and now >= fish.FleeAt) or inWater(pos) then
+        self:ExitFlight(fish, now, (fish.FleeAt and now >= fish.FleeAt) and 'timeout' or 'water')
+        return
+    end
+    local flight = GameCfg.Ability.Flight
+    -- 空中受击由 #128 链路自己处理（受击体照常可打，伤害进 Threat），飞行只影响移动
+    local target, tpos = self:ChooseTarget(fish, pos, { AggroRange = flight.AggroRange })
+    FlightPath.SetTarget(state, tpos)
+    local dt = math.max(0, now - (fish.FlightAt or now))
+    fish.FlightAt = now
+    local events = FlightPath.Step(state, now, dt)
+    -- 位置写回是飞行能不能动的关键：写失败只打一次日志（每帧打会刷屏），速度是只读镜像，失败就算了
+    local moved, moveErr = pcall(function()
+        body.Position = Vector3.New(state.Pos.x, state.Pos.y, state.Pos.z)
+    end)
+    if not moved and not fish.MoveWarned then
+        fish.MoveWarned = true
+        print('[MgrFishUnit] 飞行位置写回失败', fish.FishId, tostring(moveErr))
+    end
+    pcall(function()
+        body.LinearVelocity = Vector3.New(state.Vel.x, state.Vel.y, state.Vel.z)
+    end)
+    if events.dive then
+        fish.DiveActive = true
+    elseif fish.DiveActive and state.Phase == 'climb' then
+        -- 俯冲触底那一刻：目标还在命中半径内才算砸到
+        fish.DiveActive = false
+        if target and tpos then
+            local dx, dz = tpos.x - state.Pos.x, tpos.z - state.Pos.z
+            if math.sqrt(dx * dx + dz * dz) <= flight.DiveRadius then
+                self:Hit(fish, target, events.diveDamage or state.Profile.DiveDamage or flight.DiveDamage, 'dive')
+            end
+        end
+    end
+end
+
+---统一的鱼攻击结算口（走 #128 的 MgrVitals，不直接碰 Controller）。
+function Mgr:Hit(fish, target, damage, kind)
+    if not target or not self.Vitals or type(damage) ~= 'number' or damage <= 0 then return false end
+    local hit = self.Vitals:NewHit(fish, 'fishAttack')
+    self.Vitals:ApplyHit(hit, target, damage)
+    print('[MgrFishUnit] 命中', kind or 'attack', fish.FishId, damage, 'fish=' .. tostring(fish.Id))
+    return true
+end
+
+---首领分阶段每帧：血量阈值 → 阶段，阶段招式集 → 落地伤害；咬中即叼人（沧龙式）。
+function Mgr:UpdateBossPhase(fish, now, pos)
+    local state = fish.Phase
+    if not state then
+        self:Remove(fish)
+        return
+    end
+    if fish.Carry then
+        self:UpdateCarry(fish, now)
+        return
+    end
+    local params = GameCfg.FishCombat and GameCfg.FishCombat[fish.Fight] or nil
+    params = params or GameCfg.Ability.BossPhase.Chase
+    local target, tpos = self:ChooseTarget(fish, pos, params)
+    local dt = math.max(0, now - (fish.PhaseAt or now))
+    fish.PhaseAt = now
+    pcall(function() fish.Carrier.Body.LinearVelocity = Vector3.New(0, 0, 0) end)
+    local events = BossPhase.Update(state, now, dt, {
+        Health = fish.Carrier.Health, MaxHealth = fish.Carrier.MaxHealth,
+        Alive = not fish.Carrier.Dead, Target = tpos, Pos = pos,
+    })
+    if not events.Attack then return end
+    local attack = events.Attack
+    if attack.Name == 'bite' and target and tpos and CarryMount.InRange(
+        CarryMount.New(GameCfg.Ability.Carry, pos, fish.Yaw or 0, now), tpos) then
+        -- 咬中即叼走：伤害只在 GrabPlayer 里结算一次，避免「咬一下扣两次血」
+        self:GrabPlayer(fish, target, now, attack.Damage)
+        return
+    end
+    if target then self:Hit(fish, target, attack.Damage, attack.Name) end
+end
+
+---叼人：宿主挂点上建挂点单位，玩家位置每帧写回挂点（不 parent 玩家，见下方说明）。
+---@param damage? number 咬中伤害（缺省用 GameCfg.Ability.Carry.GrabDamage）
+function Mgr:GrabPlayer(fish, target, now, damage)
+    if fish.Carry then return false end
+    local carryCfg = GameCfg.Ability.Carry
+    local pos = readPosition(fish.Carrier.Body)
+    if not pos then return false end
+    local state = CarryMount.New(carryCfg, pos, fish.Yaw or 0, now)
+    state.GroundY = (fish.Anchor and fish.Anchor.y) or pos.y
+    state.TargetPlayer = target
+    state.LastStepAt = now
+    local grabbed = CarryMount.Attach(state, target.Character and readPosition(target.Character) or pos, now)
+    if not grabbed.Ok then
+        print('[MgrFishUnit] 叼人失败', tostring(grabbed.Reason), 'fish=' .. tostring(fish.Id))
+        return false
+    end
+    fish.Carry = state
+    self:Hit(fish, target, damage or carryCfg.GrabDamage, 'bite')
+    -- 咬中这一下就是本次伤害，过程接触从下一个间隔才起算，避免同帧扣两次
+    fish.ContactAt = now
+    -- 挂点只建不挂：把玩家角色 parent 到挂点下会不会打断控制器/相机本单未试玩（[未查证]），
+    -- 所以位置由服务端每帧写回（CarryMount.Follow），挂点留着给真机试玩时验证 parent 模式。
+    local ok, attached = pcall(abilityApi().AttachToSocket, self.World, nil, fish.Carrier.Body,
+        carryCfg.Socket, state.Offset)
+    if ok and attached and attached.Ok then
+        fish.CarryMount = attached.Mount
+    else
+        print('[MgrFishUnit] 叼人挂点创建失败', 'fish=' .. tostring(fish.Id))
+    end
+    print('[MgrFishUnit] 叼起玩家', target.UserId, 'fish=' .. tostring(fish.Id))
+    return true
+end
+
+---携带每帧：超时/目标消失即释放；过程接触按固定节奏补伤害。
+function Mgr:UpdateCarry(fish, now)
+    local state = fish.Carry
+    local carryCfg = GameCfg.Ability.Carry
+    local pos = readPosition(fish.Carrier.Body)
+    if pos then state.Host = pos end
+    local dt = math.max(0, now - (state.LastStepAt or now))
+    state.LastStepAt = now
+    local target = state.TargetPlayer
+    local tpos = target and target.Character and readPosition(target.Character)
+    if not tpos then
+        self:ReleaseCarried(fish, nil, 'gone')
+        return
+    end
+    local step = CarryMount.Step(state, now, dt)
+    if step.Released then
+        self:ReleaseCarried(fish, step.DropPoint, step.Reason)
+        return
+    end
+    local followed = CarryMount.Follow(state, tpos, now, dt)
+    if followed.Released then
+        self:ReleaseCarried(fish, followed.Position, followed.Reason)
+        return
+    end
+    if followed.Position and target.Character then
+        pcall(function()
+            target.Character.Position = Vector3.New(followed.Position.x, followed.Position.y, followed.Position.z)
+        end)
+    end
+    -- 过程接触伤害（GameSpec §12「叼走过程接触 150」）：固定节奏，不按帧
+    if carryCfg.ContactDamage and now - (fish.ContactAt or 0) >= (carryCfg.ContactIntervalSec or 1) then
+        fish.ContactAt = now
+        self:Hit(fish, target, carryCfg.ContactDamage, 'carry')
+    end
+end
+
+---释放被叼走的玩家：把玩家放到前方落点，销毁挂点。重复调用是空操作。
+function Mgr:ReleaseCarried(fish, dropPoint, reason)
+    local state = fish.Carry
+    if not state then return false end
+    local now = self:Now()
+    local target = state.TargetPlayer
+    local drop = dropPoint or CarryMount.DropPoint(state.Host, state.Yaw, state.GroundY, GameCfg.Ability.Carry)
+    CarryMount.Release(state, now, reason or 'release')
+    fish.Carry = nil
+    fish.ContactAt = nil
+    if fish.CarryMount then
+        pcall(abilityApi().DetachFromSocket, fish.CarryMount)
+        fish.CarryMount = nil
+    end
+    if target and target.Character and drop then
+        pcall(function() target.Character.Position = Vector3.New(drop.x, drop.y, drop.z) end)
+        self:Hit(fish, target, GameCfg.Ability.Carry.FallDamage or 0, 'fall')
+    end
+    print('[MgrFishUnit] 放开玩家', target and target.UserId, reason or '', 'fish=' .. tostring(fish.Id))
+    return true
 end
 
 function Mgr:FindByCarrier(carrier)
@@ -600,6 +885,8 @@ end
 
 function Mgr:Remove(fish)
     if not fish or self.Fish[fish.Id] ~= fish then return end
+    -- #132 T11：鱼被打死/清场时先把叼着的玩家放下来（否则玩家会跟着一条死鱼卡在空中）
+    if fish.Carry then self:ReleaseCarried(fish, nil, 'died') end
     self.Fish[fish.Id] = nil
     if self.Ability then self.Ability:RemoveFish(fish) end
     for _, conn in ipairs(fish.Conns or {}) do conn:Disconnect() end
@@ -708,6 +995,8 @@ function Mgr:Update()
             end
         elseif fish.State == Mgr.State.Escaping then
             self:UpdateEscaping(fish, now)
+        elseif fish.State == Mgr.State.Flying then
+            self:UpdateFlying(fish, now)
         elseif fish.FleeAt then
             self:UpdateCombat(fish, now)
         end
