@@ -337,4 +337,3 @@ function TestForestCombat:test_jump_warning_is_full_circle_landing_range()
     lu.assertEquals(lock.halfAngleDeg, 180)
     lu.assertAlmostEquals(lock.range, 5, 1e-9, '预警半径取 JumpRadius')
 end
-
