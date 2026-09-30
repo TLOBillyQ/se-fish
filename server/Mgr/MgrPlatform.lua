@@ -5,7 +5,7 @@
 -- 生产构建（GameCfg.Debug.Enabled=false）测试驱动器整体拒绝，不存在伪造支付成功的入口。
 -- 已知平台边界（不宣称已解决，归 #148 真实验收）：
 --   * GoodsPurchaseCompleted 只有 goodsId/goodsNum/player，没有订单 ID，官方教程禁止拼 UserId+goodsId
---     防重——本模块不做伪防重：每个购买完成信号按一笔真实购买处理，跨会话防重 / 补发 / 对账待平台能力；
+--     防重——缺可信交付身份时忽略真实信号，配置 goodsId 也不放行；订单适配/补发/对账归#148；
 --   * 购买没有取消 / 失败事件，广告 failEvent 也不保证触发：flow 统一按 FlowTimeoutSec 超时兜底结算；
 --   * ShowGoodsPurchasePanel 的 showTime 语义未查证，调用不传；广告成功以平台发放商品奖励
 --     （同一 GoodsPurchaseCompleted 信号）为准，真实事件名接线未查证。
@@ -65,48 +65,21 @@ local function resolve(mgr, player, flow, outcome, payload)
     end
 end
 
--- 建立一个平台流程：真实（已配置 + 服务可达）或测试（Debug 开）；否则返回 false, 'unavailable'。
+-- 仅建立调试测试流程；可信订单适配器交付前生产明确 unavailable。
 -- intent = { kind='purchase', goods=key } 或 { kind='ad', ad=key }；onResult(outcome, payload)。
 local function openFlow(self, player, intent, onResult)
     if not player or not player.UserId then return false, 'invalid' end
     if self:HasFlow(player) then return false, 'busy' end
-    local real, goodsId
-    if intent.kind == 'purchase' then
-        local row = cfg().Goods[intent.goods]
-        if type(row) ~= 'table' then return false, 'invalid' end
-        if configured(row) and service('CommodityService') then
-            real, goodsId = true, row.goodsId
-        end
-    else
-        local row = cfg().Ads[intent.ad]
-        if type(row) ~= 'table' then return false, 'invalid' end
-        if configured(row) and service('AdvertisementService') then
-            real, goodsId = true, row.goodsId
-        end
-    end
-    if not real and not debugEnabled() then return false, 'unavailable' end
+    -- #148 尚无可信订单/交付身份及 flow 代次关联：即使配置 goodsId 也不开放真实支付。
+    if not debugEnabled() then return false, 'unavailable' end
+    local row = intent.kind == 'purchase' and cfg().Goods[intent.goods] or cfg().Ads[intent.ad]
+    if type(row) ~= 'table' then return false, 'invalid' end
+    local real, goodsId = nil, nil -- 本地测试 flow 永不调用真实平台
     self.NextFlowId = self.NextFlowId + 1
     local now = self:Now()
     local flow = { id = self.NextFlowId, player = player, kind = intent.kind, goods = intent.goods,
         ad = intent.ad, purpose = intent.purpose, goodsId = goodsId, real = real or nil,
         onResult = onResult, startedAt = now, deadline = now + cfg().FlowTimeoutSec }
-    if real then
-        local ok, err
-        if intent.kind == 'purchase' then
-            -- showTime 语义未查证（技术难点 §4），不传
-            ok, err = pcall(function() service('CommodityService'):ShowGoodsPurchasePanel(player, goodsId) end)
-        else
-            local adRow = cfg().Ads[intent.ad]
-            ok, err = pcall(function()
-                service('AdvertisementService'):ShowRewardedVideoAd(player, goodsId,
-                    adRow.successEvent, adRow.failEvent, adRow.adTag)
-            end)
-        end
-        if not ok then
-            print('[MgrPlatform] 平台调用失败', player.UserId, intent.kind, tostring(err))
-            return false, 'unavailable'
-        end
-    end
     self.Flows[player.UserId] = flow
     print('[MgrPlatform] flow 建立', player.UserId, intent.kind, tostring(intent.goods or intent.ad),
         real and '真实' or '测试', 'flow=' .. tostring(flow.id))
@@ -138,7 +111,7 @@ end
 -- 未配置且非 Debug → 明确回包不可用（客户端展示「平台复活即将开放」口径）
 function Mgr:OpenAdrenalineShop(player)
     local rows = cfg().Goods
-    local available = debugEnabled() or (configured(rows.adrenaline1) and configured(rows.adrenaline5))
+    local available = debugEnabled()
     if not available then
         self:Reply(player, { ok = false, action = 'AdrenalineShop', reason = 'unavailable' })
         return false
@@ -154,21 +127,11 @@ end
 
 -- 地图商店金币页（ScreenShop 入口）：金币汇率与商品 ID 未交付，一律明确不可用
 function Mgr:OpenCoinShop(player)
-    local row = cfg().Goods.coinPack
-    if not configured(row) then
-        self:Reply(player, { ok = false, action = 'CoinShop', reason = 'unavailable' })
-        return false
-    end
-    return self:Purchase(player, 'coinPack', 'coins', function(outcome)
-        if outcome ~= 'success' then
-            self:Reply(player, { ok = false, action = 'CoinShop', reason = outcome })
-        end
-        -- 金币包发货需汇率（后台交付），成功回调的发货实现归 #148
-    end)
+    self:Reply(player, { ok = false, action = 'CoinShop', reason = 'unavailable' })
+    return false
 end
 
--- 占格商品发货（持久操作，#123 协议）：每个购买完成信号按一笔真实购买处理（无订单 ID 不防重，
--- 见模块头注释）；存档忙时入 PendingGrants 由 Update 重试，宁可晚发不丢单。
+-- 占格商品测试发货（持久操作，#123 协议）；真实信号不进入此路径。
 function Mgr:GrantGoods(player, goodsKey, num)
     local row = cfg().Goods[goodsKey]
     if not row or not row.itemId then return false end
@@ -226,23 +189,10 @@ function Mgr:GrantGoods(player, goodsKey, num)
 end
 
 -- 购买完成信号（真实平台回调；测试里可直接调用）：goodsId → 商品/广告行。
--- 先匹配在飞 flow（本次购买是我们发起的），否则按购买事实直接发货（玩家也可能从平台商店直接买）。
+-- 无可信订单/flow代次，不能匹配在飞flow，也不能按未关联信号发货。
 function Mgr:OnGoodsPurchaseCompleted(goodsId, num, player)
-    if type(goodsId) ~= 'string' or not player or not player.UserId then return end
-    print('[MgrPlatform] 购买完成信号', player.UserId, goodsId, tostring(num))
-    local flow = self.Flows[player.UserId]
-    if flow and flow.player == player and flow.goodsId == goodsId then
-        resolve(self, player, flow, 'success', { goodsId = goodsId, num = num })
-        return
-    end
-    for key, row in pairs(cfg().Goods) do
-        if configured(row) and row.goodsId == goodsId then
-            if row.itemId then self:GrantGoods(player, key, num)
-            else print('[MgrPlatform] 无发货映射（待 #148）', player.UserId, goodsId, key) end
-            return
-        end
-    end
-    print('[MgrPlatform] 未配置商品的购买信号，不发货', player.UserId, goodsId)
+    -- 公开信号无订单身份，旧单/重复单无法与当前 flow 安全关联，保持关闭。
+    print('[MgrPlatform] 缺可信交付身份，忽略真实购买信号', tostring(goodsId))
 end
 
 -- 仅测试可用的回调驱动器：生产构建整体拒绝（验收：生产不能进入测试支付成功入口）。

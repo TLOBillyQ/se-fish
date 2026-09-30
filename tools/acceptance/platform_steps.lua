@@ -71,6 +71,7 @@ return { patterns = {
     { '^关闭调试后尝试盲盒与测试支付成功$', function(w)
         GameCfg.Debug = { Enabled = false }
         assert(w.fixture.blindbox:Handle(w.fixture.player, { action = 'Draw', count = 1, seq = 1 }))
+        w.fixture:drain()
         assert(not w.fixture.platform:HandleTestAction(w.fixture.player,
             { action = 'ResolveFlow', outcome = 'success' }))
     end },

@@ -29,10 +29,12 @@ task:Spawn(function()
     if platform:HasFlow(p) then log('ABORT 已有平台flow') return end
     local before = blindbox:PityOf(data)
     assert(blindbox:Handle(p, { action = 'Draw', count = 1, seq = seq }))
+    if not ready() then log('ABORT 支付意图未落账') return end
     assert(platform:HandleTestAction(p, { action = 'ResolveFlow', outcome = 'cancel' }))
     log('取消不发奖', 'pity=' .. blindbox:PityOf(data), 'before=' .. before)
     assert(blindbox:PityOf(data) == before)
     assert(blindbox:Handle(p, { action = 'Draw', count = 1, seq = seq + 1 }))
+    if not ready() then log('ABORT 支付意图未落账') return end
     assert(platform:HandleTestAction(p, { action = 'ResolveFlow', outcome = 'success' }))
     if not ready() then log('ABORT 单抽落账未就绪') return end
     local after = blindbox:PityOf(data)

@@ -179,19 +179,17 @@ function TestPlatformSeam:test_flow_times_out_and_reports_timeout()
 end
 
 -- 已配置商品 + 服务可达：走真实面板，flow 等 GoodsPurchaseCompleted
-function TestPlatformSeam:test_configured_goods_use_real_panel_and_signal()
+function TestPlatformSeam:test_configured_goods_still_use_only_test_flow()
     GameCfg.Platform.Goods.adrenaline1.goodsId = 'goodsAdr1'
     local outcomes = {}
     lu.assertTrue(self.platform:Purchase(self.player, 'adrenaline1', 'adrenaline',
-        function(result, payload) outcomes[#outcomes + 1] = { result = result, payload = payload } end))
-    lu.assertEquals(#self.purchasePanels, 1)
-    lu.assertEquals(self.purchasePanels[1].goodsId, 'goodsAdr1')
+        function(result) outcomes[#outcomes + 1] = result end))
+    lu.assertEquals(#self.purchasePanels, 0)
     self.goodsSignal:Fire('goodsAdr1', 1, self.player)
-    lu.assertEquals(#outcomes, 1)
-    lu.assertEquals(outcomes[1].result, 'success')
-    lu.assertEquals(outcomes[1].payload.goodsId, 'goodsAdr1')
-    lu.assertEquals(outcomes[1].payload.num, 1)
-    lu.assertFalse(self.platform:HasFlow(self.player))
+    lu.assertEquals(outcomes, {})
+    lu.assertTrue(self.platform:HasFlow(self.player))
+    self.platform:HandleTestAction(self.player, { action = 'ResolveFlow', outcome = 'success' })
+    lu.assertEquals(outcomes, { 'success' })
 end
 
 -- 信号不串号：别人的购买完成不解我的 flow；不同商品的信号不解 flow
@@ -211,15 +209,15 @@ end
 
 -- 无 pending flow 的已配置商品信号：按购买事实直接持久发货（平台扣费即事实）；
 -- 两个信号发两份——没有订单 ID 不拼 UserId+goodsId 防重（教程明令禁止），真实对账归 #148
-function TestPlatformSeam:test_unmatched_signal_grants_configured_goods_each_time()
+function TestPlatformSeam:test_unmatched_signals_never_grant_without_identity()
     GameCfg.Platform.Goods.adrenaline1.goodsId = 'goodsAdr1'
     self:persistReady()
     self.goodsSignal:Fire('goodsAdr1', 1, self.player)
     self:drain()
-    lu.assertEquals(self.data:ItemCount(GameCfg.Survival.AdrenalineItemId), 1)
+    lu.assertEquals(self.data:ItemCount(GameCfg.Survival.AdrenalineItemId), 0)
     self.goodsSignal:Fire('goodsAdr1', 1, self.player) -- 第二笔真实购买：再发一份
     self:drain()
-    lu.assertEquals(self.data:ItemCount(GameCfg.Survival.AdrenalineItemId), 2)
+    lu.assertEquals(self.data:ItemCount(GameCfg.Survival.AdrenalineItemId), 0)
 end
 
 -- 未配置商品的信号：不发货（不知道它该发什么），只记日志
@@ -234,7 +232,8 @@ end
 function TestPlatformSeam:test_adrenaline_grant_survives_reconnect()
     GameCfg.Platform.Goods.adrenaline1.goodsId = 'goodsAdr1'
     self:persistReady()
-    self.goodsSignal:Fire('goodsAdr1', 1, self.player)
+    self.platform:HandleAction(self.player, { action = 'Purchase', goods = 'adrenaline1' })
+    self.platform:HandleTestAction(self.player, { action = 'ResolveFlow', outcome = 'success' })
     self:drain()
     self.players:OnPlayerAdded(self.player) -- 重进读档
     self:drain()
@@ -246,7 +245,8 @@ end
 function TestPlatformSeam:test_adrenaline_five_pack_grants_five()
     GameCfg.Platform.Goods.adrenaline5.goodsId = 'goodsAdr5'
     self:persistReady()
-    self.goodsSignal:Fire('goodsAdr5', 1, self.player)
+    self.platform:HandleAction(self.player, { action = 'Purchase', goods = 'adrenaline5' })
+    self.platform:HandleTestAction(self.player, { action = 'ResolveFlow', outcome = 'success' })
     self:drain()
     lu.assertEquals(self.data:ItemCount(GameCfg.Survival.AdrenalineItemId), 5)
 end
@@ -308,5 +308,34 @@ function TestPlatformSeam:test_test_flow_notifies_client_driver()
     self.events = {}
     GameCfg.Platform.Goods.adrenaline1.goodsId = 'goodsAdr1'
     lu.assertTrue(self.platform:Purchase(self.player, 'adrenaline1', 'adrenaline', function() end))
-    lu.assertEquals(self:messages('PlatformResult'), {}) -- 真实 flow 不发驱动通知
+    lu.assertTrue(self:messages('PlatformResult')[1].open) -- 配置ID仍只允许测试flow
+end
+
+-- 无可信订单身份：配置goodsId不能放行生产，旧/重复信号不能结算新测试flow或发货。
+function TestPlatformSeam:test_configured_production_is_fail_closed()
+    GameCfg.Platform.Goods.adrenaline1.goodsId = 'goodsAdr1'
+    GameCfg.Platform.Ads.revive.goodsId = 'adRevive'
+    GameCfg.Debug = { Enabled = false }
+    local accepted, reason = self.platform:Purchase(self.player, 'adrenaline1', 'adrenaline', function() end)
+    lu.assertFalse(accepted); lu.assertEquals(reason, 'unavailable')
+    lu.assertFalse(self.platform:ShowAd(self.player, 'revive', 'revive', function() end))
+    self.goodsSignal:Fire('goodsAdr1', 1, self.player)
+    self.goodsSignal:Fire('goodsAdr1', 1, self.player)
+    self:drain()
+    lu.assertEquals(self.data:ItemCount(GameCfg.Survival.AdrenalineItemId), 0)
+    lu.assertEquals(self.purchasePanels, {})
+end
+
+function TestPlatformSeam:test_late_old_signal_cannot_settle_new_same_goods_flow()
+    GameCfg.Platform.Goods.adrenaline1.goodsId = 'goodsAdr1'
+    local outcomes = {}
+    self.platform:Purchase(self.player, 'adrenaline1', 'adrenaline', function(r) outcomes[#outcomes + 1] = r end)
+    self.now = self.now + GameCfg.Platform.FlowTimeoutSec
+    self.platform:Update()
+    self.platform:Purchase(self.player, 'adrenaline1', 'adrenaline', function(r) outcomes[#outcomes + 1] = r end)
+    self.goodsSignal:Fire('goodsAdr1', 1, self.player)
+    self.goodsSignal:Fire('goodsAdr1', 1, self.player)
+    lu.assertEquals(outcomes, { 'timeout' })
+    lu.assertTrue(self.platform:HasFlow(self.player))
+    lu.assertEquals(self.data:ItemCount(GameCfg.Survival.AdrenalineItemId), 0)
 end

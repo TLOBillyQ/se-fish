@@ -66,7 +66,13 @@ function TestBlindboxSettle:setUp()
     self.players.Save, self.save.PlayerData = self.save, self.players
     self.platform.Save, self.platform.PlayerData = self.save, self.players
     self.blindbox.Save, self.blindbox.PlayerData, self.blindbox.Platform = self.save, self.players, self.platform
-    self.blindbox.Loot = { SpawnItem = function(_, itemId, mult, cooked, pos)
+    self.blindbox.Loot = { DeliveryEpoch = 'test-world', SpawnDelivery = function(_, key, itemId, mult, cooked, pos)
+        env.delivered = env.delivered or {}
+        if env.delivered[key] then return env.delivered[key] end
+        local loot = env.blindbox.Loot:SpawnItem(itemId, mult, cooked, pos)
+        env.delivered[key] = loot
+        return loot
+    end, SpawnItem = function(_, itemId, mult, cooked, pos)
         env.spawned[#env.spawned + 1] = { itemId = itemId, mult = mult, cooked = cooked, pos = pos }
         return { Id = 'loot' .. #env.spawned }
     end }
@@ -113,6 +119,7 @@ end
 function TestBlindboxSettle:draw(count, seq, outcome)
     local accepted = self.blindbox:Handle(self.player,
         { action = 'Draw', count = count, seq = seq })
+    self:drain() -- 支付意图先持久化，再建立测试 flow
     if accepted and outcome then
         lu.assertTrue(self.platform:HandleTestAction(self.player,
             { action = 'ResolveFlow', outcome = outcome }))
@@ -162,6 +169,7 @@ function TestBlindboxSettle:test_failed_payment_grants_nothing_and_keeps_pity()
         self.events = {}
         if outcome == 'timeout' then
             lu.assertTrue(self.blindbox:Handle(self.player, { action = 'Draw', count = 1, seq = index }))
+            self:drain()
             self.now = self.now + GameCfg.Platform.FlowTimeoutSec
             self.platform:Update()
             self:drain()
@@ -282,6 +290,7 @@ end
 function TestBlindboxSettle:test_second_draw_busy_while_payment_in_flight()
     self.rolls = { 1000 }
     lu.assertTrue(self.blindbox:Handle(self.player, { action = 'Draw', count = 1, seq = 1 }))
+    self:drain()
     lu.assertTrue(self.platform:HasFlow(self.player))
     self.events = {}
     lu.assertTrue(self.blindbox:Handle(self.player, { action = 'Draw', count = 1, seq = 2 }))
@@ -298,4 +307,137 @@ end
 function TestBlindboxSettle:test_pricing_uses_configured_goods()
     lu.assertEquals(GameCfg.Platform.Goods.blindboxSingle.beans, 10)
     lu.assertEquals(GameCfg.Platform.Goods.blindboxTen.beans, 90)
+end
+
+-- 审查失败方式：支付等待期别的操作推进sequence；Execute同步拒绝；落地失败/无角色；
+-- 落地成功确认写失败后重进；盲盒收集解锁不改钓取纪录。
+function TestBlindboxSettle:test_payment_wait_does_not_reserve_sequence()
+    self.rolls = { 1000 }
+    self:draw(1, 1)
+    self:drain()
+    local op = assert(self.save:ResolveRequest(self.player, self.data, 'other', 1))
+    lu.assertTrue(self.save:Execute(self.player, self.data, op, function(draft)
+        draft:AddFishCoin(1)
+        return { ok = true }
+    end, function() end))
+    self:drain()
+    lu.assertTrue(self.platform:HandleTestAction(self.player, { action = 'ResolveFlow', outcome = 'success' }))
+    self:drain()
+    self.blindbox:Update()
+    self:drain()
+    lu.assertEquals(self.data:ItemCount('item7'), 1)
+    lu.assertTrue(self:lastResult().ok)
+end
+
+function TestBlindboxSettle:test_failed_ground_delivery_survives_reconnect()
+    while self.data:AddItem('carp') do end
+    self:persistReady()
+    self.blindbox.Loot.SpawnDelivery = function() return nil, 'spawn-failed' end
+    self.blindbox.Loot.DeliveryEpoch = 'test-world'
+    self.rolls = { 1000 }
+    self:draw(1, 1, 'success')
+    self.blindbox:Update(); self:drain()
+    lu.assertTrue(self:lastResult().deliveryPending)
+    self.players:OnPlayerAdded(self.player); self:drain()
+    self.data = self.players:GetDataInst(self.player)
+    local spawned = 0
+    self.blindbox.Loot.SpawnDelivery = function() spawned = spawned + 1 return { Id = 'once' } end
+    self.blindbox:OnPlayerAdded(self.player)
+    self.blindbox:Update(); self:drain()
+    lu.assertEquals(spawned, 1)
+    lu.assertEquals(next(self.data.Extra.lottery.deliveries), nil)
+    self.blindbox:Update(); self:drain()
+    lu.assertEquals(spawned, 1)
+end
+
+function TestBlindboxSettle:test_collection_unlock_without_catch_record()
+    self.rolls = { 1000 }
+    self:draw(1, 1, 'success'); self:drain()
+    lu.assertTrue(self.data.Extra.collection.unlocked['item7'])
+    lu.assertEquals(self.data.Extra.collection.weights, {})
+    lu.assertEquals(self.data.Extra.collection.catches or {}, {})
+    lu.assertEquals(self.data.Extra.collection.total or 0, 0)
+    self.players:OnPlayerAdded(self.player); self:drain()
+    lu.assertTrue(self.players:GetDataInst(self.player).Extra.collection.unlocked['item7'])
+end
+
+function TestBlindboxSettle:test_delivery_confirmation_rejected_then_reconnect_does_not_duplicate()
+    while self.data:AddItem('carp') do end
+    self:persistReady()
+    local execute = self.save.Execute
+    self.save.Execute = function(mgr, player, data, op, transform, done)
+        if op.kind == 'blindbox:delivery' then return false, 'pending' end
+        return execute(mgr, player, data, op, transform, done)
+    end
+    self.rolls = { 1000 }
+    self:draw(1, 1, 'success')
+    lu.assertEquals(#self.spawned, 1)
+    lu.assertNotNil(next(self.data.Extra.lottery.deliveries))
+    self.save.Execute = execute
+    self.players:OnPlayerAdded(self.player); self:drain()
+    self.data = self.players:GetDataInst(self.player)
+    self.blindbox:OnPlayerAdded(self.player); self:drain()
+    lu.assertEquals(#self.spawned, 1)
+    lu.assertNil(next(self.data.Extra.lottery.deliveries))
+end
+
+function TestBlindboxSettle:test_paid_write_sync_rejection_keeps_recoverable_intent()
+    self.rolls = { 1000 }
+    self:draw(1, 1); self:drain()
+    local execute = self.save.Execute
+    self.save.Execute = function(mgr, player, data, op, transform, done)
+        if op.kind == 'blindbox' then return false, 'expired' end
+        return execute(mgr, player, data, op, transform, done)
+    end
+    self.platform:HandleTestAction(self.player, { action = 'ResolveFlow', outcome = 'success' })
+    self:drain()
+    lu.assertEquals(self:lastResult().reason, 'expired')
+    lu.assertTrue(self:lastResult().deliveryPending)
+    self.save.Execute = execute
+    self.players:OnPlayerAdded(self.player); self:drain()
+    self.data = self.players:GetDataInst(self.player)
+    self.blindbox:OnPlayerAdded(self.player); self:drain()
+    lu.assertEquals(self.data:ItemCount('item7'), 1)
+end
+
+function TestBlindboxSettle:test_no_character_preserves_delivery_and_unlocks_without_record()
+    while self.data:AddItem('carp') do end
+    self.data.Extra.collection.unlocked.item7 = true
+    self.data.Extra.collection.weights.item7 = 12.34
+    self:persistReady()
+    local character = self.player.Character
+    self.player.Character = nil
+    self.rolls = { 1000 }
+    self:draw(1, 1, 'success')
+    lu.assertEquals(#self.spawned, 0)
+    lu.assertTrue(self:lastResult().deliveryPending)
+    lu.assertTrue(self.data.Extra.collection.unlocked.item7)
+    lu.assertEquals(self.data.Extra.collection.weights.item7, 12.34)
+    self.player.Character = character
+    self.blindbox:Update(); self:drain()
+    lu.assertEquals(#self.spawned, 1)
+    self.blindbox:Handle(self.player, { action = 'Draw', count = 1, seq = 1 }); self:drain()
+    lu.assertEquals(#self.spawned, 1)
+    lu.assertEquals(self.data.Extra.collection.weights.item7, 12.34)
+end
+
+function TestBlindboxSettle:test_unknown_previous_world_delivery_requires_reconciliation()
+    while self.data:AddItem('carp') do end
+    self:persistReady()
+    self.blindbox.Loot.SpawnDelivery = function() return nil end
+    self.rolls = { 1000 }; self:draw(1, 1, 'success')
+    self.blindbox.Loot.DeliveryEpoch = 'new-world'
+    self.blindbox.Loot.SpawnDelivery = function() error('不得盲目补发旧世界交付') end
+    self.blindbox:Update(); self:drain()
+    lu.assertNotNil(next(self.data.Extra.lottery.deliveries))
+end
+
+function TestBlindboxSettle:test_loot_delivery_key_remains_consumed_after_entity_disappears()
+    local loot = assert(loadfile('server/Mgr/MgrLoot.lua'))()
+    local calls = 0
+    loot.SpawnItem = function() calls = calls + 1; return { Id = 99 } end
+    lu.assertEquals(loot:SpawnDelivery('paid:1', 'item7', 1, nil, {}), { Id = 99 })
+    loot.Loots[99] = nil -- 已被拾取/回收，不能因实体消失重发
+    lu.assertEquals(loot:SpawnDelivery('paid:1', 'item7', 1, nil, {}), { Id = 99 })
+    lu.assertEquals(calls, 1)
 end

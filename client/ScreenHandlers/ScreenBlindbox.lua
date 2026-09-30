@@ -156,7 +156,7 @@ function Screen:ResultText(result)
     for index, draw in ipairs(result.draws or {}) do
         local tags = {}
         if draw.guaranteed then tags[#tags + 1] = '保底' elseif draw.jackpot then tags[#tags + 1] = '大奖' end
-        if draw.landed then tags[#tags + 1] = '落在地上' end
+        if draw.landed then tags[#tags + 1] = result.deliveryPending and '待交付' or '落在地上' end
         lines[#lines + 1] = string.format('%d. %s%s', index, draw.itemName or draw.itemKey or '?',
             #tags > 0 and ('（' .. table.concat(tags, '，') .. '）') or '')
     end
@@ -177,12 +177,16 @@ function Screen:NoteResult(result)
         notice(text)
         return
     end
+    if result.deliveryPending then
+        notice('奖品已记录，落地交付待恢复；请稍后查看，勿重复购买')
+    end
     local operationId = result.operation and result.operation.id
-    if operationId and operationId == self.LastOperationId then
+    if operationId and operationId == self.LastOperationId and result.deliveryPending == self.LastDeliveryPending then
         self.Awaiting, self.AwaitingElapsed = false, nil
         return -- 重放回包：原结果已展示过
     end
     self.LastOperationId = operationId
+    self.LastDeliveryPending = result.deliveryPending
     self.Awaiting, self.AwaitingElapsed = false, nil
     self.Pity = tonumber(result.pityAfter) or self.Pity
     self:RefreshPity()

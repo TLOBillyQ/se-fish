@@ -317,6 +317,16 @@ function Mgr:SpawnItem(itemId, mult, cooked, pos)
     return self:Live(loot)
 end
 
+-- #147 同服务器稳定交付键保留成功凭据，即使实体已拾取/回收也不再生成。
+-- 不把此内存凭据当跨服务器订单幂等；旧世界未知交付保持待对账。
+function Mgr:SpawnDelivery(key, itemId, mult, cooked, pos)
+    self.Deliveries = self.Deliveries or {}
+    if self.Deliveries[key] then return self.Deliveries[key] end
+    local loot, reason = self:SpawnItem(itemId, mult, cooked, pos)
+    if loot then self.Deliveries[key] = { Id = loot.Id } end
+    return loot, reason
+end
+
 -- 「丢弃落物」payload 校验：物品表里有定义、倍率与烤制值在存档允许范围
 local function validated(drop)
     if type(drop) ~= 'table' then return nil, 'bad-item' end
@@ -559,6 +569,7 @@ function Mgr:StartSpots()
 end
 
 function Mgr:Start()
+    self.DeliveryEpoch = self.DeliveryEpoch or tostring(game:GetService('World'):GetServerTime()) .. ':' .. tostring(math.random())
     MgrFishCarrier:SubscribeDied(function(carrier) self:OnCarrierDied(carrier) end)
     self:Listen()
     self:StartSpots()

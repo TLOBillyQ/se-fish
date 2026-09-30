@@ -1,173 +1,186 @@
--- 盲盒（#147 T26，GameSpec §15 与地图盲盒表）：商店盲盒页的单抽（10 金豆）/十连（90 金豆）服务端
--- 结算。收费归平台适配层（MgrPlatform）：先拉起购买 flow，购买成功才在一个持久操作里逐抽结算
--- （common/BlindboxDraw），取消/失败/超时不发奖、不动保底计数。抽样、发奖与 pity 计数同键落账
--- （#123 持久操作协议），落账后才回包与推库存；同 seq 重放或携带完整 operation 重试只回原结果，
--- 不重复扣费（不再拉起购买）、不重复发奖、不重复落地。连续未中奖计数存 Extra.lottery.pity，
--- 重进读档保留，客户端经 BlindboxStateRequest / OnPlayerAdded 的 State 回包同步。
--- 满格按区落地（#126 SpawnItem 口径，计入各区掉落预算）：抽中物优先入库，放不下的落在玩家
--- 面前地上、其他玩家可拾取；落地在落账后的 done 回调执行，重放路径不重复落地。落地失败
--- （预算耗尽等）只记日志留对账线索，补发归 #148。
--- 生产构建（Debug 关）且商品 ID 未交付时购买入口明确 unavailable，不发付费权益。
+-- #147 盲盒：收费意图先持久化，成功后重新分配操作序号；奖品/收集/保底同事务落账。
+-- 溢出保留持久待交付记录，按服务器生命周期和稳定交付键落地；跨世界未知交付不自动补发，归#148对账。
 local GameCfg = require('common.GameCfg')
 local BlindboxDraw = require('common.BlindboxDraw')
-
-local Mgr = { LastSeq = {} }
-
-local function blindboxCfg()
-    return GameCfg.Blindbox
+local Mgr = { LastSeq = {}, Working = {}, Outcomes = {} }
+local function cfg() return GameCfg.Blindbox end
+local function goods(count) return count == 10 and 'blindboxTen' or 'blindboxSingle' end
+local function bag(data)
+    local b = data.Extra.lottery
+    b.intents, b.deliveries = b.intents or {}, b.deliveries or {}
+    return b
 end
-
--- 抽数 → 商品行（单抽 10 金豆 / 十连 90 金豆，价目集中 GameCfg.Platform.Goods）
-local function goodsKeyOf(count)
-    return count == 10 and 'blindboxTen' or 'blindboxSingle'
-end
-
-function Mgr:Reply(player, payload)
-    _G.REUtil:GetRE('BlindboxResult'):FireClient(player, payload)
-end
-
-function Mgr:PityOf(data)
-    local extra = data and data.Extra
-    local lottery = extra and extra.lottery
-    return lottery and lottery.pity or 0
-end
-
--- 在一次持久操作的 draft 上逐抽结算（#123 transform 只改隔离 draft）：
--- 读 draft 里的 pity → DrawMany 逐抽（中途大奖立即重置）→ 每件抽中物入库或记落地 → 写回 pity。
--- 返回 result 或 nil, reason；任何拒绝都不改库存与计数。随机数经 self.Random 注入（默认 math.random）。
-function Mgr:Settle(draft, count)
-    local rng = type(self.Random) == 'function' and self.Random or math.random
-    local pityBefore = self:PityOf(draft)
-    local draws, pityAfter = BlindboxDraw.DrawMany(count, pityBefore, rng)
+function Mgr:Reply(player, payload) _G.REUtil:GetRE('BlindboxResult'):FireClient(player, payload) end
+function Mgr:PityOf(data) return data and data.Extra.lottery.pity or 0 end
+function Mgr:Settle(draft, count, key)
+    local b = bag(draft)
+    local before = self:PityOf(draft)
+    local draws, after = BlindboxDraw.DrawMany(count, before, self.Random or math.random)
     if not draws then return nil, 'roll' end
     local grounded = 0
-    for _, draw in ipairs(draws) do
-        -- 倍率固定 1（GameSpec §15）；放不下的记落地，由 done 回调经 Loot:SpawnItem 落地
-        if draft:AddItem(draw.itemKey, 1) then
-            draw.landed = false
-        else
-            draw.landed = true
-            grounded = grounded + 1
-        end
-        draw.pityBefore, draw.index = nil, nil -- 回包瘦身：逐抽 pity 推进见 pityAfter 链
-    end
-    draft.Extra.lottery.pity = pityAfter
-    return { ok = true, action = 'Draw', count = count, draws = draws,
-        pityBefore = pityBefore, pityAfter = pityAfter, grounded = grounded }
-end
-
--- 落账后的发布（#123 done 才发布副作用）：回包 + 推库存 + 落地。
--- 只在 fresh 落账路径调用；重放路径走 resolve 只回包，不重复落地。
-function Mgr:Publish(player, result)
-    print('[MgrBlindbox] 盲盒落账', player.UserId, 'count=' .. result.count,
-        'pity=' .. result.pityBefore .. '->' .. result.pityAfter, 'grounded=' .. result.grounded)
-    if self.PlayerData and self.PlayerData.SendItemBar then self.PlayerData:SendItemBar(player) end
-    self:Reply(player, result)
-    if result.grounded > 0 and self.Loot then
-        local origin = player.Character and player.Character.Position
-        for _, draw in ipairs(result.draws) do
-            if draw.landed then
-                local spawned = origin and self.Loot:SpawnItem(draw.itemKey, 1, nil,
-                    origin and { x = origin.x, y = origin.y, z = origin.z + 2 } or nil)
-                if not spawned then
-                    print('[MgrBlindbox] 落地失败（待 #148 对账）', player.UserId, draw.itemKey)
-                end
+    for index, draw in ipairs(draws) do
+        for fishId, fish in pairs(GameCfg.Fish) do
+            for _, drop in ipairs(fish.Drops or {}) do
+                if drop.ItemId == draw.itemKey then draft.Extra.collection.unlocked[fishId] = true end
             end
         end
+        draw.landed = not draft:AddItem(draw.itemKey, 1)
+        if draw.landed then
+            grounded = grounded + 1
+            local deliveryKey = key .. ':' .. index
+            b.deliveries[deliveryKey] = { itemId = draw.itemKey, epoch = self.Loot and self.Loot.DeliveryEpoch,
+                intent = key }
+        end
+        draw.pityBefore, draw.index = nil, nil
     end
+    b.pity = after
+    return { ok = true, action = 'Draw', count = count, draws = draws,
+        pityBefore = before, pityAfter = after, grounded = grounded, operation = { id = key } }
 end
-
--- 同 seq/operation 重放：原结果已在落账时发奖落地，这里只回包同一份结果（recovered 标记）。
-local function resolve(mgr, player, data, payload)
-    local operation, mode = mgr.Save:ResolveRequest(player, data, 'blindbox', payload.seq)
-    if not operation then return nil, mode end
-    if mode ~= 'replay' then return operation, mode end
-    mgr.Save:Execute(player, data, operation, function() return nil, 'expired' end,
-        function(ok, result)
-            if ok and type(result) == 'table' then
-                result.recovered = true
-                result.operation = operation
-                mgr:Reply(player, result)
+-- 每次写入临执行时重新分配序号；同步拒绝显式回包，权益仍在持久意图中等待重试。
+function Mgr:Write(player, kind, transform, done)
+    local id = player.UserId
+    if self.Working[id] then return false, 'pending' end
+    local data = self.PlayerData:GetDataInst(player)
+    if not data then return false, 'pending' end
+    local op, why = self.Save:NextOperation(player, kind)
+    if not op then return false, why or 'pending' end
+    self.Working[id] = true
+    local accepted, reason = self.Save:Execute(player, data, op, transform, function(ok, result)
+        self.Working[id] = nil
+        done(ok, result, op)
+    end)
+    if not accepted then
+        self.Working[id] = nil
+        self:Reply(player, { ok = false, reason = reason, deliveryPending = true })
+    end
+    return accepted, reason
+end
+function Mgr:Publish(player, result, key)
+    local data = self.PlayerData:GetDataInst(player)
+    local pending = false
+    if data then for _, d in pairs(bag(data).deliveries) do if d.intent == key then pending = true end end end
+    local reply = {}
+    for k, v in pairs(result) do reply[k] = v end
+    result = reply
+    result.deliveryPending = pending
+    if pending then result.grounded = 0 end -- 尚未实际交付，不能声称已落地
+    self:Reply(player, result)
+    self.PlayerData:SendItemBar(player)
+end
+function Mgr:Pump(player)
+    local id = player.UserId
+    if self.Working[id] then return end
+    local data = self.PlayerData:GetDataInst(player)
+    if not data then return end
+    local b = bag(data)
+    for key, intent in pairs(b.intents) do
+        local outcome = self.Outcomes[key]
+        if outcome then
+            self:Write(player, 'blindbox:paid', function(draft)
+                bag(draft).intents[key].state = outcome == 'success' and 'paid' or 'cancelled'
+                return { ok = true }
+            end, function(ok)
+                if ok then self.Outcomes[key] = nil; self:Pump(player) end
+            end)
+            return
+        elseif intent.state == 'paid' then
+            self:Write(player, 'blindbox', function(draft)
+                local result, reason = self:Settle(draft, intent.count, key)
+                if not result then return nil, reason end
+                local i = bag(draft).intents[key]
+                i.state, i.result = 'settled', result
+                return result
+            end, function(ok, result, op)
+                if not ok then self:Reply(player, { ok = false, reason = result, deliveryPending = true }); return end
+                self:Publish(player, result, key)
+                self:Pump(player)
+            end)
+            return
+        end
+    end
+    for key, delivery in pairs(b.deliveries) do
+        local origin = player.Character and player.Character.Position
+        if not origin or not self.Loot or delivery.epoch ~= self.Loot.DeliveryEpoch then return end
+        local ok, spawned = pcall(self.Loot.SpawnDelivery, self.Loot, key, delivery.itemId, 1, nil,
+            { x = origin.x, y = origin.y, z = origin.z + 2 })
+        if not ok or not spawned then
+            print('[MgrBlindbox] 待交付保留', id, key, tostring(spawned))
+            return
+        end
+        self:Write(player, 'blindbox:delivery', function(draft)
+            bag(draft).deliveries[key] = nil
+            return { ok = true }
+        end, function(written)
+            if written then
+                local current = self.PlayerData:GetDataInst(player)
+                local intent = current and bag(current).intents[delivery.intent]
+                if intent and intent.result then self:Publish(player, intent.result, delivery.intent) end
+                self:Pump(player)
             end
         end)
-    return nil, 'replay'
+        return
+    end
 end
-
--- 处理一次抽盲盒请求；最终结果经 BlindboxResult 回包。
--- 顺序：校验 → 占操作序号（重放短路，未落账的序号不记账）→ 平台购买 flow → 成功才逐抽结算落账。
 function Mgr:Handle(player, payload)
     if type(payload) ~= 'table' or payload.action ~= 'Draw' then return false end
     local count, seq = payload.count, payload.seq
-    if (count ~= 1 and count ~= 10)
-        or type(seq) ~= 'number' or seq ~= math.floor(seq) or seq < 1 or seq > 2147483647 then
-        return false
-    end
+    if (count ~= 1 and count ~= 10) or type(seq) ~= 'number' or seq ~= math.floor(seq)
+        or seq < 1 or seq > 2147483647 then return false end
     local data = self.PlayerData and self.PlayerData:GetDataInst(player)
     if not data or not self.Save or not self.Platform then return false end
-    local last = self.LastSeq[player.UserId]
-    if last and seq <= last then
-        -- 同 seq 只有「已落账的重放」有意义；未落账的旧序号（上次支付未完成）不允许复用
-        local operation, mode = resolve(self, player, data, payload)
-        return operation == nil and mode == 'replay'
-    end
-    local operation, mode = resolve(self, player, data, payload)
-    if operation == nil then
-        if mode == 'replay' then return true end -- 已回包原结果
-        if mode == 'pending' then
-            self:Reply(player, { ok = false, reason = 'pending' })
+    local session = self.Save.Sessions[player.UserId]
+    local key = session.Token .. ':blindbox:' .. seq
+    local existing = bag(data).intents[key]
+    if existing then
+        if existing.result then
+            existing.result.recovered = true
+            self:Publish(player, existing.result, key)
+            self:Pump(player)
             return true
         end
-        return false
+        self:Reply(player, { ok = false, reason = 'pending', deliveryPending = true })
+        return true
     end
+    if self.Platform:HasFlow(player) or self.Working[player.UserId] then
+        self:Reply(player, { ok = false, reason = 'busy' }); return true
+    end
+    if self.LastSeq[player.UserId] and seq <= self.LastSeq[player.UserId] then return false end
     self.LastSeq[player.UserId] = seq
-    -- 先收费后发货：购买成功才在持久操作里逐抽结算；取消/失败/超时只回包原因，不动库存与计数
-    local accepted, reason = self.Platform:Purchase(player, goodsKeyOf(count), 'blindbox',
-        function(outcome)
-            if outcome ~= 'success' then
-                self:Reply(player, { ok = false, reason = outcome })
-                return
-            end
-            self.Save:Execute(player, data, operation, function(draft)
-                return self:Settle(draft, count)
-            end, function(written, result)
-                if not written then
-                    self:Reply(player, { ok = false, reason = result })
-                    return
-                end
-                result.operation = operation
-                self:Publish(player, result)
-            end)
+    local accepted, why = self:Write(player, 'blindbox:intent', function(draft)
+        bag(draft).intents[key] = { state = 'awaiting', count = count }
+        return { ok = true }
+    end, function(written, reason)
+        if not written then self:Reply(player, { ok = false, reason = reason }); return end
+        local opened, failure = self.Platform:Purchase(player, goods(count), 'blindbox', function(outcome)
+            self.Outcomes[key] = outcome
+            if outcome ~= 'success' then self:Reply(player, { ok = false, reason = outcome }) end
+            self:Pump(player)
         end)
-    if not accepted then
-        self:Reply(player, { ok = false, reason = reason or 'unavailable' })
-    end
+        if not opened then
+            self.Outcomes[key] = failure or 'unavailable'
+            self:Reply(player, { ok = false, reason = failure or 'unavailable' })
+            self:Pump(player)
+        end
+    end)
+    if not accepted then self:Reply(player, { ok = false, reason = why or 'pending' }) end
     return true
 end
-
--- 断线重进握手：回包当前保底计数（State），客户端据此刷新盲盒页计数展示
 function Mgr:PushState(player)
-    local data = self.PlayerData and self.PlayerData:GetDataInst(player)
-    if not data then return end
-    self:Reply(player, { ok = true, action = 'State', pity = self:PityOf(data),
-        guaranteeAt = blindboxCfg().Pity and blindboxCfg().Pity.afterMisses + 1 or nil })
+    local data = self.PlayerData:GetDataInst(player)
+    if data then self:Reply(player, { ok = true, action = 'State', pity = self:PityOf(data), guaranteeAt = cfg().Pity.afterMisses + 1 }) end
 end
-
-function Mgr:OnPlayerAdded(player)
-    self:PushState(player)
+function Mgr:OnPlayerAdded(player) self:PushState(player); self:Pump(player) end
+function Mgr:Update()
+    for _, session in pairs(self.Save.Sessions) do
+        if session.Player then self:Pump(session.Player) end
+    end
 end
-
 function Mgr:Start()
     _G.REUtil:GetRE('BlindboxAction').OnServerEvent:Connect(function(player, payload)
-        if _G.REUtil:CheckRECD(player, 'BlindboxAction', blindboxCfg().ActionCooldownSec) then return end
-        self:Handle(player, payload)
+        if not _G.REUtil:CheckRECD(player, 'BlindboxAction', cfg().ActionCooldownSec) then self:Handle(player, payload) end
     end)
-    _G.REUtil:GetRE('BlindboxStateRequest').OnServerEvent:Connect(function(player)
-        self:PushState(player)
-    end)
+    _G.REUtil:GetRE('BlindboxStateRequest').OnServerEvent:Connect(function(player) self:PushState(player) end)
 end
-
-function Mgr:OnPlayerRemoving(player)
-    self.LastSeq[player.UserId] = nil
-end
-
+function Mgr:OnPlayerRemoving(player) self.LastSeq[player.UserId], self.Working[player.UserId] = nil, nil end
 return Mgr
