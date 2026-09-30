@@ -2,7 +2,7 @@
 -- 结果以服务端 BlindboxResult 为准（服务端先收费、逐抽结算并落账），客户端不抽样。
 -- 满格按区落地的「落地前提示」：按 ItemBarState 快照数空格，放不下本次抽数时第一次点击只提示
 -- （FullNoticeText），同一抽数再点一次才上行；服务端仍按实际空格逐件决定入库或落地。
--- 等待回包期间忽略重复点击，超过 ResultTimeoutSec（含平台支付等待）自动解锁并提示；
+-- 等待回包期间忽略重复点击，超过 ResultTimeoutSec（含平台支付等待）保留请求身份查询并提示；
 -- 同 operation.id 的重放回包不重复展示；保底计数经 BlindboxStateRequest 握手与每次结果刷新。
 -- 节点全部运行时创建（data/ 只读），创建失败只记日志。
 local GameCfg = require('common.GameCfg')
@@ -145,6 +145,7 @@ function Screen:Draw(count)
     end
     self.ConfirmFull = nil
     self.Seq = self.Seq + 1
+    self.RequestSeq, self.RequestId = self.Seq, nil
     self.Awaiting = true
     self.AwaitingElapsed = 0
     REUtil:GetRE('BlindboxAction'):FireServer({ action = 'Draw', count = count, seq = self.Seq })
@@ -166,11 +167,24 @@ end
 function Screen:NoteResult(result)
     if type(result) ~= 'table' then return end
     if result.action == 'State' then
+        if result.recovery then
+            self.RequestSeq, self.RequestId = result.recovery.seq, result.recovery.requestId
+            self.Seq = math.max(self.Seq, self.RequestSeq or 0)
+            self.Awaiting, self.AwaitingElapsed = true, 0
+            notice('购买结果待对账，请勿重复购买；真实订单由平台核对')
+        end
         self.Pity = tonumber(result.pity) or 0
         self:RefreshPity()
         return
     end
+    if self.Awaiting and result.seq and result.seq ~= self.RequestSeq then return end
+    if result.requestId then self.RequestId = result.requestId end
     if not result.ok then
+        if result.deliveryPending or result.reason == 'unknown' then
+            self.Awaiting, self.AwaitingElapsed = true, 0
+            notice('购买或交付结果待对账，请勿重复购买；真实订单由平台核对')
+            return
+        end
         self.Awaiting, self.AwaitingElapsed = false, nil
         local text = result.reason == 'unavailable' and cfg().UnavailableText
             or GameCfg.Platform.ReasonText[result.reason] or GameCfg.Platform.UnavailableText
@@ -201,8 +215,9 @@ function Screen:UpdateAwait(dt)
     if not self.Awaiting or type(dt) ~= 'number' then return end
     self.AwaitingElapsed = (self.AwaitingElapsed or 0) + dt
     if self.AwaitingElapsed >= cfg().ResultTimeoutSec then
-        self.Awaiting, self.AwaitingElapsed = false, nil
-        notice('盲盒回包超时，请再试一次')
+        self.AwaitingElapsed = 0
+        REUtil:GetRE('BlindboxAction'):FireServer({action='Query', count=1, seq=self.RequestSeq, requestId=self.RequestId})
+        notice('盲盒回包超时，正在查询原请求，请勿重复购买')
     end
 end
 

@@ -67,6 +67,11 @@ end
 
 -- 仅建立调试测试流程；可信订单适配器交付前生产明确 unavailable。
 -- intent = { kind='purchase', goods=key } 或 { kind='ad', ad=key }；onResult(outcome, payload)。
+function Mgr:CanPurchase(player, goodsKey)
+    if not debugEnabled() then return false, 'unavailable' end
+    if type(cfg().Goods[goodsKey]) ~= 'table' then return false, 'invalid' end
+    return true
+end
 local function openFlow(self, player, intent, onResult)
     if not player or not player.UserId then return false, 'invalid' end
     if self:HasFlow(player) then return false, 'busy' end

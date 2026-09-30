@@ -159,8 +159,9 @@ function TestScreenBlindbox:test_awaiting_blocks_repeat_clicks_and_times_out()
     lu.assertFalse(self.screen:Draw(1)) -- 支付等待中仍锁
     self.heartbeat:Fire(1)
     lu.assertStrContains(self.notices[#self.notices], '超时')
-    lu.assertTrue(self.screen:Draw(1))
-    lu.assertEquals(sent(self, 'BlindboxAction')[2].seq, 2)
+    lu.assertFalse(self.screen:Draw(1))
+    lu.assertEquals(sent(self, 'BlindboxAction')[2].action, 'Query')
+    lu.assertEquals(sent(self, 'BlindboxAction')[2].seq, 1)
 end
 
 function TestScreenBlindbox:test_result_shows_draws_updates_pity_and_ignores_replay()
@@ -265,4 +266,14 @@ function TestScreenPlatform:test_client_main_starts_both_screens()
     lu.assertStrContains(src, 'ScreenBlindbox:Start()')
     lu.assertStrContains(src, 'require("client.ScreenHandlers.ScreenPlatform")')
     lu.assertStrContains(src, 'ScreenPlatform:Start()')
+end
+
+function TestScreenBlindbox:test_old_response_cannot_unlock_new_request()
+    self:fireItemBar(snapshotWithFree(15))
+    self.screen:Draw(1)
+    self:fireResult({ok=false, reason='cancel', seq=1})
+    self.screen:Draw(1)
+    self:fireResult({ok=true, seq=1, operation={id='old'}, draws={}})
+    lu.assertTrue(self.screen.Awaiting)
+    lu.assertEquals(self.screen.Seq, 2)
 end

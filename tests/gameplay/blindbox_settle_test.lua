@@ -38,6 +38,7 @@ function TestBlindboxSettle:setUp()
     local store = {
         GetAsync = function(_, key) return env.values[key] end,
         UpdateAsync = function(_, key, transform)
+            if env.failWrites then error('测试真实持久写失败') end
             local value = transform(env.values[key])
             if value then env.values[key] = value end
             return value
@@ -262,7 +263,7 @@ function TestBlindboxSettle:test_pity_survives_reconnect_and_state_sync()
     lu.assertTrue(self:draw(1, 3, 'success'))
     lu.assertEquals(self.data.Extra.lottery.pity, 3)
     self.events = {}
-    self.players:OnPlayerAdded(self.player) -- 重进读档
+    self:reconnect() -- 离开后新对象读档
     self:drain()
     local restored = self.players:GetDataInst(self.player)
     lu.assertEquals(restored.Extra.lottery.pity, 3)
@@ -338,7 +339,7 @@ function TestBlindboxSettle:test_failed_ground_delivery_survives_reconnect()
     self:draw(1, 1, 'success')
     self.blindbox:Update(); self:drain()
     lu.assertTrue(self:lastResult().deliveryPending)
-    self.players:OnPlayerAdded(self.player); self:drain()
+    self:reconnect()
     self.data = self.players:GetDataInst(self.player)
     local spawned = 0
     self.blindbox.Loot.SpawnDelivery = function() spawned = spawned + 1 return { Id = 'once' } end
@@ -357,7 +358,7 @@ function TestBlindboxSettle:test_collection_unlock_without_catch_record()
     lu.assertEquals(self.data.Extra.collection.weights, {})
     lu.assertEquals(self.data.Extra.collection.catches or {}, {})
     lu.assertEquals(self.data.Extra.collection.total or 0, 0)
-    self.players:OnPlayerAdded(self.player); self:drain()
+    self:reconnect()
     lu.assertTrue(self.players:GetDataInst(self.player).Extra.collection.unlocked['item7'])
 end
 
@@ -374,7 +375,7 @@ function TestBlindboxSettle:test_delivery_confirmation_rejected_then_reconnect_d
     lu.assertEquals(#self.spawned, 1)
     lu.assertNotNil(next(self.data.Extra.lottery.deliveries))
     self.save.Execute = execute
-    self.players:OnPlayerAdded(self.player); self:drain()
+    self:reconnect()
     self.data = self.players:GetDataInst(self.player)
     self.blindbox:OnPlayerAdded(self.player); self:drain()
     lu.assertEquals(#self.spawned, 1)
@@ -394,7 +395,7 @@ function TestBlindboxSettle:test_paid_write_sync_rejection_keeps_recoverable_int
     lu.assertEquals(self:lastResult().reason, 'expired')
     lu.assertTrue(self:lastResult().deliveryPending)
     self.save.Execute = execute
-    self.players:OnPlayerAdded(self.player); self:drain()
+    self:reconnect()
     self.data = self.players:GetDataInst(self.player)
     self.blindbox:OnPlayerAdded(self.player); self:drain()
     lu.assertEquals(self.data:ItemCount('item7'), 1)
@@ -440,4 +441,85 @@ function TestBlindboxSettle:test_loot_delivery_key_remains_consumed_after_entity
     loot.Loots[99] = nil -- 已被拾取/回收，不能因实体消失重发
     lu.assertEquals(loot:SpawnDelivery('paid:1', 'item7', 1, nil, {}), { Id = 99 })
     lu.assertEquals(calls, 1)
+end
+
+-- 必须走 Removing、释放会话和新 Player 身份，禁止同对象 Added 充当恢复证据。
+function TestBlindboxSettle:reconnect()
+    local old = self.player
+    self.blindbox:OnPlayerRemoving(old)
+    self.platform:OnPlayerRemoving(old)
+    self.players:OnPlayerRemoving(old)
+    self:drain()
+    self.player = { UserId = old.UserId, Character = old.Character,
+        CharacterAdded = signal(), CharacterRemoving = signal(), SetAttribute = function() end }
+    self.players:OnPlayerAdded(self.player); self:drain()
+    self.data = self.players:GetDataInst(self.player)
+end
+function TestBlindboxSettle:test_unavailable_does_not_persist_intent()
+    GameCfg.Debug = { Enabled = false }
+    self:draw(1, 1)
+    lu.assertNil(next(self.data.Extra.lottery.intents or {}))
+end
+function TestBlindboxSettle:test_unknown_payment_blocks_new_session_purchase()
+    self:draw(1, 1)
+    self.blindbox.Outcomes = {} -- 模拟进程丢失成功事实
+    self:reconnect()
+    self.blindbox:OnPlayerAdded(self.player); self:drain()
+    self:draw(1, 2)
+    lu.assertFalse(self.platform:HasFlow(self.player))
+    lu.assertEquals(self:lastResult().reason, 'unknown')
+end
+function TestBlindboxSettle:test_terminal_retention_and_safe_expiry()
+    for seq = 1, 40 do self.rolls = {1000}; self:draw(1, seq, 'cancel') end
+    local n = 0
+    for _ in pairs(self.data.Extra.lottery.intents) do n = n + 1 end
+    lu.assertTrue(n <= 32)
+    self:draw(1, 1)
+    lu.assertFalse(self.platform:HasFlow(self.player))
+    lu.assertEquals(self:lastResult().reason, 'expired')
+end
+function TestBlindboxSettle:test_real_write_failure_prevents_payment_open()
+    self.failWrites = true
+    self:draw(1, 1)
+    lu.assertFalse(self.platform:HasFlow(self.player))
+    lu.assertEquals(self.data:ItemCount('item7'), 0)
+    self.failWrites = false
+end
+function TestBlindboxSettle:test_old_epoch_does_not_block_current_delivery()
+    local b = self.data.Extra.lottery
+    b.deliveries = { old = {epoch='old-world', itemId='item7'},
+        current = {epoch='test-world', itemId='item7'} }
+    self:persistReady()
+    self.blindbox:Pump(self.player); self:drain()
+    lu.assertEquals(#self.spawned, 1)
+    lu.assertNotNil(self.data.Extra.lottery.deliveries.old)
+    lu.assertNil(self.data.Extra.lottery.deliveries.current)
+end
+
+function TestBlindboxSettle:test_real_paid_write_failure_retains_fact_until_retry()
+    self.rolls = {1000}
+    self:draw(1, 1)
+    self.failWrites = true
+    self.platform:HandleTestAction(self.player, {action='ResolveFlow', outcome='success'})
+    self:drain()
+    lu.assertEquals(self.data:ItemCount('item7'), 0)
+    local key = next(self.data.Extra.lottery.intents)
+    lu.assertEquals(self.data.Extra.lottery.intents[key].state, 'awaiting')
+    lu.assertEquals(self.blindbox.Outcomes[key], 'success')
+    self.failWrites = false
+    self.save:Drain(self.player.UserId); self:drain()
+    self.blindbox:Pump(self.player); self:drain()
+    lu.assertEquals(self.data:ItemCount('item7'), 1)
+    self:reconnect()
+    lu.assertEquals(self.data:ItemCount('item7'), 1)
+end
+function TestBlindboxSettle:test_query_identity_cannot_create_purchase()
+    self:draw(1, 1)
+    local key = next(self.data.Extra.lottery.intents)
+    local flows = self.platform.NextFlowId
+    self.blindbox:Handle(self.player, {action='Query',count=1,seq=1,requestId=key})
+    lu.assertEquals(self.platform.NextFlowId, flows)
+    self.blindbox:Handle(self.player, {action='Query',count=1,seq=99,requestId='expired'})
+    lu.assertEquals(self:lastResult().reason, 'expired')
+    lu.assertEquals(self.platform.NextFlowId, flows)
 end
