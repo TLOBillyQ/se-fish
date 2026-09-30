@@ -329,7 +329,9 @@ end
 
 function Mgr:Start()
     _G.REUtil:GetRE('SpecialItemAction').OnServerEvent:Connect(function(player, payload)
-        if _G.REUtil:CheckRECD(player, 'SpecialItemAction', cfg().ReLimitSec) then return end
+        -- 松开只会让角色停止上升，不限频：快速点按时松开紧跟按下，被吞掉会让 holding 卡死升到顶
+        local release = type(payload) == 'table' and payload.action == 'fly' and payload.holding ~= true
+        if not release and _G.REUtil:CheckRECD(player, 'SpecialItemAction', cfg().ReLimitSec) then return end
         self:Handle(player, payload)
     end)
 end

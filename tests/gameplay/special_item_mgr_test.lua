@@ -16,7 +16,8 @@
 --  10. 吐息打中自己，或打中走廊外 / 背后 / 超 30 米的目标；
 --  11. 未选中翅膀也能收 fly 指令升空；
 --  12. 地面待机也关重力（跳跃 / 走下台阶即漂浮滞空），或落地后不交还重力；
---  13. 缓降被高于区地面基准的地形托住时仍判空中、重力一直关闭（站在礁石上滞空）。
+--  13. 缓降被高于区地面基准的地形托住时仍判空中、重力一直关闭（站在礁石上滞空）；
+--  14. 通道限频吞掉紧跟按下的「松开」，holding 卡死一路升到顶。
 local lu = require('luaunit')
 local GameCfg = require('common.GameCfg')
 
@@ -377,6 +378,19 @@ function TestSpecialItemMgr:test_fly_rejected_without_wings_selected()
     self:step(10, 0.05)
     lu.assertEquals(player.Character.Position.y, 5.01, '未选翅膀不得升空')
     lu.assertTrue(player.Character.Controller.GravityEnabled)
+end
+
+-- 失败方式 14：快速点按时松开落在限频窗口内，也必须生效（停止只会更安全，不限频）
+function TestSpecialItemMgr:test_release_bypasses_rate_limit()
+    local player = self:addPlayer(1, 6, 5.01, 40, 'item169')
+    self:step(1, 0.05)
+    self:fire(player, { action = 'fly', holding = true })
+    lu.assertTrue(self.mgr.States[1].holding)
+    _G.REUtil.CheckRECD = function() return true end -- 之后的请求都落在限频窗口内
+    self:fire(player, { action = 'fly', holding = false })
+    lu.assertFalse(self.mgr.States[1].holding, '松开被限频吞掉')
+    self:fire(player, { action = 'fly', holding = true })
+    lu.assertFalse(self.mgr.States[1].holding, '按下仍受限频')
 end
 
 -- 失败方式 1 补充：飞行到顶钳住、松开缓降落地后重力仍由翅膀接管（关重力悬浮在地面）
