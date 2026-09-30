@@ -529,6 +529,40 @@ function GameCfg.Lottery.MachineAnchors()
     return names
 end
 GameCfg.Blindbox = ContentBlindbox
+-- 盲盒行为参数（#147 T26，GameSpec §15）：抽样与保底纯逻辑在 common/BlindboxDraw.lua；
+-- 收费走平台适配层（GameCfg.Platform.Goods 的 blindboxSingle/blindboxTen 行），结果服务端先定并持久化；
+-- 满格落地经 MgrLoot:SpawnItem 计入全区 200 件预算，购买前由客户端按库存快照明确告知。
+GameCfg.Blindbox.ActionCooldownSec = 1
+GameCfg.Blindbox.ResultTimeoutSec = 65 -- 含平台支付等待（FlowTimeoutSec 60）+ 落账余量
+GameCfg.Blindbox.HintText = '盲盒'
+GameCfg.Blindbox.FullNoticeText = '道具栏和背包已满：抽中的物品将落在面前地上，其他玩家可拾取'
+GameCfg.Blindbox.UnavailableText = '盲盒暂未开放，请稍后再试'
+
+-- #147 T26 平台功能本地接缝（GameSpec §7/§11/§15，docs/技术难点识别.md §4）：
+-- 真实商品 ID（goodsId）、金币汇率与广告标签是商业化后台交付参数（#148），未交付即平台能力
+-- 明确不可用，此时不发任何付费权益；官方无订单 ID、购买无取消/失败事件（教程明令禁止
+-- 拼 UserId+goodsId 防重），本地接缝只做 pending flow 关联与超时兜底，跨会话防重、补发与
+-- 对账接口归 #148 真实平台验收。
+GameCfg.Platform = {
+    BeanCurrency = '金豆',
+    -- 广告/支付等待上限：真实平台无取消/失败事件，超时是唯一兜底（本地参数，真实超时未查证）
+    FlowTimeoutSec = 60,
+    ActionCooldownSec = 1,
+    -- 金豆价目（GameSpec §11 肾上腺素 1/4 金豆与满血复活 5 金豆、§15 盲盒 10/90 金豆）；
+    -- goodsId 缺省 nil = 后台未交付。count 是购买成功后的发货件数（仅肾上腺素类占格商品用）。
+    Goods = {
+        blindboxSingle = { beans = 10, name = '盲盒单抽' },
+        blindboxTen = { beans = 90, name = '盲盒十连' },
+        reviveFull = { beans = 5, name = '满血复活' },
+        adrenaline1 = { beans = 1, count = 1, name = '肾上腺素', itemId = GameCfg.Survival.AdrenalineItemId },
+        adrenaline5 = { beans = 4, count = 5, name = '肾上腺素×5', itemId = GameCfg.Survival.AdrenalineItemId },
+    },
+    -- 激励广告：广告看完发放商品奖励（ShowRewardedVideoAd 的 goodsId 语义），goodsId/adTag 未交付
+    Ads = {
+        revive = { name = '广告满血复活' },
+    },
+    UnavailableText = '平台功能暂不可用，请稍后再试',
+}
 
 -- 摆渡（#89 定细则，#127 T06 扩到七区六航线）：去程一人在船边交 1 张船票，倒计时 CountdownSec 秒后
 -- 带走 BoatRange 米内（只看 x/z）所有玩家到本航线目的区落点，无票同行者搭便船合法；倒计时中再交票拒绝且不扣。
