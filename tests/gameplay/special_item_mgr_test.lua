@@ -605,3 +605,51 @@ function TestSpecialItemMgr:test_skin_apply_exception_does_not_report_effect()
     self:step(30, 0.05)
     lu.assertEquals(self.mgr.States[1].effect, 'godzilla')
 end
+
+-- 失败方式：旧会话清理失败后同 UserId 重进，旧清理不得复用/删除/锁死新状态
+function TestSpecialItemMgr:rejoinWithPendingCleanup(persistent)
+    local old = self:addPlayer(1, 6, 5.01, 40, 'item170')
+    self:step(1, 0.05) self:fire(old, { action = 'breath' })
+    self:step(20, 0.05) self.mgr:BeforeLeave(old)
+    local remaining = self.dataByUser[1].Extra.cooldowns.godzillaBreath
+    local previousState = self.mgr.States[1]
+    local resets = 0
+    old.Character.EggyAppearance.ResetAppearance = function()
+        resets = resets + 1
+        if persistent or resets <= 1 then error('old-reset-failed') end
+    end
+    self.mgr:OnPlayerRemoving(old)
+    local fresh = { UserId = 1, Character = newCharacter(6, 5.01, 40) }
+    self.players = { fresh }
+    self.mgr:OnPlayerAdded(fresh)
+    local current = self.mgr.States[1]
+    lu.assertNotEquals(current, previousState)
+    lu.assertEquals(previousState.player, old, '旧清理只能持有旧玩家')
+    self:step(100, 0.05)
+    lu.assertEquals(self.mgr.States[1], current, '旧清理不得删除新会话')
+    lu.assertEquals(current.player, fresh)
+    lu.assertEquals(current.effect, 'godzilla')
+    lu.assertFalse(current.restoring == true)
+    lu.assertTrue(hasCall(fresh.Character, 'skin'))
+    lu.assertFalse(hasCall(fresh.Character, 'resetSkin'), '旧清理不能复位新角色')
+    lu.assertAlmostEquals(self.dataByUser[1].Extra.cooldowns.godzillaBreath, remaining - 5, 0.01)
+    self:fire(fresh, { action = 'breath' })
+    lu.assertEquals(fresh.lastResult.reason, 'cooldown')
+    -- 迟到的旧会话退出不能删除新会话
+    self.mgr:OnPlayerRemoving(old)
+    lu.assertEquals(self.mgr.States[1], current)
+    return function() return resets end
+end
+
+function TestSpecialItemMgr:test_rejoin_survives_old_cleanup_eventually_succeeding()
+    local count = self:rejoinWithPendingCleanup(false)
+    lu.assertTrue(count() >= 2)
+end
+
+function TestSpecialItemMgr:test_rejoin_survives_old_cleanup_persistently_failing()
+    local count = self:rejoinWithPendingCleanup(true)
+    self:step(800, 0.05)
+    lu.assertEquals(count(), 6) -- 首次清理 + 五次重试
+    lu.assertTrue(count() <= 6, '旧清理重试必须有界')
+    lu.assertEquals(self.mgr.States[1].effect, 'godzilla')
+end

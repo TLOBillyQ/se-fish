@@ -16,7 +16,8 @@ local GameCfg = require('common.GameCfg')
 local SpecialItem = require('common.SpecialItem')
 local FlightPath = require('common.FlightPath')
 
-local Mgr = { States = {} }
+local Mgr = { States = {}, PendingCleanup = {}, CleanupFailures = {} }
+local CLEANUP_RETRIES = 5 -- 离场后最多五次重试，耗尽后保留失败记录而不继续调用引擎
 
 local function cfg()
     return GameCfg.Ability.SpecialItem
@@ -151,7 +152,7 @@ function Mgr:Apply(player, state, effect)
 end
 
 function Mgr:Gravity(player, state, enabled)
-    local character = state.gravityCharacter or player.Character
+    local character = state.gravityCharacter or state.cleanupCharacter or player.Character
     local ok = self:EngineCall(state, 'gravity', character, function()
         local success, err = setGravity(character, enabled)
         if not success then error(err) end
@@ -166,7 +167,8 @@ end
 function Mgr:Restore(player, state)
     state.holding, state.airborne, state.flightY, state.breath = false, false, nil, nil
     state.flightGroundY = nil
-    local appearance = state.appearance or (player.Character and player.Character.EggyAppearance)
+    local character = state.cleanupCharacter or player.Character
+    local appearance = state.appearance or (character and character.EggyAppearance)
     if state.wingBindId then
         if self:EngineCall(state, 'unbind', appearance, function()
             return appearance:UnbindAppearance(state.wingBindId)
@@ -322,17 +324,27 @@ end
 
 function Mgr:Update(dt)
     local now = self:Now()
+    -- 清理队列按旧状态对象登记，与 UserId 在线状态表完全分离；永不写入/删除新会话。
+    for state, job in pairs(self.PendingCleanup) do
+        if now >= job.nextAt then
+            job.attempts = job.attempts + 1
+            if self:Restore(state.player, state) then
+                self.PendingCleanup[state] = nil
+            elseif job.attempts >= CLEANUP_RETRIES then
+                self.PendingCleanup[state] = nil
+                self.CleanupFailures[state] = job -- 保留对象与错误依据，终止重试避免永久刷屏
+            else
+                job.nextAt = now + 1
+            end
+        end
+    end
     for _, state in pairs(self.States) do
         local player = state.player
         if player then
-            if state.leaving then
-                if self:Restore(player, state) then self.States[player.UserId] = nil end
-            else
-                self:Reconcile(player, state)
-                if not state.restoring and state.effect == 'wings' then self:UpdateFlight(player, state, dt) end
-                if state.breath then self:UpdateBreath(player, state, now) end
-                self:MirrorCooldown(state, now)
-            end
+            self:Reconcile(player, state)
+            if not state.restoring and state.effect == 'wings' then self:UpdateFlight(player, state, dt) end
+            if state.breath then self:UpdateBreath(player, state, now) end
+            self:MirrorCooldown(state, now)
         end
     end
 end
@@ -396,7 +408,7 @@ end
 -- 终镜像在 SaveLeaving 序列化前调用，写入当前剩余冷却（不能依赖上一帧镜像）
 function Mgr:BeforeLeave(player)
     local state = self.States[player.UserId]
-    if state then self:MirrorCooldown(state, self:Now()) end
+    if state and state.player == player then self:MirrorCooldown(state, self:Now()) end
 end
 
 -- 摆渡钩子（MgrFerry:Teleport 前调用）：结束飞行运动状态，外观随新区下一帧调和重放
@@ -411,12 +423,13 @@ end
 
 function Mgr:OnPlayerRemoving(player)
     local state = self.States[player.UserId]
-    if state then
-        -- 离场前尽力恢复原外观与运动状态（角色可能已销毁，pcall 兜底）
-        pcall(function() self:Restore(player, state) end)
+    if not state or state.player ~= player then return end -- 迟到的旧退出不能污染同身份新会话
+    self:MirrorCooldown(state, self:Now())
+    state.cleanupCharacter = player.Character -- 清理只持有旧角色，不再读取新会话角色
+    if self.States[player.UserId] == state then self.States[player.UserId] = nil end
+    if not self:Restore(player, state) then
+        self.PendingCleanup[state] = { attempts = 0, nextAt = self:Now() + 1 }
     end
-    if not state or not state.restoring then self.States[player.UserId] = nil
-    else state.leaving = true end
 end
 
 return Mgr
