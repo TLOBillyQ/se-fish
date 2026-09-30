@@ -538,16 +538,17 @@ GameCfg.Casting = {
             { Id = 'rareBostonLobster', Bait = 'sausage', RodLevel = 2, DrawWeight = 8 },
             { Id = 'rareAussieLobster', Bait = 'sausage', RodLevel = 2, DrawWeight = 6 },
             { Id = 'rareMilkLobster', Bait = 'sausage', RodLevel = 2, DrawWeight = 4 },
+            { Id = 'fish15Elite', Bait = 'sausage', RodLevel = 2, DrawWeight = 10 },
         },
     },
     -- 首领饵（#88，GameSpec §12 已确认）：首领饵物品 id → 必出首领鱼种。挂首领饵在任意水区抛竿
     -- 必出对应首领，无视抽签权重、鱼饵-鱼种匹配与竿级；首领饵占道具栏/背包格、不进 Bait 计数，
     -- 抛竿一刻从道具栏（优先）或背包扣 1 只，钓出首领后消耗，脱钩 / 逃脱不返还。
-    BossBait = { duck = 'alligatorGar' },
+    BossBait = { duck = 'alligatorGar', item121 = 'fish16Boss' },
 }
 
 -- 源表抽鱼行按钓鱼区分组；水域/钓鱼区映射见下文 Water.ZoneIdByWater。
--- BossBait 沿用当前鸭子映射；其余首领饵待后续区域内容可运行时再启用。
+-- BossBait 启用鱼塘鸭子与虾池夜明珠；其余首领饵待后续区域内容可运行时再启用。
 local sourceCastRows = {}
 local bossBaitCatalog = {}
 for _, species in pairs(GameCfg.Fish) do
@@ -579,6 +580,14 @@ GameCfg.Casting.BossBaitCatalog = bossBaitCatalog
 -- Warning：7190 为红色方向箭头与环形波纹预警（manual 特效目录），提示锁定朝向与范围；
 -- 不表达精确半圆边界。EffectLength=10 与朝向偏角 [未查证]，须在试玩中核对并校准。
 GameCfg.FishCombat = {
+    -- #135 已确认：每2秒一击，双击后尾刺；活动15秒后眩晕5秒。
+    shrimp = { BiteRange = 2.5, BiteCooldownSec = 2, HeadHalfAngleDeg = 90,
+        ActiveSec = 15, StunSec = 5, ClawDamage = 20, TailDamage = 20, KnockHorizontal = 3, KnockUp = 1 },
+    -- 每30秒都执行雨云6秒，再飞起俯冲；期间禁止啄击，落地眩晕5秒。
+    dragon = { BiteRange = 2.5, BiteCooldownSec = 1.5, HeadHalfAngleDeg = 90,
+        SpecialSec = 30, RainSec = 6, RainRadius = 10, RainDamage = 50, PeckDamage = 50,
+        RainEffect = 'official://preset/1850', -- 官方暴雨 baoyu_v01，当前实例已核实
+        DiveSec = 2, DiveHeight = 6, DiveRadius = 2.5, DiveDamage = 50, StunSec = 5 },
     gar = { BiteRange = 2.5, BiteCooldownSec = 1.5, HeadHalfAngleDeg = 90, ModelYawOffset = 0,
         Warning = { EffectPreset = 'official://preset/7190', EffectLength = 10, GroundOffset = 0.1,
             EffectYawOffset = 0, GraceSec = 0.5 } },

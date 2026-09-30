@@ -29,6 +29,13 @@ function FishCombatLabel.Text(payload, now)
     local flee = string.format('逃跑时限 %s %d 秒', bar, math.ceil(left))
     if payload.fishId == 'eel' and payload.state == 'attacking' then
         return string.format('%s 放电 %d/%d | %s', name, payload.discharges or 0, payload.dischargeCount or 0, flee), 'attack'
+    elseif payload.state == 'stunned' and finite(payload.wakeAt) then
+        return string.format('%s 眩晕 %d 秒 | %s', name, math.max(0, math.ceil(payload.wakeAt - now)), flee), 'sleep'
+    elseif payload.move then
+        local dragon = GameCfg.FishCombat.dragon
+        local moves = { claw = '虾钳攻击', tail = '尾刺击飞', peck = '啄击',
+            rain = string.format('雨云：%g米内每秒%g伤害', dragon.RainRadius, dragon.RainDamage), dive = '飞起俯冲' }
+        return string.format('%s %s | %s', name, moves[payload.move] or '攻击', flee), 'attack'
     elseif payload.state == 'sleeping' and finite(payload.wakeAt) then
         return string.format('%s 睡眠 %d 秒 | %s', name, math.max(0, math.ceil(payload.wakeAt - now)), flee), 'sleep'
     end

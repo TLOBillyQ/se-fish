@@ -14,6 +14,10 @@ function LocalGarBite:Hide(fishId)
     local entry = self.Active[fishId]
     if not entry then return end
     self.Active[fishId] = nil
+    if entry.Rain then
+        local rainOk, rainErr = pcall(function() entry.Rain:Destroy() end)
+        if not rainOk then print('[LocalGarBite] 收起暴雨失败', fishId, tostring(rainErr)) end
+    end
     local ok, err = pcall(function() entry.Effect:Destroy() end)
     if not ok then print('[LocalGarBite] 收起预警失败', 'fish=' .. tostring(fishId), tostring(err)) end
 end
@@ -49,6 +53,25 @@ function LocalGarBite:Show(payload)
     end
     self.Generation = self.Generation + 1
     local entry = { Effect = effect, Generation = self.Generation }
+    if payload.move == 'rain' then
+        -- 暴雨是独立表现，方向指示器只表达危险范围；两者共用本招收尾生命周期。
+        local rainOk, rainUnits = pcall(world.CreateAsset, world, GameCfg.FishCombat.dragon.RainEffect)
+        local rain = rainOk and type(rainUnits) == 'table' and rainUnits[1] or nil
+        if rain then
+            entry.Rain = rain
+            local rainPlaced, rainErr = pcall(function()
+                rain.Position = Vector3.New(p.x, p.y + 3, p.z)
+            end)
+            if not rainPlaced then
+                print('[LocalGarBite] 暴雨摆放失败', fishId, tostring(rainErr))
+                entry.Rain = nil
+                local destroyed, destroyErr = pcall(function() rain:Destroy() end)
+                if not destroyed then print('[LocalGarBite] 清理失败暴雨失败', fishId, tostring(destroyErr)) end
+            end
+        else
+            print('[LocalGarBite] 暴雨创建失败', fishId, tostring(rainUnits))
+        end
+    end
     self.Active[fishId] = entry
     -- 兜底：clear 丢失（迟加入 / 断线）时按预警时长收起；新一轮预警已替换则不动
     local task = game:GetService('Task')

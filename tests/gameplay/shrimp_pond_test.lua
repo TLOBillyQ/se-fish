@@ -220,7 +220,7 @@ end
 function TestShrimpPond:test_shrimp_pool_cast_table_gating()
     local rows = self.cfg.Casting.Zones.ShrimpPool
     lu.assertNotNil(rows)
-    lu.assertEquals(#rows, 12)
+    lu.assertEquals(#rows, 13)
     for _, row in ipairs(rows) do
         lu.assertNotNil(self.cfg.Fish[row.Id], row.Id .. ' 不在 GameCfg.Fish')
     end
@@ -232,7 +232,7 @@ function TestShrimpPond:test_shrimp_pool_cast_table_gating()
     lu.assertNil(rod1.milkLobster)
     local rod2 = collectSelectable(rows, 2, 'sausage')
     for _, id in ipairs({ 'shrimp', 'riverShrimp', 'crayfish', 'bostonLobster', 'aussieLobster', 'milkLobster',
-        'rareShrimp', 'rareRiverShrimp', 'rareCrayfish', 'rareBostonLobster', 'rareAussieLobster', 'rareMilkLobster' }) do
+        'rareShrimp', 'rareRiverShrimp', 'rareCrayfish', 'rareBostonLobster', 'rareAussieLobster', 'rareMilkLobster', 'fish15Elite' }) do
         lu.assertTrue(rod2[id], id .. ' 竿 2 挂香肠应可出')
     end
     -- 权重钉住（钓鱼表）：普通 8/8/8/32/24/16，极品 2/2/2/8/6/4
@@ -241,7 +241,7 @@ function TestShrimpPond:test_shrimp_pool_cast_table_gating()
     lu.assertEquals(weights, { shrimp = 8, riverShrimp = 8, crayfish = 8,
         bostonLobster = 32, aussieLobster = 24, milkLobster = 16,
         rareShrimp = 2, rareRiverShrimp = 2, rareCrayfish = 2,
-        rareBostonLobster = 8, rareAussieLobster = 6, rareMilkLobster = 4 })
+        rareBostonLobster = 8, rareAussieLobster = 6, rareMilkLobster = 4, fish15Elite = 10 })
 end
 
 -- 钓鱼佬按区分派（#127）：一区锚点 TGUnitFish、虾池锚点 TGUnitFishShrimp 各一个；
