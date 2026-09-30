@@ -1,11 +1,13 @@
 -- 生存状态客户端蒙版（#131 T10）：服端按状态变化广播 SurvivalState
 -- （phase + 服务端时刻的 endsAt / weakUntil），这里只做展示与上行交互：
 -- 濒死 / 死亡居中大字 + 倒计时条，虚弱底部提示，肾上腺素按钮在濒死时可用。
+-- #147 死亡相位额外两枚平台满血复活按钮（广告 / 5 金豆）：发起后服务端暂停免费倒计时并在
+-- SurvivalState 带 platformPending，这里改显等待文案、隐藏按钮；结局以服务端回包为准。
 -- 正常状态整个面板隐藏；任何节点创建失败都只记日志，不阻塞主流程。
 local GameCfg = require('common.GameCfg')
 local REUtil = require('common.REUtil')
 
-local Panel = { Seq = 0, Phase = 'alive', EndsAt = nil, WeakUntil = nil }
+local Panel = { Seq = 0, Phase = 'alive', EndsAt = nil, WeakUntil = nil, PlatformPending = nil }
 
 local ColorBlockImage = 'official://image/11017' -- 官方正方形纯色块（ScreenGM 同款约定）
 
@@ -26,12 +28,13 @@ local function create(kind, parent, name, x, y, width, height, props)
     return node
 end
 
-function Panel:Send(action)
+function Panel:Send(action, mode)
     self.Seq = self.Seq + 1
-    REUtil:GetRE('SurvivalAction'):FireServer({ action = action, seq = self.Seq })
+    REUtil:GetRE('SurvivalAction'):FireServer({ action = action, mode = mode, seq = self.Seq })
 end
 
 local RESULT_TEXT = {}
+local REVIVE_TEXT = {} -- 平台满血复活（action = 'FullRevive'）的失败原因文案
 
 -- 倒计时 / 提示刷新（RunService 驱动）；时间为负按 0 处理，等服端广播撤板
 function Panel:Tick()
@@ -39,7 +42,10 @@ function Panel:Tick()
         local left = math.max(0, math.ceil((self.EndsAt or 0) - self:Now()))
         local key = self.Phase == 'downed' and 'DownedTitle' or 'DeadTitle'
         local base = GameCfg.Survival[key]
-        if self.Title then pcall(function() self.Title.Text = base .. '（' .. left .. ' 秒）' end) end
+        local text = base .. '（' .. left .. ' 秒）'
+        -- 平台流程在飞：服务端已冻结倒计时，显示等待文案而不是会误导的走秒
+        if self.Phase == 'dead' and self.PlatformPending then text = GameCfg.Survival.PlatformWaitText end
+        if self.Title then pcall(function() self.Title.Text = text end) end
     end
     if self.WeakUntil then
         local left = math.max(0, math.ceil(self.WeakUntil - self:Now()))
@@ -64,6 +70,7 @@ function Panel:SetPhase(state)
     self.Phase = phase
     self.EndsAt = tonumber(state and state.endsAt) or nil
     self.WeakUntil = tonumber(state and state.weakUntil) or nil
+    self.PlatformPending = state and state.platformPending or nil
     local downed = phase == 'downed' or phase == 'dead'
     if self.Banner then pcall(function() self.Banner.Visible = downed end) end
     if self.Title then
@@ -73,12 +80,23 @@ function Panel:SetPhase(state)
         end)
     end
     if self.AdrenalineBtn then pcall(function() self.AdrenalineBtn.Visible = phase == 'downed' end) end
+    local canRevive = phase == 'dead' and not self.PlatformPending
+    for _, btn in ipairs({ self.AdReviveBtn, self.PaidReviveBtn }) do
+        pcall(function() btn.Visible = canRevive end)
+    end
     if enteringDead then notice(GameCfg.Survival.CallHelpText) end
     self:Tick() -- 立即渲染一次，不空一个心跳帧
 end
 
 function Panel:OnResult(result)
     if type(result) ~= 'table' then return end
+    if result.action == 'FullRevive' then
+        if result.ok then return end -- 满血复活由 SurvivalState 撤板
+        local text = REVIVE_TEXT[result.reason]
+        if text == nil then text = GameCfg.Survival.UnavailableText end
+        if text ~= '' then notice(text) end
+        return
+    end
     if result.ok then
         if result.reason then notice(result.reason) end
         return
@@ -95,6 +113,14 @@ function Panel:Start()
         ['no-adrenaline'] = GameCfg.Survival.NoAdrenalineText,
         ['not-downed'] = '',
         ['replay'] = '',
+    }
+    REVIVE_TEXT = {
+        ['unavailable'] = GameCfg.Survival.PlatformPendingText,
+        ['busy'] = GameCfg.Survival.PlatformWaitText,
+        ['cancel'] = GameCfg.Survival.PlatformResumeText,
+        ['fail'] = GameCfg.Survival.PlatformResumeText,
+        ['timeout'] = GameCfg.Survival.PlatformResumeText,
+        ['not-dead'] = '',
     }
     local okRoot, root = pcall(function()
         local eui = game:GetService('Players').LocalPlayer.PlayerGui.EuiManager
@@ -122,6 +148,21 @@ function Panel:Start()
     if btn.OnClicked then
         btn.OnClicked:Connect(function() self:Send('UseAdrenaline') end)
     end
+    -- 死亡相位两枚平台满血复活按钮（左广告、右 5 金豆），并排在肾上腺素按钮同一行
+    local function reviveButton(name, x, text, color, mode)
+        local node = create('EUIButton', banner, name, x, 20, 300, 80, {
+            ButtonText = '', NormalImage = ColorBlockImage, PressImage = ColorBlockImage,
+            Color = color, Visible = false })
+        node.TouchEnabled = true
+        create('EUITextLabel', node, name .. 'Text', 0, 0, 300, 80, {
+            Text = text, FontSize = 30, TextColor = Color.New(255, 255, 255, 255), LocalZOrder = 1 })
+        if node.OnClicked then node.OnClicked:Connect(function() self:Send('FullRevive', mode) end) end
+        return node
+    end
+    self.AdReviveBtn = reviveButton('SurvivalAdRevive', 10, GameCfg.Survival.FreeReviveText,
+        Color.New(60, 150, 90, 255), 'ad')
+    self.PaidReviveBtn = reviveButton('SurvivalPaidRevive', 330, GameCfg.Survival.PaidReviveText,
+        Color.New(210, 160, 40, 255), 'goods')
     self.WeakLabel = create('EUITextLabel', root[1], 'SurvivalWeak', cx - 320, resolution.y - 200, 640, 60, {
         Text = '', FontSize = 30, TextColor = Color.New(200, 200, 255, 255), Visible = false })
     REUtil:GetRE('SurvivalState').OnClientEvent:Connect(function(state) self:SetPhase(state) end)
