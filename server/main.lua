@@ -31,6 +31,7 @@ local MgrMap = {
     MgrWeapon = require("server.Mgr.MgrWeapon"),
     MgrCompendium = require("server.Mgr.MgrCompendium"),
     MgrRecords = require("server.Mgr.MgrRecords"),
+    MgrGrill = require("server.Mgr.MgrGrill"),
 }
 
 MgrMap.MgrCast.ReelIn = MgrMap.MgrReelIn
@@ -115,6 +116,14 @@ MgrMap.MgrWeapon.FishUnit = MgrMap.MgrFishUnit
 MgrMap.MgrWeapon.FishCarrier = MgrMap.MgrFishCarrier
 MgrMap.MgrWeapon.Save = MgrMap.MgrSave
 
+-- #137 烧烤接线：会话物品进出走 #123 持久协议（Save+PlayerData），烤糊伤害经统一伤害入口
+-- （Vitals），满格溢出的极端兜底复用 #126 地面实例（Loot:SpawnItem）。离开前结算挂在下面
+-- HandlePlayerRemoving 里 MgrSurvival 终镜像之后、MgrPlayerData 序列化之前。
+MgrMap.MgrGrill.Vitals = MgrMap.MgrVitals
+MgrMap.MgrGrill.PlayerData = MgrMap.MgrPlayerData
+MgrMap.MgrGrill.Save = MgrMap.MgrSave
+MgrMap.MgrGrill.Loot = MgrMap.MgrLoot
+
 -- 存档就绪前不创建 Vitals/Ability 等玩家状态；退出先撤销就绪标记，再清理管理器。
 local ActivePlayers = {}
 local Started = false
@@ -151,6 +160,8 @@ local function HandlePlayerRemoving(player)
     if active then ActivePlayers[player.UserId] = nil end
     -- 终镜像必须先于 MgrPlayerData 的 SaveLeaving 序列化，离线标记才是最新的
     if active then invoke('MgrSurvival', MgrMap.MgrSurvival, 'BeforeLeave', player) end
+    -- #137：烧烤会话同样要在序列化前结算一次（放回烤鱼或转待恢复标记），不复制不吞物
+    if active then invoke('MgrGrill', MgrMap.MgrGrill, 'BeforeLeave', player) end
     invoke('MgrPlayerData', MgrMap.MgrPlayerData, 'OnPlayerRemoving', player)
     if active then
         for name, mgr in pairs(MgrMap) do

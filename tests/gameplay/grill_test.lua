@@ -255,3 +255,476 @@ function TestGrillInteract:test_numeric_cooked_token_never_exchanges()
     lu.assertNil(self:lastReply().exchange)
 end
 
+
+-- ========== 切片三：MgrGrill 管理器（会话、计时、烤糊、恢复）==========
+
+TestGrillMgr = {}
+
+local function signal()
+    local handlers = {}
+    return {
+        Connect = function(_, fn)
+            handlers[#handlers + 1] = fn
+            return { Disconnect = function() for i, cb in ipairs(handlers) do
+                if cb == fn then handlers[i] = nil end
+            end end }
+        end,
+        Fire = function(_, ...) for _, cb in ipairs(handlers) do cb(...) end end,
+    }
+end
+
+-- 三区烧烤锚点（#125 场景合同）：测试中用它做唯一合法烤位
+local function grillAnchor()
+    for _, entity in ipairs(GameCfg.Zones[3].Scene.Entities) do
+        if entity.Role == 'Grill' then return entity end
+    end
+end
+
+function TestGrillMgr:setUp()
+    local env = self
+    self.oldGame, self.oldRE = _G.game, _G.REUtil
+    self.oldDebug = GameCfg.Debug
+    GameCfg.Debug = { Enabled = false }
+    self.now = 1000
+    self.values, self.queue, self.writeFailure = {}, {}, nil
+    self.store = {
+        GetAsync = function(_, key) return env.values[key] end,
+        UpdateAsync = function(_, key, transform)
+            if env.writeFailure then error('写档失败') end
+            local value = transform(env.values[key])
+            if value then env.values[key] = value end
+            return value
+        end,
+        SetAsync = function(_, key, value) env.values[key] = value end,
+    }
+    self.playerList = {}
+    _G.game = { GetService = function(_, name)
+        if name == 'Task' then
+            return { Spawn = function(_, fn) env.queue[#env.queue + 1] = fn end, Wait = function() end }
+        end
+        if name == 'DataStoreService' then return { GetDataStore = function() return env.store end } end
+        if name == 'World' then return { GetServerTime = function() return env.now end } end
+        if name == 'Players' then return { GetPlayers = function() return env.playerList end } end
+    end }
+    self.events = {}
+    _G.REUtil = { CheckRECD = function() return false end, GetRE = function(_, name)
+        if not env.events[name] then
+            env.events[name] = {
+                OnServerEvent = signal(),
+                FireClient = function(_, player, payload)
+                    if name == 'GrillResult' then
+                        player.grillResults = player.grillResults or {}
+                        player.grillResults[#player.grillResults + 1] = payload
+                    elseif name == 'GrillState' then
+                        player.grillState = payload
+                    end
+                end,
+            }
+        end
+        return env.events[name]
+    end }
+    self.PlayerData = assert(loadfile('server/Data/PlayerData.lua'))()
+    self.save = assert(loadfile('server/Mgr/MgrSave.lua'))()
+    self.mgr = assert(loadfile('server/Mgr/MgrGrill.lua'))()
+    local anchor = grillAnchor()
+    self.anchorPos = anchor.Position
+    self.mgr.FindAnchor = function(_, name)
+        if name == GameCfg.Zones[3].Scene.GrillName then return { Name = name, Position = env.anchorPos } end
+    end
+    self.datas = {}
+    self.itembarSent = {}
+    self.mgr.PlayerData = {
+        GetDataInst = function(_, p) return env.datas[p.UserId] end,
+        SendItemBar = function(_, p) env.itembarSent[p.UserId] = (env.itembarSent[p.UserId] or 0) + 1 end,
+    }
+    self.alive = {}
+    self.hits = {}
+    self.hitSeq = 0
+    self.mgr.Vitals = {
+        CanAct = function(_, p) return env.alive[p.UserId] ~= false end,
+        NewHit = function(_, source, category)
+            env.hitSeq = env.hitSeq + 1
+            return { id = env.hitSeq, source = source, category = category, targets = {} }
+        end,
+        ApplyHit = function(_, hit, target, amount)
+            if hit.targets[target.UserId] then return false end
+            hit.targets[target.UserId] = true
+            env.hits[#env.hits + 1] = { id = hit.id, category = hit.category,
+                userId = target.UserId, amount = amount }
+            return true, amount
+        end,
+    }
+    self.drops = {}
+    self.mgr.Loot = { SpawnItem = function(_, itemId, mult, cooked, pos)
+        env.drops[#env.drops + 1] = { itemId = itemId, mult = mult, cooked = cooked }
+        return { Id = #env.drops }
+    end }
+    self.mgr.Save = self.save
+    self.mgr:Start()
+    self.seq = 0
+end
+
+function TestGrillMgr:tearDown()
+    _G.game = self.oldGame
+    _G.REUtil = self.oldRE
+    GameCfg.Debug = self.oldDebug
+end
+
+function TestGrillMgr:drain()
+    while #self.queue > 0 do table.remove(self.queue, 1)() end
+end
+
+function TestGrillMgr:join(id, atGrill)
+    local player = { UserId = id, Name = 'p' .. id, attrs = {},
+        CharacterAdded = signal(),
+        Character = { Position = { x = self.anchorPos.x + (atGrill == false and 100 or 1),
+            y = self.anchorPos.y, z = self.anchorPos.z } } }
+    function player:SetAttribute(k, v) self.attrs[k] = v end
+    local data = self.PlayerData.New(player)
+    data:Init(true)
+    self.save:LoadInto(player, data)
+    self:drain()
+    lu.assertEquals(data.LoadState, 'ready')
+    self.datas[id] = data
+    self.playerList[#self.playerList + 1] = player
+    self.mgr:OnPlayerAdded(player)
+    return player, data
+end
+
+function TestGrillMgr:act(player, payload)
+    self.seq = self.seq + 1
+    payload.seq = self.seq
+    self.events.GrillAction.OnServerEvent:Fire(player, payload)
+    self:drain()
+    return player.grillResults and player.grillResults[#player.grillResults]
+end
+
+function TestGrillMgr:advance(seconds)
+    self.now = self.now + seconds
+    self.mgr:Update()
+    self:drain()
+end
+
+function TestGrillMgr:giveSelected(data, itemId, mult, cooked)
+    lu.assertTrue(data:AddItem(itemId, mult, cooked))
+    lu.assertTrue(data:SelectSlot(1))
+end
+
+local function countItem(data, itemId)
+    local total = 0
+    for _, container in pairs(data.Data.Containers) do
+        for _, entry in pairs(container) do
+            if entry.itemId == itemId and entry.count > 0 then total = total + entry.count end
+        end
+    end
+    return total
+end
+
+local function findEntry(data, itemId)
+    for _, container in pairs(data.Data.Containers) do
+        for index, entry in pairs(container) do
+            if entry.itemId == itemId and entry.count > 0 then return entry, index end
+        end
+    end
+end
+
+-- 开烤：选中未烤鱼获被移出库存、会话建立、状态下发 cooking
+function TestGrillMgr:test_start_locks_item_into_session()
+    local player, data = self:join(8101)
+    self:giveSelected(data, 'carp', 1.5)
+    local reply = self:act(player, { action = 'Start' })
+    lu.assertTrue(reply.ok)
+    lu.assertEquals(reply.itemId, 'carp')
+    lu.assertEquals(reply.mult, 1.5)
+    lu.assertEquals(reply.startedAt, 1000)
+    lu.assertEquals(countItem(data, 'carp'), 0, '投入后库存里不再有这件')
+    local session = self.mgr:GetSession(player)
+    lu.assertNotNil(session)
+    lu.assertEquals(session.state, 'cooking')
+    lu.assertEquals(player.grillState.state, 'cooking')
+    lu.assertNil(data.Data.SelectedSlot, '投入后选中格归位')
+end
+
+-- 验收边界：0 / 2 / 2.5 秒取出倍率 1 / 1.5 / 1.5，烤过标记随存档落位
+function TestGrillMgr:test_takeout_boundary_rates()
+    local cases = { { 0, 1 }, { 2, 1.5 }, { 2.5, 1.5 } }
+    for index, case in ipairs(cases) do
+        local player, data = self:join(8110 + index)
+        self:giveSelected(data, 'carp', 1.5)
+        lu.assertTrue(self:act(player, { action = 'Start' }).ok)
+        self:advance(case[1])
+        local reply = self:act(player, { action = 'Takeout' })
+        lu.assertTrue(reply.ok)
+        lu.assertEquals(reply.rate, case[2])
+        local entry = findEntry(data, 'carp')
+    lu.assertNotNil(entry)
+        lu.assertEquals(entry.cooked, case[2])
+        lu.assertEquals(entry.saved.k, case[2], '倍率要随存档槽位持久化')
+        lu.assertNil(data.Extra.recovery.grill, '取出后不再有待恢复会话')
+        lu.assertNil(self.mgr:GetSession(player))
+    end
+end
+
+-- 取出放回可用格位并保持选中（验收）
+function TestGrillMgr:test_takeout_returns_to_free_slot_and_keeps_selection()
+    local player, data = self:join(8140)
+    self:giveSelected(data, 'carp', 1.5)
+    lu.assertTrue(self:act(player, { action = 'Start' }).ok)
+    self:advance(2)
+    lu.assertTrue(self:act(player, { action = 'Takeout' }).ok)
+    lu.assertEquals(data.Data.Containers[GameCfg.Items.ContainerId.ItemBar][1].itemId, 'carp')
+    lu.assertEquals(data.Data.SelectedSlot, 1, '取出后保持选中')
+end
+
+-- 4.5 秒烤糊：物品损毁一次、对烤炉 3 米内玩家各结算 30 伤害一次、状态下发 burnt
+function TestGrillMgr:test_burn_destroys_once_and_damages_in_radius()
+    local near, dataA = self:join(8150)
+    local also = self:join(8151)
+    local far = self:join(8152, false) -- 站在 100 米外
+    self:giveSelected(dataA, 'carp', 1.5)
+    lu.assertTrue(self:act(near, { action = 'Start' }).ok)
+    self:advance(4.5)
+    lu.assertEquals(countItem(dataA, 'carp'), 0, '烤糊物品损毁')
+    lu.assertNil(dataA.Extra.recovery.grill)
+    lu.assertEquals(#self.hits, 2, '3 米内两名玩家各吃一次伤害')
+    for _, hit in ipairs(self.hits) do
+        lu.assertEquals(hit.amount, 30)
+        lu.assertEquals(hit.category, 'grillBurn')
+    end
+    lu.assertEquals(near.grillState.state, 'burnt')
+    self:advance(10)
+    lu.assertEquals(#self.hits, 2, '烤糊只损毁一次，不重复爆炸')
+    local reply = self:act(near, { action = 'Takeout' })
+    lu.assertFalse(reply.ok)
+    lu.assertEquals(reply.reason, 'no-session', '烤糊后没有可取出的会话')
+end
+
+-- 快慢帧不改变收益：燃烧判定只看服务器时刻，不按帧数累加
+function TestGrillMgr:test_burn_depends_on_server_time_not_ticks()
+    local player, data = self:join(8160)
+    self:giveSelected(data, 'carp', 1.5)
+    lu.assertTrue(self:act(player, { action = 'Start' }).ok)
+    for _ = 1, 44 do self:advance(0.1) end -- 44 帧共 4.4 秒：不糊
+    lu.assertEquals(#self.hits, 0)
+    lu.assertNotNil(self.mgr:GetSession(player))
+    self:advance(0.1) -- 第 45 帧到 4.5 秒：糊
+    lu.assertEquals(#self.hits, 1)
+    lu.assertEquals(countItem(data, 'carp'), 0)
+end
+
+-- 两玩家身份交错：B 取不到 A 的会话物，A 正常取出
+function TestGrillMgr:test_sessions_are_isolated_per_player()
+    local a, dataA = self:join(8170)
+    local b, dataB = self:join(8171)
+    self:giveSelected(dataA, 'carp', 1.5)
+    self:giveSelected(dataB, 'bass', 1.2)
+    lu.assertTrue(self:act(a, { action = 'Start' }).ok)
+    self:advance(2)
+    local stolen = self:act(b, { action = 'Takeout' })
+    lu.assertFalse(stolen.ok)
+    lu.assertEquals(stolen.reason, 'no-session')
+    lu.assertEquals(countItem(dataB, 'carp'), 0, 'B 拿不到 A 的鱼')
+    lu.assertTrue(self:act(a, { action = 'Takeout' }).ok)
+    lu.assertEquals(countItem(dataA, 'carp'), 1)
+    lu.assertEquals(countItem(dataA, 'bass'), 0)
+end
+
+-- 同请求重放不重复结算：开烤重放不移除第二件，取出重放不多发一件
+function TestGrillMgr:test_replay_never_settles_twice()
+    local player, data = self:join(8180)
+    self:giveSelected(data, 'carp', 1.5)
+    lu.assertTrue(data:AddItem('bass', 1.1))
+    self.events.GrillAction.OnServerEvent:Fire(player, { action = 'Start', seq = 1 })
+    self:drain()
+    lu.assertEquals(countItem(data, 'carp'), 0)
+    self.events.GrillAction.OnServerEvent:Fire(player, { action = 'Start', seq = 1 }) -- 重放
+    self:drain()
+    lu.assertEquals(countItem(data, 'bass'), 1, '重放不能再移走别的物品')
+    lu.assertTrue(player.grillResults[#player.grillResults].ok)
+    self:advance(2)
+    self.events.GrillAction.OnServerEvent:Fire(player, { action = 'Takeout', seq = 2 })
+    self:drain()
+    self.events.GrillAction.OnServerEvent:Fire(player, { action = 'Takeout', seq = 2 }) -- 重放
+    self:drain()
+    lu.assertEquals(countItem(data, 'carp'), 1, '取出重放不复制物品')
+end
+
+-- 满格取出：物品留在会话里不丢；腾出格位后按首次取出冻结的倍率取回
+function TestGrillMgr:test_full_inventory_takeout_keeps_retrievable_with_frozen_rate()
+    local player, data = self:join(8190)
+    self:giveSelected(data, 'carp', 1.5)
+    lu.assertTrue(self:act(player, { action = 'Start' }).ok)
+    self:advance(2) -- 倍率 1.5 时首次取出
+    while data:AddItem('tilapia') do end
+    local full = self:act(player, { action = 'Takeout' })
+    lu.assertFalse(full.ok)
+    lu.assertEquals(full.reason, 'full')
+    lu.assertEquals(countItem(data, 'carp'), 0, '满格也不能把烤鱼吞掉')
+    local session = self.mgr:GetSession(player)
+    lu.assertEquals(session.state, 'ready')
+    self:advance(1.5) -- 曲线已跌到 0.75，但倍率在首次取出时冻结
+    data.Data.Containers[GameCfg.Items.ContainerId.Backpack][1] = nil
+    local retry = self:act(player, { action = 'Takeout' })
+    lu.assertTrue(retry.ok)
+    lu.assertEquals(retry.rate, 1.5, '满格冻结倍率，重试不继续烤')
+    local entry = findEntry(data, 'carp')
+    lu.assertNotNil(entry)
+    lu.assertEquals(entry.cooked, 1.5)
+end
+
+-- 断线：离开前按当前倍率结算回库存（BeforeLeave 先于存档序列化），重进倍率保持
+function TestGrillMgr:test_disconnect_settles_once_and_rejoin_keeps_rate()
+    local player, data = self:join(8200)
+    self:giveSelected(data, 'carp', 1.5)
+    lu.assertTrue(self:act(player, { action = 'Start' }).ok)
+    self:advance(1) -- 倍率 1.25
+    self.mgr:BeforeLeave(player)
+    lu.assertNil(self.mgr:GetSession(player))
+    lu.assertNil(data.Extra.recovery.grill, '已结算回库存，不留待恢复')
+    local entry = findEntry(data, 'carp')
+    lu.assertNotNil(entry)
+    lu.assertAlmostEquals(entry.cooked, 1.25, 1e-9)
+    -- 重进：序列化往返后倍率保持
+    local restored = self.PlayerData.New(player)
+    restored:Init()
+    lu.assertTrue(restored:ApplySave(data:Serialize()))
+    local back = findEntry(restored, 'carp')
+    lu.assertNotNil(back)
+    lu.assertAlmostEquals(back.cooked, 1.25, 1e-9)
+end
+
+-- 断线且满格：结算成待恢复标记，重进腾出格位后按原倍率取回，不吞物
+function TestGrillMgr:test_disconnect_with_full_inventory_recovers_after_rejoin()
+    local player, data = self:join(8210)
+    self:giveSelected(data, 'carp', 1.5)
+    lu.assertTrue(self:act(player, { action = 'Start' }).ok)
+    self:advance(2)
+    while data:AddItem('tilapia') do end
+    self.mgr:BeforeLeave(player)
+    lu.assertEquals(countItem(data, 'carp'), 0, '满格塞不回去，但不能丢')
+    local pending = data.Extra.recovery.grill
+    lu.assertNotNil(pending)
+    lu.assertEquals(pending.itemId, 'carp')
+    lu.assertEquals(pending.cooked, 1.5)
+    -- 重进：老存档快照载入新玩家
+    local snapshot = data:Serialize()
+    local rejoined, reData = self:join(8211)
+    lu.assertTrue(reData:ApplySave(snapshot))
+    self.mgr:OnPlayerAdded(rejoined)
+    self:advance(0.1)
+    lu.assertEquals(countItem(reData, 'carp'), 0, '满格时保持待恢复，不复制')
+    reData.Data.Containers[GameCfg.Items.ContainerId.Backpack][1] = nil -- 玩家腾出一格
+    self:advance(0.1)
+    local entry = findEntry(reData, 'carp')
+    lu.assertNotNil(entry)
+    lu.assertEquals(entry.cooked, 1.5, '倍率保持')
+    lu.assertNil(reData.Extra.recovery.grill)
+end
+
+-- 死亡：Update 检出不可行动即按当前倍率结算回库存（结算一次，不烤糊不吞物）
+function TestGrillMgr:test_death_settles_at_current_rate()
+    local player, data = self:join(8220)
+    self:giveSelected(data, 'carp', 1.5)
+    lu.assertTrue(self:act(player, { action = 'Start' }).ok)
+    self:advance(1)
+    self.alive[player.UserId] = false
+    self:advance(0.05) -- 死亡检出发生在这一帧，投入时长已是 1.05 秒
+    lu.assertNil(self.mgr:GetSession(player))
+    local entry = findEntry(data, 'carp')
+    lu.assertNotNil(entry)
+    lu.assertAlmostEquals(entry.cooked, Curve.Rate(1.05, GameCfg.Grill), 1e-9)
+    self:advance(10)
+    lu.assertEquals(#self.hits, 0, '死亡结算后不会再烤糊爆炸')
+end
+
+-- 信物守卫：未确认先提示（不扣物），确认后才开烤；烤过信物倍率照走
+function TestGrillMgr:test_token_requires_confirm_first()
+    local player, data = self:join(8230)
+    self:giveSelected(data, 'eelHead')
+    local warned = self:act(player, { action = 'Start' })
+    lu.assertFalse(warned.ok)
+    lu.assertEquals(warned.reason, 'token-warn')
+    lu.assertEquals(countItem(data, 'eelHead'), 1, '提示阶段不扣信物')
+    local started = self:act(player, { action = 'Start', confirm = true })
+    lu.assertTrue(started.ok)
+    lu.assertEquals(countItem(data, 'eelHead'), 0)
+    self:advance(2)
+    lu.assertTrue(self:act(player, { action = 'Takeout' }).ok)
+    local entry = findEntry(data, 'eelHead')
+    lu.assertNotNil(entry)
+    lu.assertEquals(entry.cooked, 1.5)
+end
+
+-- 资格：烤过的鱼不能再烤；非鱼获（鱼竿）不能烤
+function TestGrillMgr:test_only_uncooked_catches_are_grillable()
+    local player, data = self:join(8240)
+    self:giveSelected(data, 'bass', 1.5, 1.5) -- 已烤过
+    local recook = self:act(player, { action = 'Start' })
+    lu.assertFalse(recook.ok)
+    lu.assertEquals(recook.reason, 'no-fish')
+    lu.assertEquals(countItem(data, 'bass'), 1, '拒绝时不扣物')
+    lu.assertTrue(data:AddItem('normalRod'))
+    lu.assertTrue(data:SelectSlot(2))
+    local rod = self:act(player, { action = 'Start' })
+    lu.assertFalse(rod.ok)
+    lu.assertEquals(rod.reason, 'no-fish')
+end
+
+-- 会话中不能再开第二炉
+function TestGrillMgr:test_second_start_while_cooking_is_busy()
+    local player, data = self:join(8250)
+    self:giveSelected(data, 'carp', 1.5)
+    lu.assertTrue(data:AddItem('bass', 1.2))
+    lu.assertTrue(self:act(player, { action = 'Start' }).ok)
+    lu.assertTrue(data:SelectSlot(2))
+    local second = self:act(player, { action = 'Start' })
+    lu.assertFalse(second.ok)
+    lu.assertEquals(second.reason, 'busy')
+    lu.assertEquals(countItem(data, 'bass'), 1)
+end
+
+-- 服务器崩溃式中断（开烤已落账但会话未及建立）：重进按经过时长结算，倍率照曲线
+function TestGrillMgr:test_crash_shape_pending_settles_by_elapsed_on_rejoin()
+    local player, data = self:join(8260)
+    self:giveSelected(data, 'carp', 1.5)
+    lu.assertTrue(self:act(player, { action = 'Start' }).ok)
+    -- 模拟重进：会话状态全丢，只剩存档里的 cooking 形标记
+    self.mgr.Sessions[player.UserId] = nil
+    self:advance(1) -- 离线经过了 1 秒
+    self.mgr:OnPlayerAdded(player)
+    self:drain()
+    local entry = findEntry(data, 'carp')
+    lu.assertNotNil(entry)
+    lu.assertAlmostEquals(entry.cooked, 1.25, 1e-9)
+    lu.assertNil(data.Extra.recovery.grill)
+end
+
+-- 崩溃时早已烤糊：重进清标记、不再发鱼、不重复爆炸
+function TestGrillMgr:test_crash_shape_burnt_while_offline_is_cleared_once()
+    local player, data = self:join(8270)
+    self:giveSelected(data, 'carp', 1.5)
+    lu.assertTrue(self:act(player, { action = 'Start' }).ok)
+    self.mgr.Sessions[player.UserId] = nil
+    self:advance(10) -- 离线 10 秒，早已烤糊
+    self.mgr:OnPlayerAdded(player)
+    self:drain()
+    lu.assertEquals(countItem(data, 'carp'), 0)
+    lu.assertNil(data.Extra.recovery.grill)
+    lu.assertEquals(#self.hits, 0, '离线烤糊不爆炸（无人在场）')
+end
+
+-- 接线断言（server/main.lua）：MgrGrill 注册、依赖注入、BeforeLeave 先于存档序列化
+TestGrillWiring = {}
+
+function TestGrillWiring:test_server_main_wires_grill()
+    local file = assert(io.open('server/main.lua', 'r'))
+    local src = file:read('*a')
+    file:close()
+    lu.assertStrContains(src, 'MgrGrill = require("server.Mgr.MgrGrill")')
+    lu.assertStrContains(src, 'MgrMap.MgrGrill.Vitals = MgrMap.MgrVitals')
+    lu.assertStrContains(src, 'MgrMap.MgrGrill.PlayerData = MgrMap.MgrPlayerData')
+    lu.assertStrContains(src, 'MgrMap.MgrGrill.Save = MgrMap.MgrSave')
+    lu.assertStrContains(src, 'MgrMap.MgrGrill.Loot = MgrMap.MgrLoot')
+    lu.assertNotNil(src:find("MgrGrill', MgrMap.MgrGrill, 'BeforeLeave'"),
+        '离开前要先结算烧烤会话再序列化存档')
+end
