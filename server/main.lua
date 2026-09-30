@@ -29,6 +29,7 @@ local MgrMap = {
     MgrSave = require("server.Mgr.MgrSave"),
     MgrSurvival = require("server.Mgr.MgrSurvival"),
     MgrWeapon = require("server.Mgr.MgrWeapon"),
+    MgrSpecialItem = require("server.Mgr.MgrSpecialItem"),
     MgrCompendium = require("server.Mgr.MgrCompendium"),
     MgrRecords = require("server.Mgr.MgrRecords"),
     MgrGrill = require("server.Mgr.MgrGrill"),
@@ -130,6 +131,13 @@ MgrMap.MgrWeapon.Ability = MgrMap.MgrAbility -- #139 枪械大奖特效应用口
 MgrMap.MgrGrill.Vitals = MgrMap.MgrVitals
 MgrMap.MgrGrill.PlayerData = MgrMap.MgrPlayerData
 MgrMap.MgrGrill.Save = MgrMap.MgrSave
+
+-- #140 T19 特殊道具：选中调和每帧对齐「期望 × CanAct」，切换/丢弃/死亡/复活/摆渡/重进
+-- 全走调和恢复；吐息结算经统一伤害入口（Vitals），摆渡前由 MgrFerry:Teleport 通知结束飞行。
+MgrMap.MgrSpecialItem.Vitals = MgrMap.MgrVitals
+MgrMap.MgrSpecialItem.PlayerData = MgrMap.MgrPlayerData
+MgrMap.MgrSpecialItem.FishUnit = MgrMap.MgrFishUnit
+MgrMap.MgrFerry.SpecialItem = MgrMap.MgrSpecialItem
 
 -- 存档就绪前不创建 Vitals/Ability 等玩家状态；退出先撤销就绪标记，再清理管理器。
 local ActivePlayers = {}

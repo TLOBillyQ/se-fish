@@ -51,6 +51,11 @@ function Mgr:Teleport(player, dest)
         print('[MgrFerry] 传送失败', player and player.UserId, '角色缺失')
         return false
     end
+    -- #140 T19：传送前通知特殊道具结束飞行（摆渡不得把关重力 / 滞空带到新区）；
+    -- 钩子失败不阻断传送（恢复由 MgrSpecialItem 下一帧调和兜底）。
+    if self.SpecialItem then
+        pcall(function() self.SpecialItem:OnTeleport(player) end)
+    end
     local ok, err = pcall(function()
         local pos = Vector3.New(dest.x, dest.y, dest.z)
         if character.SetPosition then
