@@ -91,3 +91,167 @@ function TestGrillCurve:test_format_two_decimals()
     lu.assertEquals(Curve.Format(1.5), '1.50')
     lu.assertEquals(Curve.Format(rate(1)), '1.25')
 end
+
+-- ========== 切片二：烤制倍率表示统一（取出倍率可以是 (0, 1.5] 的任意值）==========
+
+local PlayerData = require('server.Data.PlayerData')
+local LotteryEligibility = require('common.LotteryEligibility')
+
+TestGrillCookedFields = {}
+
+function TestGrillCookedFields:setUp()
+    self.oldDebug = GameCfg.Debug
+    GameCfg.Debug = { Enabled = false }
+    self.player = { UserId = 73001, SetAttribute = function() end }
+    self.data = PlayerData.New(self.player)
+    self.data:Init()
+end
+
+function TestGrillCookedFields:tearDown()
+    GameCfg.Debug = self.oldDebug
+end
+
+-- PlayerData 存档字段接缝：曲线下降段取出的倍率 <1，序列化往返不丢、不被 Migrate 拒收
+function TestGrillCookedFields:test_sub_one_rate_survives_save_roundtrip()
+    lu.assertTrue(self.data:AddItem('bass', 1.5, 0.75))
+    local snapshot = self.data:Serialize()
+    local restored = PlayerData.New(self.player)
+    restored:Init()
+    lu.assertTrue(restored:ApplySave(snapshot))
+    local entry = restored.Data.Containers[GameCfg.Items.ContainerId.ItemBar][1]
+    lu.assertEquals(entry.cooked, 0.75)
+    lu.assertEquals(entry.saved.k, 0.75)
+end
+
+-- 倍率 0（烤糊）与负数永远是坏档：烤糊物品根本不进入库存
+function TestGrillCookedFields:test_zero_or_negative_rate_is_rejected()
+    lu.assertTrue(self.data:AddItem('bass', 1.5, 0.75))
+    local snapshot = self.data:Serialize()
+    snapshot.bar[1].k = 0
+    lu.assertFalse(self.data:ApplySave(snapshot))
+    local snapshot2 = self.data:Serialize()
+    snapshot2.bar[1].k = -0.5
+    lu.assertFalse(self.data:ApplySave(snapshot2))
+end
+
+TestGrillCookRate = {}
+
+-- CookRate 统一读取三种来源：顶层数值（内存格位/快照）、saved.k（读档还原）、
+-- 旧布尔 saved.cooked（#127 之前的手工标记，等价烤熟价倍率）；非法值一律 nil
+function TestGrillCookRate:test_sources()
+    lu.assertEquals(GameCfg.Items.CookRate({ cooked = 0.75 }), 0.75)
+    lu.assertEquals(GameCfg.Items.CookRate({ saved = { k = 1.2 } }), 1.2)
+    lu.assertEquals(GameCfg.Items.CookRate({ saved = { cooked = true } }), GameCfg.Items.CookedPriceScale)
+    lu.assertNil(GameCfg.Items.CookRate({}))
+    lu.assertNil(GameCfg.Items.CookRate({ cooked = 0 }))
+    lu.assertNil(GameCfg.Items.CookRate({ cooked = -1 }))
+    lu.assertNil(GameCfg.Items.CookRate({ cooked = 'x' }))
+    lu.assertNil(GameCfg.Items.CookRate(nil))
+end
+
+TestGrillSalePrice = {}
+
+-- 取出倍率直接定价：价格 = 基础价 × 个体倍率 × 烤制倍率（#137）；旧布尔标记仍是烤熟价 ×1.5
+function TestGrillSalePrice:test_numeric_rate_prices()
+    lu.assertEquals(GameCfg.Items.SalePrice('garHead', nil, 1.25), 25)  -- floor(20 × 1 × 1.25)
+    lu.assertEquals(GameCfg.Items.SalePrice('garHead', nil, 0.5), 10)   -- 下降段取出也值钱
+    lu.assertEquals(GameCfg.Items.SalePrice('bass', 2, 0.75), 9)        -- floor(6 × 2 × 0.75)
+    lu.assertEquals(GameCfg.Items.SalePrice('bass', 2, 1.5), 18)        -- floor(6 × 2 × 1.5)
+end
+
+function TestGrillSalePrice:test_legacy_boolean_keeps_cooked_scale()
+    lu.assertEquals(GameCfg.Items.SalePrice('garHead', nil, true), 30)  -- floor(20 × 1 × 1.5)
+    lu.assertEquals(GameCfg.Items.SalePrice('bass', 2, true), 18)
+    lu.assertEquals(GameCfg.Items.SalePrice('bass', 2), 12)             -- 未烤原价
+end
+
+TestGrillLotteryGuard = {}
+
+-- #138 抽奖机守卫（本单先留接口）：烤过信物/极品鱼获哪怕倍率 <1 也算烤过，拒绝投入
+function TestGrillLotteryGuard:test_cooked_rate_below_one_is_still_cooked()
+    local ok, reason = LotteryEligibility.Check({ itemId = 'item47', count = 1, mult = 1.2, cooked = 0.75 })
+    lu.assertFalse(ok)
+    lu.assertEquals(reason, 'cooked')
+end
+
+function TestGrillLotteryGuard:test_uncooked_premium_still_eligible()
+    lu.assertTrue(LotteryEligibility.Check({ itemId = 'item47', count = 1, mult = 1.2 }))
+end
+
+-- MgrInteract 回收接缝：数值烤制倍率的鱼按当时倍率出价；烤过信物（数值标记）不再兑换
+TestGrillInteract = {}
+
+local function vec(x, y, z) return { x = x, y = y, z = z } end
+
+function TestGrillInteract:setUp()
+    local env = self
+    self.savedGame = _G.game
+    self.savedCfg = package.loaded['common.GameCfg']
+    package.loaded['common.GameCfg'] = nil
+    self.cfg = require('common.GameCfg')
+    self.cfg.Debug = { Enabled = false }
+    self.PlayerData = assert(loadfile('server/Data/PlayerData.lua'))()
+    self.player = { UserId = 1, Character = { Position = vec(0, 0, 0) },
+        SetAttribute = function() end }
+    self.anchors = {}
+    for index, zone in ipairs(self.cfg.Zones) do
+        for _, entity in ipairs(zone.Scene.Entities) do
+            if entity.Role == 'Fisherman' then
+                local name = self.cfg.Interact.Fishermen[index].AnchorNames[1]
+                self.anchors[name] = { Name = name, Position = entity.Position }
+            end
+        end
+    end
+    self.replies = {}
+    self.mgr = assert(loadfile('server/Mgr/MgrInteract.lua'))()
+    self.mgr.FindAnchor = function(_, name) return env.anchors[name] end
+    self.mgr.PlayerData = {
+        GetDataInst = function(_, p) return p == env.player and env.data or nil end,
+        SendItemBar = function() end,
+    }
+    self.mgr.Reply = function(_, p, payload) env.replies[#env.replies + 1] = payload end
+    self.data = self.PlayerData.New(self.player)
+    self.data:Init()
+    self:standAt(1)
+    self.seq = 0
+end
+
+function TestGrillInteract:tearDown()
+    package.loaded['common.GameCfg'] = self.savedCfg
+    _G.game = self.savedGame
+end
+
+function TestGrillInteract:standAt(zoneIndex)
+    local name = self.cfg.Interact.Fishermen[zoneIndex].AnchorNames[1]
+    local center = self.anchors[name].Position
+    self.player.Character.Position = vec(center.x + 1, center.y, center.z)
+end
+
+function TestGrillInteract:feed()
+    self.seq = self.seq + 1
+    return self.mgr:Handle(self.player, { target = 'fisherman', action = 'Feed', seq = self.seq })
+end
+
+function TestGrillInteract:lastReply()
+    return self.replies[#self.replies]
+end
+
+-- 数值烤制倍率的鱼获按当时倍率结金币（不再只看布尔标记）
+function TestGrillInteract:test_numeric_cooked_fish_sells_at_rate()
+    lu.assertTrue(self.data:AddItem('bass', 2, 0.75))
+    lu.assertTrue(self.data:SelectSlot(1))
+    lu.assertTrue(self:feed())
+    lu.assertEquals(self.data.Data.FishCoin, 9) -- floor(6 × 2 × 0.75)
+end
+
+-- 数值标记的烤过信物不能走兑换链，只按倍率售卖
+function TestGrillInteract:test_numeric_cooked_token_never_exchanges()
+    lu.assertTrue(self.data:AddItem('eelHead', nil, 1.2))
+    lu.assertTrue(self.data:SelectSlot(1))
+    lu.assertTrue(self:feed())
+    lu.assertEquals(self.data:ItemCount('eelHead'), 0)
+    lu.assertEquals(self.data:ItemCount('duck'), 0, '烤过的精英信物不能再换首领饵')
+    lu.assertEquals(self.data.Data.FishCoin, 12) -- floor(10 × 1 × 1.2)
+    lu.assertNil(self:lastReply().exchange)
+end
+

@@ -2,7 +2,7 @@
 -- GameSpec §14：投入一件未烤制极品食物（极品鱼获或信物）；§13：烤鱼不可抽奖，烤过信物失去抽奖资格。
 -- 条目取真实库存格位 { itemId, count, mult, saved } 或 GetItemBarSnapshot 的格位 { itemId, count, mult, cooked }：
 --   * 烤制以库存格位 saved[GameCfg.Items.CookedFlag] == true 为权威（同 MgrInteract）；
---   * 同时接受顶层 cooked（快照/读档/落物的烤制倍率，数值 >= 1），便于 common 侧展示；
+--   * 同时接受顶层 cooked（快照/读档/落物的烤制倍率，数值 > 0，#137 起下降段取出可以 <1），便于 common 侧展示；
 --   * 序列化存档的 slot.k 是压缩存档协议，不是库存字段，这里不读。
 -- 返回 true，或 false, reason：'malformed' | 'bad-item' | 'not-premium' | 'cooked'。
 local GameCfg = require('common.GameCfg')
@@ -14,7 +14,8 @@ LotteryEligibility.PremiumType = '极品食物'
 -- 结构不合法返回 nil；否则返回是否烤过
 local function cookedState(entry)
     local cooked = entry.cooked
-    if cooked ~= nil and (type(cooked) ~= 'number' or cooked ~= cooked or cooked < 1 or cooked >= math.huge) then
+    -- #137：烤制倍率是 (0, 1.5] 的数值，下降段取出可以 <1，仍算烤过
+    if cooked ~= nil and (type(cooked) ~= 'number' or cooked ~= cooked or cooked <= 0 or cooked >= math.huge) then
         return nil
     end
     local saved = entry.saved

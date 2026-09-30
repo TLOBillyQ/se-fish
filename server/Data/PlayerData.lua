@@ -186,7 +186,7 @@ function PlayerData:Migrate(snapshot)
             if not def or def.Container == GameCfg.Items.ContainerId.Bait
                 or not integer(slot.i, 1, max) or seen[slot.i] or not integer(slot.n, 1, 1)
                 or slot.m ~= nil and (type(slot.m) ~= 'number' or slot.m < 1 or slot.m > 2)
-                or slot.k ~= nil and (type(slot.k) ~= 'number' or slot.k < 1 or slot.k ~= slot.k
+                or slot.k ~= nil and (type(slot.k) ~= 'number' or slot.k <= 0 or slot.k ~= slot.k
                     or slot.k >= math.huge) then
                 return nil, '物品实例损坏'
             end

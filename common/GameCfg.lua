@@ -463,17 +463,35 @@ GameCfg.Content.Exchanges = {
 -- saved.cooked（PlayerData 序列化原样保留格位的未知字段，不额外占位）。
 GameCfg.Items.CookedFlag = 'cooked'
 GameCfg.Items.CookedPriceScale = 1.5
--- 物品表没有的物品返回 nil（不可回收，属配置事故；调用方按「没得喂」处理）
+-- 烤制倍率统一读取（#137）：取出倍率是 (0, 1.5] 的数值——内存格位/快照在 entry.cooked，
+-- 读档还原在 entry.saved.k；#127 之前的旧布尔标记 saved.cooked==true 等价烤熟价倍率。
+-- 返回数值倍率，没烤过或数值非法（0/负数/NaN/Inf）返回 nil。
+function GameCfg.Items.CookRate(entry)
+    if type(entry) ~= 'table' then return nil end
+    local rate = entry.cooked
+    if type(rate) ~= 'number' and type(entry.saved) == 'table' then
+        rate = entry.saved.k
+        if type(rate) ~= 'number' and entry.saved[GameCfg.Items.CookedFlag] == true then
+            rate = GameCfg.Items.CookedPriceScale
+        end
+    end
+    if type(rate) ~= 'number' or rate <= 0 or rate ~= rate or rate >= math.huge then return nil end
+    return rate
+end
+-- 物品表没有的物品返回 nil（不可回收，属配置事故；调用方按「没得喂」处理）。
+-- cooked 可以是数值倍率（#137 烧烤取出）、布尔 true（旧标记，按烤熟价倍率）或 nil/false（未烤）。
 function GameCfg.Items.SalePrice(itemId, mult, cooked)
+    local rate = cooked == true and GameCfg.Items.CookedPriceScale
+        or type(cooked) == 'number' and cooked or nil
     local species = type(itemId) == 'string' and GameCfg.Fish[itemId]
     if species then
-        return cooked and FishCatch.CookedPrice(species, mult) or FishCatch.Price(species, mult)
+        return rate and FishCatch.CookedPrice(species, mult, rate) or FishCatch.Price(species, mult)
     end
     local definition = type(itemId) == 'string' and GameCfg.Items.Definitions[itemId]
     local base = definition and definition.BasePrice
     if type(base) ~= 'number' then return nil end
     local factor = type(mult) == 'number' and mult or 1
-    return math.floor(base * factor * (cooked and GameCfg.Items.CookedPriceScale or 1) + 1e-9)
+    return math.floor(base * factor * (rate or 1) + 1e-9)
 end
 
 -- 最终成就（#127 第七区，GameSpec §8.1「哥斯拉头 → 通关成就」）：兑换产物是 'achievement.<id>'
