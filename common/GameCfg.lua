@@ -369,6 +369,8 @@ GameCfg.Shop = {
         { AnchorName = 'Z3_Shop', Level = 3 },
         -- #141 树林岛摊位（4 级）：上架蚂蟥 / 普通鱼竿 / 冲锋枪与 4 级升级行（场景合同 Z4_Shop）
         { AnchorName = 'Z4_Shop', Level = 4 },
+        -- #142 沙滩岛摊位（5 级）：上架椰子 / 专业鱼竿 / 自动步枪与 5 级升级行（场景合同 Z5_Shop）
+        { AnchorName = 'Z5_Shop', Level = 5 },
     },
     BubblePreset = 'map://preset/uf5ad80a4c6a40d59b7f6e0eb99a58c0',
     BubbleHeight = 7,
@@ -670,11 +672,30 @@ GameCfg.Casting = {
             { Id = 'item60', Bait = 'item116', RodLevel = 4, DrawWeight = 4 },
             { Id = 'fish31Elite', Bait = 'item116', RodLevel = 4, DrawWeight = 10 },
         },
+        -- 沙滩岛（#142，GameSpec §5.5 / 钓鱼表 R58–R71）：海参任意饵保底；海兔/海马起用椰子（item117）、
+        -- 竿级 1；海狗/海狮/海牛起竿级 5（专业鱼竿）。极品权重 2/2/2/8/6/4；海象入池权重 10。
+        -- 虎鲸由首领饵 item124（海豹）必出（BossBait），不入池。
+        ['beachIsland.water'] = {
+            { Id = 'item65', Bait = 0, RodLevel = 1, DrawWeight = 8 },
+            { Id = 'item66', Bait = 'item117', RodLevel = 1, DrawWeight = 8 },
+            { Id = 'item67', Bait = 'item117', RodLevel = 1, DrawWeight = 8 },
+            { Id = 'item68', Bait = 'item117', RodLevel = 5, DrawWeight = 32 },
+            { Id = 'item69', Bait = 'item117', RodLevel = 5, DrawWeight = 24 },
+            { Id = 'item70', Bait = 'item117', RodLevel = 5, DrawWeight = 16 },
+            { Id = 'item71', Bait = 0, RodLevel = 1, DrawWeight = 2 },
+            { Id = 'item72', Bait = 'item117', RodLevel = 1, DrawWeight = 2 },
+            { Id = 'item73', Bait = 'item117', RodLevel = 1, DrawWeight = 2 },
+            { Id = 'item74', Bait = 'item117', RodLevel = 5, DrawWeight = 8 },
+            { Id = 'item75', Bait = 'item117', RodLevel = 5, DrawWeight = 6 },
+            { Id = 'item76', Bait = 'item117', RodLevel = 5, DrawWeight = 4 },
+            { Id = 'fish39Elite', Bait = 'item117', RodLevel = 5, DrawWeight = 10 },
+        },
     },
     -- 首领饵（#88，GameSpec §12 已确认）：首领饵物品 id → 必出首领鱼种。挂首领饵在任意水区抛竿
     -- 必出对应首领，无视抽签权重、鱼饵-鱼种匹配与竿级；首领饵占道具栏/背包格、不进 Bait 计数，
     -- 抛竿一刻从道具栏（优先）或背包扣 1 只，钓出首领后消耗，脱钩 / 逃脱不返还。
-    BossBait = { duck = 'alligatorGar', item121 = 'fish16Boss', item122 = 'fish24Boss', item123 = 'fish32Boss' },
+    BossBait = { duck = 'alligatorGar', item121 = 'fish16Boss', item122 = 'fish24Boss', item123 = 'fish32Boss',
+        item124 = 'fish40Boss' },
 }
 
 -- 源表抽鱼行按钓鱼区分组；水域/钓鱼区映射见下文 Water.ZoneIdByWater。
@@ -755,6 +776,29 @@ GameCfg.FishCombat = {
         SweepDamage = 25, SweepCooldownSec = 3,
         RollDamage = 25,
         JumpIntervalSec = 20, JumpDistance = 15, JumpRadius = 10, JumpDamage = 200,
+        JumpSec = 1.5, JumpHeight = 6 },
+    -- #142 海象（fish39Elite，Combat='walrus'，#121 裁定 / 钓鱼表 R70 / 正文第五关）：
+    -- 甩头按表基础攻击 25（SwingDamage）；突击周期按表 40 秒（ChargeSec，覆盖正文旧 20 秒）、
+    -- 直线冲锋 20 米（ChargeDistance）、命中 120（ChargeDamage），取正文。
+    -- SwingCooldownSec=2 沿用已有近战公共节拍、ChargeWindupSec=1 / ChargeContactRange=2.5 /
+    -- ChargeSpeed=20（20 米 1 秒冲完）是预警 / 判定细化 [未查证]，须在试玩中校准。
+    walrus = { BiteRange = 2.5, HeadHalfAngleDeg = 90,
+        SwingDamage = 25, SwingCooldownSec = 2,
+        ChargeSec = 40, ChargeDamage = 120, ChargeDistance = 20,
+        ChargeWindupSec = 1, ChargeSpeed = 20, ChargeContactRange = 2.5 },
+    -- #142 虎鲸（fish40Boss，Combat='orca'，#121 裁定 / 钓鱼表 R71 / 正文第五关）四招并集、互斥不丢：
+    -- 爪击按表 30、间隔 2 秒（ClawDamage / ClawCooldownSec），进身（咬距内头部区）触发；
+    -- 表内每 10 秒虎啸远程攻击（RoarSec）——未给伤害，按独立基础 30 披露细化（RoarDamage，
+    -- 非表内数值，已登记 #142）；正文每 10 秒甩尾、对后方 160（TailSec / TailDamage）；
+    -- 跳跃周期按表 25 秒（JumpIntervalSec，覆盖正文旧 20 秒）、随机 15 米外落点（JumpDistance）、
+    -- 10 米范围 240（JumpRadius / JumpDamage），取正文。
+    -- ClawWindupSec=1 / RoarWindupSec=1 / RoarRange=15 / TailWindupSec=0.8 / TailRadius=4 是
+    -- 预警 / 判定细化 [未查证]，须在试玩中校准；JumpSec / JumpHeight 为弹道表现细化 [未查证]。
+    orca = { BiteRange = 2.5, HeadHalfAngleDeg = 90,
+        ClawDamage = 30, ClawCooldownSec = 2, ClawWindupSec = 1,
+        RoarSec = 10, RoarDamage = 30, RoarWindupSec = 1, RoarRange = 15,
+        TailSec = 10, TailDamage = 160, TailWindupSec = 0.8, TailRadius = 4,
+        JumpIntervalSec = 25, JumpDistance = 15, JumpRadius = 10, JumpDamage = 240,
         JumpSec = 1.5, JumpHeight = 6 },
 }
 
@@ -1065,6 +1109,10 @@ GameCfg.Water = {
         -- 80×24 米矩形（HalfX=40/HalfZ=12，MathWaterJudge 长方形口径）。SurfaceY 沿用场景合同值 3；
         -- 与蟹湖相距 200 米（> 两个半宽之和），无重叠。
         { Id = "forestIsland.water", Center = { x = 460, y = 2, z = 144 }, HalfX = 40, HalfZ = 12, SurfaceY = 3 },
+        -- 沙滩岛水面（#142）：第五区北侧水区，场景合同（Zones[5].Scene 派生）水面中心 (660,2,144)、
+        -- 80×24 米矩形（HalfX=40/HalfZ=12，MathWaterJudge 长方形口径）。SurfaceY 沿用场景合同值 3；
+        -- 与树林岛相距 200 米（> 两个半宽之和），无重叠。
+        { Id = "beachIsland.water", Center = { x = 660, y = 2, z = 144 }, HalfX = 40, HalfZ = 12, SurfaceY = 3 },
     },
 }
 
@@ -1106,6 +1154,7 @@ GameCfg.Water.ZoneIdByWater = {
     WaterCircle1 = 'fishPond', WaterCircle2 = 'fishPond', ShrimpPool = 'shrimpPond',
     ['crabLake.water'] = 'crabLake',
     ['forestIsland.water'] = 'forestIsland',
+    ['beachIsland.water'] = 'beachIsland',
 }
 for _, zone in ipairs(GameCfg.Water.Zones) do
     if not GameCfg.Water.ZoneIdByWater[zone.Id] then

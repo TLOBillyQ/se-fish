@@ -87,9 +87,11 @@ end
 
 -- 配置钉住：首领饵映射与首领近战占位参数
 function TestBossBait:test_config_pins()
-    -- #141：树林岛首领饵 item123 必出三头鲨（#88 口径：BossBait 键即首领饵物品 id）
+    -- #141：树林岛首领饵 item123 必出三头鲨；#142：沙滩岛首领饵 item124 必出虎鲸
+    -- （#88 口径：BossBait 键即首领饵物品 id）
     lu.assertEquals(self.cfg.Casting.BossBait,
-        { duck = 'alligatorGar', item121 = 'fish16Boss', item122 = 'fish24Boss', item123 = 'fish32Boss' })
+        { duck = 'alligatorGar', item121 = 'fish16Boss', item122 = 'fish24Boss', item123 = 'fish32Boss',
+            item124 = 'fish40Boss' })
     lu.assertEquals(self.cfg.Fish.alligatorGar.Combat, 'gar')
     lu.assertNotNil(self.cfg.FishCombat.gar.BiteRange)
     lu.assertNotNil(self.cfg.FishCombat.gar.BiteCooldownSec)

@@ -135,13 +135,14 @@ function TestCfgFishItems:testUnimplementedContentAndInventorySemanticsRemainExp
     local fish = require('common.cfg.Fish')
     local items = require('common.cfg.Items')
     for _, row in pairs(fish.Definitions) do
-        -- #136：蟹湖 14 行、#141：树林岛 14 行已随对应本单实装；
+        -- #136：蟹湖 14 行、#141：树林岛 14 行、#142：沙滩岛 14 行已随对应本单实装；
         -- 其余未实装区与全部精英/首领仍保持 implemented=false。
         local built = row.ZoneId == 'fishPond' or row.ZoneId == 'shrimpPond'
-            or row.ZoneId == 'crabLake' or row.ZoneId == 'forestIsland'
+            or row.ZoneId == 'crabLake' or row.ZoneId == 'forestIsland' or row.ZoneId == 'beachIsland'
         if not built or row.Grade == 'elite' or row.Grade == 'boss' then
             if row.Id ~= 'fish23Elite' and row.Id ~= 'fish24Boss'
-                and row.Id ~= 'fish31Elite' and row.Id ~= 'fish32Boss' then
+                and row.Id ~= 'fish31Elite' and row.Id ~= 'fish32Boss'
+                and row.Id ~= 'fish39Elite' and row.Id ~= 'fish40Boss' then
                 lu.assertFalse(row.implemented, row.source)
             end
         end
