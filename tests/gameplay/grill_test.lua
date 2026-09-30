@@ -729,6 +729,19 @@ function TestGrillWiring:test_server_main_wires_grill()
         '离开前要先结算烧烤会话再序列化存档')
 end
 
+-- 切片五接线断言：客户端面板由 main.lua 直接启动；物品名前缀在 ScreenMain 两处标签渲染
+function TestGrillWiring:test_client_main_starts_screen_grill()
+    local file = assert(io.open('client/main.lua', 'r'))
+    local src = file:read('*a')
+    file:close()
+    lu.assertStrContains(src, 'ScreenGrill = require("client.ScreenHandlers.ScreenGrill")')
+    lu.assertStrContains(src, 'ScreenGrill:Start()')
+    local file2 = assert(io.open('client/ScreenHandlers/ScreenMain.lua', 'r'))
+    local src2 = file2:read('*a')
+    file2:close()
+    lu.assertStrContains(src2, 'GameCfg.Grill.CookedPrefix')
+end
+
 -- ========== 切片四：价格/恢复同倍率（Vitals:Eat 与吃通道带烤制倍率）==========
 
 TestGrillEatVitals = {}

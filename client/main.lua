@@ -18,6 +18,8 @@ local LocalLottery = require("client.LocalLottery")
 local ScreenLottery = require("client.ScreenHandlers.ScreenLottery")
 local ScreenFerry = require("client.ScreenHandlers.ScreenFerry")
 local ScreenSurvival = require("client.ScreenHandlers.ScreenSurvival")
+-- #137 烧烤文字泡与烤炉进度面板（运行时自绘，不经 MgrGameUI）
+local ScreenGrill = require("client.ScreenHandlers.ScreenGrill")
 -- #134 鳄雀鳝头部攻击贴地预警
 local LocalGarBite = require("client.LocalGarBite")
 
@@ -45,6 +47,7 @@ Task:Spawn(function() ScreenLottery:Start() end)
 Task:Spawn(function() LocalLottery:Start() end)
 Task:Spawn(function() ScreenFerry:Start() end)
 Task:Spawn(function() ScreenSurvival:Start() end)
+Task:Spawn(function() ScreenGrill:Start() end)
 Task:Delay(1, function() 
     _G.MgrGameUI:OpenScreen("ScreenMsg")
 end)
