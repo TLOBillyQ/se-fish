@@ -32,18 +32,3 @@ desktop.ini
 tmp/
 build/
 .toolcache/
-
-
-# 本地 viewer 安装与验收产物；policy 保留可提交
-/uml
-/uml.ps1
-/CLAUDE.md
-/examples/*.edn
-!/examples/*.policy.edn
-/luacov.stats.out
-
-# BEGIN UML-VIEWER
-.uml-viewer/
-uml-viewer-log.txt
-.metrics/
-# END UML-VIEWER
