@@ -811,17 +811,74 @@ function Mgr:UpdateShrimpCombat(fish, now, pos, params, combat)
     self:StartMove(fish, name, pos, target, tp, now, params.BiteCooldownSec, params.BiteRange)
 end
 
+-- #136 / #141 / #142 战斗共用的帧骨架：#136 帝王蟹 / 蟹老板复用帧首与追击推进，
+-- #141 / #142 剑鱼 / 三头鲨 / 海象 / 虎鲸另复用锁头招推进与起手调度。
+-- 帧首：清速度（位移只走 Position 步进），按上一战斗帧间隔取 dt；招式期间也刷新 CombatStepAt，
+-- 收招后首帧 dt 只是一帧间隔，不把预警耗时折算成位移。
+local function beginCombatFrame(fish, now)
+    fish.Carrier.Body.LinearVelocity = Vector3.New(0, 0, 0)
+    local dt = math.max(0, now - (fish.CombatStepAt or now))
+    fish.CombatStepAt = now
+    return dt
+end
+
+-- 追击推进：转向目标，按 Speed × dt 平移且不越过咬距边沿。位移经 pcall 写入，
+-- 失败记「<鱼名>追击位移失败」与鱼标识、错误内容并返回 false（不结算任何接触）。
+-- skipIdle 为真时零步长不写位置、返回 false（三头鲨：原地不算翻滚）。
+-- plainId 为真时鱼标识按 #136 旧格式直写 fish.Id，否则带 'fish=' 前缀（#141/#142 格式）。
+local function chaseStep(self, fish, pos, tpos, dt, params, label, skipIdle, plainId)
+    local body = fish.Carrier.Body
+    local fx, fz = flatDirection(tpos.x - pos.x, tpos.z - pos.z)
+    self:Face(fish, fx, fz, params)
+    local distance = math.sqrt((tpos.x - pos.x)^2 + (tpos.z - pos.z)^2)
+    local step = math.min(self:Speed(fish) * dt, math.max(0, distance - params.BiteRange))
+    if skipIdle and step <= 0 then return false end
+    local moved, err = pcall(function()
+        body.Position = Vector3.New(pos.x + (fx or 0) * step, pos.y, pos.z + (fz or 0) * step)
+    end)
+    if not moved then
+        print('[MgrFishUnit] ' .. label .. '追击位移失败',
+            plainId and fish.Id or ('fish=' .. tostring(fish.Id)), tostring(err))
+    end
+    return moved
+end
+
+-- 锁头近战招（剑鱼挥头 / 三头鲨扫头 / 海象甩头）推进：目标失效或走出咬距即取消、返回 false，
+-- 交由调用方本帧重新调度；预警未满返回 true；到点收招（理由同招名），头部区内才按 damage 结算。
+local function advanceHeadMove(self, fish, move, now, pos, params, damage)
+    local valid, tp = self:IsTargetValid(move.Target, pos, params)
+    if not valid or not withinBite(pos, tp, params) then
+        self:EndMove(fish, 'cancel')
+        return false
+    end
+    if now < move.StrikeAt - 1e-9 then return true end
+    self:EndMove(fish, move.Name)
+    if Mgr.InHeadZone(pos, fish.Facing, tp, params) then
+        self:Hit(fish, move.Target, damage, move.Name)
+    end
+    return true
+end
+
+-- 通用近身起手调度：无目标空过；咬距内起手 name 招（预警 windup 秒、范围 BiteRange）；
+-- 否则追击推进。返回 true 表示本帧追击位移成功（调用方据此结算接触）。
+local function engageOrChase(self, fish, now, pos, params, dt, name, windup, label, skipIdle)
+    local target, tpos = self:ChooseTarget(fish, pos, params)
+    if not target then return false end
+    if withinBite(pos, tpos, params) then
+        self:StartMove(fish, name, pos, target, tpos, now, windup, params.BiteRange)
+        return false
+    end
+    return chaseStep(self, fish, pos, tpos, dt, params, label, skipIdle)
+end
+
 -- #136 帝王蟹：放下即锁定最近目标起手乱刺；每轮左右钳各 JabsPerSide 下、每下间隔
 -- JabStepSec、每下 JabDamage。同一刺段（0.2 秒槽）只结算一次；掉帧大 dt 只补当前槽不追溯。
 -- 一轮结束招式清除、预警收起，下一轮 JabAt + JabIntervalSec 后重新起手；活动 ActiveSec 秒
 -- 眩晕 StunSec 秒（眩晕由通用 stunned 分支处理，醒来重置节拍）。
 function Mgr:UpdateKingCrabCombat(fish, now, pos, params)
-    local body = fish.Carrier.Body
-    body.LinearVelocity = Vector3.New(0, 0, 0)
     -- 追击步长与帧率解耦：dt 取上一战斗帧间隔（与虾池 UpdateShrimpCombat 同口径）；
     -- 招式期间每帧也刷新 CombatStepAt，收招后首帧 dt 只是一帧间隔，不累积折算成位移。
-    local dt = math.max(0, now - (fish.CombatStepAt or now))
-    fish.CombatStepAt = now
+    local dt = beginCombatFrame(fish, now)
     local move = fish.Move
     if move then
         if move.Name ~= 'jab' then return end
@@ -847,14 +904,7 @@ function Mgr:UpdateKingCrabCombat(fish, now, pos, params)
     if not target then return end
     if now < (fish.JabAt or 0) then return end
     if not withinBite(pos, tp, params) then
-        local fx, fz = flatDirection(tp.x - pos.x, tp.z - pos.z)
-        self:Face(fish, fx, fz, params)
-        local distance = math.sqrt((tp.x - pos.x)^2 + (tp.z - pos.z)^2)
-        local step = math.min(self:Speed(fish) * dt, math.max(0, distance - params.BiteRange))
-        local moved, err = pcall(function()
-            body.Position = Vector3.New(pos.x + (fx or 0) * step, pos.y, pos.z + (fz or 0) * step)
-        end)
-        if not moved then print('[MgrFishUnit] 帝王蟹追击位移失败', fish.Id, tostring(err)) end
+        chaseStep(self, fish, pos, tp, dt, params, '帝王蟹', nil, true)
         return
     end
     -- 起手乱刺：预警时长 = 钳数 × JabStepSec（起手帧 + 每钳一个间隔），
@@ -868,11 +918,8 @@ end
 -- 节拍：SpecialAt（旋转，每 25 秒）、ChargeAt（冲撞，每 30 秒）、PinchAt（双击，冷却 4 秒）。
 -- 旋转 / 冲撞优先级高于双击；旋转优先级高于冲撞（旋转持续期跨过冲撞节拍时冲撞被压住）。
 function Mgr:UpdateCrabBossCombat(fish, now, pos, params)
-    local body = fish.Carrier.Body
-    body.LinearVelocity = Vector3.New(0, 0, 0)
     -- 追击步长与帧率解耦：dt 取上一战斗帧间隔（与帝王蟹 / 虾池同口径）。
-    local dt = math.max(0, now - (fish.CombatStepAt or now))
-    fish.CombatStepAt = now
+    local dt = beginCombatFrame(fish, now)
     local move = fish.Move
     if move then
         if move.Name == 'pinch' then
@@ -943,14 +990,7 @@ function Mgr:UpdateCrabBossCombat(fish, now, pos, params)
     end
     -- 追击
     if not withinBite(pos, tp, params) then
-        local fx, fz = flatDirection(tp.x - pos.x, tp.z - pos.z)
-        self:Face(fish, fx, fz, params)
-        local distance = math.sqrt((tp.x - pos.x)^2 + (tp.z - pos.z)^2)
-        local step = math.min(self:Speed(fish) * dt, math.max(0, distance - params.BiteRange))
-        local moved, err = pcall(function()
-            body.Position = Vector3.New(pos.x + (fx or 0) * step, pos.y, pos.z + (fz or 0) * step)
-        end)
-        if not moved then print('[MgrFishUnit] 蟹老板追击位移失败', fish.Id, tostring(err)) end
+        chaseStep(self, fish, pos, tp, dt, params, '蟹老板', nil, true)
     end
 end
 -- #141 树林岛精英 / 首领：高跃共用弹道与落地范围伤害。
@@ -989,63 +1029,6 @@ function Mgr:AdvanceJump(fish, now, pos, params)
             self:Hit(fish, player, params.JumpDamage, 'jump')
         end
     end
-end
-
--- #141 / #142 追击型精英与首领（剑鱼 / 三头鲨 / 海象 / 虎鲸）共用的帧骨架。
--- 帧首：清速度（位移只走 Position 步进），按上一战斗帧间隔取 dt；招式期间也刷新 CombatStepAt，
--- 收招后首帧 dt 只是一帧间隔，不把预警耗时折算成位移。
-local function beginCombatFrame(fish, now)
-    fish.Carrier.Body.LinearVelocity = Vector3.New(0, 0, 0)
-    local dt = math.max(0, now - (fish.CombatStepAt or now))
-    fish.CombatStepAt = now
-    return dt
-end
-
--- 追击推进：转向目标，按 Speed × dt 平移且不越过咬距边沿。位移经 pcall 写入，
--- 失败记「<鱼名>追击位移失败」与鱼标识、错误内容并返回 false（不结算任何接触）。
--- skipIdle 为真时零步长不写位置、返回 false（三头鲨：原地不算翻滚）。
-local function chaseStep(self, fish, pos, tpos, dt, params, label, skipIdle)
-    local body = fish.Carrier.Body
-    local fx, fz = flatDirection(tpos.x - pos.x, tpos.z - pos.z)
-    self:Face(fish, fx, fz, params)
-    local distance = math.sqrt((tpos.x - pos.x)^2 + (tpos.z - pos.z)^2)
-    local step = math.min(self:Speed(fish) * dt, math.max(0, distance - params.BiteRange))
-    if skipIdle and step <= 0 then return false end
-    local moved, err = pcall(function()
-        body.Position = Vector3.New(pos.x + (fx or 0) * step, pos.y, pos.z + (fz or 0) * step)
-    end)
-    if not moved then
-        print('[MgrFishUnit] ' .. label .. '追击位移失败', 'fish=' .. tostring(fish.Id), tostring(err))
-    end
-    return moved
-end
-
--- 锁头近战招（剑鱼挥头 / 三头鲨扫头 / 海象甩头）推进：目标失效或走出咬距即取消、返回 false，
--- 交由调用方本帧重新调度；预警未满返回 true；到点收招（理由同招名），头部区内才按 damage 结算。
-local function advanceHeadMove(self, fish, move, now, pos, params, damage)
-    local valid, tp = self:IsTargetValid(move.Target, pos, params)
-    if not valid or not withinBite(pos, tp, params) then
-        self:EndMove(fish, 'cancel')
-        return false
-    end
-    if now < move.StrikeAt - 1e-9 then return true end
-    self:EndMove(fish, move.Name)
-    if Mgr.InHeadZone(pos, fish.Facing, tp, params) then
-        self:Hit(fish, move.Target, damage, move.Name)
-    end
-    return true
-end
-
--- 通用近身起手调度：无目标空过；咬距内起手 name 招（预警 windup 秒、范围 BiteRange）；
--- 否则追击推进。返回 true 表示本帧追击位移成功（调用方据此结算接触）。
-local function engageOrChase(self, fish, now, pos, params, dt, name, windup, label, skipIdle)
-    local target, tpos = self:ChooseTarget(fish, pos, params)
-    if not target then return false end
-    if withinBite(pos, tpos, params) then
-        self:StartMove(fish, name, pos, target, tpos, now, windup, params.BiteRange)
-        return false
-    end
-    return chaseStep(self, fish, pos, tpos, dt, params, label, skipIdle)
 end
 
 -- 剑鱼：翻滚追击 + 左右挥头（SwingDamage）+ 周期高跃。
