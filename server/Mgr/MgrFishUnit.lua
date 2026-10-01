@@ -991,104 +991,102 @@ function Mgr:AdvanceJump(fish, now, pos, params)
     end
 end
 
+-- #141 / #142 追击型精英与首领（剑鱼 / 三头鲨 / 海象 / 虎鲸）共用的帧骨架。
+-- 帧首：清速度（位移只走 Position 步进），按上一战斗帧间隔取 dt；招式期间也刷新 CombatStepAt，
+-- 收招后首帧 dt 只是一帧间隔，不把预警耗时折算成位移。
+local function beginCombatFrame(fish, now)
+    fish.Carrier.Body.LinearVelocity = Vector3.New(0, 0, 0)
+    local dt = math.max(0, now - (fish.CombatStepAt or now))
+    fish.CombatStepAt = now
+    return dt
+end
+
+-- 追击推进：转向目标，按 Speed × dt 平移且不越过咬距边沿。位移经 pcall 写入，
+-- 失败记「<鱼名>追击位移失败」与鱼标识、错误内容并返回 false（不结算任何接触）。
+-- skipIdle 为真时零步长不写位置、返回 false（三头鲨：原地不算翻滚）。
+local function chaseStep(self, fish, pos, tpos, dt, params, label, skipIdle)
+    local body = fish.Carrier.Body
+    local fx, fz = flatDirection(tpos.x - pos.x, tpos.z - pos.z)
+    self:Face(fish, fx, fz, params)
+    local distance = math.sqrt((tpos.x - pos.x)^2 + (tpos.z - pos.z)^2)
+    local step = math.min(self:Speed(fish) * dt, math.max(0, distance - params.BiteRange))
+    if skipIdle and step <= 0 then return false end
+    local moved, err = pcall(function()
+        body.Position = Vector3.New(pos.x + (fx or 0) * step, pos.y, pos.z + (fz or 0) * step)
+    end)
+    if not moved then
+        print('[MgrFishUnit] ' .. label .. '追击位移失败', 'fish=' .. tostring(fish.Id), tostring(err))
+    end
+    return moved
+end
+
+-- 锁头近战招（剑鱼挥头 / 三头鲨扫头 / 海象甩头）推进：目标失效或走出咬距即取消、返回 false，
+-- 交由调用方本帧重新调度；预警未满返回 true；到点收招（理由同招名），头部区内才按 damage 结算。
+local function advanceHeadMove(self, fish, move, now, pos, params, damage)
+    local valid, tp = self:IsTargetValid(move.Target, pos, params)
+    if not valid or not withinBite(pos, tp, params) then
+        self:EndMove(fish, 'cancel')
+        return false
+    end
+    if now < move.StrikeAt - 1e-9 then return true end
+    self:EndMove(fish, move.Name)
+    if Mgr.InHeadZone(pos, fish.Facing, tp, params) then
+        self:Hit(fish, move.Target, damage, move.Name)
+    end
+    return true
+end
+
+-- 通用近身起手调度：无目标空过；咬距内起手 name 招（预警 windup 秒、范围 BiteRange）；
+-- 否则追击推进。返回 true 表示本帧追击位移成功（调用方据此结算接触）。
+local function engageOrChase(self, fish, now, pos, params, dt, name, windup, label, skipIdle)
+    local target, tpos = self:ChooseTarget(fish, pos, params)
+    if not target then return false end
+    if withinBite(pos, tpos, params) then
+        self:StartMove(fish, name, pos, target, tpos, now, windup, params.BiteRange)
+        return false
+    end
+    return chaseStep(self, fish, pos, tpos, dt, params, label, skipIdle)
+end
+
 -- 剑鱼：翻滚追击 + 左右挥头（SwingDamage）+ 周期高跃。
 -- 挥头起手即锁定朝向（StartMove），预警期间不转头，绕后落空；起手时长取 SwingCooldownSec（配置细化）。
 function Mgr:UpdateSwordfishCombat(fish, now, pos, params)
-    local body = fish.Carrier.Body
-    body.LinearVelocity = Vector3.New(0, 0, 0)
-    local dt = math.max(0, now - (fish.CombatStepAt or now))
-    fish.CombatStepAt = now
+    local dt = beginCombatFrame(fish, now)
     local move = fish.Move
     if move then
         if move.Name == 'jump' then
             self:AdvanceJump(fish, now, pos, params)
             return
         end
-        local valid, tp = self:IsTargetValid(move.Target, pos, params)
-        if not valid or not withinBite(pos, tp, params) then
-            self:EndMove(fish, 'cancel')
-        elseif now < move.StrikeAt - 1e-9 then
-            return
-        else
-            self:EndMove(fish, 'swing')
-            if Mgr.InHeadZone(pos, fish.Facing, tp, params) then
-                self:Hit(fish, move.Target, params.SwingDamage, 'swing')
-            end
-            return
-        end
+        if advanceHeadMove(self, fish, move, now, pos, params, params.SwingDamage) then return end
     end
     if now >= (fish.JumpAt or math.huge) then
         self:StartJump(fish, now, pos, params)
         return
     end
-    local target, tpos = self:ChooseTarget(fish, pos, params)
-    if not target then return end
-    if withinBite(pos, tpos, params) then
-        self:StartMove(fish, 'swing', pos, target, tpos, now, params.SwingCooldownSec, params.BiteRange)
-        return
-    end
-    local fx, fz = flatDirection(tpos.x - pos.x, tpos.z - pos.z)
-    self:Face(fish, fx, fz, params)
-    local distance = math.sqrt((tpos.x - pos.x)^2 + (tpos.z - pos.z)^2)
-    local step = math.min(self:Speed(fish) * dt, math.max(0, distance - params.BiteRange))
-    local moved, err = pcall(function()
-        body.Position = Vector3.New(pos.x + (fx or 0) * step, pos.y, pos.z + (fz or 0) * step)
-    end)
-    if not moved then
-        print('[MgrFishUnit] 剑鱼追击位移失败', 'fish=' .. tostring(fish.Id), tostring(err))
-        return
-    end
+    engageOrChase(self, fish, now, pos, params, dt, 'swing', params.SwingCooldownSec, '剑鱼')
 end
 
 -- 三头鲨：翻滚追击（贴身接触伤害 RollDamage，独立段，同一秒槽每玩家只结算一次）+ 扫头（SweepDamage）+ 周期高跃。
 function Mgr:UpdateSharkCombat(fish, now, pos, params)
-    local body = fish.Carrier.Body
-    body.LinearVelocity = Vector3.New(0, 0, 0)
-    local dt = math.max(0, now - (fish.CombatStepAt or now))
-    fish.CombatStepAt = now
+    local dt = beginCombatFrame(fish, now)
     local move = fish.Move
     if move then
         if move.Name == 'jump' then
             self:AdvanceJump(fish, now, pos, params)
             return
         end
-        local valid, tp = self:IsTargetValid(move.Target, pos, params)
-        if not valid or not withinBite(pos, tp, params) then
-            self:EndMove(fish, 'cancel')
-        elseif now < move.StrikeAt - 1e-9 then
-            return
-        else
-            self:EndMove(fish, 'sweep')
-            if Mgr.InHeadZone(pos, fish.Facing, tp, params) then
-                self:Hit(fish, move.Target, params.SweepDamage, 'sweep')
-            end
-            return
-        end
+        if advanceHeadMove(self, fish, move, now, pos, params, params.SweepDamage) then return end
     end
     if now >= (fish.JumpAt or math.huge) then
         self:StartJump(fish, now, pos, params)
         return
     end
-    local target, tpos = self:ChooseTarget(fish, pos, params)
-    if not target then return end
-    if withinBite(pos, tpos, params) then
-        self:StartMove(fish, 'sweep', pos, target, tpos, now, params.SweepCooldownSec, params.BiteRange)
-        return
-    end
-    local fx, fz = flatDirection(tpos.x - pos.x, tpos.z - pos.z)
-    self:Face(fish, fx, fz, params)
-    local distance = math.sqrt((tpos.x - pos.x)^2 + (tpos.z - pos.z)^2)
-    local step = math.min(self:Speed(fish) * dt, math.max(0, distance - params.BiteRange))
-    if step <= 0 then return end
-    local moved, err = pcall(function()
-        body.Position = Vector3.New(pos.x + (fx or 0) * step, pos.y, pos.z + (fz or 0) * step)
-    end)
-    if not moved then
-        print('[MgrFishUnit] 三头鲨追击位移失败', 'fish=' .. tostring(fish.Id), tostring(err))
+    if not engageOrChase(self, fish, now, pos, params, dt, 'sweep', params.SweepCooldownSec, '三头鲨', true) then
         return
     end
     -- 成功移动后用实际滚动线段判接触；每玩家独立去重，不消耗本秒其它玩家的接触机会。
-    local actual = readPosition(body)
+    local actual = readPosition(fish.Carrier.Body)
     if not actual or (actual.x == pos.x and actual.z == pos.z) then return end
     local slot = math.floor(now)
     if fish.RollSlot ~= slot then fish.RollSlot, fish.RollHits = slot, {} end
@@ -1151,25 +1149,11 @@ end
 -- （ChargeSec 周期，冲锋 ChargeDistance，对撞到的玩家一次 ChargeDamage）。
 -- 突击优先级高于甩头；两招互斥（单 Move 权威）。追击位移失败记日志、不结算。
 function Mgr:UpdateWalrusCombat(fish, now, pos, params)
-    local body = fish.Carrier.Body
-    body.LinearVelocity = Vector3.New(0, 0, 0)
-    local dt = math.max(0, now - (fish.CombatStepAt or now))
-    fish.CombatStepAt = now
+    local dt = beginCombatFrame(fish, now)
     local move = fish.Move
     if move then
         if move.Name == 'swing' then
-            local valid, tp = self:IsTargetValid(move.Target, pos, params)
-            if not valid or not withinBite(pos, tp, params) then
-                self:EndMove(fish, 'cancel')
-            elseif now < move.StrikeAt - 1e-9 then
-                return
-            else
-                self:EndMove(fish, 'swing')
-                if Mgr.InHeadZone(pos, fish.Facing, tp, params) then
-                    self:Hit(fish, move.Target, params.SwingDamage, 'swing')
-                end
-                return
-            end
+            if advanceHeadMove(self, fish, move, now, pos, params, params.SwingDamage) then return end
         elseif move.Name == 'charge' then
             self:AdvanceWalrusCharge(fish, now, pos, params)
             return
@@ -1191,23 +1175,7 @@ function Mgr:UpdateWalrusCombat(fish, now, pos, params)
         fish.Move.Hits = {}
         return
     end
-    local target, tpos = self:ChooseTarget(fish, pos, params)
-    if not target then return end
-    if withinBite(pos, tpos, params) then
-        self:StartMove(fish, 'swing', pos, target, tpos, now, params.SwingCooldownSec, params.BiteRange)
-        return
-    end
-    local fx, fz = flatDirection(tpos.x - pos.x, tpos.z - pos.z)
-    self:Face(fish, fx, fz, params)
-    local distance = math.sqrt((tpos.x - pos.x)^2 + (tpos.z - pos.z)^2)
-    local step = math.min(self:Speed(fish) * dt, math.max(0, distance - params.BiteRange))
-    local moved, err = pcall(function()
-        body.Position = Vector3.New(pos.x + (fx or 0) * step, pos.y, pos.z + (fz or 0) * step)
-    end)
-    if not moved then
-        print('[MgrFishUnit] 海象追击位移失败', 'fish=' .. tostring(fish.Id), tostring(err))
-        return
-    end
+    engageOrChase(self, fish, now, pos, params, dt, 'swing', params.SwingCooldownSec, '海象')
 end
 
 -- #142 虎鲸四招并集、互斥不丢（单 Move 权威；鲸跃 > 虎啸 > 甩尾 > 爪）：
@@ -1218,10 +1186,7 @@ end
 --   复用 StartJump / AdvanceJump（25 秒、随机 15 米外、10 米范围 240）。
 -- 每招起手即重置自己的下一拍，进行中的招式目标倒下 / 离线即取消，均不结算。
 function Mgr:UpdateOrcaCombat(fish, now, pos, params)
-    local body = fish.Carrier.Body
-    body.LinearVelocity = Vector3.New(0, 0, 0)
-    local dt = math.max(0, now - (fish.CombatStepAt or now))
-    fish.CombatStepAt = now
+    local dt = beginCombatFrame(fish, now)
     local move = fish.Move
     if move then
         if move.Name == 'jump' then
@@ -1294,17 +1259,7 @@ function Mgr:UpdateOrcaCombat(fish, now, pos, params)
         return
     end
     if not withinBite(pos, tp, params) then
-        local fx, fz = flatDirection(tp.x - pos.x, tp.z - pos.z)
-        self:Face(fish, fx, fz, params)
-        local distance = math.sqrt((tp.x - pos.x)^2 + (tp.z - pos.z)^2)
-        local step = math.min(self:Speed(fish) * dt, math.max(0, distance - params.BiteRange))
-        local moved, err = pcall(function()
-            body.Position = Vector3.New(pos.x + (fx or 0) * step, pos.y, pos.z + (fz or 0) * step)
-        end)
-        if not moved then
-            print('[MgrFishUnit] 虎鲸追击位移失败', 'fish=' .. tostring(fish.Id), tostring(err))
-            return
-        end
+        chaseStep(self, fish, pos, tp, dt, params, '虎鲸')
     end
 end
 

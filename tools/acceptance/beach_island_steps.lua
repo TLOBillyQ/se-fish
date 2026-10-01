@@ -9,60 +9,30 @@ end
 local GameCfg = require('common.GameCfg')
 local FishCatch = require('common.FishCatch')
 
--- ===== 战斗世界：真实 MgrFishUnit（复用 fish_escape 测试的假引擎）=====
+-- ===== 战斗世界：真实 MgrFishUnit（tests/support/combat_world，复用 fish_escape 测试的假引擎）=====
+local CombatWorld = require('tests.support.combat_world')
+
 local function combatWorld(world)
-    require('tests.gameplay.fish_escape_test')
-    local env = setmetatable({}, { __index = TestFishEscape })
-    TestFishEscape.setUp(env)
-    TestFishEscape.prepare(env)
-    env.hits, env.notices = {}, {}
-    for _, p in ipairs({ env.player, env.other }) do
-        p.Character.Controller.Health = 5000
-        p.Character.Controller.TakeDamage = function(c, d) c.Health = c.Health - d end
-    end
-    env.mgr.PublishBite = function(_, payload) env.notices[#env.notices + 1] = payload end
-    env.mgr.CombatPublisher = function() end
-    -- 第二名玩家默认远离战斗点，避免落点范围 / 突击判定的无关命中（需要贴身时在步骤里显式摆位）
-    env.other.Character.Position = Vector3.New(500, 2, 500)
-    env.mgr.Vitals = {
-        NewHit = function(_, source, category) return { source = source, category = category } end,
-        ApplyHit = function(_, _, player, amount)
-            env.hits[#env.hits + 1] = { player = player, amount = amount }
-            return true, amount
-        end,
-        CanTakeDamage = function() return true end,
-    }
-    world.combat = env
+    world.combat = CombatWorld.new()
 end
 
 local function closeCombat(world)
     local env = world.combat
     if not env then return end
-    if env.savedRandom then math.random = env.savedRandom end
-    TestFishEscape.tearDown(env)
+    CombatWorld.close(env)
     world.combat, world.fish = nil, nil
 end
 
-local function at(env, now) env.now = now env.mgr:Update() end
+local at = CombatWorld.at
 
 -- 放下一条沙滩岛鱼并把目标玩家摆到鱼身 (0, dz) 处
 local function dropFish(world, fishId, dz)
-    local env = world.combat
-    local p = env.player.Character.Position
-    local fish = env.mgr:SpawnLanded(env.player, { fishId = fishId, mult = 1 }, Vector3.New(p.x, 2, p.z + 2))
-    fish.Carrier.Body.OnLiftedBegin:Fire(env.player.Character)
-    env.mgr:Drop(env.player)
-    local bp = fish.Carrier.Body.Position
-    env.player.Character.Position = Vector3.New(bp.x, 2, bp.z + (dz or 2))
-    world.fish = fish
-    return fish
+    world.fish = CombatWorld.drop(world.combat, fishId, dz)
+    return world.fish
 end
 
--- 固定随机方向：鲸跃落点朝 +x（表现细化，验收只钉距离与范围）
 local function pinRandom(world)
-    local env = world.combat
-    env.savedRandom = math.random
-    math.random = function() return 0 end
+    CombatWorld.pinRandom(world.combat)
 end
 
 local function dropAt(world, fishId, awayMeters)

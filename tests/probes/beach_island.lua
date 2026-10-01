@@ -36,48 +36,10 @@ local function quantity(label, value) print(string.format('K %s = %s', label, to
 local GameCfg = require('common.GameCfg')
 local FishCatch = require('common.FishCatch')
 
--- ===== 假引擎战斗世界（复用 fish_escape 测试夹具）=====
-require('tests.gameplay.fish_escape_test')
-local function combat()
-    local env = setmetatable({}, { __index = TestFishEscape })
-    TestFishEscape.setUp(env)
-    TestFishEscape.prepare(env)
-    env.hits, env.notices = {}, {}
-    for _, p in ipairs({ env.player, env.other }) do
-        p.Character.Controller.Health = 5000
-        p.Character.Controller.TakeDamage = function(c, d) c.Health = c.Health - d end
-    end
-    env.other.Character.Position = Vector3.New(500, 2, 500)
-    env.mgr.PublishBite = function(_, payload) env.notices[#env.notices + 1] = payload end
-    env.mgr.CombatPublisher = function() end
-    env.mgr.Vitals = {
-        NewHit = function(_, source, category) return { source = source, category = category } end,
-        ApplyHit = function(_, _, player, amount)
-            env.hits[#env.hits + 1] = { player = player, amount = amount }
-            return true, amount
-        end,
-        CanTakeDamage = function() return true end,
-    }
-    return env
-end
-local function close(env)
-    if env.savedRandom then math.random = env.savedRandom end
-    TestFishEscape.tearDown(env)
-end
-local function at(env, now) env.now = now env.mgr:Update() end
-local function pinRandom(env)
-    env.savedRandom = math.random
-    math.random = function() return 0 end
-end
-local function drop(env, fishId, dz)
-    local p = env.player.Character.Position
-    local fish = env.mgr:SpawnLanded(env.player, { fishId = fishId, mult = 1 }, Vector3.New(p.x, 2, p.z + 2))
-    fish.Carrier.Body.OnLiftedBegin:Fire(env.player.Character)
-    env.mgr:Drop(env.player)
-    local bp = fish.Carrier.Body.Position
-    env.player.Character.Position = Vector3.New(bp.x, 2, bp.z + (dz or 2))
-    return fish
-end
+-- ===== 假引擎战斗世界（tests/support/combat_world，复用 fish_escape 测试夹具）=====
+local CombatWorld = require('tests.support.combat_world')
+local combat, close, at, pinRandom, drop =
+    CombatWorld.new, CombatWorld.close, CombatWorld.at, CombatWorld.pinRandom, CombatWorld.drop
 
 -- 推进到 40 秒突击节拍并等预警起手（40 秒帧可能压着上一记甩头的预警，做有界等待）
 local function startCharge(env, fish)
