@@ -112,6 +112,8 @@ end
 -- 把受击体挪到鱼本体上。举着 / 逃脱 / 落地都靠这一句跟住：受击体与鱼本体之间没有约束，
 -- 引擎也没有「子节点跟随父节点」的开关给 EggyUnit 用（实测 ModelBindParent 在 EggyUnit 上不存在）。
 local function syncReceiver(carrier)
+	-- #53 官方模式受击体是唯一移动源；业务轨迹模式才由本体同步受击体。
+	if carrier.AiOwnsMovement then return end
 	local body = carrier.Body
 	local receiver = carrier.Receiver
 	if not body or not receiver then
