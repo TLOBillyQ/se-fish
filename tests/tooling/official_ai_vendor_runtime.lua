@@ -51,16 +51,17 @@ local function tracer(unit)
     return copy
 end
 
-local function connection(events, name)
-    return { Disconnect = function(self) self.connected = false end }
-end
 local function signal()
     return { handlers = {}, Connect = function(self, handler)
-        local conn = { Disconnect = function(self) self.connected = false end }
-        self.handlers[#self.handlers + 1] = handler
+        local conn = { connected = true, handler = handler }
+        function conn:Disconnect() self.connected = false end
+        self.handlers[#self.handlers + 1] = conn
         return conn
     end, Fire = function(self, ...)
-        for _, handler in ipairs(self.handlers) do handler(...) end
+        -- 断开幂等，Fire检查连接存活；回调中断开后续连接也应立即生效。
+        for _, conn in ipairs(self.handlers) do
+            if conn.connected then conn.handler(...) end
+        end
     end }
 end
 
@@ -92,8 +93,12 @@ local function newUnit(id, position)
     function unit:GetPosition() return self.Position end
     function unit:SetPosition(position) self.Position = position end
     function unit:GetChildren() return self.children end
-    function unit:HasAnyTags(tags) return #tags > 0 and false or false end
-    function unit:HasAllTags(tags) return #tags == 0 end
+    function unit:Destroy()
+        if self.destroyed then return end
+        self.destroyed = true
+        self.Destroying:Fire()
+        self.Parent = nil
+    end
     return unit
 end
 
