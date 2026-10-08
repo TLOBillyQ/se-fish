@@ -122,7 +122,10 @@ function Mgr:GetRemaining(target, kind)
     local key = self:Resolve(target)
     local entry = key and self.Targets[key]
     local st = entry and entry.effects[kind]
-    if not st then return 0 end
+    if not st then
+        local _, ref = self:Resolve(target)
+        return kind == 'weak' and ref and ref.UserId and (self.WeakCarry[ref.UserId] or 0) or 0
+    end
     return math.max(0, self.ModifierAPI.GetRemainingTimeByKey(entry.owner, st.entity:GetAttribute('ModifierKey')))
 end
 
@@ -140,7 +143,8 @@ function Mgr:GetMoveMultiplier(target)
 end
 
 function Mgr:Clear(target, kind)
-    local key = self:Resolve(target)
+    local key, ref = self:Resolve(target)
+    if kind == 'weak' and ref and ref.UserId then self.WeakCarry[ref.UserId] = nil end
     local entry = key and self.Targets[key]
     local st = entry and entry.effects[kind]
     if st then self.ModifierAPI.RemoveModifier(st.entity) end
@@ -168,17 +172,20 @@ function Mgr:Update()
 end
 
 function Mgr:OnCharacterRemoving(player)
-    self.WeakCarry[player.UserId] = self:GetRemaining(player, 'weak')
+    local left = self:GetRemaining(player, 'weak')
     self.Departing[player.UserId] = true
     self:ClearTarget(player)
+    self.WeakCarry[player.UserId] = left
 end
 
 function Mgr:OnCharacterAdded(player)
-    local left = self.WeakCarry[player.UserId] or self:GetRemaining(player, 'weak')
-    self.WeakCarry[player.UserId] = nil
+    local left = self:GetRemaining(player, 'weak')
     self:ClearTarget(player)
     self.Departing[player.UserId] = nil
-    if left > 0 then self:Apply(nil, player, 'weak', left) end
+    if left > 0 then
+        self.WeakCarry[player.UserId] = left
+        if self:Apply(nil, player, 'weak', left) then self.WeakCarry[player.UserId] = nil end
+    else self.WeakCarry[player.UserId] = nil end
 end
 
 function Mgr:OnPlayerAdded(player)

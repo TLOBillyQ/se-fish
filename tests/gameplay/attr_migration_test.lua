@@ -1,7 +1,7 @@
 -- 失败方式：永久成长重复累加、默认100污染、重复乘区、写入失败误报、重建/退出残留。
 -- 接缝：MgrAttr公开刷新/读取，真实根AttrAPI/vendor，仅Unit/World为离线引擎替身。
 local lu = require('luaunit')
-local function fixture()
+local function fixture(logs)
     local all, cache = {}, {}
     local world = {}
     local function unit(kind, parent)
@@ -17,6 +17,7 @@ local function fixture()
     end
     function world:CreateAsset() return {unit('Script',world)} end
     local env=setmetatable({game={GetService=function()return world end}, Vector3={New=function(x,y,z)return{x=x,y=y,z=z}end}}, {__index=_G})
+    if logs then env.print = function(...) local values = {...}; for i,v in ipairs(values) do values[i]=tostring(v) end logs[#logs+1]=table.concat(values,' ') end end
     env.require=function(name)
         if cache[name] then return cache[name] end
         cache[name]=assert(loadfile(name:gsub('%.','/')..'.lua','t',env))() return cache[name]
@@ -31,6 +32,42 @@ local function fixture()
     return mgr,player,data,all,unit,world
 end
 TestAttrMigration={}
+-- 失败方式：pending后异常/业务拒绝无诊断、同错刷屏、恢复后同错不再报告。
+function TestAttrMigration:test_retry_reports_changed_vendor_errors_and_rearms_after_success()
+    local logs = {}
+    local mgr,p,_,_,unit,world = fixture(logs)
+    p.Character = nil
+    mgr:OnPlayerAdded(p)
+    p.Character = unit('Character',world)
+    local broken = true
+    local children = p.Character.GetChildren
+    function p.Character:GetChildren() if broken then error('vendor-owner-unavailable') end return children(self) end
+    local before = #logs
+    mgr:Update()
+    lu.assertEquals(#logs, before + 1)
+    lu.assertStrContains(logs[#logs], '[MgrAttr] 属性重试失败 51')
+    lu.assertStrContains(logs[#logs], 'vendor-owner-unavailable')
+    mgr:Update()
+    lu.assertEquals(#logs, before + 1)
+    broken = false
+    local config = { Min = 0 }
+    mgr.AttrAPI.GetAttrConfig = function() return config end
+    mgr:Update()
+    lu.assertEquals(#logs, before + 2)
+    lu.assertStrContains(logs[#logs], '业务属性键不允许地图钳制配置')
+    config = nil
+    mgr:Update()
+    lu.assertAlmostEquals(p.Character.Controller.WalkSpeed,3.185,1e-8)
+    config = { Min = 0 }
+    mgr:RefreshAfterRevive(p)
+    local nextBefore = #logs
+    mgr:Update()
+    lu.assertEquals(#logs,nextBefore + 1)
+    mgr:OnPlayerRemoving(p)
+    mgr:Update()
+    lu.assertEquals(#logs,nextBefore + 1)
+end
+
 function TestAttrMigration:test_hunger_and_weapon_use_vendor_without_new_save_authority()
     local mgr,p,data=fixture()
     local ok,hunger=mgr:ProjectHunger(p,1000)

@@ -26,6 +26,13 @@ function TestFishAiLifecycle:test_every_configured_fish_hands_off_on_release_and
         lu.assertTrue(calls[fish] > before, '未清理鱼种：' .. id)
     end
 end
+function TestFishAiLifecycle:test_failed_handoff_does_not_start_business_move()
+    self.mgr.Ai = { Custom = function() return false end, Stop = function() end }
+    local fish = self:land(self.player)
+    self.mgr:StartMove(fish, 'peck', {x=0,y=0,z=0}, nil, nil, 1, 2, 3)
+    lu.assertNil(fish.Move)
+end
+
 function TestFishAiLifecycle:test_stop_cancels_pending_bite_and_start_preserves_escape_deadline()
     self.mgr.Ai = { Custom = function() return true end, Pause = function() end,
         Stop = function(self) self.Stopped = true end, Start = function(self) self.Stopped = false end }
@@ -48,6 +55,46 @@ function TestAiMigration:setUp()
     self.unit = self.runtime.newUnit(5301)
     self.fish = { Id = 1, Carrier = { Receiver = self.unit, Body = self.runtime.newUnit(5302) } }
 end
+-- 失败方式：同目标到距自然结束后退远，缓存仍报运行；参数变化被忽略。
+function TestAiMigration:test_completed_vendor_chase_resumes_same_target_without_restarting_active_task()
+    local target = self.runtime.newUnit(5303)
+    target.Position = self.runtime.Vector(20, 0, 0)
+    lu.assertTrue(self.mgr:Chase(self.fish, target, 3, 2.5, 30))
+    self.runtime.task:pump(0.1)
+    local tasks = #self.runtime.task.tasks
+    lu.assertTrue(self.mgr:Chase(self.fish, target, 3, 2.5, 30))
+    lu.assertEquals(#self.runtime.task.tasks, tasks)
+    target.Position = self.runtime.Vector(1, 0, 0)
+    self.runtime.task:pump(0.1)
+    lu.assertEquals(self.runtime.vecLen(self.unit.Controller.moves[#self.unit.Controller.moves]), 0)
+    target.Position = self.runtime.Vector(20, 0, 0)
+    lu.assertTrue(self.mgr:Chase(self.fish, target, 3, 2.5, 30))
+    self.runtime.task:pump(0.2)
+    lu.assertEquals(self.unit.Controller.moves[#self.unit.Controller.moves].x, 1)
+end
+
+function TestAiMigration:test_failed_stop_rejects_same_frame_custom_handoff()
+    self.unit.Controller.Move = function() error('stop-denied') end
+    lu.assertFalse(self.mgr:Custom(self.fish))
+    lu.assertFalse(self.mgr:Custom(self.fish))
+    lu.assertFalse(self.mgr:Chase(self.fish, self.runtime.newUnit(5303), 3, 1, 30))
+end
+
+function TestAiMigration:test_chase_parameter_changes_take_effect_on_same_target()
+    local target = self.runtime.newUnit(5303)
+    target.Position = self.runtime.Vector(10,0,0)
+    self.mgr:Chase(self.fish,target,3,1,30)
+    self.runtime.task:pump(0.1)
+    self.mgr:Chase(self.fish,target,3,15,30)
+    self.runtime.task:pump(0.1)
+    lu.assertEquals(self.runtime.vecLen(self.unit.Controller.moves[#self.unit.Controller.moves]),0)
+    self.mgr:Chase(self.fish,target,3,1,30)
+    self.runtime.task:pump(0.1)
+    self.mgr:Chase(self.fish,target,3,1,5)
+    self.runtime.task:pump(0.1)
+    lu.assertEquals(self.runtime.vecLen(self.unit.Controller.moves[#self.unit.Controller.moves]),0)
+end
+
 function TestAiMigration:test_existing_skill_slot_counts_only_confirmed_cast_and_disconnects()
     local connected, handler, calls = false, nil, 0
     self.mgr.AbilityAPI = {
