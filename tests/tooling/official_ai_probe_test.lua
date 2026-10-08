@@ -5,6 +5,18 @@ local GameCfg = require('common.GameCfg')
 
 TestOfficialAiProbe = {}
 
+function TestOfficialAiProbe:test_disconnected_signal_does_not_fire_after_cleanup()
+    local Runtime = require('tests.tooling.official_ai_vendor_runtime')
+    local _, env = Runtime.loadAi()
+    local unit, calls = env.newUnit(91), 0
+    local conn = unit.Destroying:Connect(function() calls = calls + 1 end)
+    unit.Destroying:Fire()
+    conn:Disconnect()
+    conn:Disconnect()
+    unit.Destroying:Fire()
+    lu.assertEquals(calls, 1)
+end
+
 function TestOfficialAiProbe:test_vendor_move_direction_stop_and_resume_boundaries()
     local Runtime = require('tests.tooling.official_ai_vendor_runtime')
     local ai, env = Runtime.loadAi()
@@ -24,6 +36,19 @@ function TestOfficialAiProbe:test_vendor_move_direction_stop_and_resume_boundari
     ai.SearchEnemy(unit, 3, 0, {}, {}, 1, ai.Configs.CMD_JUMP)
     env.task:pump(1.1)
     lu.assertTrue(unit.Controller.jumps >= 1)
+end
+
+function TestOfficialAiProbe:test_finished_vendor_move_disconnects_collision_callback()
+    local ai, env = require('tests.tooling.official_ai_vendor_runtime').loadAi()
+    local unit = env.newUnit(19)
+    ai.MoveDirection(unit, env.Vector(1, 0, 0), 0.2, 1)
+    env.task:pump(0.1)
+    unit.Controller.OnCollisionEnter:Fire()
+    lu.assertEquals(unit.Controller.jumps, 1)
+    env.task:pump(0.7)
+    unit.Controller.OnCollisionEnter:Fire()
+    lu.assertEquals(unit.Controller.jumps, 1, '完成后的碰撞连接应已断开')
+    unit:Destroy()
 end
 
 function TestOfficialAiProbe:test_reserved_priority_and_move_threshold_are_inert()
@@ -86,12 +111,35 @@ function TestOfficialAiProbe:test_ability_bridge_reaches_real_ability_api_bounda
     lu.assertNil(env.lastAdded, '已有技能不重复添加')
     lu.assertNotNil(env.lastCast)
     lu.assertEquals(env.lastCast.slot, 2)
+    local target = env.newUnit(3, env.Vector(4, 0, 0))
+    env.players.list = { { Character = target } }
+    env.lastCast = nil
+    local report = Probe.Run({ ai = ai, isolated = true, evidence = 'offline',
+        isIsolated = function(u) return u == unit or u == target end,
+        createUnit = function() return unit end, destroyUnit = function(u) u:Destroy() end,
+        target = target, players = function() return env.players.list end,
+        now = function() return env.time.value end, wait = function(s) env.task:pump(s) end,
+        vector = env.Vector, abilityKey = 'probe-ability',
+        observe = function(u)
+            local last = u.Controller.moves[#u.Controller.moves]
+            return { moving = env.vecLen(last) > 0, stopped = env.vecLen(last) == 0,
+                jumps = u.Controller.jumps, castObserved = env.lastCast ~= nil }
+        end,
+    })
+    lu.assertTrue(report.ok, table.concat(report.errors, '; '))
+    lu.assertEquals(env.lastCast.target, target.UnitId)
+    local found = false
+    for _, evidence in ipairs(report.evidence) do
+        if evidence.name == '技能指令' then found = evidence.passed end
+    end
+    lu.assertTrue(found)
 end
 
 function TestOfficialAiProbe:test_run_requires_isolated_units_and_explicit_cleanup()
     local context = {
         logger = function() end,
-        ai = {},
+        ai = {}, isolated = true, isIsolated = function() return true end,
+        evidence = 'offline', wait = function() end, vector = function() return {} end,
         createUnit = function() return { UnitId = 1 } end,
         destroyUnit = function() error('模拟清理失败') end,
         players = function() return {} end,
@@ -103,7 +151,9 @@ end
 
 function TestOfficialAiProbe:test_handoff_rejects_old_writers_and_duplicate_hits()
     local stopped, writes, damage = 0, 0, 0
-    local ai = { StopAI = function() stopped = stopped + 1 end }
+    local starts = 0
+    local ai = { StopAI = function() stopped = stopped + 1 end,
+        StartAI = function() starts = starts + 1 end }
     local gate = Probe.newHandoff(ai, {}, function() writes = writes + 1 end,
         function() damage = damage + 1 end, function() end)
     local old = gate:Switch('official')
@@ -112,9 +162,64 @@ function TestOfficialAiProbe:test_handoff_rejects_old_writers_and_duplicate_hits
     lu.assertTrue(gate:Write(active, {}))
     lu.assertTrue(gate:Hit(active, 'dive:1:player7', 30))
     lu.assertFalse(gate:Hit(active, 'dive:1:player7', 30))
-    gate:Switch('controlled')
+    local controlled = gate:Switch('controlled')
     lu.assertFalse(gate:Write(active, {}))
-    lu.assertEquals({ stopped, writes, damage }, { 3, 1, 1 })
+    lu.assertFalse(gate:Hit(controlled, 'controlled:hit', 30))
+    local restored = gate:Switch('official')
+    lu.assertTrue(gate:Hit(restored, 'dive:1:player7', 30), '新代次允许新的同名攻击')
+    lu.assertFalse(gate:IsActive({ generation = restored.generation, mode = 'official' }), '伪造同代次 token 不得获得所有权')
+    lu.assertEquals({ stopped, starts, writes, damage }, { 4, 2, 1, 2 })
+end
+
+function TestOfficialAiProbe:test_run_collects_public_vendor_observations_and_marks_missing_engine_evidence()
+    local ai, env = require('tests.tooling.official_ai_vendor_runtime').loadAi()
+    local unit, target = env.newUnit(41), env.newUnit(42, env.Vector(4, 0, 0))
+    env.players.list = { { Character = target } }
+    local context = {
+        ai = ai, isolated = true, evidence = 'offline',
+        isIsolated = function(u) return u == unit or u == target end,
+        createUnit = function() return unit end, destroyUnit = function(u) u:Destroy() end,
+        target = target, players = function() return env.players.list end,
+        now = function() return env.time.value end, wait = function(s) env.task:pump(s) end,
+        vector = env.Vector, logger = function() end,
+        observe = function(u)
+            local last = u.Controller.moves[#u.Controller.moves]
+            return { moving = env.vecLen(last) > 0, stopped = env.vecLen(last) == 0,
+                jumps = u.Controller.jumps }
+        end,
+    }
+    local report = Probe.Run(context)
+    lu.assertTrue(report.ok, table.concat(report.errors, '; '))
+    lu.assertTrue(report.cleaned)
+    lu.assertTrue(#report.evidence >= 7)
+    lu.assertTrue(#report.missing >= 2, 'Nav和技能未配置必须缺证')
+    lu.assertTrue(unit.destroyed)
+end
+
+function TestOfficialAiProbe:test_real_vendor_handoff_restores_new_commands_and_cancels_old_mode()
+    local ai, env = require('tests.tooling.official_ai_vendor_runtime').loadAi()
+    local unit = env.newUnit(31)
+    local gate = Probe.newHandoff(ai, unit, function(p) unit:SetPosition(p) end, function() end, function() end)
+    local official = gate:Switch('official')
+    ai.MoveDirection(unit, env.Vector(1, 0, 0), 0, 0)
+    env.task:pump(0.1)
+    local custom = gate:Switch('custom')
+    lu.assertEquals(env.vecLen(unit.Controller.moves[#unit.Controller.moves]), 0)
+    local count = #unit.Controller.moves
+    env.task:pump(0.5)
+    lu.assertEquals(#unit.Controller.moves, count, '旧移动任务必须取消')
+    lu.assertFalse(gate:Write(official, env.Vector()))
+    lu.assertTrue(gate:Write(custom, env.Vector(0, 5, 0)))
+    gate:Switch('controlled')
+    lu.assertFalse(gate:Hit(custom, 'hit', 20))
+    gate:Switch('official')
+    ai.MoveDirection(unit, env.Vector(0, 0, 1), 0.2, 0)
+    env.task:pump(0.1)
+    lu.assertEquals(unit.Controller.moves[#unit.Controller.moves].z, 1)
+    unit:Destroy()
+    count = #unit.Controller.moves
+    env.task:pump(1)
+    lu.assertEquals(#unit.Controller.moves, count, '销毁后任务不能继续写控制器')
 end
 
 function TestOfficialAiProbe:test_all_species_are_mapped_without_a_fixed_limit()

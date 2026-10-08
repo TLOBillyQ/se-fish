@@ -60,11 +60,13 @@ function Probe.Run(context)
     assert(context.Isolated == true, 'attr_rule_probe 只接受显式隔离环境')
     local api = assert(context.AttrAPI, 'attr_rule_probe 需要公开根 AttrAPI')
     local target, buffUnit = context.Target, nil
+    local bounds = { Verified = 0, Missing = {} }
+    local businessClampVerified = false
+    local errors = {}
     local function log(step, status, detail)
         local ok, err = pcall(context.Log, string.format('[attr_probe] %s %s %s', step, status, tostring(detail or '')))
-        if not ok then print('[attr_rule_probe] 日志回调失败: ' .. tostring(err)) end
+        if not ok then errors[#errors + 1] = '日志回调失败 [' .. step .. ']: ' .. tostring(err) end
     end
-    local errors = {}
     local function fail(reason) errors[#errors + 1] = reason end
     local function assertTrue(value, reason)
         if not value then error(reason, 2) end
@@ -92,6 +94,47 @@ function Probe.Run(context)
             'WalkSpeed 未同步 Controller；若是真实单位须记录 vendor 仅打印不返回错误')
         log('controller', 'ok', 'WalkSpeed 是 vendor 内置 Controller 映射')
 
+        -- 只读取实际全局配置，不临时修改 vendor 配置来制造上下限证据。
+        for key, config in pairs(api.GetAllAttrConfigs()) do
+            if type(config.Min) == 'number' or type(config.Max) == 'number' then
+                local saved = {}
+                for _, component in ipairs({ c.Base, c.BaseExtra, c.Ratio, c.Bonus }) do
+                    saved[component] = api.GetAttrComponent(target, key, component)
+                    assertTrue(api.SetAttrComponent(target, key, component, 0), '清空分量失败')
+                end
+                for _, edge in ipairs({ 'Min', 'Max' }) do
+                    local limit = config[edge]
+                    if type(limit) == 'number' then
+                        local overflow = limit + (edge == 'Min' and -100 or 100)
+                        assertTrue(api.SetAttrComponent(target, key, c.Base, overflow), '越界写入失败')
+                        assertTrue(nearly(api.GetAttr(target, key), limit), key .. '.' .. edge .. ' 钳制错误')
+                        log('bounds', 'ok', key .. '.' .. edge .. '=' .. tostring(limit))
+                    end
+                end
+                for component, value in pairs(saved) do api.SetAttrComponent(target, key, component, value) end
+                bounds.Verified = bounds.Verified + 1
+            end
+        end
+        if bounds.Verified == 0 then
+            bounds.Missing[1] = '实际地图无带 Min/Max 的属性配置，vendor 上下限缺证'
+            log('bounds', 'missing', bounds.Missing[1])
+        end
+        -- 饥饿无 Controller 映射：先让真实包完成公式，再按业务上限钳制。
+        -- (400+100)*0.5+10=260；提前夹 Base 为300则为210，断言能区分顺序。
+        assertTrue(api.GetAttrConfig('Hunger') == nil, 'Hunger 已有配置，需要按实际配置重新核对业务接缝')
+        for _, row in ipairs({ { c.Base, 400 }, { c.BaseExtra, 100 }, { c.Ratio, -0.5 }, { c.Bonus, 10 } }) do
+            assertTrue(api.SetAttrComponent(target, 'Hunger', row[1], row[2]), '业务顺序分量写入失败')
+        end
+        local raw = api.GetAttr(target, 'Hunger')
+        assertTrue(nearly(raw, 260) and Probe.Map({ hunger = raw }).Hunger.Value == 260, '业务钳制先后顺序错误')
+        api.SetAttrComponent(target, 'Hunger', c.Bonus, 100)
+        assertTrue(Probe.Map({ hunger = api.GetAttr(target, 'Hunger') }).Hunger.Value == GameCfg.Vitals.MaxHunger,
+            '业务 Max 钳制错误')
+        api.SetAttrComponent(target, 'Hunger', c.Base, -1000)
+        assertTrue(Probe.Map({ hunger = api.GetAttr(target, 'Hunger') }).Hunger.Value == 0, '业务 Min 钳制错误')
+        businessClampVerified = true
+        log('business-clamp', 'ok', '先公式260，再钳制0/300；不提前夹分量')
+
         assertTrue(api.SetAttrComponent(target, 'WeaponDamageScale', c.Base, 1), '武器基础倍率写入失败')
         local buffId, buffErr = api.AddAttrBuff(target, {
             { AttrKey = 'WalkSpeed', AttrComponentType = c.BaseExtra, Value = 10 },
@@ -112,9 +155,17 @@ function Probe.Run(context)
         local created = assert(context.CreateBuffUnits(), '隔离 Buff 单位创建失败')
         buffUnit = created[1]
         buffUnit.Parent = target -- 加成单位按包约定挂在隔离目标下，与 AttrUnit 并列
-        assertTrue(api.InitAttrBuffUnit(buffUnit, { AttrBuffConfigs = {
-            { AttrKey = 'MaxHealth', AttrComponentType = c.Bonus, Value = 30 },
-        } }), 'Buff 单位初始化失败')
+        -- 引擎默认 MaxHealth=100；样例显式以公开 API 建立300基线。
+        assertTrue(api.SetAttrComponent(target, 'MaxHealth', c.Base, 300), 'MaxHealth 基线写入失败')
+        assertTrue(nearly(api.GetAttr(target, 'MaxHealth'), 300), 'MaxHealth 基线前置不满足')
+        -- 真实预设可能已用空表初始化；Init 对已初始化实例不会覆盖配置。
+        -- 只设置本轮隔离 Buff 实例属性，不修改预设或 vendor。
+        local buffConfigs = { { AttrKey = 'MaxHealth', AttrComponentType = c.Bonus, Value = 30 } }
+        buffUnit:SetAttribute('AttrBuffConfigs', buffConfigs)
+        assertTrue(api.InitAttrBuffUnit(buffUnit, { AttrBuffConfigs = buffConfigs }), 'Buff 单位初始化失败')
+        local actualConfigs = buffUnit:GetAttribute('AttrBuffConfigs')
+        assertTrue(actualConfigs and #actualConfigs == 1 and actualConfigs[1].Value == 30, '隔离 Buff 实例配置未生效')
+        log('buff-precondition', 'ok', '显式300基线与隔离实例Bonus=30；Init不覆盖已初始化配置')
         assertTrue(api.SetAttrBuffTargetUnit(buffUnit, target), 'Buff 单位挂接失败')
         assertTrue(api.GetAttrBuffTargetUnit(buffUnit) == target, 'Buff 目标读回错误')
         assertTrue(api.GetAttrBuffUnit(target) == buffUnit, 'Buff 单位查找错误')
@@ -141,7 +192,8 @@ function Probe.Run(context)
     end
     log('cleanup', #cleanupErrors == 0 and 'ok' or 'error', #cleanupErrors == 0 and '隔离对象已销毁' or table.concat(cleanupErrors, '; '))
     return { Ok = ok and #errors == 0, Error = #errors > 0 and table.concat(errors, '; ') or nil,
-        Cleaned = #cleanupErrors == 0, Evidence = context.Evidence or 'runtime' }
+        Cleaned = #cleanupErrors == 0, Evidence = context.Evidence or 'runtime',
+        Bounds = bounds, BusinessClampVerified = businessClampVerified }
 end
 
 return Probe

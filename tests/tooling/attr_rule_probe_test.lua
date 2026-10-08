@@ -9,7 +9,7 @@ local function fixture(options)
     local all, logs, cache = {}, {}, {}
     local world = {}
     local function unit(kind, parent, prefab)
-        local u = { Parent = parent, Controller = kind == 'Target' and { WalkSpeed = 7, MaxHealth = 300 } or nil }
+        local u = { Parent = parent, Controller = kind == 'Target' and { WalkSpeed = 7, MaxHealth = 100 } or nil }
         local attrs = {}
         function u:GetAttribute(key) return attrs[key] end
         function u:SetAttribute(key, value) attrs[key] = value end
@@ -32,13 +32,20 @@ local function fixture(options)
     end
     function world:CreateAsset(key)
         if options.missing then return nil end
-        return { unit('Script', world, key:find('u801ef') and 'AttrUnit' or 'AttrBuffUnit') }
+        local created = unit('Script', world, key:find('u801ef') and 'AttrUnit' or 'AttrBuffUnit')
+        if not key:find('u801ef') then created:SetAttribute('AttrBuffConfigs', {}) end
+        return { created }
     end
     local env = setmetatable({ game = { GetService = function() return world end } }, { __index = _G })
     env.require = function(name)
         if cache[name] ~= nil then return cache[name] end
         cache[name] = assert(loadfile(name:gsub('%.', '/') .. '.lua', 't', env))()
         return cache[name]
+    end
+    if options.bounds then
+        cache['common.packages.attr_rule.editor'] = {
+            { AttrKey = 'ProbeBound', Default = 20, Min = 10, Max = 50 },
+        }
     end
     local api = env.require('server.AttrAPI')
     local target = unit('Target', world)
@@ -60,6 +67,22 @@ function TestAttrRuleProbe:test_real_vendor_probe_can_repeat_with_complete_clean
         lu.assertTrue(report.Cleaned)
         lu.assertTrue(#logs > 8)
         for _, u in ipairs(all) do lu.assertTrue(u.destroyed) end
+    end
+end
+
+function TestAttrRuleProbe:test_log_failure_reports_failure_and_keeps_cleanup()
+    for _, failAt in ipairs({ 1, 9 }) do
+        local context, _, all = fixture()
+        local calls = 0
+        context.Log = function()
+            calls = calls + 1
+            if calls >= failAt then error('取证日志不可用') end
+        end
+        local report = Probe.Run(context)
+        lu.assertFalse(report.Ok)
+        lu.assertStrContains(report.Error, '日志回调失败')
+        lu.assertTrue(report.Cleaned)
+        for _, unit in ipairs(all) do lu.assertTrue(unit.destroyed) end
     end
 end
 
@@ -87,6 +110,14 @@ function TestAttrRuleProbe:test_dirty_isolated_target_is_rejected()
     lu.assertFalse(report.Ok)
     lu.assertStrContains(report.Error, '拒绝污染')
     lu.assertTrue(report.Cleaned)
+end
+
+function TestAttrRuleProbe:test_actual_config_bounds_and_business_final_clamp()
+    local context = fixture({ bounds = true })
+    local report = Probe.Run(context)
+    lu.assertTrue(report.Ok, report.Error)
+    lu.assertEquals(report.Bounds.Verified, 1)
+    lu.assertTrue(report.BusinessClampVerified)
 end
 
 function TestAttrRuleProbe:test_mapping_keeps_existing_growth_and_multiplicative_speed()

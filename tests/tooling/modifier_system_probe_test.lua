@@ -6,6 +6,10 @@ function TestModifierProbe:test_mapping_preserves_refresh_only_and_legacy_remain
     local cfg = require('common.GameCfg')
     local mappings = probe.BuildMappings(cfg)
     lu.assertEquals(mappings.poison.maxStackCount, 5)
+    lu.assertEquals(mappings.poison.TickSec, cfg.Ability.StatusEffects.poison.TickSec)
+    lu.assertEquals(mappings.poison.DamagePerStack, cfg.Ability.StatusEffects.poison.DamagePerStack)
+    lu.assertEquals(mappings.poison.DotOwner, '业务调度器 → MgrVitals:NewHit/ApplyHit')
+    lu.assertEquals(mappings.poison.SourcePolicy, '末次命中来源；独立于vendor首来源')
     lu.assertEquals(mappings.burn.duration, 3)
     lu.assertEquals(mappings.frost.stackCountMode, 0)
     lu.assertTrue(mappings.frost.stackable)
@@ -125,6 +129,43 @@ function TestModifierProbe:test_real_vendor_public_api_reruns_and_cleans_isolate
     end
     for name, value in pairs(saved) do package.loaded[name] = value end
     if not ok then error(err) end
+end
+
+function TestModifierProbe:test_business_dot_uses_real_manager_phase_final_tick_and_latest_source()
+    local clock, hits = 100, {}
+    local env = setmetatable({ game = { GetService = function(_, name)
+        if name == 'World' then return { GetServerTime = function() return clock end } end
+        if name == 'Players' then return { GetPlayerFromCharacter = function() end } end
+        return {}
+    end } }, { __index = _G })
+    env.require = function(name)
+        if name == 'server.AbilityAPI' then return {} end
+        return require(name)
+    end
+    local mgr = assert(loadfile('server/Mgr/MgrAbility.lua', 't', env))()
+    local target = { UserId = 49001, Character = { Controller = {} } }
+    mgr.Vitals = {
+        NewHit = function(_, source, category) return { source = source, category = category } end,
+        ApplyHit = function(_, hit, ref, amount)
+            hits[#hits + 1] = { source = hit.source, category = hit.category, target = ref, amount = amount, at = clock }
+        end,
+    }
+    local source, source2 = {}, {}
+    local report = require('tools.probes.modifier_system_probe').VerifyBusinessDot({
+        cfg = require('common.GameCfg'), source = source, source2 = source2, dotTarget = target,
+        now = function() return clock end,
+        wait = function(s) clock = clock + s; mgr:UpdateEffects() end,
+        businessDot = {
+            apply = function(src, ref, kind) return mgr:ApplyWeaponEffect(src, ref, { Kind = kind }) end,
+            hits = function() return hits end,
+            clear = function() mgr.Effects = {} end,
+        },
+    })
+    lu.assertEquals(report.owner, 'business')
+    lu.assertTrue(report.ok)
+    lu.assertEquals(report.kinds.poison.count, 3)
+    lu.assertEquals(report.kinds.burn.count, 3)
+    lu.assertEquals(next(mgr.Effects), nil)
 end
 
 function TestModifierProbe:test_run_rejects_unowned_targets_without_api_calls()
