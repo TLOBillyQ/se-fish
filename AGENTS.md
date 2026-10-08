@@ -8,7 +8,7 @@
 - **玩法与术语**：玩法与系统设计以 `design` 为准（指向仓库外 `eggitor/1_开发中/渔力全开` 的符号链接）；起名、读设计案或写玩家可见文案前查 `CONTEXT.md`。
 - **技术方案**：先读 `docs/技术难点识别.md`；涉及策划矛盾时读 `docs/to-questionnaire-策划案内部矛盾.md`。
 - **编码与审查**：编写或审查 SE 业务 Lua 前，读 `CODING_STANDARDS.md`；测试与收尾按下文执行。
-- **技能包接入**：使用 `ability_system`、修改业务接缝或创建编辑器侧预设前，读 `docs/ability_system-vendor.md`。
+- **官方包接入**：使用 vendor 的官方包（`ability_system`、`attr_rule`、`modifier_system`、`official_ai_feature`）、修改业务接缝或创建编辑器侧预设前，读 `docs/packages-vendor.md`。
 - **Issue**：读写前看 `docs/agents/issue-tracker.md`；打 triage 标签前看 `docs/agents/triage-labels.md`。本项目使用 Gitea `lzxsvn:3000` 的 `qinyuanj/se-fish`，通过 `tea` 操作。
 
 ## 修改边界
