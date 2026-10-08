@@ -35,15 +35,17 @@ AbilityAPIBase.CLIENT_API = {
 	"StartClientLifecycle",
 }
 
--- 按名单把包内 API 装成聚合入口。
+-- 按名单把包内 API 装成聚合入口。label 缺省按技能包报错；其他官方包的聚合入口
+-- （AttrAPIBase 等）复用本函数时传自己的标签。
 -- 缺名直接 error：接缝漂移要在加载时就炸出来，而不是等业务侧某次调用拿到 nil——
 -- 运行时 require 失败只进日志并返回 nil，静默降级会让问题晚很久才被发现。
-function AbilityAPIBase.build(impl, names)
+function AbilityAPIBase.build(impl, names, label)
+	local prefix = label or "[AbilityAPI] 技能包"
 	local api = {}
 	for _, name in ipairs(names) do
 		local impl_fn = impl and impl[name]
 		if type(impl_fn) ~= "function" then
-			error("[AbilityAPI] 技能包缺少接口: " .. tostring(name), 2)
+			error(prefix .. "缺少接口: " .. tostring(name), 2)
 		end
 		api[name] = function(...)
 			return impl_fn(...)

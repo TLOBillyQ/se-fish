@@ -35,6 +35,10 @@ local MgrMap = {
     MgrGrill = require("server.Mgr.MgrGrill"),
     MgrPlatform = require("server.Mgr.MgrPlatform"),
     MgrBlindbox = require("server.Mgr.MgrBlindbox"),
+    -- #153 官方包接入骨架：属性 / 效果 / 生物AI 的装配点，当前仅 Start 占位，玩法接线另开任务。
+    MgrAttr = require("server.Mgr.MgrAttr"),
+    MgrModifier = require("server.Mgr.MgrModifier"),
+    MgrAi = require("server.Mgr.MgrAi"),
 }
 
 MgrMap.MgrCast.ReelIn = MgrMap.MgrReelIn
