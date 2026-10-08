@@ -86,4 +86,11 @@ function M.Derive(scale, base)
     return derived
 end
 
+-- 客户端表现与服务端复验共用派生范围；容差由调用方按原规格另外加。
+function M.InteractionRadius(character, baseRadius)
+    if not character or not character.GetAttribute then return baseRadius end
+    local range = character:GetAttribute('InteractRange')
+    if isBadNumber(range) or range <= 0 or cfg().InteractRange <= 0 then return baseRadius end
+    return baseRadius * M.Sanitize(range / cfg().InteractRange)
+end
 return M

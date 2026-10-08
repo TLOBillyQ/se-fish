@@ -16,6 +16,7 @@
 --     settled 形按原倍率发还，满格则留在存档里等腾格（不丢、不复制、倍率保持）。
 -- 两玩家会话按 UserId 隔离：取出只认本会话，客户端传不来物品身份，取不到别人的烤鱼。
 local GameCfg = require('common.GameCfg')
+local BodyScale = require('common.BodyScale')
 local GrillCurve = require('common.GrillCurve')
 
 local Mgr = { Sessions = {}, Anchors = {} }
@@ -66,7 +67,7 @@ function Mgr:InRange(player)
     for _, point in ipairs(cfg().Points) do
         local anchor = self:FindAnchor(point.AnchorName)
         local center = anchor and anchor.Position
-        if center and flatDistance(pos, center) <= cfg().Radius + cfg().Slack then
+        if center and flatDistance(pos, center) <= BodyScale.InteractionRadius(character, cfg().Radius) + cfg().Slack then
             return point.AnchorName, anchor
         end
     end

@@ -6,6 +6,7 @@
 -- 放在 ScreenHandlers 下（#89 端别约定），但不是 MgrGameUI 屏幕：随 client/main.lua 直接 Start，
 -- 与 ScreenGM 的用法同款。
 local GameCfg = require('common.GameCfg')
+local BodyScale = require('common.BodyScale')
 local REUtil = require('common.REUtil')
 local Util = require('common.Util')
 
@@ -67,7 +68,8 @@ function ScreenFerry:UpdateLegs()
         local visible = false
         if pos then
             local dx, dz = pos.x - leg.Center.x, pos.z - leg.Center.z
-            visible = dx * dx + dz * dz <= leg.Radius * leg.Radius
+            local radius = BodyScale.InteractionRadius(character, leg.Radius)
+            visible = dx * dx + dz * dz <= radius * radius
         end
         if leg.Visible ~= visible then
             leg.Visible = visible

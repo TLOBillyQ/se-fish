@@ -16,6 +16,7 @@
 -- 不成立（#124 遗留边界）；CommitDrop 若发现实例已失（件已扣），把物品按原属性退回库存（补偿只做一次）。
 -- 盲盒满格溢出一类「不经先扣后落」的来源复用 SpawnItem 直接落地。
 local GameCfg = require('common.GameCfg')
+local BodyScale = require('common.BodyScale')
 local MathWaterJudge = require('common.MathWaterJudge')
 local MgrFishCarrier = require('server.Mgr.MgrFishCarrier')
 
@@ -467,7 +468,7 @@ function Mgr:Pickup(player, id)
     local character = player and player.Character
     local pos = character and character.Position
     if not data or not pos then return false end
-    if distance(pos, loot.Position) > cfg().PickupRadius + cfg().PickupSlack then return false end
+    if distance(pos, loot.Position) > BodyScale.InteractionRadius(character, cfg().PickupRadius) + cfg().PickupSlack then return false end
     -- 唯一领取者：先摘记录再发放，重放 / 抢拾都拿不到第二份；发放失败放回，留给下一位
     self.Loots[id] = nil
     if loot.Kind == 'bait' then return self:GiveBait(player, data, loot) end
