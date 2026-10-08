@@ -207,6 +207,50 @@ local function business(run)
     if not ok then error(err, 0) end
 end
 
+-- 失败方式：角色空窗镜像丢Carry；退出重进扣离线时长；重建双计时。
+function TestModifierProbe:test_character_gap_mirrors_weak_and_leave_rejoin_preserves_online_remaining()
+    business(function(e, mgr, player)
+        local mark = {}
+        local env = setmetatable({ game = e.game, require = function(name)
+            if name == 'common.REUtil' then return { GetRE = function() return { FireClient = function() end } end } end
+            return require(name)
+        end }, { __index = _G })
+        local survival = assert(loadfile('server/Mgr/MgrSurvival.lua', 't', env))()
+        survival.Modifier = mgr
+        survival.PlayerData = { GetDataInst = function() return { Extra = { survival = mark } } end }
+        survival:OnPlayerAdded(player)
+        lu.assertTrue(survival:ApplyWeak(survival:GetState(player), 40))
+        e.wait(10)
+        mgr:OnCharacterRemoving(player)
+        player.Character:Destroy()
+        player.Character = nil
+        survival:Update()
+        lu.assertEquals(mark.weakRemaining, 30)
+        e.wait(20)
+        survival:Update()
+        survival:BeforeLeave(player)
+        lu.assertEquals(mark.weakRemaining, 30)
+        survival:OnPlayerRemoving(player)
+        mgr:OnPlayerRemoving(player)
+        lu.assertEquals(mgr:GetRemaining(player, 'weak'), 0)
+        e.wait(100)
+        player.Character = e.unit('rejoined-character')
+        mgr:OnPlayerAdded(player)
+        survival:OnPlayerAdded(player)
+        lu.assertEquals(mgr:GetRemaining(player, 'weak'), 30)
+        e.wait(5)
+        mgr:OnCharacterRemoving(player)
+        player.Character:Destroy()
+        player.Character = e.unit('rebuilt-character')
+        mgr:OnCharacterAdded(player)
+        lu.assertEquals(mgr:GetRemaining(player, 'weak'), 25)
+        e.wait(25)
+        survival:Update()
+        lu.assertEquals(mgr:GetRemaining(player, 'weak'), 0)
+        lu.assertEquals(mark.weakRemaining, 0)
+    end)
+end
+
 function TestModifierProbe:test_character_removal_snapshots_weak_before_old_owner_destruction()
     business(function(e, mgr, player)
         lu.assertTrue(mgr:Apply(nil, player, 'weak', 17))

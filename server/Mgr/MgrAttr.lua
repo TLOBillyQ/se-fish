@@ -145,7 +145,15 @@ function Mgr:Update()
     for _, state in pairs(self.States) do
         if state.pending then
             local ok, result = pcall(self.ApplyGrowth, self, state.player)
-            if ok and result.Ok then state.pending = nil end
+            if ok and type(result) == 'table' and result.Ok then
+                state.pending, state.lastError = nil, nil
+            else
+                local reason = tostring(ok and type(result) == 'table' and result.Error or result)
+                if state.lastError ~= reason then
+                    print('[MgrAttr] 属性重试失败', state.player.UserId, reason)
+                    state.lastError = reason
+                end
+            end
         end
     end
 end

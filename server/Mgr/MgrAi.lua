@@ -11,6 +11,7 @@ end
 function Mgr:Custom(fish)
     local state = self:State(fish)
     local carrier = fish.Carrier
+    if state.Failed then return false end
     if state.Mode or not state.Initialized then
         local ok, err = pcall(function()
             self.AiAPI.StopAI(carrier.Receiver)
@@ -52,7 +53,9 @@ function Mgr:Command(fish, mode, target, direction, speed, distance, range)
         state.Failed = true
         return false
     end
-    if state.Mode == mode and state.Target == target and state.Direction == direction and state.Speed == speed then return true end
+    if state.Mode == mode and state.Target == target and state.Direction == direction
+        and state.Speed == speed and state.Distance == distance and state.Range == range
+        and self.AiAPI.HasActiveMove(unit) then return true end
     if not self:Custom(fish) then return false end
     local ok, err = pcall(function()
         local p, offset = carrier.Body.Position, carrier.ReceiverOffset
@@ -72,6 +75,7 @@ function Mgr:Command(fish, mode, target, direction, speed, distance, range)
         return false
     end
     state.Mode, state.Target, state.Direction, state.Speed = mode, target, direction, speed
+    state.Distance, state.Range = distance, range
     carrier.AiOwnsMovement = true
     return true
 end

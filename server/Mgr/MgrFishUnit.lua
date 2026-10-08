@@ -695,7 +695,7 @@ end
 -- 真实伤害区不是前向扇形时必须整圆覆盖（#141 鲸跃 / #142 虎啸径向、甩尾身后半圆），
 -- 宁可前向超警（安全方向）不得欠警真实危险区。
 function Mgr:StartMove(fish, name, pos, target, tpos, now, duration, range, shape)
-    if self.Ai then self.Ai:Custom(fish) end
+    if self.Ai and not self.Ai:Custom(fish) then return false end
     fish.OfficialRollFrom, fish.RollFrom = nil, nil
     self:EndMove(fish, 'replace')
     local fx, fz
@@ -714,6 +714,7 @@ function Mgr:StartMove(fish, name, pos, target, tpos, now, duration, range, shap
     fish.MoveName = name
     self:PublishCombat(fish)
     print('[MgrFishUnit] 招式预警', fish.FishId, name, 'fish=' .. tostring(fish.Id))
+    return true
 end
 
 function Mgr:StunFish(fish, now, params)
@@ -745,7 +746,7 @@ function Mgr:UpdateShrimpCombat(fish, now, pos, params, combat)
     if combat == 'dragon' and now >= fish.SpecialAt and (not move or move.Name == 'peck') then
         -- 正常帧按首次放下的30秒节拍；大dt不补发多周期，当前周期仍完整执行两招。
         fish.SpecialAt = now + params.SpecialSec
-        self:StartMove(fish, 'rain', pos, nil, nil, now, params.RainSec, params.RainRadius)
+        if not self:StartMove(fish, 'rain', pos, nil, nil, now, params.RainSec, params.RainRadius) then return end
         fish.Move.LastTick = 0
         move = fish.Move
     end
@@ -1198,9 +1199,9 @@ function Mgr:UpdateWalrusCombat(fish, now, pos, params)
         -- #142 双轴审查 P2：预警半径必须覆盖真实危险区（20 米冲锋走廊），
         -- 不能只给接触距离 2.5 米（欠警）。前向扇形随锁头朝向覆盖走廊，
         -- 走廊两侧之外属横向超警（安全方向）。
-        self:StartMove(fish, 'charge', pos, target, tp, now,
+        if not self:StartMove(fish, 'charge', pos, target, tp, now,
             params.ChargeWindupSec + params.ChargeDistance / params.ChargeSpeed,
-            params.ChargeDistance)
+            params.ChargeDistance) then return end
         fish.Move.WindupAt = now + params.ChargeWindupSec
         fish.Move.Hits = {}
         return
