@@ -5,6 +5,7 @@
 -- 喂食成功的吃动作是客户端缩放脉冲：对 ModelName 模型按 Heartbeat 帧数播 1→放大→还原，
 -- 仅喂食者本机可见；模型缺失或写 Scale 失败只记日志，不影响文字泡与结算。
 local GameCfg = require('common.GameCfg')
+local BodyScale = require('common.BodyScale')
 local REUtil = require('common.REUtil')
 local Util = require('common.Util')
 
@@ -83,7 +84,7 @@ function LocalInteract:Update()
     self:UpdatePulse()
     local character = Players.LocalPlayer and Players.LocalPlayer.Character
     local pos = character and character.Position
-    local radius = GameCfg.Interact.Fisherman.Radius
+    local radius = BodyScale.InteractionRadius(character, GameCfg.Interact.Fisherman.Radius)
     for _, bubble in ipairs(self.Bubbles) do
         local visible = false
         if pos then

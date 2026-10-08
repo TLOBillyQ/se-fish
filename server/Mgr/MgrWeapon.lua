@@ -130,7 +130,7 @@ function Mgr:AttackMelee(player, weaponId, data)
     if now - (state.meleeAt[key] or 0) < mcfg.IntervalSec then
         return self:Fail(player, 'attack', 'cooldown', { weapon = weaponId })
     end
-    local scale = weaponId and data and data.WeaponDamageScale and data:WeaponDamageScale('melee') or 1
+    local scale = weaponId and self.Attr:WeaponDamageScale(player, 'melee') or 1
     local damage = mcfg.Damage * scale
     state.meleeAt[key] = now
     -- #139：近战大奖的特效（毒/灼烧）随挥砍登记传给 melee_hit，命中成功后才应用
@@ -165,7 +165,7 @@ function Mgr:AttackGun(player, weaponId, gcfg, data)
     local state = self:GetState(player.UserId)
     -- #130：弹容强化向上取整（PlayerData:MagazineSize），0 级即基础值
     local magazine = data and data.MagazineSize and data:MagazineSize(gcfg.Magazine) or gcfg.Magazine
-    local scale = data and data.WeaponDamageScale and data:WeaponDamageScale('ranged') or 1
+    local scale = self.Attr:WeaponDamageScale(player, 'ranged')
     local mag = self:MagState(state, weaponId, magazine)
     self:RefreshMag(mag, magazine, now)
     if mag.reloadUntil then
@@ -410,7 +410,7 @@ function Mgr:Detonate(player, itemId, landing, zone)
     if not ecfg or not landing then return 0 end
     -- #130：爆炸物强化按基础线性叠加（投掷爆炸结算唯一消费点）
     local data = self.PlayerData and self.PlayerData:GetDataInst(player)
-    local scale = data and data.WeaponDamageScale and data:WeaponDamageScale('explosive') or 1
+    local scale = self.Attr:WeaponDamageScale(player, 'explosive')
     local damage = ecfg.Damage * scale
     local hit = self.Vitals and self.Vitals:NewHit(player, 'explosive')
     if zone then

@@ -115,9 +115,23 @@ MgrMap.MgrPlayerData.Ability = MgrMap.MgrAbility
 -- 虚弱进出经 SpeedWriter 回到它整体重算；麻痹经 Vitals.ActGuard 统一封锁攻击/投掷/钓鱼/进食。
 MgrMap.MgrAbility.PlayerData = MgrMap.MgrPlayerData
 MgrMap.MgrAbility.Survival = MgrMap.MgrSurvival
+-- 官方属性与五效果只有一个投影入口，组合倍率在 Modifier 内合成一次。
+MgrMap.MgrAttr.PlayerData = MgrMap.MgrPlayerData
+MgrMap.MgrAttr.Vitals = MgrMap.MgrVitals
+MgrMap.MgrAttr.MoveMultiplierProvider = function(player) return MgrMap.MgrModifier:GetMoveMultiplier(player) end
+MgrMap.MgrAbility.Attr = MgrMap.MgrAttr
+MgrMap.MgrWeapon.Attr = MgrMap.MgrAttr
+MgrMap.MgrVitals.Attr = MgrMap.MgrAttr
+MgrMap.MgrAbility.Modifier = MgrMap.MgrModifier
+MgrMap.MgrSurvival.Modifier = MgrMap.MgrModifier
+MgrMap.MgrModifier.Ability = MgrMap.MgrAbility
+MgrMap.MgrModifier.Vitals = MgrMap.MgrVitals
+MgrMap.MgrAbility.Ai = MgrMap.MgrAi
+MgrMap.MgrFishUnit.Ai = MgrMap.MgrAi
+MgrMap.MgrAi.FishUnit = MgrMap.MgrFishUnit
 MgrMap.MgrSurvival.SpeedWriter = MgrMap.MgrAbility
 MgrMap.MgrVitals.ActGuard = function(player) return not MgrMap.MgrAbility:IsParalyzed(player) end
-MgrMap.MgrVitals.MaxHealthProvider = function(player) return MgrMap.MgrAbility:MaxHealth(player) end
+MgrMap.MgrVitals.MaxHealthProvider = function(player) return MgrMap.MgrAttr:MaxHealth(player) end
 MgrMap.MgrVitals.FishCarrier = MgrMap.MgrFishCarrier
 MgrMap.MgrCast.Vitals = MgrMap.MgrVitals
 -- #131 生存恢复：经 #128 预留的 LifeHooks 接管濒死/死亡，依赖单向注入在这里完成。
@@ -174,12 +188,13 @@ MgrMap.MgrSave.OnReady = function(player, data)
     ActivePlayers[player.UserId] = player
     -- 这些管理器直接操作角色与生命状态，先于依赖它们的其他管理器初始化。
     -- MgrSurvival 紧随 MgrVitals：离线恢复要读 Vitals 状态并把控制器血量锁回 1。
-    for _, name in ipairs({ 'MgrPlayer', 'MgrVitals', 'MgrSurvival', 'MgrAbility', 'MgrFishUnit' }) do
+    for _, name in ipairs({ 'MgrAttr', 'MgrPlayer', 'MgrVitals', 'MgrModifier', 'MgrSurvival', 'MgrAbility', 'MgrFishUnit' }) do
         invoke(name, MgrMap[name], 'OnPlayerAdded', player)
     end
     for name, mgr in pairs(MgrMap) do
         if name ~= 'MgrPlayerData' and name ~= 'MgrPlayer' and name ~= 'MgrVitals'
-            and name ~= 'MgrSurvival' and name ~= 'MgrAbility' and name ~= 'MgrFishUnit' then
+            and name ~= 'MgrSurvival' and name ~= 'MgrAbility' and name ~= 'MgrFishUnit'
+            and name ~= 'MgrAttr' and name ~= 'MgrModifier' then
             invoke(name, mgr, 'OnPlayerAdded', player)
         end
     end

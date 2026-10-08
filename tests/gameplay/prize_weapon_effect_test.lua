@@ -92,6 +92,7 @@ function TestPrizeWeaponEffect:setUp()
     self.data:Init()
     self.mgr.PlayerData = { GetDataInst = function() return env.data end,
         SendItemBar = function() end }
+    self.mgr.Attr = require('tests.lib.attr_runtime').New(self.mgr.PlayerData)
     self.mgr.Vitals = {
         CanAct = function() return true end,
         NewHit = function(_, source, category) return { source = source, category = category } end,
