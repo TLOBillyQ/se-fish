@@ -1,7 +1,7 @@
 -- 五效果的业务装配：层数、持续与到期归 modifier_system；这里只保存 DOT 相位和末次业务来源。
 local ModifierAPI = require('server.ModifierAPI')
 local GameCfg = require('common.GameCfg')
-local Mgr = { ModifierAPI = ModifierAPI, Targets = {}, Characters = {}, Departing = {} }
+local Mgr = { ModifierAPI = ModifierAPI, Targets = {}, Characters = {}, Departing = {}, WeakCarry = {} }
 local kinds = { 'poison', 'burn', 'frost', 'paralyze', 'weak' }
 
 function Mgr:Now()
@@ -167,26 +167,41 @@ function Mgr:Update()
     end
 end
 
-function Mgr:OnCharacterAdded(player)
-    local left = self:GetRemaining(player, 'weak')
+function Mgr:OnCharacterRemoving(player)
+    self.WeakCarry[player.UserId] = self:GetRemaining(player, 'weak')
+    self.Departing[player.UserId] = true
     self:ClearTarget(player)
+end
+
+function Mgr:OnCharacterAdded(player)
+    local left = self.WeakCarry[player.UserId] or self:GetRemaining(player, 'weak')
+    self.WeakCarry[player.UserId] = nil
+    self:ClearTarget(player)
+    self.Departing[player.UserId] = nil
     if left > 0 then self:Apply(nil, player, 'weak', left) end
 end
 
 function Mgr:OnPlayerAdded(player)
     self.Departing[player.UserId] = nil
     if self.Characters[player.UserId] then return end
+    local connections = {}
+    self.Characters[player.UserId] = connections
     if player.CharacterAdded then
-        self.Characters[player.UserId] = player.CharacterAdded:Connect(function()
-            self:OnCharacterAdded(player)
-        end)
+        connections[#connections + 1] = player.CharacterAdded:Connect(function() self:OnCharacterAdded(player) end)
+    end
+    if player.CharacterRemoving then
+        connections[#connections + 1] = player.CharacterRemoving:Connect(function() self:OnCharacterRemoving(player) end)
     end
 end
 
 function Mgr:OnPlayerRemoving(player)
     self.Departing[player.UserId] = true
-    local connection = self.Characters[player.UserId]
-    if connection then connection:Disconnect(); self.Characters[player.UserId] = nil end
+    local connections = self.Characters[player.UserId]
+    if connections then
+        for _, connection in ipairs(connections) do connection:Disconnect() end
+        self.Characters[player.UserId] = nil
+    end
+    self.WeakCarry[player.UserId] = nil
     self:ClearTarget(player)
     for _, entry in pairs(self.Targets) do
         for _, kind in ipairs(kinds) do

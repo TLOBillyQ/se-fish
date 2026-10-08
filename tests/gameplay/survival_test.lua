@@ -748,6 +748,7 @@ function TestSurvivalOffline:rejoin()
     self.s.Modifier:OnPlayerRemoving(self.a)
     self.s:OnPlayerRemoving(self.a)
     self:ctrl().WalkSpeed = 10 -- 新会话的角色是默认速度
+    self.s.Modifier:OnPlayerAdded(self.a)
     self.s:OnPlayerAdded(self.a)
 end
 

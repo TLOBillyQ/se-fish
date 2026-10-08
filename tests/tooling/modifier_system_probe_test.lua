@@ -207,6 +207,20 @@ local function business(run)
     if not ok then error(err, 0) end
 end
 
+function TestModifierProbe:test_character_removal_snapshots_weak_before_old_owner_destruction()
+    business(function(e, mgr, player)
+        lu.assertTrue(mgr:Apply(nil, player, 'weak', 17))
+        lu.assertTrue(mgr:Apply(nil, player, 'burn'))
+        e.wait(2)
+        mgr:OnCharacterRemoving(player)
+        player.Character:Destroy()
+        player.Character = e.unit('new-character')
+        mgr:OnCharacterAdded(player)
+        lu.assertEquals(mgr:GetRemaining(player, 'weak'), 15)
+        lu.assertEquals(mgr:GetRemaining(player, 'burn'), 0)
+    end)
+end
+
 function TestModifierProbe:test_leaving_target_does_not_refresh_destroyed_growth_owner_and_cleanup_is_idempotent()
     business(function(e, mgr, player)
         mgr.Ability = { RefreshMoveSpeed = function() error('退出后禁止刷新属性') end }
