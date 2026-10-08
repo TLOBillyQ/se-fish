@@ -8,7 +8,7 @@ local Task = game:GetService("Task")
 
 local GameCfg = require("common.GameCfg")
 local BodyScale = require("common.BodyScale")
-local AttrGrowth = require("common.AttrGrowth")
+-- 属性计算与引擎投影由注入的 MgrAttr 统一持有。
 local AbilityAPI = require("server.AbilityAPI")
 
 local Mgr = { PendingFishCleanup = {} }
@@ -247,25 +247,13 @@ end
 ---按玩家已吃的变大药水算体型计划（读不到存档时按 0 个处理）
 ---@return table { Scale, Health, Potions, Capped, MaxScale, MaxHealth }
 function Mgr:BodyPlan(player)
-	return BodyScale.Plan(self:PotionCount(player, GameCfg.Ability.BodyScale.PotionItem))
+	return self.Attr:BodyPlan(player)
 end
 
 ---把体型计划落到角色上：SetScale + 派生量属性。倍率非法由 BodyScale 净化，不会写入 NaN。
 ---@return table { Ok, Scale?, Health?, Capped?, Derived?, Error? }
 function Mgr:ApplyBodyScale(player)
-	local character = player and player.Character
-	if not character then return { Ok = false, Error = 'no-character' } end
-	local plan = self:BodyPlan(player)
-	local applied = AbilityAPI.SetBodyScale(character, plan.Scale)
-	if not applied.Ok then return { Ok = false, Error = applied.Error, Plan = plan } end
-	local derived = applied.Derived or {}
-	pcall(function()
-		character:SetAttribute('CameraDistance', derived.CameraDistance)
-		character:SetAttribute('InteractRange', derived.InteractRange)
-		character:SetAttribute('BodyScaleCapped', plan.Capped)
-	end)
-	print('[MgrAbility] 体型', player.UserId, plan.Potions, applied.Scale, 'health=' .. tostring(plan.Health))
-	return { Ok = true, Scale = applied.Scale, Health = plan.Health, Capped = plan.Capped, Derived = derived }
+	return self.Attr:ApplyBodyScale(player)
 end
 
 -- ===== #139 属性成长应用（唯一计算处）=====
@@ -278,19 +266,12 @@ end
 ---角色入图（或重生）时捕获基础移速：整段会话只捕一次，此时角色必为引擎默认速度，
 ---之后所有修饰（成长/虚弱/霜冻/麻痹）都以它为基准乘算，不重复捕获被改过的值。
 function Mgr:CaptureBaseSpeed(player)
-	local uid = player and player.UserId
-	if not uid or self.SpeedBase[uid] then return end
-	local controller = controllerOf(player)
-	if not controller then return end
-	local ok, speed = pcall(function() return controller.WalkSpeed end)
-	if ok and type(speed) == 'number' and speed > 0 then
-		self.SpeedBase[uid] = speed
-	end
+	return self.Attr:CaptureBaseSpeed(player)
 end
 
 ---玩家血量上限：基础 300 + 变大药水成长（AttrGrowth 委托 BodyScale 钉表）
 function Mgr:MaxHealth(player)
-	return AttrGrowth.MaxHealth(self:PotionCount(player, GameCfg.Ability.BodyScale.PotionItem))
+	return self.Attr:MaxHealth(player)
 end
 
 ---移速唯一写口：基础 × 加速成长 × 虚弱 × 霜冻（麻痹为 0），数值在 common/AttrGrowth.lua 算一次。
@@ -306,23 +287,7 @@ local function queueSpeed(self, player, err)
 end
 
 function Mgr:RefreshMoveSpeed(player)
-	local controller = controllerOf(player)
-	if not controller then return queueSpeed(self, player, "no-controller") end
-	self:CaptureBaseSpeed(player)
-	local base = self.SpeedBase[player.UserId] or GameCfg.Ability.MoveSpeed.Base
-	local weak = false
-	if self.Survival and self.Survival.GetState then
-		local ok, state = pcall(self.Survival.GetState, self.Survival, player)
-		weak = ok and state ~= nil and state.weakUntil ~= nil
-	end
-	local entry = self.Effects['p:' .. tostring(player.UserId)]
-	local now = self:Now()
-	local frost = entry ~= nil and entry.frost ~= nil and now < entry.frost.expiresAt
-	local paralyzed = entry ~= nil and entry.paralyze ~= nil and now < entry.paralyze.expiresAt
-	local speed = AttrGrowth.EffectiveSpeed(base,
-		self:PotionCount(player, GameCfg.Ability.SpeedPotion.Item),
-		{ weak = weak, frost = frost, paralyzed = paralyzed })
-	local ok, err = pcall(function() controller.WalkSpeed = speed end)
+	local ok, err = self.Attr:RefreshMoveSpeed(player)
 	if not ok then
 		return queueSpeed(self, player, err)
 	end
