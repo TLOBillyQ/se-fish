@@ -938,7 +938,10 @@ function Mgr:UpdateKingCrabCombat(fish, now, pos, params)
         return
     end
     local target, tp = self:ChooseTarget(fish, pos, params)
-    if not target then return end
+    if not target then
+        if self.Ai then self.Ai:Custom(fish) end
+        return
+    end
     if now < (fish.JabAt or 0) then return end
     if not withinBite(pos, tp, params) then
         chaseStep(self, fish, pos, tp, dt, params, '帝王蟹', nil, true)
@@ -1008,7 +1011,10 @@ function Mgr:UpdateCrabBossCombat(fish, now, pos, params)
     end
     -- 无招式时按节拍起新招：旋转 > 冲撞 > 双击
     local target, tp = self:ChooseTarget(fish, pos, params)
-    if not target then return end
+    if not target then
+        if self.Ai then self.Ai:Custom(fish) end
+        return
+    end
     if now >= (fish.SpecialAt or math.huge) then
         fish.SpecialAt = now + params.SpinSec
         self:StartMove(fish, 'spin', pos, target, tp, now, params.SpinDurationSec, params.SpinRadius)
@@ -1184,7 +1190,10 @@ function Mgr:UpdateWalrusCombat(fish, now, pos, params)
     end
     if now >= (fish.ChargeAt or math.huge) then
         local target, tp = self:ChooseTarget(fish, pos, params)
-        if not target then return end
+        if not target then
+        if self.Ai then self.Ai:Custom(fish) end
+        return
+    end
         fish.ChargeAt = now + params.ChargeSec
         -- #142 双轴审查 P2：预警半径必须覆盖真实危险区（20 米冲锋走廊），
         -- 不能只给接触距离 2.5 米（欠警）。前向扇形随锁头朝向覆盖走廊，
@@ -1259,7 +1268,10 @@ function Mgr:UpdateOrcaCombat(fish, now, pos, params)
         return
     end
     local target, tp = self:ChooseTarget(fish, pos, params)
-    if not target then return end
+    if not target then
+        if self.Ai then self.Ai:Custom(fish) end
+        return
+    end
     if now >= (fish.RoarAt or math.huge) then
         fish.RoarAt = now + params.RoarSec
         -- #142 双轴审查 P2：虎啸只按锁定目标的径向距离结算，预警发整圆（range=RoarRange）

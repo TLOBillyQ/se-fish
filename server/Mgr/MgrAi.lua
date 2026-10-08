@@ -30,7 +30,15 @@ end
 
 function Mgr:Pause(fish, paused)
     local state = self:State(fish)
-    if paused then self:Custom(fish) end
+    if paused then
+        self:Custom(fish)
+        local record = fish.AbilityRecord
+        if record and record.Ready and not state.Paused then
+            local api = self.AbilityAPI or require('server.AbilityAPI')
+            local ok, stopped = pcall(api.StopAbility, record.Receiver, record.Entry.Index)
+            if not ok then print('[MgrAi] 控制打断技能失败', fish.Id, tostring(stopped)); state.Failed = true end
+        end
+    end
     state.Paused = paused == true
 end
 
@@ -74,6 +82,28 @@ end
 
 function Mgr:Chase(fish, target, speed, distance, range)
     return self:Command(fish, 'chase', target, nil, speed, distance, range)
+end
+
+-- BasicCommand 不返回施法结果；只认可既有槽位在本次调用内同步发出的 CastStart。
+-- 零蓄力避免 vendor 创建不受 StopAI 管理的延迟施法任务。
+function Mgr:CastFish(fish)
+    local state = self:State(fish)
+    local record = fish.AbilityRecord
+    if self.Stopped or state.Paused or state.Failed or not record or not record.Ready
+        or record.Cancelled or fish.Carrier.Dead then return false end
+    local api = self.AbilityAPI or require('server.AbilityAPI')
+    local connection, started = nil, false
+    local ok, err = pcall(function()
+        local script = api.GetAbility(record.Receiver, record.Entry.Index)
+        local handler = script and api.GetAbilityByScript(script)
+        local signals = handler and handler.getSignals and handler.getSignals()
+        if not signals or not signals.CastStart then return end
+        connection = signals.CastStart:Connect(function() started = true end)
+        self.AiAPI.BasicCommand(record.Receiver, self.AiAPI.Configs.CMD_ABILITY, record.Entry.Index)
+    end)
+    if connection then connection:Disconnect() end
+    if not ok then print('[MgrAi] 官方技能指令失败', fish.Id, tostring(err)); return false end
+    return started
 end
 
 function Mgr:Sync(fish)

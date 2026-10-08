@@ -48,6 +48,29 @@ function TestAiMigration:setUp()
     self.unit = self.runtime.newUnit(5301)
     self.fish = { Id = 1, Carrier = { Receiver = self.unit, Body = self.runtime.newUnit(5302) } }
 end
+function TestAiMigration:test_existing_skill_slot_counts_only_confirmed_cast_and_disconnects()
+    local connected, handler, calls = false, nil, 0
+    self.mgr.AbilityAPI = {
+        GetAbility = function() return {} end,
+        GetAbilityByScript = function() return { getSignals = function() return { CastStart = {
+            Connect = function(_, fn) connected, handler = true, fn; return {
+                Disconnect = function() connected = false end } end,
+        } } end } end,
+    }
+    self.fish.AbilityRecord = { Ready = true, Receiver = self.unit, Entry = { Index = 2 } }
+    self.mgr.AiAPI = { StopAI = function() end, StopMove = function() end,
+        Configs = { CMD_ABILITY = 5 }, BasicCommand = function(_, command, slot)
+            lu.assertEquals(command, 5); lu.assertEquals(slot, 2)
+            calls = calls + 1
+            if calls == 2 then handler() end
+        end }
+    lu.assertFalse(self.mgr:CastFish(self.fish))
+    lu.assertFalse(connected)
+    lu.assertTrue(self.mgr:CastFish(self.fish))
+    lu.assertFalse(connected)
+    lu.assertEquals(calls, 2)
+end
+
 function TestAiMigration:test_invalid_official_position_revokes_ownership_without_poisoning_body()
     local v = self.runtime.Vector
     self.mgr:MoveDirection(self.fish, v(1, 0, 0), 3)
