@@ -17,10 +17,6 @@ local Mgr = { PendingFishCleanup = {} }
 Mgr.Managers = {}
 -- [userId] = 该玩家的 CharacterAdded 连接
 Mgr.CharacterSignals = {}
--- #139 持续效果状态机：[targetKey] = { kind='player'|'fish', ref=目标, carrier=鱼载体,
---   poison/burn={stacks,expiresAt,nextTickAt,source}, frost/paralyze={expiresAt,source} }
--- 玩家键 'p:<userId>'；鱼键带载体（查询走载体比对，不依赖键形状）。
-Mgr.Effects = {}
 -- [userId] = 角色入图时捕获的基础移速（成长/虚弱/霜冻/麻痹的乘算基准，只捕一次）
 Mgr.SpeedBase = {}
 
@@ -313,27 +309,6 @@ function Mgr:Now()
 	return ok and now or 0
 end
 
----把命中目标解析为效果宿主：玩家（UserId 或角色反查）或鱼（FishCarrier 载体）。
----@return string? key, any? ref, string? kind, table? carrier
-function Mgr:ResolveEffectTarget(target)
-	if not target then return nil end
-	if target.UserId then return 'p:' .. tostring(target.UserId), target, 'player' end
-	local players = game:GetService("Players")
-	if players and players.GetPlayerFromCharacter then
-		local ok, found = pcall(players.GetPlayerFromCharacter, players, target)
-		if ok and found then return 'p:' .. tostring(found.UserId), found, 'player' end
-	end
-	if self.Vitals and self.Vitals.FishCarrier and self.Vitals.FishCarrier.ResolveCarrier then
-		local ok, carrier = pcall(self.Vitals.FishCarrier.ResolveCarrier, self.Vitals.FishCarrier, target)
-		if ok and carrier then
-			local key = carrier.Body and carrier.Body.UnitId and ('c:' .. tostring(carrier.Body.UnitId))
-				or tostring(carrier)
-			return key, target, 'fish', carrier
-		end
-	end
-	return nil
-end
-
 ---武器命中挂持续效果（统一规格 §6.3）：毒/灼烧叠层（上限 5）并刷新持续、tick 相位不变；
 ---霜冻/麻痹不叠加只刷新。同一目标同一效果只有一条状态（唯一状态管理）。
 ---@param source any 攻击来源玩家（DOT 的 NewHit 来源）
@@ -351,16 +326,6 @@ end
 ---玩家是否麻痹（无法行动）：MgrVitals.CanAct 的 ActGuard 钩子用
 function Mgr:IsParalyzed(player)
 	return self.Modifier:IsControlled(player)
-end
-
--- 鱼的效果条目按载体比对（鱼记录/本体/接收器都可能当过命中目标，键形状不可靠）
-function Mgr:FishEffects(fish)
-	local carrier = fish and fish.Carrier
-	if not carrier then return nil end
-	for _, entry in pairs(self.Effects) do
-		if entry.kind == 'fish' and entry.carrier == carrier then return entry end
-	end
-	return nil
 end
 
 ---鱼移速乘区（MgrFishUnit:Speed 唯一读取点挂这里）：麻痹 0、霜冻 0.7、都无 1

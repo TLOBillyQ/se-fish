@@ -74,6 +74,7 @@ function TestStatusEffect:setUp()
         function(p) return self.mgr.Modifier:GetMoveMultiplier(p) end)
     local character = self.runtime.unit('character')
     character.Controller = { WalkSpeed = 7 }
+    function character:SetScale(v) env.bodyScales[#env.bodyScales + 1] = v.x end
     self.player = { UserId = 13901, Character = character,
         CharacterAdded = signal(), CharacterRemoving = signal() }
     self.mgr.Attr.Vitals = self.mgr.Vitals

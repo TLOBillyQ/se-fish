@@ -88,6 +88,7 @@ function Runtime.AttachSurvival(survival, now)
     local function sync(player)
         if not syncing then
             syncing = true
+            if now() < e.now then e.now = now() end -- 旧测试每轮样例重新设定起点。
             e.wait(math.max(0, now() - e.now))
             syncing = false
         end

@@ -140,6 +140,7 @@ function TestWeakSpeedRouting:setUp()
         return { OnServerEvent = signal(), FireClient = function() end } end,
         CheckRECD = function() return false end }
     self.s = assert(loadfile('server/Mgr/MgrSurvival.lua'))()
+    require('tests.tooling.modifier_runtime').AttachSurvival(self.s, function() return env.now end)
     self.controller = { WalkSpeed = 21 } -- 已吃 20 个加速
     self.player = { UserId = 13962, Character = { Controller = self.controller } }
     self.state = { player = self.player, phase = 'alive' }
@@ -147,7 +148,7 @@ function TestWeakSpeedRouting:setUp()
     self.refreshes = {}
     self.s.SpeedWriter = { RefreshMoveSpeed = function(_, player)
         local st = env.s:GetState(player)
-        env.refreshes[#env.refreshes + 1] = { player = player, weak = st ~= nil and st.weakUntil ~= nil }
+        env.refreshes[#env.refreshes + 1] = { player = player, weak = env.s.Modifier:GetRemaining(player, 'weak') > 0 }
     end }
 end
 
@@ -161,18 +162,21 @@ function TestWeakSpeedRouting:test_weak_enter_and_exit_route_to_single_writer()
     lu.assertEquals(self.refreshes, { { player = self.player, weak = true } })
     lu.assertEquals(self.controller.WalkSpeed, 21, 'Survival 不再私写 WalkSpeed')
     self.s:ClearWeak(self.state)
-    lu.assertEquals(#self.refreshes, 2)
+    lu.assertEquals(#self.refreshes, 3)
     lu.assertFalse(self.refreshes[2].weak, '退出虚弱先清标记再重算，否则唯一计算口仍按虚弱算')
     lu.assertEquals(self.controller.WalkSpeed, 21)
     lu.assertNil(self.state.weakUntil)
 end
 
--- 未注入写口时保持 #131 旧行为（单测与降级兜底）
-function TestWeakSpeedRouting:test_without_writer_keeps_legacy_halving()
+-- 缺速度写口仍只创建官方效果；不启用旧半速兜底。
+function TestWeakSpeedRouting:test_without_writer_keeps_modifier_as_single_state_owner()
     self.s.SpeedWriter = nil
+    self.s.Modifier.Ability = nil
     self.s:ApplyWeak(self.state, 60)
-    lu.assertEquals(self.controller.WalkSpeed, 21 * GameCfg.Survival.WeakSpeedScale)
+    lu.assertEquals(self.s.Modifier:GetRemaining(self.player, 'weak'), 60)
+    lu.assertEquals(self.controller.WalkSpeed, 21)
     self.s:ClearWeak(self.state)
+    lu.assertEquals(self.s.Modifier:GetRemaining(self.player, 'weak'), 0)
     lu.assertEquals(self.controller.WalkSpeed, 21)
 end
 
@@ -257,7 +261,7 @@ function TestPrizeGrowthWiring:test_server_main_wires_growth_and_effects()
     lu.assertStrContains(src, 'MgrMap.MgrVitals.ActGuard = function(player)')
     lu.assertStrContains(src, 'not MgrMap.MgrAbility:IsParalyzed(player)')
     lu.assertStrContains(src, 'MgrMap.MgrVitals.MaxHealthProvider = function(player)')
-    lu.assertStrContains(src, 'MgrMap.MgrAbility:MaxHealth(player)')
+    lu.assertStrContains(src, 'MgrMap.MgrAttr:MaxHealth(player)')
 end
 
 -- 直线逃跑不会转向：状态应用与到期须在下一帧刷新速度，而非等 TurnSec。

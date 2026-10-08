@@ -169,7 +169,8 @@ function TestModifierProbe:test_business_dot_uses_real_manager_phase_final_tick_
     lu.assertTrue(report.ok)
     lu.assertEquals(report.kinds.poison.count, 3)
     lu.assertEquals(report.kinds.burn.count, 3)
-    lu.assertEquals(next(mgr.Effects), nil)
+    lu.assertEquals(mgr.Modifier:GetRemaining(target, 'poison'), 0)
+    lu.assertEquals(mgr.Modifier:GetRemaining(target, 'burn'), 0)
 end
 
 -- #52：业务入口使用真实根 API；替身只提供单位、时钟与伤害边界。
