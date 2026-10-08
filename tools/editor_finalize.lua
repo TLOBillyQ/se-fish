@@ -1,17 +1,10 @@
--- 部署收尾：镜像落盘后，经 editor-cli 确认编辑器内的代码也是最新的
--- （code validate → code diff → 有差异才 code push → 复核），一步到位，不留下一步。
--- 实测（SE 地图、syncEnabled=true、编辑器开着该地图）：宿主目录新增/改动会即时进编辑器内存
--- （单向：磁盘→内存），删除则不保证反映过去（实测删后 diff 有时仍把文件算成 only-on-map）。
--- 因此落盘后 diff 通常已无落后文件、下面的 push 不触发；push 方向恒为磁盘→地图，留给两者
--- 不一致的场合——何时会不一致未验证（编辑器加载时以磁盘还是地图包为准没有实测），保持兜底。
+-- 部署收尾：镜像落盘后只执行 code validate → code diff，核对编辑器内代码。
+-- CLI 的 excludePatterns 对 code push 不生效；为保留宿主 packages，收尾不执行全工作区 push。
+-- 有本地新增或不同文件时报告尚未同步；地图侧独有文件只提示，保留已有内容。
 --
--- 本模块依赖外部设备（正在运行的编辑器 + editor-cli.exe），所以环境不成立时必须能自己
--- 收场，跳过即成功——磁盘已经是镜像后的最新状态，预期编辑器打开该地图时会自己对齐
--- （未实测，见上）：
---   * editor-cli.exe 不在；
---   * 宿主目录没有自己的 eggy.json：editor-cli 会向上下层目录找绑定，可能绑到别的工程
---     （仓库根就有 eggy.json），对着别人的地图 diff/push。
--- 编辑器没开该地图则更晚一步才看出来（diff 走离线地图目录 / 解析不出 changelist）。
+-- 本模块依赖正在运行的编辑器与 editor-cli.exe；CLI 缺失、宿主未绑定或地图未打开时
+-- 打印跳过，磁盘镜像仍算完成，但不宣称编辑器内代码已同步。
+-- 宿主必须有自己的 eggy.json，避免 CLI 向上下层目录寻找绑定而读到别的工程。
 --
 -- 纯解析部分（parse_changelist / behind_count）单独导出，可脱离编辑器测。
 local shell = require("tools.win_shell")
@@ -77,34 +70,22 @@ function M.run(ws)
     return true
   end
   if out:find("channel=offline", 1, true) then
-    print("编辑器没开该地图（diff 走的是离线地图目录），跳过 push"
+    print("编辑器没开该地图（diff 走的是离线地图目录），未校验编辑器内代码"
       .. "（磁盘已是最新）")
     return true
   end
 
   local dirty = M.behind_count(cl)
   if dirty > 0 then
-    print("编辑器落后 " .. dirty .. " 个文件，code push …")
-    code, out = editor_cli(exe, ws, "code push")
-    if code ~= 0 then
-      return nil, "code push 失败（退出码 " .. tostring(code) .. "）:\n" .. out
-    end
-    code, out = editor_cli(exe, ws, "code diff")
-    cl = M.parse_changelist(out)
-    if not cl then
-      return nil, "push 后复核拿不到 changelist，请手动跑 editor-cli code diff:\n" .. out
-    end
-    dirty = M.behind_count(cl)
-    if dirty ~= 0 then
-      return nil, "push 后复核仍有差异（" .. dirty .. "），请手动跑 editor-cli code diff"
-    end
+    return nil, "尚未同步到编辑器：有 " .. dirty .. " 个本地新增或不同文件；"
+      .. "为保留 packages，deploy 不执行全工作区 code push。"
+      .. "请使用只读 code diff 核对差异，并另行处理业务代码同步。\n" .. out
   end
 
   print("编辑器: 已同步（unchanged=" .. (cl["unchanged"] or 0) .. "）")
   local ghosts = cl["only-on-map"] or 0
   if ghosts > 0 then
-    print("注意: 地图侧多出 " .. ghosts .. " 个本地没有的文件（deploy 不删）；"
-      .. "清理要在宿主目录跑 editor-cli code push --delete --yes")
+    print("注意: 地图侧多出 " .. ghosts .. " 个本地没有的文件，deploy 保留这些内容。")
   end
   return true
 end

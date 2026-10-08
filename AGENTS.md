@@ -16,7 +16,7 @@
 - **管理器**：新增服务端管理器须加入 `server/main.lua` 的 `MgrMap`，由入口统一分发 `Start` / `OnPlayerAdded` / `OnPlayerRemoving` / `Update`。
 - **界面**：由 `MgrGameUI` 管理；handler 放在 `client/ScreenHandlers/`，文件名与 EUI 节点同名，供 `MgrGameUI:GetScreen` 按节点名加载。
 - **共享配置**：数值配置集中在 `common/GameCfg.lua`；技能配置在 `GameCfg.Ability`。
-- **官方技能包只读**：`server/packages/`、`client/packages/`、`common/packages/` 是 `ability_system` 的 vendor。业务层经 `server/AbilityAPI.lua`、`client/AbilityAPI.lua` 接入，在 `server/Mgr/MgrAbility.lua` 装配。
+- **官方包只读**：`server/packages/`、`client/packages/`、`common/packages/` 是官方包 vendor，整棵子树不参与部署或 `--clean`。说明写在 `docs/packages-vendor.md`；保留现有 README，目录内不再新增 README。技能业务经双端 `AbilityAPI.lua` 接入，在 `server/Mgr/MgrAbility.lua` 装配。
 - **生成内容**：`data/` 只读，修改须回编辑器重新导出，再用 `sync` 回灌；`unit_scripts/` 由引擎生成，不在本仓库管理。
 - **验收文件**：Gherkin 放在 `features/<车道>/<名字>.feature`，以 `# language: zh-CN` 开头。
 
@@ -24,7 +24,7 @@
 
 Lua 命令使用 **Lua 5.4**，执行前用 `lua -v` 核对；验收脚本可用 `ACCEPTANCE_LUA_BIN` 指定解释器。Lua 5.5 对循环变量重新赋值会报 `attempt to assign to const variable`，遇到此错误先检查版本。
 
-- `lua tools/cli.lua deploy`：将三端代码字节镜像到宿主目录；编辑器开着本图时执行 validate → diff → 有差异才 push。
+- `lua tools/cli.lua deploy`：将三端业务代码字节镜像到宿主目录，排除 `packages/`；编辑器开着本图时执行 validate → 只读 diff。有本地新增或不同文件时报告尚未同步并返回失败；为保留 packages，不执行全工作区 `code push`。
 - `lua tools/cli.lua sync`：将宿主目录的 `eggy.json`、API 存根、`data/` 回灌仓库。
 - 技能包预设命令见 `lua tools/cli.lua ability-presets --help`；验收脚本说明见 `tools/acceptance/README.md`。
 - 质量与变异脚本位于 `tools/quality/`，只出报告，不设门槛。
