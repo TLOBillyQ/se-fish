@@ -35,6 +35,10 @@ function Mgr:Project(player, key, components)
     local state = self:State(player)
     if not state.character then return false, 'no-character' end
     local api = self.AttrAPI
+    local config = api.GetAttrConfig(key)
+    if config and (config.Min ~= nil or config.Max ~= nil) then
+        return false, '业务属性键不允许地图钳制配置: ' .. key
+    end
     if not state.unit then
         local existing = api.GetAttrUnit(state.character)
         local unit, err = api.EnsureAttrUnit(state.character)
@@ -91,9 +95,9 @@ function Mgr:ApplyGrowth(player)
     local applied = self:ApplyBodyScale(player)
     local errors = {}
     if not applied.Ok then errors[#errors + 1] = tostring(applied.Error) end
-    if self.Vitals and self.Vitals:GetState(player) then
-        local ok, err = self.Vitals:RefreshMaxHealth(player)
-        if not ok then errors[#errors + 1] = tostring(err) end
+    if self.Vitals and (not self.Vitals.GetState or self.Vitals:GetState(player)) then
+        local called, ok, err = pcall(self.Vitals.RefreshMaxHealth, self.Vitals, player)
+        if not called or not ok then errors[#errors + 1] = 'MaxHealth:' .. tostring(called and err or ok) end
     end
     local ok, err = self:RefreshMoveSpeed(player)
     if not ok then errors[#errors + 1] = tostring(err) end
@@ -110,8 +114,8 @@ end
 function Mgr:WeaponDamageScale(player, kind)
     if kind ~= 'melee' and kind ~= 'ranged' and kind ~= 'explosive' then return 1 end
     local data = self.PlayerData and self.PlayerData:GetDataInst(player)
-    local scale = GameCfg.Shop.DamageScale(kind, data and data:ShopUpgradeLevel(kind) or 0) or 1
-    local ok, result = self:Project(player, 'PlayerWeaponDamage_' .. kind, { Base = 1, BaseExtra = 0, Ratio = scale - 1, Bonus = 0 })
+    local components = Model.WeaponComponents(kind, data and data:ShopUpgradeLevel(kind) or 0)
+    local ok, result = self:Project(player, 'PlayerWeaponDamage_' .. kind, components)
     if not ok then error('[MgrAttr] 武器属性投影失败: ' .. tostring(result)) end
     return result
 end

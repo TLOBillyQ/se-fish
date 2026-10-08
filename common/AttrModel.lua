@@ -26,4 +26,10 @@ function M.Plan(input)
         PlayerHunger = components(hunger),
     } }
 end
+function M.WeaponComponents(kind, level)
+    local spec = GameCfg.Shop.UpgradeKinds[kind]
+    local maximum = spec and spec.MaxLevel or 0
+    local scale = GameCfg.Shop.DamageScale(kind, count(level, maximum)) or 1
+    return components(1, 0, scale - 1)
+end
 return M
