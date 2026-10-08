@@ -188,8 +188,17 @@ function Mgr:WriteHealth(state)
 end
 
 function Mgr:WriteHunger(state)
+    if self.Attr then
+        local ok, value = self.Attr:ProjectHunger(state.player, state.hunger)
+        if not ok then
+            print('[MgrVitals] 饥饿投影失败', state.player.UserId, tostring(value))
+            return false, value
+        end
+        state.hunger = value
+    end
     write(state.player, 'Hunger', state.hunger)
     write(state.player, 'MaxHunger', cfg().MaxHunger)
+    return true
 end
 
 -- 跳字观察（#118）：以 state.baseline 为结算前血量，HealthChanged / Died 两路统一走这里。
