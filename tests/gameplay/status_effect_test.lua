@@ -66,9 +66,18 @@ function TestStatusEffect:setUp()
     self.mgr.Survival = { GetState = function()
         return env.weak and { weakUntil = env.now + 60 } or nil
     end }
-    self.player = { UserId = 13901,
-        Character = { Controller = { WalkSpeed = 7 }, SetAttribute = function() end },
+    self.runtime = require('tests.tooling.modifier_runtime').New(self.now)
+    self.mgr.Modifier = self.runtime.loadModifier()
+    self.mgr.Modifier.Vitals = self.mgr.Vitals
+    self.mgr.Modifier.Ability = self.mgr
+    self.mgr.Attr = require('tests.lib.attr_runtime').New(self.mgr.PlayerData,
+        function(p) return self.mgr.Modifier:GetMoveMultiplier(p) end)
+    local character = self.runtime.unit('character')
+    character.Controller = { WalkSpeed = 7 }
+    function character:SetScale(v) env.bodyScales[#env.bodyScales + 1] = v.x end
+    self.player = { UserId = 13901, Character = character,
         CharacterAdded = signal(), CharacterRemoving = signal() }
+    self.mgr.Attr.Vitals = self.mgr.Vitals
 end
 
 function TestStatusEffect:tearDown()
@@ -78,12 +87,14 @@ function TestStatusEffect:tearDown()
 end
 
 function TestStatusEffect:advance(sec)
-    self.now = self.now + sec
+    self.runtime.wait(sec)
+    self.now = self.runtime.now
+    self.mgr.Modifier:Update()
     self.mgr:Update(sec)
 end
 
 function TestStatusEffect:installFish()
-    local carrier = { Body = { UnitId = 5001 }, Dead = false }
+    local carrier = { Body = self.runtime.unit('fish'), Dead = false }
     local fish = { Id = 77, Carrier = carrier }
     self.mgr.Vitals.FishCarrier = { ResolveCarrier = function(_, target)
         if target == fish or target == carrier or target == carrier.Body then return carrier end
@@ -93,14 +104,13 @@ end
 
 -- 毒：叠层上限 5、刷新保层数与 tick 相位、每秒一跳走统一入口、3 秒失效
 function TestStatusEffect:test_poison_stacks_caps_refreshes_and_ticks_via_unified_entry()
-    local src, target = self.player, { UserId = 13902, Character = { Controller = {} } }
+    local src, target = self.player, { UserId = 13902, Character = self.runtime.unit('target') }
     for _ = 1, 6 do
         lu.assertTrue(self.mgr:ApplyWeaponEffect(src, target, { Kind = 'poison' }))
     end
-    local entry = self.mgr.Effects['p:13902']
-    lu.assertEquals(entry.poison.stacks, 5, '毒最多 5 层')
-    lu.assertEquals(entry.poison.nextTickAt, 101)
-    lu.assertEquals(entry.poison.expiresAt, 103)
+    local entity = self.mgr.Modifier.ModifierAPI.GetUnitModifiers(target.Character, 'test:poison')[1]
+    lu.assertEquals(entity:GetAttribute('CurrCount'), 5, '毒最多 5 层')
+    lu.assertEquals(self.mgr.Modifier:GetRemaining(target, 'poison'), 3)
     -- 刷新：层数保留、持续刷新、tick 相位不变
     self:advance(1.5) -- 到 101.5：第一跳已结算（5 层 × 1 = 5）
     lu.assertEquals(#self.hits, 1)
@@ -109,10 +119,8 @@ function TestStatusEffect:test_poison_stacks_caps_refreshes_and_ticks_via_unifie
     lu.assertEquals(self.hits[1].source, src)
     lu.assertEquals(self.hits[1].target, target)
     self.mgr:ApplyWeaponEffect(src, target, { Kind = 'poison' })
-    entry = self.mgr.Effects['p:13902']
-    lu.assertEquals(entry.poison.stacks, 5)
-    lu.assertEquals(entry.poison.nextTickAt, 102, '刷新不改 tick 相位')
-    lu.assertEquals(entry.poison.expiresAt, 104.5)
+    lu.assertEquals(entity:GetAttribute('CurrCount'), 5)
+    lu.assertEquals(self.mgr.Modifier:GetRemaining(target, 'poison'), 3)
     -- 第二跳 102、第三跳 103、104 之后 104.5 到期失效：每跳都重新 NewHit
     self:advance(0.5)
     self:advance(1.0)
@@ -120,14 +128,14 @@ function TestStatusEffect:test_poison_stacks_caps_refreshes_and_ticks_via_unifie
     self:advance(1.0) -- 104：第四跳
     lu.assertEquals(#self.hits, 4)
     self:advance(0.5) -- 104.5 到期
-    lu.assertNil(self.mgr.Effects['p:13902'], '到期后状态应清空')
+    lu.assertEquals(self.mgr.Modifier:GetRemaining(target, 'poison'), 0, '到期后状态应清空')
     self:advance(5)
     lu.assertEquals(#self.hits, 4, '失效后不再跳')
 end
 
 -- 灼烧：每层 4 点，一跳 = 层数 × 4
 function TestStatusEffect:test_burn_ticks_damage_per_stack()
-    local target = { UserId = 13903, Character = { Controller = {} } }
+    local target = { UserId = 13903, Character = self.runtime.unit('target') }
     self.mgr:ApplyWeaponEffect(self.player, target, { Kind = 'burn' })
     self.mgr:ApplyWeaponEffect(self.player, target, { Kind = 'burn' })
     self:advance(1.0)
@@ -137,11 +145,11 @@ end
 
 -- 刷新已过期状态视为全新（层数不继承）
 function TestStatusEffect:test_expired_dot_restarts_from_zero_stacks()
-    local target = { UserId = 13904, Character = { Controller = {} } }
+    local target = { UserId = 13904, Character = self.runtime.unit('target') }
     for _ = 1, 5 do self.mgr:ApplyWeaponEffect(self.player, target, { Kind = 'poison' }) end
     self:advance(4) -- 到期清空
     self.mgr:ApplyWeaponEffect(self.player, target, { Kind = 'poison' })
-    lu.assertEquals(self.mgr.Effects['p:13904'].poison.stacks, 1)
+    lu.assertEquals(self.mgr.Modifier.ModifierAPI.GetUnitModifiers(target.Character, 'test:poison')[1]:GetAttribute('CurrCount'), 1)
 end
 
 -- 霜冻：移速经唯一口写 0.7 倍；重复命中只刷新不衰减两次；到期恢复
@@ -152,7 +160,7 @@ function TestStatusEffect:test_frost_slows_once_refreshes_and_restores()
     self:advance(2)
     self.mgr:ApplyWeaponEffect(self.player, self.player, { Kind = 'frost' })
     lu.assertAlmostEquals(self.player.Character.Controller.WalkSpeed, 7 * 0.7, 1e-9, '霜冻不叠加')
-    lu.assertEquals(self.mgr.Effects['p:13901'].frost.expiresAt, self.now + 3)
+    lu.assertEquals(self.mgr.Modifier:GetRemaining(self.player, 'frost'), 3)
     self:advance(3) -- 到期
     lu.assertAlmostEquals(self.player.Character.Controller.WalkSpeed, 7, 1e-9, '霜冻失效恢复')
 end
@@ -165,7 +173,7 @@ function TestStatusEffect:test_paralyze_blocks_acts_and_zeroes_speed_briefly()
     lu.assertEquals(self.player.Character.Controller.WalkSpeed, 0)
     self:advance(0.3)
     self.mgr:ApplyWeaponEffect(self.player, self.player, { Kind = 'paralyze' })
-    lu.assertEquals(self.mgr.Effects['p:13901'].paralyze.expiresAt, self.now + 0.5, '麻痹只刷新')
+    lu.assertEquals(self.mgr.Modifier:GetRemaining(self.player, 'paralyze'), 0.5, '麻痹只刷新')
     self:advance(0.5)
     lu.assertFalse(self.mgr:IsParalyzed(self.player))
     lu.assertAlmostEquals(self.player.Character.Controller.WalkSpeed, 7, 1e-9)
@@ -177,13 +185,13 @@ function TestStatusEffect:test_refresh_move_speed_is_the_single_write_point()
     self.mgr:CaptureBaseSpeed(self.player)
     self.mgr:RefreshMoveSpeed(self.player)
     lu.assertAlmostEquals(self.player.Character.Controller.WalkSpeed, 21, 1e-9)
-    self.weak = true
+    self.mgr.Modifier:Apply(nil, self.player, 'weak')
     self.mgr:RefreshMoveSpeed(self.player)
     lu.assertAlmostEquals(self.player.Character.Controller.WalkSpeed, 10.5, 1e-9)
     self.mgr:ApplyWeaponEffect(self.player, self.player, { Kind = 'frost' })
     lu.assertAlmostEquals(self.player.Character.Controller.WalkSpeed, 21 * 0.5 * 0.7, 1e-9)
     -- 虚弱消退（Survival 委托同一路径）：霜冻仍在，只去掉 0.5
-    self.weak = false
+    self.mgr.Modifier:Clear(self.player, 'weak')
     self.mgr:RefreshMoveSpeed(self.player)
     lu.assertAlmostEquals(self.player.Character.Controller.WalkSpeed, 21 * 0.7, 1e-9)
     self:advance(3)
@@ -193,10 +201,12 @@ end
 -- 基准速捕获：只捕一次（异常速度不覆盖基准），无控制器时回落配置基准 7
 function TestStatusEffect:test_capture_base_speed_once_with_cfg_fallback()
     self.mgr:CaptureBaseSpeed(self.player)
-    lu.assertEquals(self.mgr.SpeedBase[13901], 7)
+    self.mgr:RefreshMoveSpeed(self.player)
+    lu.assertEquals(self.player.Character.Controller.WalkSpeed, 7)
     self.player.Character.Controller.WalkSpeed = 999 -- 已被外部改坏
     self.mgr:CaptureBaseSpeed(self.player)
-    lu.assertEquals(self.mgr.SpeedBase[13901], 7, '基准只捕一次')
+    self.mgr:RefreshMoveSpeed(self.player)
+    lu.assertEquals(self.player.Character.Controller.WalkSpeed, 7, '基准只捕一次')
     local bare = { UserId = 13905 }
     self.mgr:CaptureBaseSpeed(bare)
     self.mgr:RefreshMoveSpeed(bare)
@@ -237,7 +247,8 @@ function TestStatusEffect:test_player_removal_clears_effects_and_base_speed()
     self.mgr:CaptureBaseSpeed(self.player)
     self.mgr:ApplyWeaponEffect(self.player, self.player, { Kind = 'poison' })
     self.mgr:OnPlayerRemoving(self.player)
-    lu.assertNil(self.mgr.Effects['p:13901'])
+    self.mgr.Modifier:OnPlayerRemoving(self.player)
+    lu.assertEquals(self.mgr.Modifier:GetRemaining(self.player, 'poison'), 0)
     lu.assertNil(self.mgr.SpeedBase[13901])
     self:advance(2)
     lu.assertEquals(#self.hits, 0, '离场后不再跳')
@@ -248,7 +259,7 @@ function TestStatusEffect:test_unresolvable_target_is_rejected()
     lu.assertFalse(self.mgr:ApplyWeaponEffect(self.player, {}, { Kind = 'poison' }))
     lu.assertFalse(self.mgr:ApplyWeaponEffect(self.player, nil, { Kind = 'poison' }))
     lu.assertFalse(self.mgr:ApplyWeaponEffect(self.player, self.player, { Kind = 'nosuch' }))
-    lu.assertEquals(next(self.mgr.Effects), nil)
+    lu.assertEquals(self.mgr.Modifier:GetRemaining(self.player, 'poison'), 0)
 end
 
 -- 血量上限按变大药水数（委托 AttrGrowth/BodyScale）；BodyPlan 改走注入的 PlayerData
@@ -260,6 +271,7 @@ function TestStatusEffect:test_max_health_and_body_plan_read_injected_player_dat
     lu.assertEquals(plan.Health, 900)
     -- #132 死代码回归：引擎玩家没有 .Data 字段也不报错、按 0 个处理
     self.mgr.PlayerData = nil
+    self.mgr.Attr.PlayerData = nil
     lu.assertEquals(self:BodyPlan(self.player).Scale, 1)
     lu.assertEquals(self.mgr:MaxHealth(self.player), 300)
 end
@@ -315,11 +327,13 @@ function TestStatusEffect:test_source_leave_cancels_dot_via_public_lifecycle()
         return true, amount
     end
     self.mgr.Vitals = v
+    self.mgr.Modifier.Vitals = v
     self.mgr:ApplyWeaponEffect(self.player, fish, { Kind = 'poison' })
     self:advance(1)
     lu.assertEquals(seen, { self.player })
     v:OnPlayerRemoving(self.player)
     self.mgr:OnPlayerRemoving(self.player)
+    self.mgr.Modifier:OnPlayerRemoving(self.player)
     self:advance(1)
     lu.assertEquals(calls, 1, '来源离场后取消效果，不再生成无来源DOT')
 end
@@ -392,6 +406,7 @@ function TestStatusEffect:test_weak_expiry_write_failure_retries_next_frame_with
     package.loaded['common.REUtil'] = oldRE
     survival.Now = function() return self.now end
     survival.SpeedWriter = self.mgr
+    survival.Modifier = self.mgr.Modifier
     survival.SendState, survival.Mirror = function() end, function() end
     local state = { player = self.player, phase = 'alive' }
     survival.States[self.player.UserId] = state
@@ -401,7 +416,8 @@ function TestStatusEffect:test_weak_expiry_write_failure_retries_next_frame_with
     survival:ApplyWeak(state, 1)
     lu.assertEquals(read(), 10.5)
     reject(true)
-    self.now = self.now + 1
+    self.runtime.wait(1)
+    self.now = self.runtime.now
     survival:Update()
     lu.assertNil(survival:GetState(self.player).weakUntil, '到期标记清除，不保留伪虚弱')
     reject(false)

@@ -33,15 +33,25 @@ local function ensure(world)
         PotionCount = function(_, itemId) return world.potions[itemId] or 0 end } end }
     mgr.Survival = { GetState = function()
         return world.weak and { weakUntil = world.now + 60 } or nil end }
+    world.runtime = require('tests.tooling.modifier_runtime').New(world.now)
+    mgr.Modifier = world.runtime.loadModifier()
+    mgr.Modifier.Vitals, mgr.Modifier.Ability = mgr.Vitals, mgr
+    mgr.Attr = require('tests.lib.attr_runtime').New(mgr.PlayerData,
+        function(p) return mgr.Modifier:GetMoveMultiplier(p) end)
+    mgr.Attr.Vitals = mgr.Vitals
     world.ability = mgr
     world.controller = { WalkSpeed = 7 }
-    world.player = { UserId = 13999,
-        Character = { Controller = world.controller, SetAttribute = function() end } }
+    local character = world.runtime.unit('character')
+    character.Controller = world.controller
+    function character:SetScale(v) world.scales[#world.scales + 1] = v.x end
+    world.player = { UserId = 13999, Character = character }
     return world
 end
 
 local function advance(world, sec)
-    world.now = world.now + sec
+    world.runtime.wait(sec)
+    world.now = world.runtime.now
+    world.ability.Modifier:Update()
     world.ability:Update(sec)
 end
 
@@ -55,7 +65,7 @@ return { patterns = {
         local cfg = GameCfg.Ability.MeleeWeapons[itemId] or GameCfg.Ability.Guns[itemId]
         assert(cfg and cfg.Effect, itemId .. ' 没有持续效果配置')
         world.effect = cfg.Effect
-        world.target = { UserId = 13998 }
+        world.target = { UserId = 13998, Character = world.runtime.unit('target') }
     end },
 
     { '^连续命中 (%d+) 次后过 (%d+) 秒$', function(world, times, sec)
@@ -64,9 +74,9 @@ return { patterns = {
     end },
 
     { '^目标中毒 (%d+) 层$', function(world, stacks)
-        local entry = world.ability.Effects['p:13998']
-        assert(entry and entry.poison, '目标没有中毒')
-        assert(entry.poison.stacks == tonumber(stacks), '实际层数=' .. tostring(entry.poison.stacks))
+        local entity = world.ability.Modifier.ModifierAPI.GetUnitModifiers(world.target.Character, 'test:poison')[1]
+        assert(entity, '目标没有中毒')
+        assert(entity:GetAttribute('CurrCount') == tonumber(stacks), '实际层数=' .. tostring(entity:GetAttribute('CurrCount')))
     end },
 
     { '^最近一跳经统一伤害入口造成 (%d+) 点 dot 伤害$', function(world, amount)
@@ -84,11 +94,10 @@ return { patterns = {
 
     { '^目标霜冻在 (%d+) 秒后失效$', function(world, sec)
         advance(world, tonumber(sec) - 0.1)
-        local entry = world.ability.Effects['p:13998']
-        assert(entry and entry.frost, '刷新后霜冻应仍在（不叠加但刷新持续）')
+        assert(world.ability.Modifier:GetRemaining(world.target, 'frost') > 0, '刷新后霜冻应仍在')
         advance(world, 0.1)
-        entry = world.ability.Effects['p:13998']
-        assert(not (entry and entry.frost), '霜冻应在刷新后 ' .. sec .. ' 秒失效，不应叠加延长')
+        assert(world.ability.Modifier:GetRemaining(world.target, 'frost') == 0,
+            '霜冻应在刷新后 ' .. sec .. ' 秒失效，不应叠加延长')
     end },
 
     { '^玩家基础移速为 (%d+)$', function(world, speed)
@@ -122,12 +131,12 @@ return { patterns = {
     end },
 
     { '^玩家进入虚弱$', function(world)
-        world.weak = true
+        assert(world.ability.Modifier:Apply(nil, world.player, 'weak'))
         world.ability:RefreshMoveSpeed(world.player)
     end },
 
     { '^玩家虚弱消退$', function(world)
-        world.weak = false
+        world.ability.Modifier:Clear(world.player, 'weak')
         world.ability:RefreshMoveSpeed(world.player)
     end },
 } }

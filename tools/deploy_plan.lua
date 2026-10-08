@@ -14,13 +14,16 @@ function M.targets(workspace, list_entries, realms)
   local targets = {}
   for _, realm in ipairs(realms or M.REALMS) do
     for _, child in ipairs(list_entries(realm)) do
-      local rel = realm .. "/" .. child.name
-      targets[#targets + 1] = {
-        rel = rel,
-        dir = child.dir,
-        src = rel,
-        dst = workspace .. "/" .. rel,
-      }
+      -- 官方包由宿主管理；镜像和 clean 共用此清单，均保留整棵 packages 子树。
+      if child.name:lower() ~= "packages" then
+        local rel = realm .. "/" .. child.name
+        targets[#targets + 1] = {
+          rel = rel,
+          dir = child.dir,
+          src = rel,
+          dst = workspace .. "/" .. rel,
+        }
+      end
     end
   end
   return targets

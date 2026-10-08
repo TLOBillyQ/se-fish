@@ -5,6 +5,7 @@
 -- 同会话 seq 重放或携带响应中的完整 operation 重试只回原结果；旧身份淘汰后拒绝。
 -- 未注入 Save 的独立纯逻辑模式保留同步结算；「对话」是纯客户端台词。
 local GameCfg = require('common.GameCfg')
+local BodyScale = require('common.BodyScale')
 
 local Mgr = { LastSeq = {}, Anchors = {} }
 
@@ -121,7 +122,7 @@ function Mgr:InRange(player, point)
     for _, name in ipairs(names) do
         local anchor = self:FindAnchor(name)
         local center = anchor and anchor.Position
-        if center and flatDistance(pos, center) <= point.Radius + point.Slack then return anchor end
+        if center and flatDistance(pos, center) <= BodyScale.InteractionRadius(character, point.Radius) + point.Slack then return anchor end
     end
     return nil
 end

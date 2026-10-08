@@ -67,7 +67,7 @@ function Mgr:Mirror(state)
     mark.dead = state.phase == 'dead'
     mark.dyingRemaining = mark.dying and remaining(state.downedAt + c.DownedSec, now) or 0
     mark.deadRemaining = mark.dead and remaining(state.deadAt + c.DeadSec, now) or 0
-    mark.weakRemaining = state.weakUntil and remaining(state.weakUntil, now) or 0
+    mark.weakRemaining = math.ceil(self.Modifier:GetRemaining(state.player, 'weak'))
 end
 
 -- 玩家离开前的终镜像：必须先于 MgrPlayerData 的 SaveLeaving 序列化（server/main.lua 调用）。
@@ -80,6 +80,7 @@ end
 -- 断开放鱼复用 MgrFishUnit:OnDied（放下举鱼 + 打断抛竿会话）；收线会话由 MgrReelIn:Interrupt 断开。
 function Mgr:EnterDowned(state, vitalState)
     state.phase = 'downed'
+    self.Modifier:ClearTarget(state.player, true)
     state.episode = (state.episode or 0) + 1
     state.downedAt = self:Now()
     if self.Vitals then self.Vitals:SetControllerHealth(vitalState, 1) end
@@ -150,6 +151,7 @@ function Mgr:Hooks()
         OnDied = function(vitalState)
             local state = self.States[vitalState.player.UserId]
             if not state or state.phase == 'dead' then return end
+            self.Modifier:ClearTarget(state.player, true)
             state.phase = 'dead'
             state.downedAt = nil
             state.deadAt = self:Now()
@@ -176,32 +178,25 @@ end
 
 function Mgr:ApplyWeakSpeed(state)
     if self.SpeedWriter then return refreshSpeed(self, state) end
-    local controller = controllerOf(state.player)
-    if not controller then return end
-    local ok, speed = pcall(function() return controller.WalkSpeed end)
-    if ok and type(speed) == 'number' then
-        -- baseSpeed 是「进虚弱前的全速基准」，整段虚弱期只捕获一次：虚弱中再次虚弱
-        -- （虚弱期可被攻击致死）不能把已减半的速度当基准，否则结束后永久回不去全速。
-        if state.baseSpeed == nil then state.baseSpeed = speed end
-        pcall(function() controller.WalkSpeed = state.baseSpeed * cfg().WeakSpeedScale end)
-    end
 end
 
 function Mgr:ApplyWeak(state, seconds)
-    state.weakUntil = self:Now() + seconds
-    self:ApplyWeakSpeed(state)
+    local ok, err = self.Modifier:Apply(nil, state.player, 'weak', seconds)
+    if not ok then
+        print('[MgrSurvival] 虚弱创建失败', state.player.UserId, tostring(err))
+        state.pendingWeak = seconds
+        return false, err
+    end
+    state.pendingWeak = nil
+    -- weakUntil 仅为客户端显示快照；剩余时长和到期由官方实例负责。
+    state.weakUntil = self:Now() + self.Modifier:GetRemaining(state.player, 'weak')
+    return true
 end
 
 function Mgr:ClearWeak(state)
-    if self.SpeedWriter then
-        state.weakUntil, state.baseSpeed = nil, nil -- 先清标记再重算，唯一计算口才不再按虚弱算
-        return refreshSpeed(self, state)
-    end
-    local controller = controllerOf(state.player)
-    if controller and state.baseSpeed then
-        pcall(function() controller.WalkSpeed = state.baseSpeed end)
-    end
-    state.weakUntil, state.baseSpeed = nil, nil
+    state.pendingWeak, state.weakUntil = nil, nil
+    self.Modifier:Clear(state.player, 'weak')
+    return self:ApplyWeakSpeed(state)
 end
 
 -- 虚弱复活（死亡倒计时结束或引擎抢先复活的修正）：10% 血、饥饿至少 10%、60 秒虚弱；
@@ -277,7 +272,8 @@ function Mgr:OnPlayerAdded(player)
         print('[MgrSurvival] 离线时濒死 / 死亡，重进按虚弱复活', player.UserId)
         self:SendState(state)
         self:TryRecover(state)
-    elseif type(mark.weakRemaining) == 'number' and mark.weakRemaining > 0 then
+    elseif type(mark.weakRemaining) == 'number' and mark.weakRemaining == mark.weakRemaining
+        and mark.weakRemaining < math.huge and mark.weakRemaining > 0 then
         self:ApplyWeak(state, math.min(mark.weakRemaining, cfg().WeakSec)) -- 损坏存档不能造永久虚弱
         print('[MgrSurvival] 离线虚弱剩余', player.UserId, mark.weakRemaining)
         self:SendState(state)
@@ -299,6 +295,7 @@ function Mgr:Update()
     local c = cfg()
     for _, state in pairs(self.States) do
         if state.phase == 'downed' and not state.adrenalineFlying and now - state.downedAt >= c.DownedSec then
+            self.Modifier:ClearTarget(state.player, true)
             state.phase = 'dead'
             state.downedAt = nil
             state.deadAt = now
@@ -318,8 +315,10 @@ function Mgr:Update()
                     or (health ~= nil and health > 1)
             end
             if due or engineRevived then self:WeakRevive(state) end
-        elseif state.phase == 'alive' and state.weakUntil and now >= state.weakUntil then
-            self:ClearWeak(state)
+        elseif state.phase == 'alive' and state.pendingWeak then
+            self:ApplyWeak(state, state.pendingWeak)
+        elseif state.phase == 'alive' and state.weakUntil and self.Modifier:GetRemaining(state.player, 'weak') <= 0 then
+            state.weakUntil = nil
             self:SendState(state)
         end
         if state.phase ~= 'alive' or state.weakUntil then self:Mirror(state) end -- 剩余秒数随时钟走

@@ -8,7 +8,7 @@
 - **玩法与术语**：玩法与系统设计以 `design` 为准（指向仓库外 `eggitor/1_开发中/渔力全开` 的符号链接）；起名、读设计案或写玩家可见文案前查 `CONTEXT.md`。
 - **技术方案**：先读 `docs/技术难点识别.md`；涉及策划矛盾时读 `docs/to-questionnaire-策划案内部矛盾.md`。
 - **编码与审查**：编写或审查 SE 业务 Lua 前，读 `CODING_STANDARDS.md`；测试与收尾按下文执行。
-- **技能包接入**：使用 `ability_system`、修改业务接缝或创建编辑器侧预设前，读 `docs/ability_system-vendor.md`。
+- **官方包接入**：使用 vendor 的官方包（`ability_system`、`attr_rule`、`modifier_system`、`official_ai_feature`）、修改业务接缝或创建编辑器侧预设前，读 `docs/packages-vendor.md`。
 - **Issue**：读写前看 `docs/agents/issue-tracker.md`；打 triage 标签前看 `docs/agents/triage-labels.md`。本项目使用 Gitea `lzxsvn:3000` 的 `qinyuanj/se-fish`，通过 `tea` 操作。
 
 ## 修改边界
@@ -16,7 +16,7 @@
 - **管理器**：新增服务端管理器须加入 `server/main.lua` 的 `MgrMap`，由入口统一分发 `Start` / `OnPlayerAdded` / `OnPlayerRemoving` / `Update`。
 - **界面**：由 `MgrGameUI` 管理；handler 放在 `client/ScreenHandlers/`，文件名与 EUI 节点同名，供 `MgrGameUI:GetScreen` 按节点名加载。
 - **共享配置**：数值配置集中在 `common/GameCfg.lua`；技能配置在 `GameCfg.Ability`。
-- **官方技能包只读**：`server/packages/`、`client/packages/`、`common/packages/` 是 `ability_system` 的 vendor。业务层经 `server/AbilityAPI.lua`、`client/AbilityAPI.lua` 接入，在 `server/Mgr/MgrAbility.lua` 装配。
+- **官方包只读**：`server/packages/`、`client/packages/`、`common/packages/` 是官方包 vendor，整棵子树不参与部署或 `--clean`。说明写在 `docs/packages-vendor.md`；保留现有 README，目录内不再新增 README。技能业务经双端 `AbilityAPI.lua` 接入，在 `server/Mgr/MgrAbility.lua` 装配。
 - **生成内容**：`data/` 只读，修改须回编辑器重新导出，再用 `sync` 回灌；`unit_scripts/` 由引擎生成，不在本仓库管理。
 - **验收文件**：Gherkin 放在 `features/<车道>/<名字>.feature`，以 `# language: zh-CN` 开头。
 
@@ -24,7 +24,7 @@
 
 Lua 命令使用 **Lua 5.4**，执行前用 `lua -v` 核对；验收脚本可用 `ACCEPTANCE_LUA_BIN` 指定解释器。Lua 5.5 对循环变量重新赋值会报 `attempt to assign to const variable`，遇到此错误先检查版本。
 
-- `lua tools/cli.lua deploy`：将三端代码字节镜像到宿主目录；编辑器开着本图时执行 validate → diff → 有差异才 push。
+- `lua tools/cli.lua deploy`：将三端业务代码字节镜像到宿主目录，排除 `packages/`；编辑器开着本图时执行 validate → 只读 diff。有本地新增或不同文件时报告尚未同步并返回失败；为保留 packages，不执行全工作区 `code push`。
 - `lua tools/cli.lua sync`：将宿主目录的 `eggy.json`、API 存根、`data/` 回灌仓库。
 - 技能包预设命令见 `lua tools/cli.lua ability-presets --help`；验收脚本说明见 `tools/acceptance/README.md`。
 - 质量与变异脚本位于 `tools/quality/`，只出报告，不设门槛。

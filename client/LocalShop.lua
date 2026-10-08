@@ -2,6 +2,7 @@
 -- 本地角色在该摊位 Radius 米内（只看 x/z）才显示，点击打开 ScreenShop；商店界面的商品按当前摊位
 -- 的等级（Stands.Level）上架。走出所有摊位范围自动关商店。购买结果 ShopResult 在这里统一转成消息条提示。
 local GameCfg = require('common.GameCfg')
+local BodyScale = require('common.BodyScale')
 local REUtil = require('common.REUtil')
 local Util = require('common.Util')
 local SquareButtonImage = 'official://image/11017'
@@ -90,7 +91,8 @@ function LocalShop:Update()
         local near = false
         if pos then
             local dx, dz = pos.x - bubble.Center.x, pos.z - bubble.Center.z
-            near = dx * dx + dz * dz <= shop.Radius * shop.Radius
+            local radius = BodyScale.InteractionRadius(character, shop.Radius)
+            near = dx * dx + dz * dz <= radius * radius
         end
         if near then nearStand = bubble.Stand end
         if bubble.Near ~= near then
