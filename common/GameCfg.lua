@@ -914,6 +914,9 @@ GameCfg.Ability = {
     -- #139 持续效果钉表（统一规格 §6.3）：毒/灼烧每秒一跳、最多 5 层、持续 3 秒，
     -- 重复命中叠层并刷新持续；霜冻/麻痹不叠加，重复命中只刷新持续。
     -- DOT 每跳都重新走 T07/#128 统一伤害入口（MgrVitals:NewHit('dot') + ApplyHit）。
+    -- #52 用户最终在地图创建五个不同的 modifier 预设后填写真实 AssetKey。
+    -- 未绑定时明确报 modifier-preset-missing，不退回旧效果状态机。
+    ModifierPresets = { poison = '', burn = '', frost = '', paralyze = '', weak = '' },
     StatusEffects = {
         poison = { MaxStacks = 5, TickSec = 1, DamagePerStack = 1, DurationSec = 3 },
         burn = { MaxStacks = 5, TickSec = 1, DamagePerStack = 4, DurationSec = 3 },

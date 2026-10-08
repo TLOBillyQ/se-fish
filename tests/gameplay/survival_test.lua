@@ -130,6 +130,7 @@ function TestSurvivalDowned:setUp()
     self.v.Now = function() return env.now end
     self.s = assert(loadfile('server/Mgr/MgrSurvival.lua'))()
     self.s.Now = function() return env.now end
+    require('tests.tooling.modifier_runtime').AttachSurvival(self.s, function() return env.now end)
     self.s.Vitals = self.v
     self.v:SetLifeHooks(self.s:Hooks())
     self.a, self.b = newPlayer(1), newPlayer(2)

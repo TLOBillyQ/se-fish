@@ -141,11 +141,7 @@ end
 -- 鱼技能的记录跟随鱼持有，取消标记使尚未就绪的异步装配失效。
 -- #139：同时清理挂在该鱼载体上的持续效果（目标离场清理）。
 function Mgr:RemoveFish(fish)
-    for key, entry in pairs(self.Effects) do
-        if entry.kind == 'fish' and entry.carrier and fish and entry.carrier == fish.Carrier then
-            self.Effects[key] = nil
-        end
-    end
+    if self.Modifier then self.Modifier:ClearTarget(fish) end
     local record = fish.AbilityRecord
     if not record then return end
     record.Cancelled = true
@@ -396,77 +392,17 @@ end
 ---@param target any 命中目标（玩家/角色/鱼记录/载体/鱼本体）
 ---@param effect table { Kind = 'poison'|'burn'|'frost'|'paralyze' }
 function Mgr:ApplyWeaponEffect(source, target, effect)
-	local fxcfg = effect and GameCfg.Ability.StatusEffects[effect.Kind]
-	if not fxcfg then return false end
-	local kind = effect.Kind
-	local key, ref, targetKind, carrier = self:ResolveEffectTarget(target)
-	if not key then return false end
-	local now = self:Now()
-	local entry = self.Effects[key]
-	if not entry then
-		entry = { kind = targetKind, ref = ref, carrier = carrier }
-		self.Effects[key] = entry
-	end
-	if fxcfg.MaxStacks then -- 毒/灼烧：叠层 + 刷新；已过期的残留按全新计
-		local st = entry[kind]
-		if st and st.expiresAt and now >= st.expiresAt then st = nil end
-		if not st then
-			st = { stacks = 0, nextTickAt = now + fxcfg.TickSec }
-			entry[kind] = st
-		end
-		st.stacks = math.min(st.stacks + 1, fxcfg.MaxStacks)
-		st.expiresAt = now + fxcfg.DurationSec
-		st.source = source
-	else -- 霜冻/麻痹：不叠加，只刷新持续
-		entry[kind] = { expiresAt = now + fxcfg.DurationSec, source = source }
-		if targetKind == 'player' then self:RefreshMoveSpeed(ref) end
-	end
-	return true
+	return self.Modifier:ApplyWeaponEffect(source, target, effect)
 end
 
--- DOT 每跳都重新走 T07/#128 统一伤害入口（NewHit('dot') + ApplyHit），不直扣血。
-local function updateDot(self, entry, kind, fxcfg, now)
-	local st = entry[kind]
-	if not st then return end
-	while st and now >= st.nextTickAt and st.nextTickAt <= st.expiresAt do
-		if self.Vitals and self.Vitals.NewHit and self.Vitals.ApplyHit then
-			local hit = self.Vitals:NewHit(st.source, 'dot')
-			self.Vitals:ApplyHit(hit, entry.ref, st.stacks * fxcfg.DamagePerStack)
-		end
-		st.nextTickAt = st.nextTickAt + fxcfg.TickSec
-	end
-	if now >= st.expiresAt then entry[kind] = nil end
-end
-
+-- 兼容既有离线探针公开入口；运行时仅 MgrModifier.Update 调度 DOT。
 function Mgr:UpdateEffects()
-	local now = self:Now()
-	local fxcfgAll = GameCfg.Ability.StatusEffects
-	for key, entry in pairs(self.Effects) do
-		if entry.kind == 'fish' and entry.carrier and entry.carrier.Dead then
-			self.Effects[key] = nil -- 死鱼立即清理，不再吃 DOT
-		else
-			for _, kind in ipairs({ 'poison', 'burn' }) do
-				updateDot(self, entry, kind, fxcfgAll[kind], now)
-			end
-			for _, kind in ipairs({ 'frost', 'paralyze' }) do
-				local st = entry[kind]
-				if st and now >= st.expiresAt then
-					entry[kind] = nil
-					if entry.kind == 'player' then self:RefreshMoveSpeed(entry.ref) end
-				end
-			end
-			if not entry.poison and not entry.burn and not entry.frost and not entry.paralyze then
-				self.Effects[key] = nil
-			end
-		end
-	end
+	return self.Modifier:Update()
 end
 
 ---玩家是否麻痹（无法行动）：MgrVitals.CanAct 的 ActGuard 钩子用
 function Mgr:IsParalyzed(player)
-	local entry = player and self.Effects['p:' .. tostring(player.UserId)]
-	local st = entry and entry.paralyze
-	return st ~= nil and self:Now() < st.expiresAt
+	return self.Modifier:IsControlled(player)
 end
 
 -- 鱼的效果条目按载体比对（鱼记录/本体/接收器都可能当过命中目标，键形状不可靠）
@@ -481,20 +417,12 @@ end
 
 ---鱼移速乘区（MgrFishUnit:Speed 唯一读取点挂这里）：麻痹 0、霜冻 0.7、都无 1
 function Mgr:FishSpeedFactor(fish)
-	local entry = self:FishEffects(fish)
-	if not entry then return 1 end
-	local now = self:Now()
-	if entry.paralyze and now < entry.paralyze.expiresAt then return 0 end
-	if entry.frost and now < entry.frost.expiresAt then
-		return 1 - GameCfg.Ability.StatusEffects.frost.SlowPercent / 100
-	end
-	return 1
+	return self.Modifier:GetMoveMultiplier(fish)
 end
 
 ---鱼是否麻痹（追咬/攻击闸用）
 function Mgr:FishParalyzed(fish)
-	local entry = self:FishEffects(fish)
-	return entry ~= nil and entry.paralyze ~= nil and self:Now() < entry.paralyze.expiresAt
+	return self.Modifier:IsControlled(fish)
 end
 
 function Mgr:Start()
@@ -532,16 +460,7 @@ function Mgr:OnPlayerRemoving(player)
 	-- 管理器挂在角色下，角色销毁时一起消失；这里只清引用，不主动 Destroy，
 	-- 避免离开流程里再动一次正被销毁的单位。
 	self.Managers[player.UserId] = nil
-	-- #139 目标离场清理：持续效果与移速基准随玩家移除
-	self.Effects['p:' .. tostring(player.UserId)] = nil
-	-- 来源退出策略：取消该来源在所有目标上的效果，避免下一跳丢失权威来源身份。
-	for _, entry in pairs(self.Effects) do
-		for _, kind in ipairs({ 'poison', 'burn', 'frost', 'paralyze' }) do
-			local st = entry[kind]
-			if st and st.source == player then entry[kind] = nil end
-		end
-		if entry.kind == 'player' then self:RefreshMoveSpeed(entry.ref) end
-	end
+	-- 效果目标与来源清理由 MgrModifier 的独立生命周期负责。
 	if self.PendingGrowth then self.PendingGrowth[player.UserId] = nil end
 	if self.PendingSpeed then self.PendingSpeed[player.UserId] = nil end
 	self.SpeedBase[player.UserId] = nil
@@ -552,7 +471,6 @@ function Mgr:Update(deltaTime)
     -- 只重试本帧开始已有的请求；本帧到期事件失败留到下一帧。刷新始终读取当前存档/权威状态。
     local retrySpeed = {}
     for uid, player in pairs(self.PendingSpeed or {}) do retrySpeed[uid] = player end
-    self:UpdateEffects()
     for uid, player in pairs(retrySpeed) do
         if self.PendingSpeed and self.PendingSpeed[uid] == player then self:RefreshMoveSpeed(player) end
     end

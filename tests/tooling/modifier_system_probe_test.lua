@@ -150,15 +150,19 @@ function TestModifierProbe:test_business_dot_uses_real_manager_phase_final_tick_
             hits[#hits + 1] = { source = hit.source, category = hit.category, target = ref, amount = amount, at = clock }
         end,
     }
+    local runtime = require('tests.tooling.modifier_runtime').New(clock)
+    target.Character = runtime.unit('target')
+    mgr.Modifier = runtime.loadModifier()
+    mgr.Modifier.Vitals = mgr.Vitals
     local source, source2 = {}, {}
     local report = require('tools.probes.modifier_system_probe').VerifyBusinessDot({
         cfg = require('common.GameCfg'), source = source, source2 = source2, dotTarget = target,
         now = function() return clock end,
-        wait = function(s) clock = clock + s; mgr:UpdateEffects() end,
+        wait = function(s) runtime.wait(s); clock = runtime.now; mgr:UpdateEffects() end,
         businessDot = {
             apply = function(src, ref, kind) return mgr:ApplyWeaponEffect(src, ref, { Kind = kind }) end,
             hits = function() return hits end,
-            clear = function() mgr.Effects = {} end,
+            clear = function() mgr.Modifier:ClearTarget(target) end,
         },
     })
     lu.assertEquals(report.owner, 'business')
@@ -166,6 +170,98 @@ function TestModifierProbe:test_business_dot_uses_real_manager_phase_final_tick_
     lu.assertEquals(report.kinds.poison.count, 3)
     lu.assertEquals(report.kinds.burn.count, 3)
     lu.assertEquals(next(mgr.Effects), nil)
+end
+
+-- #52：业务入口使用真实根 API；替身只提供单位、时钟与伤害边界。
+local function business(run)
+    local e = engine()
+    local savedGame, savedRemote = _G.game, _G.RemoteEvent
+    local saved = {}
+    for name, value in pairs(package.loaded) do
+        if name:find('modifier_system', 1, true) or name == 'server.ModifierAPI' then
+            saved[name] = value; package.loaded[name] = nil
+        end
+    end
+    _G.game, _G.RemoteEvent = e.game, e.remote
+    local ok, err = pcall(function()
+        local env = setmetatable({}, { __index = _G })
+        local modifier = assert(loadfile('server/Mgr/MgrModifier.lua', 't', env))()
+        modifier.Presets = { poison = 'test:poison', burn = 'test:burn', frost = 'test:frost',
+            paralyze = 'test:paralyze', weak = 'test:weak' }
+        local player = { UserId = 52001, Character = e.unit('character') }
+        local hits = {}
+        modifier.Vitals = {
+            NewHit = function(_, source, category) return { source = source, category = category } end,
+            ApplyHit = function(_, hit, target, amount)
+                hits[#hits + 1] = { source = hit.source, target = target, amount = amount, category = hit.category }
+            end,
+        }
+        run(e, modifier, player, hits)
+    end)
+    _G.game, _G.RemoteEvent = savedGame, savedRemote
+    for name in pairs(package.loaded) do
+        if name:find('modifier_system', 1, true) or name == 'server.ModifierAPI' then package.loaded[name] = nil end
+    end
+    for name, value in pairs(saved) do package.loaded[name] = value end
+    if not ok then error(err, 0) end
+end
+
+function TestModifierProbe:test_business_death_rebuild_and_source_leave_do_not_keep_old_dot()
+    business(function(e, mgr, player, hits)
+        local source = { UserId = 2, Character = e.unit('source') }
+        lu.assertTrue(mgr:ApplyWeaponEffect(source, player, { Kind = 'burn' }))
+        mgr:OnCharacterAdded(player)
+        e.wait(4); mgr:Update()
+        lu.assertEquals(#hits, 0)
+        lu.assertEquals(#mgr.ModifierAPI.GetUnitModifiers(player.Character), 0)
+        lu.assertTrue(mgr:ApplyWeaponEffect(source, player, { Kind = 'poison' }))
+        mgr:OnPlayerRemoving(source)
+        e.wait(4); mgr:Update()
+        lu.assertEquals(#hits, 0)
+    end)
+end
+
+function TestModifierProbe:test_business_refresh_controls_and_weak_remaining_are_vendor_driven()
+    business(function(e, mgr, player)
+        lu.assertTrue(mgr:Apply(nil, player, 'weak', 17))
+        lu.assertTrue(mgr:Apply(nil, player, 'frost'))
+        lu.assertEquals(mgr:GetMoveMultiplier(player), 0.35)
+        e.wait(1)
+        lu.assertTrue(mgr:Apply(nil, player, 'frost'))
+        local entity = mgr.ModifierAPI.GetUnitModifiers(player.Character, 'test:frost')[1]
+        lu.assertEquals(entity:GetAttribute('CurrCount'), 1)
+        lu.assertEquals(mgr:GetRemaining(player, 'frost'), 3)
+        lu.assertTrue(mgr:Apply(nil, player, 'paralyze'))
+        lu.assertTrue(mgr:IsControlled(player))
+        lu.assertEquals(mgr:GetMoveMultiplier(player), 0)
+        e.wait(0.5)
+        lu.assertFalse(mgr:IsControlled(player))
+        lu.assertEquals(mgr:GetMoveMultiplier(player), 0.35)
+        e.wait(3)
+        lu.assertEquals(mgr:GetMoveMultiplier(player), 0.5)
+        local remaining = mgr:GetRemaining(player, 'weak')
+        mgr:OnPlayerRemoving(player)
+        e.wait(300)
+        lu.assertTrue(mgr:Apply(nil, player, 'weak', remaining))
+        lu.assertEquals(mgr:GetRemaining(player, 'weak'), 12.5)
+    end)
+end
+
+function TestModifierProbe:test_business_modifier_stacks_uses_latest_source_and_retains_dot_phase()
+    business(function(e, mgr, player, hits)
+        local first, latest = { UserId = 1, Character = e.unit('first') }, { UserId = 2, Character = e.unit('latest') }
+        lu.assertTrue(mgr:ApplyWeaponEffect(first, player, { Kind = 'poison' }))
+        e.wait(0.5)
+        lu.assertTrue(mgr:ApplyWeaponEffect(latest, player, { Kind = 'poison' }))
+        e.wait(0.5); mgr:Update()
+        lu.assertEquals(#hits, 1)
+        lu.assertEquals(hits[1], { source = latest, target = player, amount = 2, category = 'dot' })
+        e.wait(3)
+        mgr:Update()
+        lu.assertEquals(#hits, 3)
+        lu.assertEquals(mgr:GetRemaining(player, 'poison'), 0)
+        lu.assertEquals(#mgr.ModifierAPI.GetUnitModifiers(player.Character), 0)
+    end)
 end
 
 function TestModifierProbe:test_run_rejects_unowned_targets_without_api_calls()
