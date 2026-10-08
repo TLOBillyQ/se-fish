@@ -65,6 +65,15 @@ function TestAttrMigration:test_character_rebuild_and_leave_release_owned_attr_u
     mgr:OnPlayerRemoving(p)
     lu.assertTrue(current.destroyed)
 end
+function TestAttrMigration:test_missing_character_retry_captures_real_base_when_character_arrives()
+    local mgr,p,_,_,unit,world=fixture()
+    p.Character=nil
+    mgr:OnPlayerAdded(p)
+    p.Character=unit('Character',world)
+    p.Character.Controller.WalkSpeed=10
+    mgr:Update()
+    lu.assertAlmostEquals(p.Character.Controller.WalkSpeed,4.55,1e-8)
+end
 function TestAttrMigration:test_write_failure_is_reported_and_refresh_retries_current_projection()
     local mgr,p,data=fixture()
     local values={WalkSpeed=7,MaxHealth=100,Health=100}

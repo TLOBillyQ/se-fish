@@ -7,7 +7,7 @@ local World = game:GetService("World")
 local Task = game:GetService("Task")
 
 local GameCfg = require("common.GameCfg")
-local BodyScale = require("common.BodyScale")
+-- 体型计划由 MgrAttr 通过属性模型投影。
 -- 属性计算与引擎投影由注入的 MgrAttr 统一持有。
 local AbilityAPI = require("server.AbilityAPI")
 
@@ -274,7 +274,7 @@ function Mgr:MaxHealth(player)
 	return self.Attr:MaxHealth(player)
 end
 
----移速唯一写口：基础 × 加速成长 × 虚弱 × 霜冻（麻痹为 0），数值在 common/AttrGrowth.lua 算一次。
+---移速刷新委托：MgrAttr读取成长计数与统一效果倍率，单点投影。
 ---任何一侧变化（喝药/虚弱进出/霜冻麻痹起止/重生）都调本函数整体重写，不做增量叠加。
 -- 所有调用路径共用速度重试队列；每名玩家只登记一次，连续失败只记录首个错误，避免心跳刷屏。
 local function queueSpeed(self, player, err)
@@ -297,25 +297,8 @@ end
 
 ---喝属性药水后的一站应用：体型 + 血量上限 + 移速。存档计数已落账，这里全部重算。
 function Mgr:ApplyGrowth(player)
-	local applied = self:ApplyBodyScale(player)
-	local errors = {}
-	if not applied.Ok then errors[#errors + 1] = tostring(applied.Error) end
-	if self.Vitals and self.Vitals.RefreshMaxHealth then
-		local called, ok, err = pcall(self.Vitals.RefreshMaxHealth, self.Vitals, player)
-		if not called or ok ~= true then
-			local reason = called and err or ok
-			print('[MgrAbility] 血量上限刷新失败', player.UserId, tostring(reason))
-			errors[#errors + 1] = 'MaxHealth:' .. tostring(reason)
-		end
-	end
-	-- 体型/血量失败需重套成长；速度失败已由唯一写口登记，不能再进入成长队列反复打印/重套。
-	local retryGrowth = #errors > 0
-	local ok, err = self:RefreshMoveSpeed(player)
-	if not ok then errors[#errors + 1] = 'WalkSpeed:' .. tostring(err) end
-	if #errors > 0 then
-		applied.Ok, applied.Error = false, table.concat(errors, '; ')
-		-- 存档已落账；后续 Update 按当前存档重算，角色重建后也会再次尝试。
-	end
+	local applied = self.Attr:ApplyGrowth(player)
+	local retryGrowth = not applied.Ok
 	if retryGrowth then
 		self.PendingGrowth = self.PendingGrowth or {}
 		self.PendingGrowth[player.UserId] = player

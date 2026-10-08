@@ -1,13 +1,24 @@
 -- 离线属性边界：真实业务/根门面/vendor，仅引擎单位与World替身。
 local M = {}
 function M.New(playerData, multiplier)
-    local cache, all = {}, {}
+    local cache, all, prepared = {}, {}, {}
     local function prepare(unit, prefab)
         unit.attrs = unit.attrs or {}
         unit.GetAttribute = unit.GetAttribute or function(self,k)return self.attrs[k]end
         unit.SetAttribute = unit.SetAttribute or function(self,k,v)self.attrs[k]=v end
-        unit.GetChildren = unit.GetChildren or function(self)
-            local children={} for _, child in ipairs(all)do if child.Parent==self then children[#children+1]=child end end return children
+        if not prepared[unit] then
+            prepared[unit] = true
+            local original = unit.GetChildren
+            unit.GetChildren = function(self)
+                local children, seen = {}, {}
+                for _, child in ipairs(original and original(self) or {}) do
+                    children[#children + 1], seen[child] = child, true
+                end
+                for _, child in ipairs(all) do
+                    if child.Parent == self and not seen[child] then children[#children + 1] = child end
+                end
+                return children
+            end
         end
         unit.IsA = unit.IsA or function()return true end
         unit.FindFirstChildOfClass = unit.FindFirstChildOfClass or function(_,kind)
