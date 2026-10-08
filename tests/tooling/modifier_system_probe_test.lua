@@ -207,6 +207,18 @@ local function business(run)
     if not ok then error(err, 0) end
 end
 
+function TestModifierProbe:test_leaving_target_does_not_refresh_destroyed_growth_owner_and_cleanup_is_idempotent()
+    business(function(e, mgr, player)
+        mgr.Ability = { RefreshMoveSpeed = function() error('退出后禁止刷新属性') end }
+        mgr.Ability = nil
+        lu.assertTrue(mgr:Apply(nil, player, 'weak', 17))
+        mgr.Ability = { RefreshMoveSpeed = function() error('退出后禁止刷新属性') end }
+        mgr:OnPlayerRemoving(player)
+        mgr:OnPlayerRemoving(player)
+        lu.assertEquals(mgr:GetRemaining(player, 'weak'), 0)
+    end)
+end
+
 function TestModifierProbe:test_business_death_rebuild_and_source_leave_do_not_keep_old_dot()
     business(function(e, mgr, player, hits)
         local source = { UserId = 2, Character = e.unit('source') }

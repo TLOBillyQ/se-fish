@@ -1,7 +1,7 @@
 -- 五效果的业务装配：层数、持续与到期归 modifier_system；这里只保存 DOT 相位和末次业务来源。
 local ModifierAPI = require('server.ModifierAPI')
 local GameCfg = require('common.GameCfg')
-local Mgr = { ModifierAPI = ModifierAPI, Targets = {}, Characters = {} }
+local Mgr = { ModifierAPI = ModifierAPI, Targets = {}, Characters = {}, Departing = {} }
 local kinds = { 'poison', 'burn', 'frost', 'paralyze', 'weak' }
 
 function Mgr:Now()
@@ -24,7 +24,9 @@ function Mgr:Resolve(target)
 end
 
 function Mgr:Changed(entry)
-    if entry.ref.UserId and self.Ability then self.Ability:RefreshMoveSpeed(entry.ref) end
+    if entry.ref.UserId and not self.Departing[entry.ref.UserId] and self.Ability then
+        self.Ability:RefreshMoveSpeed(entry.ref)
+    end
 end
 
 function Mgr:Drain(entry, kind, st)
@@ -172,6 +174,7 @@ function Mgr:OnCharacterAdded(player)
 end
 
 function Mgr:OnPlayerAdded(player)
+    self.Departing[player.UserId] = nil
     if self.Characters[player.UserId] then return end
     if player.CharacterAdded then
         self.Characters[player.UserId] = player.CharacterAdded:Connect(function()
@@ -181,6 +184,7 @@ function Mgr:OnPlayerAdded(player)
 end
 
 function Mgr:OnPlayerRemoving(player)
+    self.Departing[player.UserId] = true
     local connection = self.Characters[player.UserId]
     if connection then connection:Disconnect(); self.Characters[player.UserId] = nil end
     self:ClearTarget(player)

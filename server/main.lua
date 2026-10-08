@@ -126,6 +126,7 @@ MgrMap.MgrAbility.Modifier = MgrMap.MgrModifier
 MgrMap.MgrSurvival.Modifier = MgrMap.MgrModifier
 MgrMap.MgrModifier.Ability = MgrMap.MgrAbility
 MgrMap.MgrModifier.Vitals = MgrMap.MgrVitals
+MgrMap.MgrAbility.Ai = MgrMap.MgrAi
 MgrMap.MgrFishUnit.Ai = MgrMap.MgrAi
 MgrMap.MgrAi.FishUnit = MgrMap.MgrFishUnit
 MgrMap.MgrSurvival.SpeedWriter = MgrMap.MgrAbility

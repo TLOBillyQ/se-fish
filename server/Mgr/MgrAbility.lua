@@ -205,6 +205,7 @@ end
 function Mgr:CastFish(fish)
     local record = fish.AbilityRecord
     if not record or not record.Ready or record.Cancelled or fish.Carrier.Dead then return false end
+    if self.Ai then return self.Ai:CastFish(fish) end
     return AbilityAPI.CastAbility(record.Receiver, record.Entry.Index)
 end
 
