@@ -7,6 +7,7 @@
 -- GrillState{state='burnt'} 撤板并提示「你的鱼烤糊了！」。
 -- 不经 MgrGameUI 加载（没有同名 EUI 节点），由 client/main.lua Task:Spawn 直接启动（同 ScreenFerry）。
 local GameCfg = require('common.GameCfg')
+local BodyScale = require('common.BodyScale')
 local GrillCurve = require('common.GrillCurve')
 local REUtil = require('common.REUtil')
 local Util = require('common.Util')
@@ -170,7 +171,7 @@ end
 function Panel:UpdateBubbles()
     local character = Players.LocalPlayer and Players.LocalPlayer.Character
     local pos = character and character.Position
-    local radius = cfg().Radius
+    local radius = BodyScale.InteractionRadius(character, cfg().Radius)
     for _, bubble in ipairs(self.Bubbles) do
         local visible = false
         if pos then

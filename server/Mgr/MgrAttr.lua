@@ -119,6 +119,15 @@ function Mgr:WeaponDamageScale(player, kind)
     if not ok then error('[MgrAttr] 武器属性投影失败: ' .. tostring(result)) end
     return result
 end
+function Mgr:RefreshAfterRevive(player)
+    local ok, result = pcall(self.ApplyGrowth, self, player)
+    if not ok or not result.Ok then
+        self:State(player).pending = true
+        print('[MgrAttr] 复活属性待重试', player.UserId, tostring(ok and result.Error or result))
+        return false
+    end
+    return true
+end
 function Mgr:OnPlayerAdded(player)
     local ok, err = pcall(self.ApplyGrowth, self, player)
     if not ok or not err.Ok then

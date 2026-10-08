@@ -295,6 +295,7 @@ function Mgr:Revive(state, source)
     state.lastSec = math.floor(self:Now())
     self:SetControllerHealth(state, self:MaxHealthOf(state.player)) -- #139 按玩家上限回满
     self:WriteHunger(state)
+    if self.Attr then self.Attr:RefreshAfterRevive(state.player) end
     print('[MgrVitals] 复活', state.player.UserId, source, 'health=' .. tostring(healthOf(state)),
         'hunger=' .. tostring(state.hunger))
 end
@@ -310,6 +311,7 @@ function Mgr:ApplyRevive(state, health, minHunger)
     state.lastSec = math.floor(self:Now())
     self:SetControllerHealth(state, health)
     self:WriteHunger(state)
+    if self.Attr then self.Attr:RefreshAfterRevive(state.player) end
     return true
 end
 

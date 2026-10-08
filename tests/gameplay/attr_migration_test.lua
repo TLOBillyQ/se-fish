@@ -105,7 +105,10 @@ function TestAttrMigration:test_vitals_food_and_revive_use_projected_health_and_
     lu.assertEquals(vitals:GetState(p).hunger,190)
     lu.assertEquals(mgr.AttrAPI.GetAttr(p.Character,'PlayerHunger'),190)
     local state=vitals:GetState(p) state.dead=true
+    p.Character.scale=1 p.Character.Controller.WalkSpeed=7
     vitals:Revive(state,'test')
+    lu.assertEquals(p.Character.scale,3)
+    lu.assertAlmostEquals(p.Character.Controller.WalkSpeed,3.185,1e-8)
     lu.assertEquals(p.Character.Controller.Health,900)
     lu.assertEquals(mgr.AttrAPI.GetAttr(p.Character,'PlayerHunger'),300)
 end
