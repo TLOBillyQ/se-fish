@@ -273,7 +273,7 @@ function TestSurvivalTakeover:test_server_main_wires_survival()
     lu.assertStrContains(src, 'MgrMap.MgrSurvival.Save = MgrMap.MgrSave')
     lu.assertStrContains(src, 'MgrMap.MgrVitals:SetLifeHooks(MgrMap.MgrSurvival:Hooks())')
     -- 就绪批次与离开顺序：Survival 紧随 Vitals；终镜像先于 SaveLeaving 序列化
-    lu.assertStrContains(src, "'MgrPlayer', 'MgrVitals', 'MgrSurvival', 'MgrAbility', 'MgrFishUnit'")
+    lu.assertStrContains(src, "'MgrAttr', 'MgrPlayer', 'MgrVitals', 'MgrModifier', 'MgrSurvival', 'MgrAbility', 'MgrFishUnit'")
     lu.assertStrContains(src, [[invoke('MgrSurvival', MgrMap.MgrSurvival, 'BeforeLeave', player)]])
 end
 
@@ -745,6 +745,7 @@ function TestSurvivalOffline:mark() return self.data.Extra.survival end
 -- 退出再重进：服务端 Survival 状态随玩家清掉，存档 Extra.survival 里的离线标记是唯一凭据
 function TestSurvivalOffline:rejoin()
     self.s:BeforeLeave(self.a)
+    self.s.Modifier:OnPlayerRemoving(self.a)
     self.s:OnPlayerRemoving(self.a)
     self:ctrl().WalkSpeed = 10 -- 新会话的角色是默认速度
     self.s:OnPlayerAdded(self.a)
@@ -870,13 +871,13 @@ local function installGrowth(env)
     env.v:RefreshMaxHealth(env.a)
     env.s.SpeedWriter = {
         RefreshMoveSpeed = function(_, p)
-            p.Character.Controller.WalkSpeed = env.s:GetState(p).weakUntil and 10.5 or 21
+            p.Character.Controller.WalkSpeed = env.s.Modifier:GetRemaining(p, 'weak') > 0 and 10.5 or 21
             return true
         end,
         ApplyGrowth = function(_, p)
             env.growthCalls = env.growthCalls + 1
             env.v:RefreshMaxHealth(p)
-            p.Character.Controller.WalkSpeed = env.s:GetState(p).weakUntil and 10.5 or 21
+            p.Character.Controller.WalkSpeed = env.s.Modifier:GetRemaining(p, 'weak') > 0 and 10.5 or 21
             return { Ok = true }
         end,
     }

@@ -84,8 +84,13 @@ end
 function Runtime.AttachSurvival(survival, now)
     local e = Runtime.New(now())
     local modifier = e.loadModifier()
+    local syncing = false
     local function sync(player)
-        e.wait(math.max(0, now() - e.now))
+        if not syncing then
+            syncing = true
+            e.wait(math.max(0, now() - e.now))
+            syncing = false
+        end
         if player and player.Character and not player.Character.GetAttribute then
             local unit = e.unit('character')
             for k, v in pairs(unit) do if player.Character[k] == nil then player.Character[k] = v end end
@@ -103,7 +108,7 @@ function Runtime.AttachSurvival(survival, now)
         controller.WalkSpeed = bases[player.UserId] * modifier:GetMoveMultiplier(player)
         return true
     end }
-    modifier.Ability = survival.SpeedWriter
+    modifier.Ability = { RefreshMoveSpeed = function(_, player) return survival.SpeedWriter:RefreshMoveSpeed(player) end }
     return modifier
 end
 return Runtime
