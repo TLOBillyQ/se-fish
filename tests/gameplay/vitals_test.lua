@@ -116,6 +116,37 @@ function TestVitals:test_config_is_centralized_and_matches_design()
     lu.assertNil(defs.starterRod.EatPercent)
 end
 
+-- 写档使 ready getter 暂时不可用，不能消除最近已确认持桶者的每秒伤害。
+function TestVitals:test_confirmed_held_damage_continues_while_inventory_is_saving()
+    local PD = assert(loadfile('server/Data/PlayerData.lua'))()
+    local data = PD.New(self.a, function() end)
+    data:Init()
+    self.mgr.PlayerData = { GetDataInst = function() if data.Inited then return data end end }
+    data.Data.Containers.backpack[1] = { itemId = 'item126', count = 1 }
+    self:tick(1)
+    data.Inited = false
+    self:tick(2)
+    lu.assertEquals(self:ctrl().Health, 297)
+    data.Inited = true
+    data.Data.Containers.backpack[1] = nil
+    self:tick(1)
+    lu.assertEquals(self:ctrl().Health, 297)
+end
+
+-- ready 加入时已有桶，首帧之前就写档也应具有已确认持有快照。
+function TestVitals:test_loaded_holder_is_known_before_the_first_update()
+    local PD = assert(loadfile('server/Data/PlayerData.lua'))()
+    local data = PD.New(self.a, function() end)
+    data:Init()
+    data.Data.Containers.itemBar[1] = { itemId = 'item126', count = 1 }
+    self.mgr.PlayerData = { GetDataInst = function() if data.Inited then return data end end }
+    self.mgr:OnPlayerRemoving(self.a)
+    self.mgr:OnPlayerAdded(self.a)
+    data.Inited = false
+    self:tick(1)
+    lu.assertEquals(self:ctrl().Health, 299)
+end
+
 function TestVitals:test_pure_advance_whole_seconds_then_starve_next_second()
     local c = { HungerPerSec = 1, StarveDamagePerSec = 5, MaxCatchUpSec = 5 }
     local hunger, damage = self.Vitals.Advance(3, 2, c)

@@ -124,6 +124,19 @@ function TestReefCombat:test_stop_clears_inflight_warning_without_applying_pendi
     lu.assertEquals(self.notices[#self.notices].kind,'clear')
     lu.assertEquals(self.notices[#self.notices].reason,'stop')
 end
+
+-- Stop 清掉旧招后 Start 必须恢复现存礁石鱼的冷却，不能永久停攻或补结算旧预警。
+function TestReefCombat:test_restart_restores_existing_air_fish_attack_after_a_fresh_cooldown()
+    self:drop('fish48Boss'); self:advance(4)
+    self.mgr:Stop()
+    self.mgr:Start()
+    self:advance(7.9)
+    lu.assertEquals(self.player.Character.Controller.Health, 300)
+    self:advance(8.1)
+    lu.assertEquals(self.notices[#self.notices].move, 'airThrow')
+    self:advance(9.4)
+    lu.assertEquals(self.player.Character.Controller.Health, 200)
+end
 function TestReefCombat:test_throw_client_displays_falling_body_and_clear_destroys_it()
     local warn=require('client.LocalGarBite'); warn:Start()
     local n=require('common.GarBiteNotice')

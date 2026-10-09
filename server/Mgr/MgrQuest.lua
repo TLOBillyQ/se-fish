@@ -12,6 +12,42 @@ local function cfg()
     return GameCfg.Quest
 end
 
+-- 持久业务在自己的隔离 draft 内记事实，让扣件/扣费/发货与任务进度同键落账。
+function Mgr:RecordFact(draft, kind, payload)
+    local state = QuestSteps.Restore(cfg().Steps, draft.Extra.quest)
+    local counted, advanced = QuestSteps.Apply(cfg().Steps, state, {
+        kind = kind, itemId = payload.itemId, category = payload.category, count = payload.count,
+        eventId = tostring(draft.SaveMeta.epoch) .. ':' .. payload.eventId,
+    })
+    if counted then draft.Extra.quest = state end
+    return counted, advanced
+end
+
+function Mgr:RefreshCommitted(player, data)
+    local previous = self:GetState(player)
+    if not previous or not data or not data.Inited then return end
+    local restored = QuestSteps.Restore(cfg().Steps, data.Extra.quest)
+    if restored.step == previous.step and restored.count == previous.count then return end
+    self.States[player.UserId] = restored
+    local queue = self.Queues[player.UserId]
+    if queue and not queue.writing then
+        for i = #queue.events, 1, -1 do
+            if restored.seen[queue.events[i].eventId] then table.remove(queue.events, i) end
+        end
+        local tail = QuestSteps.Restore(cfg().Steps, restored)
+        for _, fact in ipairs(queue.events) do QuestSteps.Apply(cfg().Steps, tail, fact) end
+        queue.tail = #queue.events > 0 and tail or nil
+    end
+    local nextStep = cfg().Steps[restored.step]
+    self:Publish(player, restored.step > previous.step
+        and (nextStep and string.format(cfg().NextNotice, nextStep.Text) or cfg().DoneText) or nil)
+    if queue and not queue.writing and #queue.events == 0 and queue.leave then
+        local leave = queue.leave
+        queue.leave = nil
+        leave()
+    end
+end
+
 function Mgr:Send(player, state)
     _G.REUtil:GetRE('QuestState'):FireClient(player, state)
 end
@@ -39,6 +75,9 @@ end
 
 -- 收到一条玩法事实；计数返回 true
 function Mgr:Notify(kind, player, payload)
+    if self.Save and self.PlayerData then
+        self:RefreshCommitted(player, self.PlayerData:GetDataInst(player))
+    end
     local state = self:GetState(player)
     if not state or type(payload) ~= 'table' then return false end
     local c = cfg()
@@ -98,6 +137,14 @@ end
 function Mgr:Drain(player)
     local queue = player and self.Queues[player.UserId]
     if not queue or queue.player ~= player or queue.writing or #queue.events == 0 then return end
+    local status = self.Save:Status(player.UserId)
+    if status.autosavePaused or status.loadState == 'failed' then
+        queue.failed = true
+        local leave = queue.leave
+        queue.leave = nil
+        if leave then leave() end
+        return
+    end
     local data = self.PlayerData and self.PlayerData:GetDataInst(player)
     if not data then return end
     local operation = self.Save:NextOperation(player, 'quest-fact')
@@ -149,6 +196,12 @@ function Mgr:FlushBeforeLeave(player, done)
     if not self.Save or not queue or queue.player ~= player or queue.failed
         or self.Save:Status(player.UserId).loadState ~= 'ready'
         or #queue.events == 0 and not queue.writing then return false end
+    if self.Save:Status(player.UserId).autosavePaused then
+        queue.failed = true
+        queue.leave = nil
+        print('[MgrQuest] 保存已暂停，离场放弃未落账事实', player.UserId)
+        return false
+    end
     queue.leaving, queue.leave = true, done
     self:Drain(player)
     return true

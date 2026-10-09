@@ -24,6 +24,9 @@ function TestGuidePersistence:setUp()
         UpdateAsync = function(_, key, transform)
             if env.failWrite then error('写档失败') end
             local value = transform(env.values[key])
+            local operations = value and value.meta and value.meta.operations or {}
+            if env.failQuestWrite and operations[#operations]
+                and operations[#operations].kind == 'quest-fact' then error('任务写档失败') end
             if value then env.values[key] = value end
             return value
         end,
@@ -52,6 +55,79 @@ function TestGuidePersistence:setUp()
         if env.story.OnPlayerAdded then env.story:OnPlayerAdded(player) end
     end
     self:join()
+end
+
+-- 购买已落账后独立任务写失败，会留下有竿却仍要求重复买竿的不可恢复状态。
+function TestGuidePersistence:test_purchase_and_quest_progress_commit_together_without_a_second_write()
+    self:drain()
+    for i = 1, 5 do self:fact('PickBait', 'worm:' .. i, 'worm'); self:drain() end
+    for i = 1, 5 do self:fact('Feed', 'feed:' .. i, 'worm'); self:drain() end
+    local data = self.players:GetDataInst(self.player)
+    local op = self.save:NextOperation(self.player, 'seed-coins')
+    self.save:Execute(self.player, data, op, function(draft)
+        draft:AddCoin(5, nil, 'test')
+        return {}
+    end, function() end)
+    self:drain()
+    local shop = assert(loadfile('server/Mgr/MgrShop.lua'))()
+    shop.Save, shop.PlayerData, shop.Quest = self.save, self.players, self.quest
+    shop.Interact = { InRange = function() return true end }
+    self.failQuestWrite = true
+    lu.assertTrue(shop:Buy(self.player, data, 'starterRod', nil, 1,
+        self.save:NextOperation(self.player, 'shop')))
+    self:drain()
+    self.failQuestWrite = false
+    self:rejoin()
+    lu.assertEquals(self.players:GetDataInst(self.player):ItemCount('starterRod'), 1)
+    lu.assertEquals(self.quest:GetState(self.player).step, 4)
+end
+
+-- 五次蚯蚓喂食的金币和计数必须同键确认，最后一只不能消失而任务仍停在四只。
+function TestGuidePersistence:test_feeding_consumption_coins_and_progress_share_one_commit()
+    self:drain()
+    for i = 1, 5 do self:fact('PickBait', 'worm:' .. i, 'worm'); self:drain() end
+    local data = self.players:GetDataInst(self.player)
+    self.save:Execute(self.player, data, self.save:NextOperation(self.player, 'seed-bait'), function(draft)
+        draft:AddBait('worm', 5)
+        draft:SelectBait('worm')
+        return {}
+    end, function() end)
+    self:drain()
+    local interact = assert(loadfile('server/Mgr/MgrInteract.lua'))()
+    interact.Save, interact.PlayerData, interact.Quest = self.save, self.players, self.quest
+    self.failQuestWrite = true
+    for i = 1, 5 do
+        lu.assertTrue(interact:Feed(self.player, data, {}, GameCfg.Interact.Fisherman, i,
+            self.save:NextOperation(self.player, 'interact')))
+        self:drain()
+    end
+    self.failQuestWrite = false
+    self:rejoin()
+    data = self.players:GetDataInst(self.player)
+    lu.assertEquals(data.Data.Bait.worm, 0)
+    lu.assertEquals(data.Data.FishCoin, 5)
+    lu.assertEquals(self.quest:GetState(self.player).step, 3)
+end
+
+-- 上岸图鉴的持久结果与任务不能分开，否则图鉴已确认而断线后任务仍要求重新上岸。
+function TestGuidePersistence:test_landing_collection_and_guide_progress_commit_together()
+    self:drain()
+    for i = 1, 5 do self:fact('PickBait', 'worm:' .. i, 'worm'); self:drain() end
+    for i = 1, 5 do self:fact('Feed', 'feed:' .. i, 'worm'); self:drain() end
+    for _, f in ipairs({ { 'Buy', 'buy', 'starterRod' }, { 'EquipBait', 'equip', 'worm' },
+        { 'CastWater', 'cast' } }) do self:fact(table.unpack(f)); self:drain() end
+    local compendium = assert(loadfile('server/Mgr/MgrCompendium.lua'))()
+    compendium.Save, compendium.PlayerData, compendium.Quest = self.save, self.players, self.quest
+    self.failQuestWrite = true
+    lu.assertTrue(compendium:RecordLanding(self.player, { fishId = 'bass', mult = 1, reelSerial = 77 }))
+    self:fact('Land', 'reel:77', 'bass')
+    self:drain()
+    self.quest:Update()
+    self:drain()
+    self.failQuestWrite = false
+    self:rejoin()
+    lu.assertEquals(compendium:Snapshot(self.player).total, 1)
+    lu.assertEquals(self.quest:GetState(self.player).step, 7)
 end
 
 function TestGuidePersistence:tearDown()
@@ -252,6 +328,66 @@ function TestGuidePersistence:test_seven_npc_dialogues_describe_real_exchange_an
         lu.assertNotNil(dialogue.Describe(zone.Id))
         lu.assertNotStrContains(dialogue.Describe(zone.Id), '技能')
     end
+end
+
+-- GM 暂停保存后没有可用 operation；离场不能永久等待任务/剧情内存队列。
+function TestGuidePersistence:test_paused_save_releases_guide_leave_barriers_without_claiming_commit()
+    self:drain()
+    local data = self.players:GetDataInst(self.player)
+    lu.assertTrue(self.save:ApplyTemporary(self.player.UserId, data, { coin = 0 }, function() end))
+    lu.assertTrue(self.save:Status(self.player.UserId).autosavePaused)
+    self:fact('PickBait', 'paused-loot', 'worm')
+    self.story:Begin(self.player)
+    self.story:Complete(self.player, 'opening', 'read')
+    local called = false
+    lu.assertFalse(self.quest:FlushBeforeLeave(self.player, function() called = true end))
+    lu.assertFalse(self.story:FlushBeforeLeave(self.player, function() called = true end))
+    lu.assertFalse(called)
+    self:rejoin()
+    lu.assertEquals(self.quest:GetState(self.player).count, 0)
+    lu.assertFalse(self.players:GetDataInst(self.player).Extra.story.read.opening == true)
+end
+
+-- 已进入离场屏障后才暂停存档，也必须释放回调，不能依赖再调用 Flush。
+function TestGuidePersistence:test_pause_after_leaving_started_releases_pending_fact_barrier()
+    self:drain()
+    local data = self.players:GetDataInst(self.player)
+    lu.assertTrue(self.save:Save(self.player.UserId, data:Serialize(), 'autosave'))
+    lu.assertTrue(self.save:ApplyTemporary(self.player.UserId, data, { coin = 0 }, function() end))
+    self:fact('PickBait', 'paused-later', 'worm')
+    local removed = false
+    lu.assertTrue(self.quest:FlushBeforeLeave(self.player, function()
+        removed = true
+        self.quest:OnPlayerRemoving(self.player)
+        self.players:OnPlayerRemoving(self.player)
+    end))
+    self:drain()
+    self.quest:Update()
+    lu.assertTrue(removed)
+    self:join()
+    self:drain()
+    lu.assertEquals(self.quest:GetState(self.player).count, 0)
+end
+
+function TestGuidePersistence:test_pause_after_story_leave_started_releases_unconfirmed_read()
+    self:drain()
+    local data = self.players:GetDataInst(self.player)
+    self.story:Begin(self.player)
+    self.save:Save(self.player.UserId, data:Serialize(), 'autosave')
+    self.save:ApplyTemporary(self.player.UserId, data, { coin = 0 }, function() end)
+    self.story:Complete(self.player, 'opening', 'read')
+    local removed = false
+    lu.assertTrue(self.story:FlushBeforeLeave(self.player, function()
+        removed = true
+        self.story:OnPlayerRemoving(self.player)
+        self.players:OnPlayerRemoving(self.player)
+    end))
+    self:drain()
+    self.story:Update()
+    lu.assertTrue(removed)
+    self:join()
+    self:drain()
+    lu.assertFalse(self.players:GetDataInst(self.player).Extra.story.read.opening == true)
 end
 
 return TestGuidePersistence

@@ -67,6 +67,7 @@ end
 function Mgr:SendItemBar(player)
     local data = self:GetDataInst(player)
     if not data then return end
+    if self.Vitals and self.Vitals.RefreshHeldDamage then self.Vitals:RefreshHeldDamage(player, data) end
     self:RefreshHeldRod(player)
     _G.REUtil:GetRE('ItemBarState'):FireClient(player, data:GetItemBarSnapshot())
 end

@@ -67,6 +67,30 @@ function TestVolcanoCombat:test_mosasaur_warns_lands_once_and_carries_player_tow
     lu.assertNotNil(MathWater.HitZone(Cfg.Water.Zones,self.player.Character.Position))
 end
 
+-- 砸击或咬击同步触发 Died 后，旧跳跃不能再给死者建甩头预警。
+function TestVolcanoCombat:test_lethal_landing_or_grab_does_not_rebuild_a_head_warning()
+    local controller = self.player.Character.Controller
+    function controller:TakeDamage(amount)
+        self.Health = math.max(0, self.Health - amount)
+        self.HealthChanged:Fire(self.Health)
+        if self.Health == 0 then self.Died:Fire() end
+    end
+    for _, health in ipairs({ 35, 300 }) do
+        controller.Health = health
+        self.vitals:OnPlayerRemoving(self.player)
+        self.vitals:OnPlayerAdded(self.player)
+        controller.Health = health
+        local fish = self:drop('fish55Elite')
+        self:advance(self.now + 15.1)
+        self:advance(self.now + 2.6)
+        lu.assertEquals(controller.Health, 0)
+        lu.assertEquals(self.notices[#self.notices].kind, 'clear')
+        lu.assertNil(fish.BossWarn)
+        lu.assertNil(fish.Aquatic.HeadAt)
+        self.mgr:Remove(fish)
+    end
+end
+
 function TestVolcanoCombat:test_water_phase_reaches_water_and_enrage_interrupts_carry_and_old_warning_once()
     self.player.Character.Controller.Health=5000
     local fish=self:drop('fish56Boss')

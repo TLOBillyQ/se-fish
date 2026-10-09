@@ -123,6 +123,9 @@ function Mgr:Buy(player, data, itemId, number, seq, operation)
         return execute(self, player, data, operation, function(draft)
             local result, failure = settlePurchase(draft, goods)
             if not result then return nil, failure end
+            if self.Quest and self.Quest.RecordFact then
+                self.Quest:RecordFact(draft, 'Buy', { itemId = result.itemId, eventId = operation.id })
+            end
             return result
         end, function(written, result, operation)
             if not written then self:Fail(player, itemId, result, number) return end
