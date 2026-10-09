@@ -2032,6 +2032,17 @@ function Mgr:UpdateCarry(fish, now)
     if carryCfg.ContactDamage and now - (fish.ContactAt or 0) >= (carryCfg.ContactIntervalSec or 1) then
         fish.ContactAt = now
         self:Hit(fish, target, carryCfg.ContactDamage, 'carry')
+        if fish.Aquatic then
+            local contact=GameCfg.Ability.Aquatic
+            for _, player in ipairs(self:Players()) do
+                local valid,cp=self:IsTargetValid(player,pos)
+                if player~=target and valid
+                    and (cp.x-pos.x)^2+(cp.z-pos.z)^2<=contact.ContactRange^2
+                    and math.abs(cp.y-pos.y)<=contact.ContactRange then
+                    self:Hit(fish,player,contact.ContactDamage,'carryContact')
+                end
+            end
+        end
     end
 end
 

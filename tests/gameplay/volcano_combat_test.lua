@@ -163,3 +163,25 @@ function TestVolcanoCombat:test_control_cancels_aquatic_warning_and_resumes_with
     lu.assertEquals(self.notices[#self.notices].kind,'clear')
     self.mgr.Ai=nil
 end
+
+-- 携带过程中撞到另一名玩家也应造成150，不能只伤害嘴里的目标。
+function TestVolcanoCombat:test_carry_contact_hits_nearby_bystander_once_per_second()
+    self.player.Character.Controller.Health=5000
+    local fish=self:drop('fish55Elite')
+    self:advance(18.7)
+    local controller={Health=1000}
+    function controller:TakeDamage(amount) self.Health=math.max(0,self.Health-amount) end
+    local peer={UserId=3802,SetAttribute=function() end,
+        Character={Controller=controller,Position=fish.Carrier.Body.Position}}
+    self.players[2]=peer
+    self.vitals:OnPlayerAdded(peer)
+    controller.Health=1000
+    while self.now<19.7-1e-8 do
+        peer.Character.Position=fish.Carrier.Body.Position
+        self.now=math.min(19.7,self.now+0.05)
+        self.mgr:Update()
+    end
+    self.vitals:OnPlayerRemoving(peer)
+    self.players[2]=nil
+    lu.assertEquals(controller.Health,850)
+end

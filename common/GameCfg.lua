@@ -1053,7 +1053,7 @@ GameCfg.Ability = {
         LeapIntervalSec = 15, LeapWindupSec = 1, LeapSec = 1.5, LeapHeight = 8,
         LeapRadius = 5, LeapDamage = 35, -- 沧龙表基础攻击35；落点范围为灰盒判定细化
         HeadRadius = 2.5, HeadWindupSec = 0.8, HeadDamage = 35,
-        GrabDamage = 300, ContactDamage = 150, -- 正文独立咬中/过程接触
+        GrabDamage = 300, ContactDamage = 150, ContactRange = 2.5, -- 正文独立咬中/过程接触；接触半径为灰盒细化
     },
     BossPhase = {
         -- 哥斯拉（fish56Boss，GameSpec §12）：低于 60% 入水、切沧龙式攻击（咬中 1000）；
