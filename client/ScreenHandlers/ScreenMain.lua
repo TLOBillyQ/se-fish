@@ -336,6 +336,37 @@ function ScreenHandler:ShowQuest(state)
     if type(state.notice) == 'string' and _G.LocalMsgNotice then _G.LocalMsgNotice(state.notice) end
 end
 
+function ScreenHandler:ShowDialogue(payload)
+    if type(payload) ~= 'table' or not self.DialogueNodes then return end
+    local lines = payload.lines
+    if type(lines) ~= 'table' or #lines == 0 then return end
+    for _, line in ipairs(lines) do if type(line) ~= 'string' then return end end
+    self.DialoguePayload, self.DialoguePage = payload, 1
+    for _, node in ipairs(self.DialogueNodes) do node.Visible = true end
+    self:ShowDialoguePage()
+end
+
+function ScreenHandler:ShowDialoguePage()
+    local payload = self.DialoguePayload
+    if not payload then return end
+    self.DialogueTitle.Text = (payload.title or '钓鱼佬') .. '  ' .. self.DialoguePage .. '/' .. #payload.lines
+    local wrapped, count = {}, 0
+    for character in payload.lines[self.DialoguePage]:gmatch('[%z\1-\127\194-\244][\128-\191]*') do
+        wrapped[#wrapped + 1] = character
+        count = character == '\n' and 0 or count + 1
+        if count >= self.DialogueColumns then wrapped[#wrapped + 1], count = '\n', 0 end
+    end
+    self.DialogueBody.Text = table.concat(wrapped)
+    self.DialogueNext.TouchEnabled = self.DialoguePage < #payload.lines
+    self.DialogueRead.TouchEnabled = true
+    self.DialogueReadLabel.Text = payload.readKey and '已读，开始钓鱼' or '知道了'
+end
+
+function ScreenHandler:HideDialogue()
+    for _, node in ipairs(self.DialogueNodes or {}) do node.Visible = false end
+    self.DialoguePayload = nil
+end
+
 -- 服务端会发的抛竿阶段（#133 增补 unhooked：脱钩后线还在水里）。白名单外的回包一律丢弃，
 -- 免得迟到 / 旧回包把界面拉回一个不存在的状态。
 local CAST_PHASES = { idle = true, cast = true, hooked = true, landed = true, unhooked = true }
@@ -814,6 +845,8 @@ function ScreenHandler:Cleanup()
     self.SplashUntil = nil
     self.AlertedCastId = nil
     self.QuestLabel = nil
+    self.DialogueNodes = nil
+    self.DialoguePayload = nil
     self.HealthRing = nil
     self.HungerRing = nil
     self.HealthText = nil
@@ -950,6 +983,46 @@ function ScreenHandler:Init()
         '', 30, Color.New(255, 255, 255, 255))
     self.QuestLabel.Visible = false
     self.Overlays[#self.Overlays + 1] = self.QuestLabel
+    local cx, cy = resolution.x / 2, resolution.y / 2
+    local width = math.min(1000, resolution.x - 60)
+    self.DialogueColumns = math.max(12, math.floor((width - 80) / 26))
+    local panel = World:CreateUnit('EUIImage', {
+        Parent = root, Name = 'DialogueBackground', Position = Vector2.New(cx, cy),
+        Size = Vector2.New(width, 360), Image = 'official://image/11017',
+        Color = Color.New(22, 38, 54, 250),
+    })
+    panel.TouchEnabled, panel.SwallowTouchEnabled, panel.LocalZOrder = true, true, 20
+    self.DialogueTitle = overlay(root, 'DialogueTitle', cx, cy - 120, width - 50, 50,
+        '', 30, Color.New(255, 225, 130, 255))
+    self.DialogueBody = overlay(root, 'DialogueBody', cx, cy - 10, width - 80, 130,
+        '', 26, Color.New(255, 255, 255, 255))
+    self.DialogueNext = button(root, 'DialogueNext', cx - 160, cy + 115, 260)
+    self.DialogueRead = button(root, 'DialogueRead', cx + 160, cy + 115, 300)
+    local nextLabel = overlay(root, 'DialogueNextLabel', cx - 160, cy + 115, 260, 80,
+        '下一段', 26, Color.New(255, 255, 255, 255))
+    self.DialogueReadLabel = overlay(root, 'DialogueReadLabel', cx + 160, cy + 115, 300, 80,
+        '已读，开始钓鱼', 26, Color.New(255, 255, 255, 255))
+    self.DialogueNodes = { panel, self.DialogueTitle, self.DialogueBody,
+        self.DialogueNext, self.DialogueRead, nextLabel, self.DialogueReadLabel }
+    for _, node in ipairs(self.DialogueNodes) do
+        if node ~= panel then node.LocalZOrder = 21 end
+        if node == nextLabel or node == self.DialogueReadLabel then node.LocalZOrder = 22 end
+        node.Visible = false
+        self.Overlays[#self.Overlays + 1] = node
+    end
+    self:Listen(self.DialogueNext.OnClicked, function()
+        if not self.DialoguePayload or self.DialoguePage >= #self.DialoguePayload.lines then return end
+        self.DialoguePage = self.DialoguePage + 1
+        self:ShowDialoguePage()
+    end)
+    self:Listen(self.DialogueRead.OnClicked, function()
+        local payload = self.DialoguePayload
+        if not payload then return end
+        if not payload.readKey then return self:HideDialogue() end
+        self.DialogueReadLabel.Text = '保存已读中…'
+        self.DialogueRead.TouchEnabled = false
+        _G.REUtil:GetRE('StoryRead'):FireServer({ action = 'read', readKey = payload.readKey })
+    end)
     self:BuildVitals(root, resolution)
     self.ReelBarBg = World:CreateUnit('EUIImage', {
         Parent = root, Name = 'ReelProgressBg',
@@ -1151,10 +1224,18 @@ function ScreenHandler:Init()
         if self.IsOpen then FishCombatLabel:Apply(payload) end
     end)
     self:Listen(_G.REUtil:GetRE('QuestState').OnClientEvent, function(state) self:ShowQuest(state) end)
-    -- 开场对话降级的单行公告（#54，server/Mgr/MgrStory.lua）
+    -- 未交付正式 Story 资源时保留阅读界面，由玩家明确确认已读。
     self:Listen(_G.REUtil:GetRE('StoryNotice').OnClientEvent, function(payload)
-        if type(payload) == 'table' and type(payload.text) == 'string' and _G.LocalMsgNotice then
-            _G.LocalMsgNotice(payload.text)
+        self:ShowDialogue(payload)
+    end)
+    self:Listen(_G.REUtil:GetRE('StoryState').OnClientEvent, function(payload)
+        if type(payload) == 'table' and payload.read == true and self.DialoguePayload
+            and payload.readKey == self.DialoguePayload.readKey then
+            self:HideDialogue()
+        elseif type(payload) == 'table' and payload.read == false and self.DialoguePayload
+            and payload.readKey == self.DialoguePayload.readKey then
+            self.DialogueBody.Text = payload.text or '已读尚未保存'
+            self.DialogueReadLabel.Text = '稍后重进再试'
         end
     end)
     self:Listen(_G.REUtil:GetRE('ReelInRE').OnClientEvent, function()
@@ -1227,6 +1308,7 @@ function ScreenHandler:OpenScreen()
 end
 
 function ScreenHandler:CloseScreen()
+    self:HideDialogue()
     self.CombatRequest = nil
     DamageFloat:Clear()
     FishCombatLabel:Clear()

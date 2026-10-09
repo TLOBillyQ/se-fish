@@ -8,6 +8,20 @@ function QuestSteps.New()
     return { step = 1, count = 0, seen = {} }
 end
 
+-- 旧存档未保存 seen 时按空表恢复；返回独立副本，草稿计算不改已发布进度。
+function QuestSteps.Restore(steps, saved)
+    if type(saved) ~= 'table' then return QuestSteps.New() end
+    local step, count = saved.step, saved.count
+    if type(step) ~= 'number' or step ~= math.floor(step) or step < 1 or step > #steps + 1
+        or type(count) ~= 'number' or count ~= math.floor(count) or count < 0
+        or count >= (steps[step] and steps[step].Need or 1) then return QuestSteps.New() end
+    local state = { step = step, count = count, seen = {} }
+    for id, seen in pairs(type(saved.seen) == 'table' and saved.seen or {}) do
+        if type(id) == 'string' and seen == true then state.seen[id] = true end
+    end
+    return state
+end
+
 function QuestSteps.Done(steps, state)
     return state.step > #steps
 end

@@ -68,6 +68,10 @@ MgrMap.MgrGM.Save = MgrMap.MgrSave
 MgrMap.MgrFerry.PlayerData = MgrMap.MgrPlayerData
 MgrMap.MgrFerry.Interact = MgrMap.MgrInteract
 MgrMap.MgrPlayerData.Save = MgrMap.MgrSave
+MgrMap.MgrQuest.PlayerData = MgrMap.MgrPlayerData
+MgrMap.MgrQuest.Save = MgrMap.MgrSave
+MgrMap.MgrStory.PlayerData = MgrMap.MgrPlayerData
+MgrMap.MgrStory.Save = MgrMap.MgrSave
 MgrMap.MgrInteract.Save = MgrMap.MgrSave
 MgrMap.MgrAchievements.PlayerData = MgrMap.MgrPlayerData
 MgrMap.MgrAchievements.Save = MgrMap.MgrSave
@@ -208,6 +212,8 @@ local function HandlePlayerAdded(player)
 end
 
 local function HandlePlayerRemoving(player)
+    if MgrMap.MgrQuest:FlushBeforeLeave(player, function() HandlePlayerRemoving(player) end) then return end
+    if MgrMap.MgrStory:FlushBeforeLeave(player, function() HandlePlayerRemoving(player) end) then return end
     local queued = ReadyQueue[player.UserId]
     if queued and queued[1] == player then ReadyQueue[player.UserId] = nil end
     local active = ActivePlayers[player.UserId] == player
@@ -254,7 +260,5 @@ end
 
 GameStart()
 RunService.Heartbeat:Connect(HandleTimeUpdate)
-
-
 
 
