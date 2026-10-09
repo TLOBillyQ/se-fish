@@ -91,7 +91,7 @@ function TestBossBait:test_config_pins()
     -- （#88 口径：BossBait 键即首领饵物品 id）
     lu.assertEquals(self.cfg.Casting.BossBait,
         { duck = 'alligatorGar', item121 = 'fish16Boss', item122 = 'fish24Boss', item123 = 'fish32Boss',
-            item124 = 'fish40Boss' })
+            item124 = 'fish40Boss', item125 = 'fish48Boss', item126 = 'fish56Boss' })
     lu.assertEquals(self.cfg.Fish.alligatorGar.Combat, 'gar')
     lu.assertNotNil(self.cfg.FishCombat.gar.BiteRange)
     lu.assertNotNil(self.cfg.FishCombat.gar.BiteCooldownSec)
@@ -112,6 +112,18 @@ function TestBossBait:test_pearl_hooks_dragon_in_every_water_and_abort_does_not_
         local session = self:hookSession('item121', zone.Id)
         lu.assertEquals(session.fishId, 'fish16Boss', zone.Id)
     end
+end
+
+-- #38 失败方式：羊/核废料桶仅有目录、换到其他水域不出首领；火山鱼只有目录未进入抽取池。
+function TestBossBait:test_final_baits_hook_in_every_water_and_volcano_draw_pool_is_live()
+    for _, zone in ipairs(self.cfg.Zones) do
+        lu.assertEquals(self:hookSession('item125', zone.WaterId).fishId, 'fish48Boss')
+        lu.assertEquals(self:hookSession('item126', zone.WaterId).fishId, 'fish56Boss')
+    end
+    local FishCatch = require('common.FishCatch')
+    lu.assertEquals(FishCatch.Select(self.cfg.Casting.Zones['volcanoIsland.water'], 1, nil,
+        function() return 0 end), 'item97')
+    lu.assertTrue(self.cfg.Fish.fish56Boss.implemented)
 end
 
 function TestBossBait:test_select_duck_requires_duck_in_storage()

@@ -483,8 +483,22 @@ function Mgr:UpdateState(state, now)
     end
     local sec = math.floor(now)
     if sec <= state.lastSec then return end
+    local elapsed = math.min(sec - state.lastSec, c.MaxCatchUpSec)
     local hunger, damage = Vitals.Advance(state.hunger, sec - state.lastSec, c)
     state.lastSec = sec
+    local held = c.HeldDamage
+    local data = self.PlayerData and self.PlayerData:GetDataInst(state.player)
+    if held and data and data.Inited then
+        local carrying = false
+        for _, id in ipairs({ GameCfg.Items.ContainerId.ItemBar, GameCfg.Items.ContainerId.Backpack }) do
+            for _, entry in pairs(data.Data.Containers[id] or {}) do
+                if entry.itemId == held.ItemId and entry.count > 0 then carrying = true; break end
+            end
+        end
+        if carrying then
+            self:ApplyDamage(state.player, held.DamagePerSec * elapsed, self:NewHit(nil, 'heldItem'))
+        end
+    end
     if hunger ~= state.hunger then
         state.hunger = hunger
         self:WriteHunger(state)

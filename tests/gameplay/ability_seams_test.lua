@@ -238,24 +238,26 @@ function TestFishAbilitySeams:test_air_strike_focuses_the_attacker_then_the_near
 end
 
 function TestFishAbilitySeams:test_boss_phase_bite_lands_damage_and_grabs_the_player()
-    local fish = newFish(3, 'fish56Boss', { x = 0, y = 0, z = 0 })
+    local safe = GameCfg.Zones[7].Scene.SafePoint
+    local fish = newFish(3, 'fish56Boss', { x = safe.x, y = safe.y, z = safe.z })
     self.mgr.Fish[fish.Id] = fish
-    local player = newPlayer(9, { x = 1, y = 0, z = 0 })
+    local player = newPlayer(9, { x = safe.x + 1, y = safe.y, z = safe.z })
     self.players = { player }
     -- 50%：入水阶段（咬中 1000）
     fish.Carrier.Health, fish.Carrier.MaxHealth = 5000, 10000
     fish.Phase = require('common.BossPhase').New(GameCfg.Ability.BossPhase, self.now, fish.Carrier.Body.Position)
     fish.PhaseAt = self.now
     fish.Yaw = 0
-    for step = 1, 45 do -- 走到 2.25 秒：咬击间隔 2 秒
+    for step = 1, 355 do -- #38 正文沧龙式：15秒跃起，1秒预警+1.5秒腾空后咬中
         self.now = self.now + 0.05
         self.mgr:UpdateBossPhase(fish, self.now, fish.Carrier.Body.Position)
     end
     lu.assertEquals(fish.Phase.Phase, 'water')
-    lu.assertEquals(#self.hits, 1)
-    lu.assertEquals(self.hits[1].amount, 1000)
-    lu.assertEquals(self.hits[1].category, 'fishAttack')
-    lu.assertEquals(self.hits[1].target, player)
+    lu.assertEquals(#self.hits, 2)
+    lu.assertEquals(self.hits[1].amount, 35)
+    lu.assertEquals(self.hits[2].amount, 1000)
+    lu.assertEquals(self.hits[2].category, 'fishAttack')
+    lu.assertEquals(self.hits[2].target, player)
     -- 咬中即叼走：挂点建出来了，玩家归到携带态
     lu.assertNotNil(fish.Carry)
     lu.assertNotNil(fish.CarryMount)

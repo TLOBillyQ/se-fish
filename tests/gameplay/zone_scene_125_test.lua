@@ -83,7 +83,7 @@ function TestZoneScene125:test_seven_zone_plan_keeps_unbuilt_entities_out_of_act
         if index >= 3 then
             -- #136 蟹湖（第三区）、#141 树林岛（第四区）、#142 沙滩岛（第五区）水域已实测接入：
             -- 其余未建区仍不得接入活跃抽鱼池
-            if index == 3 or index == 4 or index == 5 or index == 6 then
+            if index >= 3 and index <= 7 then
                 lu.assertNotNil(Cfg.Casting.Zones[zone.WaterId])
             else
                 lu.assertNil(Cfg.Casting.Zones[zone.WaterId])
