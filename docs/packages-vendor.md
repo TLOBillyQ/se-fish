@@ -6,6 +6,7 @@
 
 - **包内代码一行不改**。定制只发生在双端根聚合入口与业务层；业务代码不直接 require 包内模块。
 - 包内没有版本号、变更记录或来源 URL，以整包导入为准；升级拿官方新包整包替换，再 diff 三棵子树确认改动面。
+- 官方包从宿主回灌用 `lua tools/cli.lua sync --packages`：三端按原始字节镜像，删除宿主已不存在的包文件，保留仓库三端根现有 README；源三端任一目录缺失或为空则整次同步在写入前失败。普通 `sync` 不回灌 packages。
 - `client/packages/`、`common/packages/`、`server/packages/` 及全部子内容排除出 `deploy` 镜像和 `--clean`；仓库与宿主已有包均保留。运行代码仍依赖这些包，宿主须自行保持所需官方包可用；仓库 vendor 用于查阅与接缝校对，部署不负责安装或升级它们。
 - 部署收尾只执行 validate 与只读 diff，不执行全工作区 `code push`。editor-cli 0.19.1 的 CLI 同步不读取 `excludePatterns`，且没有目录排除参数；有本地新增或不同文件时报告尚未同步并返回失败，地图侧独有文件只提示保留。
 - 包说明统一写在本文件；三端 packages 目录内现有 README 保留，不再新增 README。

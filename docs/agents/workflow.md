@@ -8,6 +8,7 @@ Lua 命令使用 **Lua 5.4**，执行前用 `lua -v` 核对；验收脚本可用
 
 - `lua tools/cli.lua deploy`：将三端业务代码字节镜像到宿主目录，排除 `packages/`；编辑器开着本图时执行 validate → 只读 diff。有本地新增或不同文件时报告尚未同步并返回失败；为保留 packages，不执行全工作区 `code push`。
 - `lua tools/cli.lua sync`：将宿主目录的 `eggy.json`、API 存根、`data/` 回灌仓库。
+- `lua tools/cli.lua sync --packages`：在上述清单外追加三端官方包字节镜像，删除过期包文件，保留三端根现有 `README.md`；任一端源 packages 缺失或为空时整次同步在写入前失败。
 - 技能包预设命令见 `lua tools/cli.lua ability-presets --help`；验收脚本说明见 `tools/acceptance/README.md`。
 - 质量与变异脚本位于 `tools/quality/`，只出报告，不设门槛。
 - 单测按对象放入 `tests/gameplay/` 或 `tests/tooling/`；真实 CLI 子进程用例放入 `tests/tooling/slow/`。日常运行 `lua tests/run.lua fast`；分类运行 `lua tests/run.lua gameplay` 或 `lua tests/run.lua tooling`；完整运行 `lua tests/run.lua`（等价于 `full`）。

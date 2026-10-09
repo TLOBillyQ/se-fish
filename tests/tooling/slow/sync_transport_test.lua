@@ -222,3 +222,79 @@ function TestSyncCli:test_missing_workspace_is_a_business_failure()
   lu.assertEquals(code, 1, out)
   lu.assertStrContains(out, "编辑器宿主目录不存在")
 end
+
+-- 官方包回灌：通过真实 CLI 验证字节保真、镜像删除与来源不完整时的写入闸门。
+TestSyncPackages = {}
+
+function TestSyncPackages:setUp()
+  seed_and_sync()
+  write_repo("eggy.json", "sentinel\n")
+  for _, side in ipairs({ "server", "client", "common" }) do
+    write_host(side .. "\\packages\\fixture\\api.lua", "-- 官方包\r\nreturn {}\r\n")
+    write_repo(side .. "\\packages\\README.md", "-- 保留说明\n")
+    write_repo(side .. "\\packages\\old\\stale.lua", "-- 旧包\n")
+  end
+end
+
+function TestSyncPackages:tearDown()
+  rmrf(ROOT)
+  rmrf(OUT)
+end
+
+function TestSyncPackages:test_default_sync_does_not_touch_packages()
+  local out, code = run_sync(nil)
+  lu.assertEquals(code, 0, out)
+  lu.assertNil(slurp(FAKE_REPO .. "\\server\\packages\\fixture\\api.lua"))
+  lu.assertEquals(slurp(FAKE_REPO .. "\\server\\packages\\old\\stale.lua"), "-- 旧包\n")
+end
+
+function TestSyncPackages:test_packages_are_mirrored_as_bytes_and_readmes_are_preserved()
+  write_host("server\\packages\\README.md", "-- 宿主说明\r\n")
+  local out, code = run_sync("--packages")
+  lu.assertEquals(code, 0, out)
+  for _, side in ipairs({ "server", "client", "common" }) do
+    local rel = side .. "\\packages\\fixture\\api.lua"
+    lu.assertEquals(slurp(FAKE_REPO .. "\\" .. rel), slurp(HOST .. "\\" .. rel))
+    lu.assertNil(slurp(FAKE_REPO .. "\\" .. side .. "\\packages\\old\\stale.lua"))
+    lu.assertEquals(slurp(FAKE_REPO .. "\\" .. side .. "\\packages\\README.md"), "-- 保留说明\n")
+  end
+  local again, again_code = run_sync("--packages")
+  lu.assertEquals(again_code, 0, again)
+  lu.assertStrContains(again, "0 写入, 0 删除,")
+end
+
+function TestSyncPackages:test_missing_package_source_aborts_before_any_write()
+  rmrf(HOST .. "\\client\\packages")
+  local out, code = run_sync("--packages")
+  lu.assertEquals(code, 1, out)
+  lu.assertStrContains(out, "client/packages")
+  lu.assertEquals(slurp(FAKE_REPO .. "\\eggy.json"), "sentinel\n")
+  lu.assertNil(slurp(FAKE_REPO .. "\\server\\packages\\fixture\\api.lua"))
+  lu.assertTrue(shell.exists(FAKE_REPO .. "\\common\\packages\\old\\stale.lua"))
+end
+
+function TestSyncPackages:test_empty_package_source_aborts_before_any_write()
+  rmrf(HOST .. "\\common\\packages")
+  shell.ensure_dir(HOST .. "\\common\\packages")
+  local out, code = run_sync("--packages")
+  lu.assertEquals(code, 1, out)
+  lu.assertStrContains(out, "common/packages")
+  lu.assertEquals(slurp(FAKE_REPO .. "\\eggy.json"), "sentinel\n")
+  lu.assertTrue(shell.exists(FAKE_REPO .. "\\server\\packages\\old\\stale.lua"))
+end
+
+function TestSyncPackages:test_package_source_with_only_readme_is_rejected()
+  rmrf(HOST .. "\\common\\packages")
+  write_host("common\\packages\\README.md", "-- 空包说明\n")
+  local out, code = run_sync("--packages")
+  lu.assertEquals(code, 1, out)
+  lu.assertEquals(slurp(FAKE_REPO .. "\\eggy.json"), "sentinel\n")
+end
+
+function TestSyncPackages:test_packages_can_be_imported_into_absent_repo_tree()
+  rmrf(FAKE_REPO .. "\\client\\packages")
+  local out, code = run_sync("--packages")
+  lu.assertEquals(code, 0, out)
+  lu.assertEquals(slurp(FAKE_REPO .. "\\client\\packages\\fixture\\api.lua"),
+    slurp(HOST .. "\\client\\packages\\fixture\\api.lua"))
+end

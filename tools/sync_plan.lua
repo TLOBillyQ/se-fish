@@ -11,6 +11,18 @@ M.ROOT_FILES = { "eggy.json", "EggyAPI.lua", "EggyEditorAPI.lua" }
 -- 编辑器插件导出的数据目录，整目录镜像：宿主侧删掉的文件在仓库里也跟着消失。
 M.DATA_DIR = "data"
 
+-- 官方包仅经 --packages 回灌；三端必须完整提供，整棵树保持原始字节。
+M.PACKAGE_DIRS = { "server/packages", "client/packages", "common/packages" }
+
+-- 三端根已有 README 属于仓库说明，不参与官方包镜像。
+function M.package_files(files)
+  local out = {}
+  for _, rel in ipairs(files) do
+    if rel:lower() ~= "readme.md" then out[#out + 1] = rel end
+  end
+  return out
+end
+
 -- CRLF / 裸 CR → LF：与 .gitattributes 的 eol=lf 配合，回灌后行尾不抖动。
 -- 含 NUL 的字节串按二进制对待，原样返回（编辑器哪天导出非文本产物也不会被改写）。
 function M.normalize_eol(text)
