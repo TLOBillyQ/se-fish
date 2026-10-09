@@ -13,6 +13,13 @@ Lua 命令使用 **Lua 5.4**，执行前用 `lua -v` 核对；验收脚本可用
 - 质量与变异脚本位于 `tools/quality/`，只出报告，不设门槛。
 - 单测按对象放入 `tests/gameplay/` 或 `tests/tooling/`；真实 CLI 子进程用例放入 `tests/tooling/slow/`。日常运行 `lua tests/run.lua fast`；分类运行 `lua tests/run.lua gameplay` 或 `lua tests/run.lua tooling`；完整运行 `lua tests/run.lua`（等价于 `full`）。
 
+**架构图（uml-viewer）。** 根目录 `policy.edn` 描述三端模块树，`docs/uml/se-fish.edn` 是生成的依赖图（不要手编）。
+
+- `.\uml.cmd ir`：修改三端代码后重新生成图；viewer 检测文件变化自动重载。
+- `.\uml.cmd`：启动 viewer 与 companion 看图、向 agent 发起图上操作。重启 viewer 由 companion 处理，不要直接杀进程。
+- 图上 `client|common|server` 为三棵树；`**/packages/**` 与 `server/_trigger/` 被 `:exclude` 排除，vendor 依赖显示为 `*.packages` 椭圆。类卡片全红表示缺 CRAP/mutation 数据；本次接入未配置 Lua 指标计算，属预期。
+- 根目录 `uml`、`uml.ps1`、`uml.cmd` 由安装器拷贝，不要编辑；`.uml-viewer/` 缺失或入口过期时在仓库根运行 `get-uml-viewer`（来自 uml-viewer 仓库 `scripts/`）。
+
 **宿主目录专用于镜像。** 默认 `C:\Users\<用户名>\Desktop\dev\eggy\LuaSource_钓鱼怎么这么危险啊喂！`，可用 `EGGY_WORKSPACE` 覆盖。
 
 **编辑器工程 ≠ 仓库检出。** `eggy.json` 回灌不等于 `code init` 绑定；手动执行 code-* 时用 `--workspace` 指向已绑定的宿主目录，否则会报 `CODE_BINDING_INVALID`。`deploy` 已带此参数。Git Bash 验证命令：

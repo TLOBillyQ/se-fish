@@ -1,0 +1,10 @@
+{:title "se-fish"
+ :prefix ""
+ :lang :lua
+ :hierarchical true
+ :exclude ["packages" "_trigger"]
+ :foreign [client.packages common.packages server.packages]
+ :sources [{:lang :lua :root "client" :prefix "client"}
+           {:lang :lua :root "common" :prefix "common"}
+           {:lang :lua :root "server" :prefix "server"}]
+ :out "docs/uml/se-fish.edn"}

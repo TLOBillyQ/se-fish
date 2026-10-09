@@ -9,6 +9,7 @@
 - **技术方案**：先读 `docs/技术难点识别.md`；涉及策划矛盾时读 `docs/to-questionnaire-策划案内部矛盾.md`。
 - **编码与审查**：编写或审查 SE 业务 Lua 前，读 `CODING_STANDARDS.md`。
 - **开发工作流**：修改代码、运行测试、同步宿主或操作编辑器前，以及整理过程产物时，读 `docs/agents/workflow.md`（工具链、测试纪律、完成判据、产物归属）。
+- **架构导航**：需要模块依赖全景、评估改动影响或从图上发起操作时，用 uml-viewer 打开 `docs/uml/se-fish.edn`；命令与约定见 `docs/agents/workflow.md` 工具链。
 - **官方包接入**：使用 vendor 的官方包（`ability_system`、`attr_rule`、`modifier_system`、`official_ai_feature`）、修改业务接缝或创建编辑器侧预设前，读 `docs/packages-vendor.md`。
 - **Issue**：读写前看 `docs/agents/issue-tracker.md`；打 triage 标签前看 `docs/agents/triage-labels.md`。本项目在 GitHub `TLOBillyQ/se-fish` 跟踪单据，通过 `gh` 操作。
 
