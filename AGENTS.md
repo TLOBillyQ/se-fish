@@ -63,34 +63,20 @@ Lua 命令使用 **Lua 5.4**，执行前用 `lua -v` 核对；验收脚本可用
 
 执行过程产物（调研全文、验证台账、验收记录、开发计划）贴进对应 issue 的评论；`docs/` 只留长期参考（术语、技术难点、vendor 说明、ADR）。`eggy-dev-plan` 默认的 `docs/plan/` 输出在本仓库改为 issue 评论。
 
-<!-- [teamai:rules:start] -->
+<!-- [teamai:culture:start] -->
 <!-- DO NOT EDIT: This section is auto-managed by teamai -->
 
-# netease 团队基线：语言
+## Team Culture (teamai)
+
+## Team: netease
+
+# 团队协作约定
 
 适用于所有任务。
 
 1. **思考与回复使用中文。**
-2. **产出物用中文。** 写入仓库的文档、代码注释、commit 信息、PR 描述、写给 agent 的文件（SKILL.md、rules）用中文；代码标识符与文件名用英文。
-3. **专有名词与代码原样保留。** SE、FS、editor-cli、skill 名、命令、路径、代码片段不翻译。
+2. **产出物用中文。** 仓库文档、代码注释、commit 信息、PR 描述和写给 agent 的文件使用中文；代码标识符与文件名使用英文。
+3. **专有名词与代码原样保留。** 工具名、skill 名、命令、路径和代码片段不翻译。Matt skills 保持上游英文原文。
 4. **用户明确要求其他语言时以用户为准。** 引用英文原文时保留原文，并附中文说明。
 
-# 蛋仔 SE 状态同步工程
-
-工程根 `AGENTS.md` 的约定优先。确认 `eggy.json` 的 `isSEMap=true`；SE 场景由单位和资产构成，游戏运行时分 server / client，通用代码位于 common。CLI 的位置在 Windows 用户目录 `.eggitor/cli/editor-cli.exe`；WSL 调用 Windows 版本，命令参数以 `--help` 为准。
-
-按任务使用本目录的顶层技能；不能调用时直接读已安装的 `<技能名>/SKILL.md`：
-
-| 任务 | 技能 |
-|---|---|
-| 玩法设计 | `eggy-design` |
-| 技术方案与拆任务 | `eggy-dev-plan` |
-| Lua 开发、同步与试玩 | `eggy-se-lua-coding` |
-| 调试报错 | `eggy-dev-debug` |
-| 场景编辑、EUI 节点、资源发布与 AIGC 模型迁入 | `eggy-se-editor-cli` |
-| 测试及回归 | `eggy-se-qa` |
-| 静态性能优化 | `eggy-se-perf` |
-| H5 编辑器插件 | `eggy-se-plugin-dev` |
-
-查 API 先查工程根或编辑器用户目录下的 SE `EggyAPI.lua`，在线时用 `editor-cli api get <名字>` 核对签名，再用 `editor-cli docs search "<问题>" --docset manual` 查语义；查不到标 `[未查证]`。官方资源预设改查 `asset`。从仓库检出运行 code 命令时，先读 `eggy-se-lua-coding` 的绑定工程约定。
-<!-- [teamai:rules:end] -->
+<!-- [teamai:culture:end] -->
