@@ -144,7 +144,7 @@ function TestCfgFishItems:testUnimplementedContentAndInventorySemanticsRemainExp
             if row.Id ~= 'fish23Elite' and row.Id ~= 'fish24Boss'
                 and row.Id ~= 'fish31Elite' and row.Id ~= 'fish32Boss'
                 and row.Id ~= 'fish39Elite' and row.Id ~= 'fish40Boss'
-                and row.ZoneId ~= 'reefIsland' then
+                and row.ZoneId ~= 'reefIsland' and row.ZoneId ~= 'volcanoIsland' then
                 lu.assertFalse(row.implemented, row.source)
             end
         end

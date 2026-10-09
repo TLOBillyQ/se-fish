@@ -1311,7 +1311,7 @@ function Mgr:UpdateCombat(fish, now)
     local jumping = moveName == 'jump'
     -- 俯冲（dragon）与高跃（#141 swordfish / shark）腾空期间不算落水，避免空中误判逃脱。
     local airborne = (diving or jumping) and pos.y > fish.Move.Center.y + 0.1
-    if now >= fish.FleeAt or (not airborne and inWater(pos)) then
+    if now >= fish.FleeAt or (not airborne and inWater(pos) and not (fish.Phase and fish.Phase.Phase == 'water')) then
         if diving or jumping then
             local ground = fish.Move.Center.y
             local ok, err = pcall(function() body.Position = Vector3.New(pos.x, ground, pos.z) end)
@@ -1321,6 +1321,9 @@ function Mgr:UpdateCombat(fish, now)
         if self.Ability then self.Ability:RemoveFish(fish) end
         self:EndBite(fish, 'gone')
         self:EndMove(fish, 'gone')
+        self:EndBossAttack(fish, 'timeout')
+        self:ReleaseCarried(fish, nil, 'timeout')
+        fish.Aquatic = nil
         fish.WakeAt, fish.MoveName = nil, nil
         fish.State = Mgr.State.Escaping
         fish.StraightEscape = true
@@ -1373,6 +1376,7 @@ function Mgr:CombatPayload(fish, gone)
     local entry = GameCfg.Ability.FishAbilities[GameCfg.Fish[fish.FishId].Combat]
     local pos = readPosition(fish.Carrier.Body) or fish.CombatPosition or fish.Anchor
     return { id = fish.Id, fishId = fish.FishId, state = fish.State,
+        phase = fish.Phase and fish.Phase.Phase,
         fleeAt = fish.FleeAt, escapeSec = GameCfg.Fish[fish.FishId].EscapeSec,
         wakeAt = fish.WakeAt, move = fish.MoveName, discharges = fish.Discharges or 0, dischargeCount = entry and entry.DischargeCount,
         position = pos and { x = pos.x, y = pos.y, z = pos.z } }
@@ -1547,6 +1551,9 @@ function Mgr:StartFlight(fish, now)
     fish.FlightAt = now
     fish.State = Mgr.State.Flying
     fish.DiveActive = false
+    if fish.FishId == 'fish55Elite' then
+        self:StartAquatic(fish, now)
+    end
     if GameCfg.Fish[fish.FishId].ZoneId == 'reefIsland' then
         fish.Flight.NextDiveAt = math.huge -- 礁石岛由预警→锁点→命中流程驱动，禁用无预警原型俯冲。
         fish.NextReefDiveAt = now + (profile.DiveIntervalSec or math.huge)
@@ -1668,6 +1675,17 @@ function Mgr:UpdateFlying(fish, now)
         return
     end
     local species = GameCfg.Fish[fish.FishId]
+    if fish.FishId == 'fish55Elite' then
+        if fish.FleeAt and now >= fish.FleeAt then
+            self:EndBossAttack(fish, 'timeout')
+            self:ReleaseCarried(fish, nil, 'timeout')
+            fish.Aquatic = nil
+            self:ExitFlight(fish, now, 'timeout')
+        else
+            self:UpdateAquatic(fish,now)
+        end
+        return
+    end
     if fish.FleeAt and now >= fish.FleeAt and (species.Grade == 'normal' or species.Grade == 'rare') then
         self:Remove(fish)
         return
@@ -1697,7 +1715,7 @@ function Mgr:UpdateFlying(fish, now)
         print('[MgrFishUnit] 飞行位置写回失败', fish.FishId, tostring(moveErr))
         if self.Ai then self:Remove(fish); return end
     end
-    MgrFishCarrier:SyncPosition(fish.Carrier)
+    MgrFishCarrier:SyncPosition(fish.Carrier, Vector3.New(state.Pos.x,state.Pos.y,state.Pos.z))
     self:RefreshMovingCombat(fish, now)
     pcall(function()
         body.LinearVelocity = Vector3.New(state.Vel.x, state.Vel.y, state.Vel.z)
@@ -1735,10 +1753,6 @@ function Mgr:UpdateBossPhase(fish, now, pos)
         self:Remove(fish)
         return
     end
-    if fish.Carry then
-        self:UpdateCarry(fish, now)
-        return
-    end
     local params = GameCfg.FishCombat and GameCfg.FishCombat[fish.Fight] or nil
     params = params or GameCfg.Ability.BossPhase.Chase
     local target, tpos = self:ChooseTarget(fish, pos, params)
@@ -1749,8 +1763,73 @@ function Mgr:UpdateBossPhase(fish, now, pos)
         Health = fish.Carrier.Health, MaxHealth = fish.Carrier.MaxHealth,
         Alive = not fish.Carrier.Dead, Target = tpos, Pos = pos,
     })
+    if fish.BossWarn and (events.PhaseChanged or events.Interrupted or not state.Alive) then
+        self:EndBossAttack(fish, events.To or events.Reason or 'gone')
+    end
+    if events.PhaseChanged then
+        self:ReleaseCarried(fish,nil,'phase')
+        self:EndAirAttacks(fish,'phase')
+        self:EndMove(fish,'phase')
+        fish.Aquatic=nil
+        if events.To == 'water' then
+            self:StartAquatic(fish,now)
+        else
+            local p=fish.CombatPosition
+            fish.Carrier.Body.Position=Vector3.New(p.x,p.y,p.z)
+            MgrFishCarrier:SyncPosition(fish.Carrier,Vector3.New(p.x,p.y,p.z))
+        end
+        self:PublishCombat(fish)
+        print('[MgrFishUnit] 首领阶段',fish.FishId,events.To,events.Percent)
+        return
+    end
+    if state.Phase == 'water' then self:UpdateAquatic(fish,now); return end
+    if state.Pending and not fish.BossWarn then
+        local fx, fz = flatDirection(tpos.x-pos.x,tpos.z-pos.z)
+        fx, fz = fx or 0, fz or 1
+        self:Face(fish,fx,fz)
+        local attackCfg = GameCfg.Ability.BossPhase.Attacks[state.Pending.Name]
+        fish.BossWarn = { Origin = {x=pos.x,y=pos.y,z=pos.z}, Facing = {x=fx,z=fz}, Target = target }
+        local notice = GarBiteNotice.Lock(fish.Id,pos,fx,fz,attackCfg.Range,0,attackCfg.WindupSec)
+        notice.move = state.Pending.Name == 'breath' and 'bossBreath' or 'bossStomp'
+        notice.shape, notice.width = state.Pending.Name == 'breath' and 'line' or 'circle', attackCfg.Width
+        publishBite(self,notice)
+    end
+    if fish.Carry then self:UpdateCarry(fish,now); return end
     if not events.Attack then return end
     local attack = events.Attack
+    if attack.Name == 'stomp' then
+        local warn=fish.BossWarn
+        self:EndBossAttack(fish,'stomp')
+        if not warn then return end
+        local radius=GameCfg.Ability.BossPhase.Attacks.stomp.Range
+        for _, player in ipairs(self:Players()) do
+            local valid,cp=self:IsTargetValid(player,warn.Origin)
+            if valid and (cp.x-warn.Origin.x)^2+(cp.z-warn.Origin.z)^2<=radius^2
+                and math.abs(cp.y-warn.Origin.y)<=radius then
+                self:Hit(fish,player,attack.Damage,'stomp')
+            end
+        end
+        return
+    end
+    if attack.Lethal then
+        local warn = fish.BossWarn
+        self:EndBossAttack(fish,'strike')
+        if not warn then return end
+        local breath = GameCfg.Ability.BossPhase.Attacks.breath
+        for _, player in ipairs(self:Players()) do
+            local valid, cp = self:IsTargetValid(player,warn.Origin)
+            if valid then
+                local dx,dz = cp.x-warn.Origin.x,cp.z-warn.Origin.z
+                local along = dx*warn.Facing.x+dz*warn.Facing.z
+                local across = math.abs(dx*warn.Facing.z-dz*warn.Facing.x)
+                if along >= 0 and along <= breath.Range and across <= breath.Width/2
+                    and math.abs(cp.y-warn.Origin.y) <= GameCfg.Ability.BossPhase.Chase.BiteRange then
+                    self:Hit(fish,player,player.Character.Controller.Health,'breath')
+                end
+            end
+        end
+        return
+    end
     if attack.Name == 'bite' and target and tpos and CarryMount.InRange(
         CarryMount.New(GameCfg.Ability.Carry, pos, fish.Yaw or 0, now), tpos) then
         -- 咬中即叼走：伤害只在 GrabPlayer 里结算一次，避免「咬一下扣两次血」
@@ -1758,6 +1837,127 @@ function Mgr:UpdateBossPhase(fish, now, pos)
         return
     end
     if target then self:Hit(fish, target, attack.Damage, attack.Name) end
+end
+
+function Mgr:EndBossAttack(fish, reason)
+    if not fish.BossWarn then return end
+    fish.BossWarn = nil
+    if fish.Phase then fish.Phase.Pending = nil end
+    publishBite(self,GarBiteNotice.Clear(fish.Id,reason or 'gone'))
+end
+
+-- 水中巡航、跃起锁定落点、咬中叼回当前水域；与飞行原型共享鱼的唯一位置拥有权。
+function Mgr:StartAquatic(fish, now)
+    local pos = readPosition(fish.Carrier.Body)
+    local scene
+    for _, zone in ipairs(GameCfg.Zones) do
+        local b=zone.Scene.Boundary
+        if pos.x>=b.MinX and pos.x<=b.MaxX and pos.z>=b.MinZ and pos.z<=b.MaxZ then
+            scene=zone.Scene; break
+        end
+    end
+    if not scene or not scene.Waters[1] then return false end
+    fish.Aquatic={ Scene=scene, Water=scene.Waters[1], LastAt=now,
+        NextLeapAt=now+GameCfg.Ability.Aquatic.LeapIntervalSec, Angle=0 }
+    self:PublishCombat(fish)
+    return true
+end
+
+function Mgr:UpdateAquatic(fish, now)
+    local state=fish.Aquatic
+    if not state then return end
+    if self.Ai then self.Ai:Custom(fish) end
+    local cfg=GameCfg.Ability.Aquatic
+    local body=fish.Carrier.Body
+    local p=readPosition(body)
+    local dt=math.min(0.25,math.max(0,now-state.LastAt))
+    state.LastAt=now
+    local speed=self:Speed(fish)
+    local w=state.Water
+    local function moveTo(destination)
+        local dx,dy,dz=destination.x-p.x,destination.y-p.y,destination.z-p.z
+        local distance=math.sqrt(dx*dx+dy*dy+dz*dz)
+        local t=distance>0 and math.min(1,speed*dt/distance) or 1
+        p={x=p.x+dx*t,y=p.y+dy*t,z=p.z+dz*t}
+    end
+    if state.HeadAt and now>=state.HeadAt then
+        local center=state.HeadCenter
+        state.HeadAt,state.HeadCenter=nil,nil
+        self:EndBossAttack(fish,'head')
+        for _, player in ipairs(self:Players()) do
+            local valid,cp=self:IsTargetValid(player,center)
+            if valid and (cp.x-center.x)^2+(cp.z-center.z)^2<=cfg.HeadRadius^2 then
+                self:Hit(fish,player,cfg.HeadDamage,'head')
+            end
+        end
+    end
+    if fish.Carry then
+        moveTo({x=w.Center.x,y=w.SurfaceY,z=w.Center.z})
+        body.Position=Vector3.New(p.x,p.y,p.z)
+        self:UpdateCarry(fish,now)
+        if inWater(p) then
+            self:ReleaseCarried(fish,{x=p.x,y=w.SurfaceY,z=p.z},'water')
+        end
+    elseif state.Leap then
+        local leap=state.Leap
+        local progress=math.min(1,math.max(0,(now-leap.At-cfg.LeapWindupSec)/cfg.LeapSec))
+        p={x=leap.Origin.x+(leap.Center.x-leap.Origin.x)*progress,
+            y=leap.Origin.y+(leap.Center.y-leap.Origin.y)*progress+cfg.LeapHeight*math.sin(math.pi*progress),
+            z=leap.Origin.z+(leap.Center.z-leap.Origin.z)*progress}
+        body.Position=Vector3.New(p.x,p.y,p.z)
+        if progress>=1 then
+            state.Leap=nil
+            self:EndBossAttack(fish,'land')
+            for _, player in ipairs(self:Players()) do
+                local valid,cp=self:IsTargetValid(player,p)
+                if valid and (cp.x-p.x)^2+(cp.z-p.z)^2<=cfg.LeapRadius^2 then
+                    self:Hit(fish,player,cfg.LeapDamage,'leap')
+                end
+            end
+            local valid,cp=self:IsTargetValid(leap.Target,p)
+            if valid and (cp.x-p.x)^2+(cp.z-p.z)^2<=GameCfg.Ability.Carry.GrabRange^2 then
+                local damage=fish.Phase and GameCfg.Ability.BossPhase.Thresholds[1].BiteDamage or cfg.GrabDamage
+                self:GrabPlayer(fish,leap.Target,now,damage)
+            end
+            state.HeadAt=now+cfg.HeadWindupSec
+            state.HeadCenter={x=p.x,y=p.y,z=p.z}
+            local n=GarBiteNotice.Lock(fish.Id,p,0,1,cfg.HeadRadius,180,cfg.HeadWindupSec)
+            n.shape,n.move='circle','mosasaurHead'
+            fish.BossWarn={Target=leap.Target}
+            publishBite(self,n)
+        end
+    elseif state.HeadAt then
+        -- 等待落地甩头预警，携带分支不改变其锁定位置与结算时间。
+    else
+        if now>=state.NextLeapAt then
+            -- 正文指定距离岛中心最近玩家；不让武器仇恨覆盖此招的选择。
+            local target,tpos,best
+            local center=state.Scene.SafePoint
+            for _, player in ipairs(self:Players()) do
+                local valid,cp=self:IsTargetValid(player,center,{AggroRange=GameCfg.Ability.Flight.AggroRange})
+                if valid then
+                    local d=(cp.x-center.x)^2+(cp.z-center.z)^2
+                    if not best or d<best then target,tpos,best=player,cp,d end
+                end
+            end
+            state.NextLeapAt=now+cfg.LeapIntervalSec
+            if target then
+                state.Leap={At=now,Origin={x=p.x,y=p.y,z=p.z},Center={x=tpos.x,y=tpos.y,z=tpos.z},Target=target}
+                fish.BossWarn={Target=target}
+                local n=GarBiteNotice.Lock(fish.Id,tpos,0,1,cfg.LeapRadius,180,cfg.LeapWindupSec+cfg.LeapSec)
+                n.shape,n.move='circle','mosasaurLeap'
+                publishBite(self,n)
+            end
+        else
+            state.Angle=state.Angle+speed*dt/20
+            moveTo({x=w.Center.x+math.cos(state.Angle)*(w.HalfX or w.HalfXZ)*0.6,
+                y=w.SurfaceY,z=w.Center.z+math.sin(state.Angle)*(w.HalfZ or w.HalfXZ)*0.6})
+        end
+    end
+    body.Position=Vector3.New(p.x,p.y,p.z)
+    body.LinearVelocity=Vector3.New(0,0,0)
+    MgrFishCarrier:SyncPosition(fish.Carrier, Vector3.New(p.x,p.y,p.z))
+    self:RefreshMovingCombat(fish,now)
 end
 
 ---叼人：宿主挂点上建挂点单位，玩家位置每帧写回挂点（不 parent 玩家，见下方说明）。
@@ -1778,16 +1978,22 @@ function Mgr:GrabPlayer(fish, target, now, damage)
     end
     fish.Carry = state
     self:Hit(fish, target, damage or carryCfg.GrabDamage, 'bite')
+    -- 统一伤害可能同步触发死亡回调；致命咬击不能随后重建携带挂点。
+    if fish.Carry ~= state or not self:IsTargetValid(target, pos) then
+        if fish.Carry == state then self:ReleaseCarried(fish, nil, 'gone') end
+        return false
+    end
     -- 咬中这一下就是本次伤害，过程接触从下一个间隔才起算，避免同帧扣两次
     fish.ContactAt = now
     -- 挂点只建不挂：把玩家角色 parent 到挂点下会不会打断控制器/相机本单未试玩（[未查证]），
     -- 所以位置由服务端每帧写回（CarryMount.Follow），挂点留着给真机试玩时验证 parent 模式。
-    local ok, attached = pcall(abilityApi().AttachToSocket, self.World, nil, fish.Carrier.Body,
-        carryCfg.Socket, state.Offset)
+    local ok, attached = pcall(function()
+        return abilityApi().AttachToSocket(self.World, nil, fish.Carrier.Body, carryCfg.Socket, state.Offset)
+    end)
     if ok and attached and attached.Ok then
         fish.CarryMount = attached.Mount
     else
-        print('[MgrFishUnit] 叼人挂点创建失败', 'fish=' .. tostring(fish.Id))
+        print('[MgrFishUnit] 叼人挂点创建失败', 'fish=' .. tostring(fish.Id), tostring(attached))
     end
     print('[MgrFishUnit] 叼起玩家', target.UserId, 'fish=' .. tostring(fish.Id))
     return true
@@ -1826,6 +2032,17 @@ function Mgr:UpdateCarry(fish, now)
     if carryCfg.ContactDamage and now - (fish.ContactAt or 0) >= (carryCfg.ContactIntervalSec or 1) then
         fish.ContactAt = now
         self:Hit(fish, target, carryCfg.ContactDamage, 'carry')
+        if fish.Aquatic then
+            local contact=GameCfg.Ability.Aquatic
+            for _, player in ipairs(self:Players()) do
+                local valid,cp=self:IsTargetValid(player,pos)
+                if player~=target and valid
+                    and (cp.x-pos.x)^2+(cp.z-pos.z)^2<=contact.ContactRange^2
+                    and math.abs(cp.y-pos.y)<=contact.ContactRange then
+                    self:Hit(fish,player,contact.ContactDamage,'carryContact')
+                end
+            end
+        end
     end
 end
 
@@ -1895,6 +2112,7 @@ end
 
 function Mgr:Remove(fish)
     if not fish or self.Fish[fish.Id] ~= fish then return end
+    self:EndBossAttack(fish, 'gone')
     self:EndAirAttacks(fish, 'gone')
     if self.Ai then self.Ai:Remove(fish) end
     -- #132 T11：鱼被打死/清场时先把叼着的玩家放下来（否则玩家会跟着一条死鱼卡在空中）
@@ -1944,7 +2162,12 @@ function Mgr:ClearLinks(player)
 end
 
 function Mgr:Stop()
-    for _, fish in pairs(self.Fish) do self:EndAirAttacks(fish, 'stop') end
+    for _, fish in pairs(self.Fish) do
+        self:EndAirAttacks(fish, 'stop')
+        self:EndBossAttack(fish, 'stop')
+        if fish.Aquatic then fish.Aquatic.Leap=nil; fish.Aquatic.HeadAt=nil end
+        if fish.Carry then self:ReleaseCarried(fish, nil, 'stop') end
+    end
     if self.Ai then
         self.Ai:Stop()
         for _, fish in pairs(self.Fish) do
@@ -1964,6 +2187,13 @@ end
 
 -- 持有者死亡：放鱼进逃脱，并打断还在抛竿的会话（上钩后的断线由 MgrReelIn 处理）；道具栏不动
 function Mgr:OnDied(player)
+    for _, fish in pairs(self.Fish) do
+        if fish.BossWarn and fish.BossWarn.Target == player then
+            self:EndBossAttack(fish,'gone')
+            if fish.Aquatic then fish.Aquatic.Leap=nil; fish.Aquatic.HeadAt=nil end
+        end
+        if fish.Carry and fish.Carry.TargetPlayer == player then self:ReleaseCarried(fish,nil,'gone') end
+    end
     if self.Ai then
         for _, current in pairs(self.Fish) do
             self.Ai:Custom(current)
@@ -2012,6 +2242,10 @@ function Mgr:OnPlayerRemoving(player)
             if fish.Heading then self:SetHeading(fish, fish.Heading.x, fish.Heading.z) end
         end
         if fish.Carry and fish.Carry.TargetPlayer == player then self:ReleaseCarried(fish, nil, 'gone') end
+        if fish.BossWarn and fish.BossWarn.Target == player then
+            self:EndBossAttack(fish,'gone')
+            if fish.Aquatic then fish.Aquatic.Leap=nil; fish.Aquatic.HeadAt=nil end
+        end
         if fish.BiteAim and fish.BiteAim.Target == player then self:EndBite(fish, 'gone') end
         if fish.Move and fish.Move.Target == player then self:EndMove(fish, 'gone') end
         if fish.Threat then fish.Threat[player] = nil end
@@ -2036,6 +2270,11 @@ function Mgr:AiControlled(fish, now)
             fish.ControlAt = now
             fish.OfficialRollFrom, fish.RollFrom = nil, nil
             if fish.Phase then fish.Phase.Pending = nil end
+            self:EndBossAttack(fish, 'controlled')
+            if fish.Aquatic then
+                fish.Aquatic.Leap,fish.Aquatic.HeadAt,fish.Aquatic.HeadCenter=nil,nil,nil
+                fish.Aquatic.LastAt=now
+            end
             if fish.Flight then fish.Flight.Phase = 'cruise'; fish.DiveActive = false end
             self:EndBite(fish, 'controlled')
             self:EndMove(fish, 'controlled')
@@ -2059,6 +2298,10 @@ function Mgr:AiControlled(fish, now)
             for key, at in pairs(fish.Phase.Cooldown) do fish.Phase.Cooldown[key] = at + elapsed end
         end
         if fish.Flight then fish.Flight.NextDiveAt = fish.Flight.NextDiveAt + elapsed end
+        if fish.Aquatic then
+            fish.Aquatic.NextLeapAt=fish.Aquatic.NextLeapAt+elapsed
+            fish.Aquatic.LastAt=now
+        end
         fish.ControlAt = nil
         self.Ai:Pause(fish, false)
         if fish.Heading then self:SetHeading(fish, fish.Heading.x, fish.Heading.z) end
