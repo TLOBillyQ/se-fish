@@ -12,7 +12,7 @@ local function point(p)
     return true
 end
 function Visual:Clear()
-    for _,unit in ipairs({self.Body,self.Line}) do
+    for _,unit in pairs({Body=self.Body,Line=self.Line}) do
         local ok,err=pcall(function() unit:Destroy() end)
         if not ok then print('[LocalCastSource] 收起来源失败',tostring(err)) end
     end
