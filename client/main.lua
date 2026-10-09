@@ -23,6 +23,7 @@ local ScreenGrill = require("client.ScreenHandlers.ScreenGrill")
 -- #147 T26 盲盒与平台购买（肾上腺素报价、测试支付驱动、金币页入口）界面
 local ScreenBlindbox = require("client.ScreenHandlers.ScreenBlindbox")
 local ScreenPlatform = require("client.ScreenHandlers.ScreenPlatform")
+local ScreenCompendium = require('client.ScreenHandlers.ScreenCompendium')
 -- #134 鳄雀鳝头部攻击贴地预警
 local LocalGarBite = require("client.LocalGarBite")
 local LocalCastSource = require('client.LocalCastSource')
@@ -57,10 +58,10 @@ Task:Spawn(function() ScreenSurvival:Start() end)
 Task:Spawn(function() ScreenGrill:Start() end)
 Task:Spawn(function() ScreenBlindbox:Start() end)
 Task:Spawn(function() ScreenPlatform:Start() end)
+Task:Spawn(function() ScreenCompendium:Start() end)
 Task:Delay(1, function() 
     _G.MgrGameUI:OpenScreen("ScreenMsg")
 end)
-
 
 
 

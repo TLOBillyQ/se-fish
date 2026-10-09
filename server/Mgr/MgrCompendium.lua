@@ -7,8 +7,9 @@
 -- 钓取次数与个人最大重量只由「上岸」推进。
 local GameCfg = require('common.GameCfg')
 local FishCatch = require('common.FishCatch')
+local Records = require('common.Records')
 
-local Mgr = { Queues = {}, KIND = 'compendium-land', MaxQueue = 16 }
+local Mgr = { Queues = {}, LastSeq = {}, KIND = 'compendium-land', MaxQueue = 16 }
 
 -- 浅拷贝：图鉴字段的值都是数字 / 布尔，没有嵌套表
 local function copy(value)
@@ -32,9 +33,40 @@ end
 function Mgr:Snapshot(player)
     local data = self.PlayerData and self.PlayerData:GetDataInst(player)
     local bag = data and data.Extra and data.Extra.collection or nil
-    if not bag then return { unlocked = {}, catches = {}, weights = {}, total = 0 } end
+    if not bag or data.LoadState ~= 'ready' then
+        return { state = data and data.LoadState == 'loading' and 'loading' or 'unavailable',
+            unlocked = {}, catches = {}, weights = {}, total = 0 }
+    end
     return { unlocked = copy(bag.unlocked), catches = copy(bag.catches),
-        weights = copy(bag.weights), total = bag.total or 0 }
+        weights = copy(bag.weights), total = bag.total or 0, state = 'ready',
+        completed = data.Extra.achievements and data.Extra.achievements.final == true }
+end
+
+-- 只读幂等握手；客户端不能提交收集、重量或成就，只能取得自己的权威快照。
+function Mgr:Handle(player, payload)
+    if not player or not Records.ValidUserId(player.UserId) or type(payload) ~= 'table' then return end
+    local seq = payload.seq
+    if type(seq) ~= 'number' or seq ~= math.floor(seq) or seq < 1 or seq > 2147483647 then return end
+    local last = self.LastSeq[player.UserId]
+    if last and last.player == player and seq <= last.seq then return end
+    self.LastSeq[player.UserId] = { player = player, seq = seq }
+    local state = self:Snapshot(player)
+    state.seq = seq
+    _G.REUtil:GetRE('CompendiumState'):FireClient(player, state)
+end
+
+function Mgr:Start()
+    if self.Connection then self.Connection:Disconnect() end
+    self.Connection = _G.REUtil:GetRE('CompendiumRequest').OnServerEvent:Connect(function(player, payload)
+        if not player or not Records.ValidUserId(player.UserId) then return end
+        if _G.REUtil:CheckRECD(player, 'CompendiumRequest', GameCfg.Compendium.RequestCooldownSec) then return end
+        self:Handle(player, payload)
+    end)
+end
+
+function Mgr:Stop()
+    if self.Connection then self.Connection:Disconnect() end
+    self.Connection, self.LastSeq = nil, {}
 end
 
 -- 上榜条件只看个体重量，与售价无关；重量口径与 MgrFishUnit:Weight 同一个纯函数
@@ -133,6 +165,8 @@ end
 function Mgr:OnPlayerRemoving(player)
     local queue = self.Queues[player.UserId]
     if queue and queue.player == player then self.Queues[player.UserId] = nil end
+    local request = self.LastSeq[player.UserId]
+    if request and request.player == player then self.LastSeq[player.UserId] = nil end
 end
 
 return Mgr

@@ -217,3 +217,44 @@ function TestCompendium:test_kills_and_drops_never_enter_the_compendium()
         lu.assertNil(read(path):find('Compendium', 1, true), path)
     end
 end
+
+-- #39 失败方式：未加载存档伪装成空图鉴；快照泄漏权威表；盲盒虚构重量；
+-- 本地通关依赖平台 ID；重复请求写档；离场请求状态未清理。
+-- 接缝：MgrCompendium 的公开请求与 Snapshot，真实 PlayerData/MgrSave。
+function TestCompendium:test_readonly_request_reports_ready_collection_and_local_completion()
+    local player, data = self:join(39)
+    data.Extra.collection.unlocked.item7 = true -- 已保存的盲盒收集，不经过上岸入口
+    data.Extra.achievements.final = true
+    local packets = {}
+    local previous = _G.REUtil
+    _G.REUtil = { GetRE = function(_, name)
+        lu.assertEquals(name, 'CompendiumState')
+        return { FireClient = function(_, target, value)
+            lu.assertEquals(target, player)
+            packets[#packets + 1] = value
+        end }
+    end }
+    self.comp:Handle(player, { seq = 1 })
+    self.comp:Handle(player, { seq = 1 })
+    _G.REUtil = previous
+    lu.assertEquals(#packets, 1)
+    lu.assertEquals(packets[1].state, 'ready')
+    lu.assertTrue(packets[1].completed)
+    lu.assertTrue(packets[1].unlocked.item7)
+    lu.assertNil(packets[1].weights.item7)
+    lu.assertNil(packets[1].catches.item7)
+    packets[1].unlocked.item7 = false
+    lu.assertTrue(self.comp:Snapshot(player).unlocked.item7)
+    lu.assertEquals(#data:Serialize().meta.operations, 0)
+end
+
+function TestCompendium:test_unready_collection_never_presents_default_data_as_saved_progress()
+    local player, data = self:join(40)
+    data.LoadState = 'loading'
+    lu.assertEquals(self.comp:Snapshot(player).state, 'loading')
+    data.LoadState = 'failed'
+    data.Extra.achievements.final = true
+    local state = self.comp:Snapshot(player)
+    lu.assertEquals(state.state, 'unavailable')
+    lu.assertNil(state.completed)
+end
