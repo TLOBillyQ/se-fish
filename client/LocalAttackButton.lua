@@ -5,6 +5,7 @@ local Players = game:GetService("Players")
 local World = game:GetService("World")
 local GameCfg = require("common.GameCfg")
 local Gesture = require("client.PressGesture")
+local WeaponAim = require('client.WeaponAim')
 local LocalAttackButton = {}
 
 -- ScreenMain 每次快照刷新时同步装备状态：决定点按语义（攻击/连发）与长按语义（换弹）
@@ -135,7 +136,7 @@ end
 function LocalAttackButton:RequestAttack()
     if not self:CanOperate() then return end
     print("[LocalAttackButton] 请求攻击 equipped=" .. tostring(self.EquippedId))
-    _G.REUtil:GetRE("WeaponAction"):FireServer({ action = "attack" })
+    _G.REUtil:GetRE("WeaponAction"):FireServer(WeaponAim:AttackPayload())
 end
 
 function LocalAttackButton:RequestReload()

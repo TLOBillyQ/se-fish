@@ -40,6 +40,12 @@ for _, lane in ipairs(lanes[selected]) do
   end
 end
 table.sort(files)
+-- 离线套件的显式基线：旧玩法夹具使用调试物资，假存档以 uNN 正式键预置数据。
+-- 只修改本测试进程的配置；业务默认保持关闭调试，编辑器验收槽不影响离线用例。
+-- 专门验证关闭调试/切换槽的用例仍在自己的 setUp 或测试体里覆盖并恢复这些字段。
+local fixtureCfg = require('common.GameCfg')
+fixtureCfg.Debug = { Enabled = true, InitialGrants = fixtureCfg.Debug.InitialGrants }
+fixtureCfg.Save.AcceptanceSlot = ''
 for _, file in ipairs(files) do
   require((file:gsub("/", "."):gsub("%.lua$", "")))
 end

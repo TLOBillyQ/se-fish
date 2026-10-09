@@ -142,7 +142,7 @@ GameCfg.Survival = {
 -- （server/Mgr/MgrGM.lua，客户端控制台 _G.GM.Coin / _G.GM.Item / _G.GM.SetHealth / _G.GM.SetHunger），进图时按 InitialGrants 白送（M1 的进图白送降级至此）。
 -- 关闭时正式获取路径只有拾饵、喂食换金币与商店购买。
 GameCfg.Debug = {
-    Enabled = true,
+    Enabled = false,
     InitialGrants = {
         { itemId = GameCfg.Items.Id.StarterRod, count = 1, containerId = GameCfg.Items.ContainerId.ItemBar },
         { itemId = GameCfg.Items.Id.Worm, count = 10, containerId = GameCfg.Items.ContainerId.Bait },
@@ -221,7 +221,7 @@ GameCfg.Save = {
     -- #93 验收专用：在试玩前执行 lua tools/cli.lua acceptance-slot new，并部署。
     -- 同一账号同槽重进会恢复进度；切换或关闭槽用 acceptance-slot set/off，正式存档不受影响。
     -- 试玩过程中不要部署或更换槽名。
-    AcceptanceSlot = '',
+    AcceptanceSlot = 'spec15-core-20261009',
     MaxRetries = 3,
     RetryDelaySec = 1,
     AutosaveSec = 60,
