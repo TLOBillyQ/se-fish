@@ -319,7 +319,8 @@ function Mgr:Release(fish, reason)
     fish.RayAt = now
     local pos = readPosition(body) or origin
     local species = GameCfg.Fish[fish.FishId]
-    if self:FlightProfile(fish.FishId) then
+    -- 普通/极品鱼无论上钩来源都直接逃水；飞行战斗与时限只用于特殊鱼种。
+    if species.Grade ~= 'normal' and species.Grade ~= 'rare' and self:FlightProfile(fish.FishId) then
         -- #132 T11 原型：飞行鱼放下后起飞（俯冲由 UpdateFlying 驱动，空中仍可被 #128 的受击体打到）
         fish.FleeAt = now + (species.EscapeSec or 180)
         body.LinearVelocity = Vector3.New(0, 0, 0)
@@ -1674,7 +1675,6 @@ function Mgr:UpdateFlying(fish, now)
         self:Remove(fish)
         return
     end
-    local species = GameCfg.Fish[fish.FishId]
     if fish.FishId == 'fish55Elite' then
         if fish.FleeAt and now >= fish.FleeAt then
             self:EndBossAttack(fish, 'timeout')
@@ -1684,10 +1684,6 @@ function Mgr:UpdateFlying(fish, now)
         else
             self:UpdateAquatic(fish,now)
         end
-        return
-    end
-    if fish.FleeAt and now >= fish.FleeAt and (species.Grade == 'normal' or species.Grade == 'rare') then
-        self:Remove(fish)
         return
     end
     if (fish.FleeAt and now >= fish.FleeAt) or (inWater(pos) and pos.y <= inWater(pos).SurfaceY) then

@@ -110,11 +110,12 @@ function TestReefCombat:test_pterosaur_throw_warns_then_hits_locked_ground_once(
     self.mgr:Update(); self.mgr:Update()
     lu.assertEquals(self.player.Character.Controller.Health,200)
 end
-function TestReefCombat:test_air_normal_escapes_after_one_second_but_penguin_stays_grounded()
+function TestReefCombat:test_air_normal_and_penguin_escape_toward_water_without_one_second_removal()
     local air=self:drop('item81')
-    lu.assertEquals(air.State,'flying')
+    lu.assertEquals(air.State,'escaping')
     self:advance(1.05)
-    lu.assertNil(self.mgr.Fish[air.Id])
+    lu.assertEquals(self.mgr.Fish[air.Id],air)
+    lu.assertTrue(air.Carrier.Body.LinearVelocity.z>0)
     local penguin=self:drop('item82')
     lu.assertEquals(penguin.State,'escaping')
 end
