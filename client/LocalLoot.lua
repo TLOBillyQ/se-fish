@@ -3,6 +3,7 @@
 -- 预警闪烁（#126）：快照里 warn=true 的件进入 30 秒回收预警，文字泡按 GameCfg.Loot.FlashIntervalSec
 -- 与服务端模型的可见性同节奏闪；预警期内拾取仍被服务端接受，闪到亮的那半拍照常可点。
 local GameCfg = require('common.GameCfg')
+local BodyScale = require('common.BodyScale')
 local REUtil = require('common.REUtil')
 
 local LocalLoot = { Nodes = {} }
@@ -64,7 +65,7 @@ end
 function LocalLoot:Update(dt)
     local character = Players.LocalPlayer and Players.LocalPlayer.Character
     local pos = character and character.Position
-    local radius = GameCfg.Loot.PickupRadius
+    local radius = BodyScale.InteractionRadius(character, GameCfg.Loot.PickupRadius)
     for _, entry in pairs(self.Nodes) do
         local near = false
         if pos then

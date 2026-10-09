@@ -3,6 +3,7 @@
 -- 点击打开 ScreenLottery；走出所有抽奖机范围自动关窗。锚点未摆放（编辑器侧还没建实体）只记日志，
 -- 不影响其余入口。结算与发奖全部在服务端（MgrLottery），这里只负责入口与开关窗。
 local GameCfg = require('common.GameCfg')
+local BodyScale = require('common.BodyScale')
 local Util = require('common.Util')
 local SquareButtonImage = 'official://image/11017'
 
@@ -56,7 +57,7 @@ end
 function LocalLottery:Update()
     local character = Players.LocalPlayer and Players.LocalPlayer.Character
     local pos = character and character.Position
-    local radius = GameCfg.Lottery.Radius
+    local radius = BodyScale.InteractionRadius(character, GameCfg.Lottery.Radius)
     local nearMachine
     for _, bubble in ipairs(self.Bubbles) do
         local near = false

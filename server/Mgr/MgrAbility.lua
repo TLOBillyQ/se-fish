@@ -7,8 +7,8 @@ local World = game:GetService("World")
 local Task = game:GetService("Task")
 
 local GameCfg = require("common.GameCfg")
-local BodyScale = require("common.BodyScale")
-local AttrGrowth = require("common.AttrGrowth")
+-- 体型计划由 MgrAttr 通过属性模型投影。
+-- 属性计算与引擎投影由注入的 MgrAttr 统一持有。
 local AbilityAPI = require("server.AbilityAPI")
 
 local Mgr = { PendingFishCleanup = {} }
@@ -17,10 +17,6 @@ local Mgr = { PendingFishCleanup = {} }
 Mgr.Managers = {}
 -- [userId] = 该玩家的 CharacterAdded 连接
 Mgr.CharacterSignals = {}
--- #139 持续效果状态机：[targetKey] = { kind='player'|'fish', ref=目标, carrier=鱼载体,
---   poison/burn={stacks,expiresAt,nextTickAt,source}, frost/paralyze={expiresAt,source} }
--- 玩家键 'p:<userId>'；鱼键带载体（查询走载体比对，不依赖键形状）。
-Mgr.Effects = {}
 -- [userId] = 角色入图时捕获的基础移速（成长/虚弱/霜冻/麻痹的乘算基准，只捕一次）
 Mgr.SpeedBase = {}
 
@@ -141,11 +137,7 @@ end
 -- 鱼技能的记录跟随鱼持有，取消标记使尚未就绪的异步装配失效。
 -- #139：同时清理挂在该鱼载体上的持续效果（目标离场清理）。
 function Mgr:RemoveFish(fish)
-    for key, entry in pairs(self.Effects) do
-        if entry.kind == 'fish' and entry.carrier and fish and entry.carrier == fish.Carrier then
-            self.Effects[key] = nil
-        end
-    end
+    if self.Modifier then self.Modifier:ClearTarget(fish) end
     local record = fish.AbilityRecord
     if not record then return end
     record.Cancelled = true
@@ -213,6 +205,7 @@ end
 function Mgr:CastFish(fish)
     local record = fish.AbilityRecord
     if not record or not record.Ready or record.Cancelled or fish.Carrier.Dead then return false end
+    if self.Ai then return self.Ai:CastFish(fish) end
     return AbilityAPI.CastAbility(record.Receiver, record.Entry.Index)
 end
 
@@ -251,25 +244,13 @@ end
 ---按玩家已吃的变大药水算体型计划（读不到存档时按 0 个处理）
 ---@return table { Scale, Health, Potions, Capped, MaxScale, MaxHealth }
 function Mgr:BodyPlan(player)
-	return BodyScale.Plan(self:PotionCount(player, GameCfg.Ability.BodyScale.PotionItem))
+	return self.Attr:BodyPlan(player)
 end
 
 ---把体型计划落到角色上：SetScale + 派生量属性。倍率非法由 BodyScale 净化，不会写入 NaN。
 ---@return table { Ok, Scale?, Health?, Capped?, Derived?, Error? }
 function Mgr:ApplyBodyScale(player)
-	local character = player and player.Character
-	if not character then return { Ok = false, Error = 'no-character' } end
-	local plan = self:BodyPlan(player)
-	local applied = AbilityAPI.SetBodyScale(character, plan.Scale)
-	if not applied.Ok then return { Ok = false, Error = applied.Error, Plan = plan } end
-	local derived = applied.Derived or {}
-	pcall(function()
-		character:SetAttribute('CameraDistance', derived.CameraDistance)
-		character:SetAttribute('InteractRange', derived.InteractRange)
-		character:SetAttribute('BodyScaleCapped', plan.Capped)
-	end)
-	print('[MgrAbility] 体型', player.UserId, plan.Potions, applied.Scale, 'health=' .. tostring(plan.Health))
-	return { Ok = true, Scale = applied.Scale, Health = plan.Health, Capped = plan.Capped, Derived = derived }
+	return self.Attr:ApplyBodyScale(player)
 end
 
 -- ===== #139 属性成长应用（唯一计算处）=====
@@ -282,22 +263,15 @@ end
 ---角色入图（或重生）时捕获基础移速：整段会话只捕一次，此时角色必为引擎默认速度，
 ---之后所有修饰（成长/虚弱/霜冻/麻痹）都以它为基准乘算，不重复捕获被改过的值。
 function Mgr:CaptureBaseSpeed(player)
-	local uid = player and player.UserId
-	if not uid or self.SpeedBase[uid] then return end
-	local controller = controllerOf(player)
-	if not controller then return end
-	local ok, speed = pcall(function() return controller.WalkSpeed end)
-	if ok and type(speed) == 'number' and speed > 0 then
-		self.SpeedBase[uid] = speed
-	end
+	return self.Attr:CaptureBaseSpeed(player)
 end
 
 ---玩家血量上限：基础 300 + 变大药水成长（AttrGrowth 委托 BodyScale 钉表）
 function Mgr:MaxHealth(player)
-	return AttrGrowth.MaxHealth(self:PotionCount(player, GameCfg.Ability.BodyScale.PotionItem))
+	return self.Attr:MaxHealth(player)
 end
 
----移速唯一写口：基础 × 加速成长 × 虚弱 × 霜冻（麻痹为 0），数值在 common/AttrGrowth.lua 算一次。
+---移速刷新委托：MgrAttr读取成长计数与统一效果倍率，单点投影。
 ---任何一侧变化（喝药/虚弱进出/霜冻麻痹起止/重生）都调本函数整体重写，不做增量叠加。
 -- 所有调用路径共用速度重试队列；每名玩家只登记一次，连续失败只记录首个错误，避免心跳刷屏。
 local function queueSpeed(self, player, err)
@@ -310,23 +284,7 @@ local function queueSpeed(self, player, err)
 end
 
 function Mgr:RefreshMoveSpeed(player)
-	local controller = controllerOf(player)
-	if not controller then return queueSpeed(self, player, "no-controller") end
-	self:CaptureBaseSpeed(player)
-	local base = self.SpeedBase[player.UserId] or GameCfg.Ability.MoveSpeed.Base
-	local weak = false
-	if self.Survival and self.Survival.GetState then
-		local ok, state = pcall(self.Survival.GetState, self.Survival, player)
-		weak = ok and state ~= nil and state.weakUntil ~= nil
-	end
-	local entry = self.Effects['p:' .. tostring(player.UserId)]
-	local now = self:Now()
-	local frost = entry ~= nil and entry.frost ~= nil and now < entry.frost.expiresAt
-	local paralyzed = entry ~= nil and entry.paralyze ~= nil and now < entry.paralyze.expiresAt
-	local speed = AttrGrowth.EffectiveSpeed(base,
-		self:PotionCount(player, GameCfg.Ability.SpeedPotion.Item),
-		{ weak = weak, frost = frost, paralyzed = paralyzed })
-	local ok, err = pcall(function() controller.WalkSpeed = speed end)
+	local ok, err = self.Attr:RefreshMoveSpeed(player)
 	if not ok then
 		return queueSpeed(self, player, err)
 	end
@@ -336,25 +294,8 @@ end
 
 ---喝属性药水后的一站应用：体型 + 血量上限 + 移速。存档计数已落账，这里全部重算。
 function Mgr:ApplyGrowth(player)
-	local applied = self:ApplyBodyScale(player)
-	local errors = {}
-	if not applied.Ok then errors[#errors + 1] = tostring(applied.Error) end
-	if self.Vitals and self.Vitals.RefreshMaxHealth then
-		local called, ok, err = pcall(self.Vitals.RefreshMaxHealth, self.Vitals, player)
-		if not called or ok ~= true then
-			local reason = called and err or ok
-			print('[MgrAbility] 血量上限刷新失败', player.UserId, tostring(reason))
-			errors[#errors + 1] = 'MaxHealth:' .. tostring(reason)
-		end
-	end
-	-- 体型/血量失败需重套成长；速度失败已由唯一写口登记，不能再进入成长队列反复打印/重套。
-	local retryGrowth = #errors > 0
-	local ok, err = self:RefreshMoveSpeed(player)
-	if not ok then errors[#errors + 1] = 'WalkSpeed:' .. tostring(err) end
-	if #errors > 0 then
-		applied.Ok, applied.Error = false, table.concat(errors, '; ')
-		-- 存档已落账；后续 Update 按当前存档重算，角色重建后也会再次尝试。
-	end
+	local applied = self.Attr:ApplyGrowth(player)
+	local retryGrowth = not applied.Ok
 	if retryGrowth then
 		self.PendingGrowth = self.PendingGrowth or {}
 		self.PendingGrowth[player.UserId] = player
@@ -369,132 +310,33 @@ function Mgr:Now()
 	return ok and now or 0
 end
 
----把命中目标解析为效果宿主：玩家（UserId 或角色反查）或鱼（FishCarrier 载体）。
----@return string? key, any? ref, string? kind, table? carrier
-function Mgr:ResolveEffectTarget(target)
-	if not target then return nil end
-	if target.UserId then return 'p:' .. tostring(target.UserId), target, 'player' end
-	local players = game:GetService("Players")
-	if players and players.GetPlayerFromCharacter then
-		local ok, found = pcall(players.GetPlayerFromCharacter, players, target)
-		if ok and found then return 'p:' .. tostring(found.UserId), found, 'player' end
-	end
-	if self.Vitals and self.Vitals.FishCarrier and self.Vitals.FishCarrier.ResolveCarrier then
-		local ok, carrier = pcall(self.Vitals.FishCarrier.ResolveCarrier, self.Vitals.FishCarrier, target)
-		if ok and carrier then
-			local key = carrier.Body and carrier.Body.UnitId and ('c:' .. tostring(carrier.Body.UnitId))
-				or tostring(carrier)
-			return key, target, 'fish', carrier
-		end
-	end
-	return nil
-end
-
 ---武器命中挂持续效果（统一规格 §6.3）：毒/灼烧叠层（上限 5）并刷新持续、tick 相位不变；
 ---霜冻/麻痹不叠加只刷新。同一目标同一效果只有一条状态（唯一状态管理）。
 ---@param source any 攻击来源玩家（DOT 的 NewHit 来源）
 ---@param target any 命中目标（玩家/角色/鱼记录/载体/鱼本体）
 ---@param effect table { Kind = 'poison'|'burn'|'frost'|'paralyze' }
 function Mgr:ApplyWeaponEffect(source, target, effect)
-	local fxcfg = effect and GameCfg.Ability.StatusEffects[effect.Kind]
-	if not fxcfg then return false end
-	local kind = effect.Kind
-	local key, ref, targetKind, carrier = self:ResolveEffectTarget(target)
-	if not key then return false end
-	local now = self:Now()
-	local entry = self.Effects[key]
-	if not entry then
-		entry = { kind = targetKind, ref = ref, carrier = carrier }
-		self.Effects[key] = entry
-	end
-	if fxcfg.MaxStacks then -- 毒/灼烧：叠层 + 刷新；已过期的残留按全新计
-		local st = entry[kind]
-		if st and st.expiresAt and now >= st.expiresAt then st = nil end
-		if not st then
-			st = { stacks = 0, nextTickAt = now + fxcfg.TickSec }
-			entry[kind] = st
-		end
-		st.stacks = math.min(st.stacks + 1, fxcfg.MaxStacks)
-		st.expiresAt = now + fxcfg.DurationSec
-		st.source = source
-	else -- 霜冻/麻痹：不叠加，只刷新持续
-		entry[kind] = { expiresAt = now + fxcfg.DurationSec, source = source }
-		if targetKind == 'player' then self:RefreshMoveSpeed(ref) end
-	end
-	return true
+	return self.Modifier:ApplyWeaponEffect(source, target, effect)
 end
 
--- DOT 每跳都重新走 T07/#128 统一伤害入口（NewHit('dot') + ApplyHit），不直扣血。
-local function updateDot(self, entry, kind, fxcfg, now)
-	local st = entry[kind]
-	if not st then return end
-	while st and now >= st.nextTickAt and st.nextTickAt <= st.expiresAt do
-		if self.Vitals and self.Vitals.NewHit and self.Vitals.ApplyHit then
-			local hit = self.Vitals:NewHit(st.source, 'dot')
-			self.Vitals:ApplyHit(hit, entry.ref, st.stacks * fxcfg.DamagePerStack)
-		end
-		st.nextTickAt = st.nextTickAt + fxcfg.TickSec
-	end
-	if now >= st.expiresAt then entry[kind] = nil end
-end
-
+-- 兼容既有离线探针公开入口；运行时仅 MgrModifier.Update 调度 DOT。
 function Mgr:UpdateEffects()
-	local now = self:Now()
-	local fxcfgAll = GameCfg.Ability.StatusEffects
-	for key, entry in pairs(self.Effects) do
-		if entry.kind == 'fish' and entry.carrier and entry.carrier.Dead then
-			self.Effects[key] = nil -- 死鱼立即清理，不再吃 DOT
-		else
-			for _, kind in ipairs({ 'poison', 'burn' }) do
-				updateDot(self, entry, kind, fxcfgAll[kind], now)
-			end
-			for _, kind in ipairs({ 'frost', 'paralyze' }) do
-				local st = entry[kind]
-				if st and now >= st.expiresAt then
-					entry[kind] = nil
-					if entry.kind == 'player' then self:RefreshMoveSpeed(entry.ref) end
-				end
-			end
-			if not entry.poison and not entry.burn and not entry.frost and not entry.paralyze then
-				self.Effects[key] = nil
-			end
-		end
-	end
+	return self.Modifier:Update()
 end
 
 ---玩家是否麻痹（无法行动）：MgrVitals.CanAct 的 ActGuard 钩子用
 function Mgr:IsParalyzed(player)
-	local entry = player and self.Effects['p:' .. tostring(player.UserId)]
-	local st = entry and entry.paralyze
-	return st ~= nil and self:Now() < st.expiresAt
-end
-
--- 鱼的效果条目按载体比对（鱼记录/本体/接收器都可能当过命中目标，键形状不可靠）
-function Mgr:FishEffects(fish)
-	local carrier = fish and fish.Carrier
-	if not carrier then return nil end
-	for _, entry in pairs(self.Effects) do
-		if entry.kind == 'fish' and entry.carrier == carrier then return entry end
-	end
-	return nil
+	return self.Modifier:IsControlled(player)
 end
 
 ---鱼移速乘区（MgrFishUnit:Speed 唯一读取点挂这里）：麻痹 0、霜冻 0.7、都无 1
 function Mgr:FishSpeedFactor(fish)
-	local entry = self:FishEffects(fish)
-	if not entry then return 1 end
-	local now = self:Now()
-	if entry.paralyze and now < entry.paralyze.expiresAt then return 0 end
-	if entry.frost and now < entry.frost.expiresAt then
-		return 1 - GameCfg.Ability.StatusEffects.frost.SlowPercent / 100
-	end
-	return 1
+	return self.Modifier:GetMoveMultiplier(fish)
 end
 
 ---鱼是否麻痹（追咬/攻击闸用）
 function Mgr:FishParalyzed(fish)
-	local entry = self:FishEffects(fish)
-	return entry ~= nil and entry.paralyze ~= nil and self:Now() < entry.paralyze.expiresAt
+	return self.Modifier:IsControlled(fish)
 end
 
 function Mgr:Start()
@@ -532,16 +374,7 @@ function Mgr:OnPlayerRemoving(player)
 	-- 管理器挂在角色下，角色销毁时一起消失；这里只清引用，不主动 Destroy，
 	-- 避免离开流程里再动一次正被销毁的单位。
 	self.Managers[player.UserId] = nil
-	-- #139 目标离场清理：持续效果与移速基准随玩家移除
-	self.Effects['p:' .. tostring(player.UserId)] = nil
-	-- 来源退出策略：取消该来源在所有目标上的效果，避免下一跳丢失权威来源身份。
-	for _, entry in pairs(self.Effects) do
-		for _, kind in ipairs({ 'poison', 'burn', 'frost', 'paralyze' }) do
-			local st = entry[kind]
-			if st and st.source == player then entry[kind] = nil end
-		end
-		if entry.kind == 'player' then self:RefreshMoveSpeed(entry.ref) end
-	end
+	-- 效果目标与来源清理由 MgrModifier 的独立生命周期负责。
 	if self.PendingGrowth then self.PendingGrowth[player.UserId] = nil end
 	if self.PendingSpeed then self.PendingSpeed[player.UserId] = nil end
 	self.SpeedBase[player.UserId] = nil
@@ -552,7 +385,6 @@ function Mgr:Update(deltaTime)
     -- 只重试本帧开始已有的请求；本帧到期事件失败留到下一帧。刷新始终读取当前存档/权威状态。
     local retrySpeed = {}
     for uid, player in pairs(self.PendingSpeed or {}) do retrySpeed[uid] = player end
-    self:UpdateEffects()
     for uid, player in pairs(retrySpeed) do
         if self.PendingSpeed and self.PendingSpeed[uid] == player then self:RefreshMoveSpeed(player) end
     end
