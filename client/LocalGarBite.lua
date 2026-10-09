@@ -34,7 +34,8 @@ function LocalGarBite:Show(payload)
     local c = cfg()
     local world = game:GetService('World')
     local circle = payload.shape == 'circle'
-    local preset = circle and c.CirclePreset or c.EffectPreset
+    local line = payload.shape == 'line'
+    local preset = (circle or line) and c.CirclePreset or c.EffectPreset
     local ok, units = pcall(world.CreateAsset, world, preset)
     local effect = ok and type(units) == 'table' and units[1] or nil
     if not effect then
@@ -48,6 +49,13 @@ function LocalGarBite:Show(payload)
         -- 等比缩放：技能包 Sector/CirclePointer 对 7189/7187 写 y=0，但 7190 在技能包里从未实例化，
         -- y=0 对它是否仍可见无证据；等比缩放不会压成零厚度，贴地特效也仍是平的。
         effect.Scale = Vector3.New(scale, scale, scale)
+        if line then
+            local fx,fz = math.sin(payload.yaw),math.cos(payload.yaw)
+            effect.Position = Vector3.New(p.x+fx*payload.range/2,p.y+c.GroundOffset,p.z+fz*payload.range/2)
+            effect.Rotation = Quaternion.FromEulerAngles(0,math.deg(payload.yaw),0)
+            effect.Scale = Vector3.New((payload.width or 2)/(2*c.CircleRadius),scale,
+                payload.range/(2*c.CircleRadius))
+        end
     end)
     if not placed then
         print('[LocalGarBite] 预警特效摆放失败', 'fish=' .. tostring(fishId), tostring(err))

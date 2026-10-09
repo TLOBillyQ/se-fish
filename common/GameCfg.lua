@@ -81,6 +81,7 @@ GameCfg.Items = {
 --   FlashImage               四边红框的底图 11081（圆角矩形），按 FlashColor 染红
 -- [未查证：环形图、红框观感与 HUD 位置是否与 LabelCoin / 任务条重叠，待 #55 截图迭代]
 GameCfg.Vitals = {
+    HeldDamage = { ItemId = 'item126', DamagePerSec = 1 }, -- 持有核废料桶每秒受伤，道具栏与背包均生效。
     MaxHealth = 300,
     MaxHunger = 300,
     HungerPerSec = 1,
@@ -371,6 +372,8 @@ GameCfg.Shop = {
         { AnchorName = 'Z4_Shop', Level = 4 },
         -- #142 沙滩岛摊位（5 级）：上架椰子 / 专业鱼竿 / 自动步枪与 5 级升级行（场景合同 Z5_Shop）
         { AnchorName = 'Z5_Shop', Level = 5 },
+        { AnchorName = 'Z6_Shop', Level = 6 },
+        { AnchorName = 'Z7_Shop', Level = 7 },
     },
     BubblePreset = 'map://preset/uf5ad80a4c6a40d59b7f6e0eb99a58c0',
     BubbleHeight = 7,
@@ -504,8 +507,9 @@ end
 -- 最终成就（#127 第七区，GameSpec §8.1「哥斯拉头 → 通关成就」）：兑换产物是 'achievement.<id>'
 -- 时写进 Extra.achievements[<id>]（不占道具格，重进照旧保留），这里只给客户端提示用的名字。
 GameCfg.Achievements = {
-    final = { Name = '通关成就' },
+    final = { Name = '通关成就', PlatformId = nil }, -- 平台后台ID未交付，本地先完成、保留补交。
 }
+GameCfg.AchievementDelivery = { RetrySec = 15 }
 GameCfg.Shop.Catalog = ContentShop.Goods
 GameCfg.Shop.Excluded = ContentShop.Excluded
 GameCfg.Lottery = ContentLottery
@@ -713,7 +717,7 @@ GameCfg.Casting = {
     -- 必出对应首领，无视抽签权重、鱼饵-鱼种匹配与竿级；首领饵占道具栏/背包格、不进 Bait 计数，
     -- 抛竿一刻从道具栏（优先）或背包扣 1 只，钓出首领后消耗，脱钩 / 逃脱不返还。
     BossBait = { duck = 'alligatorGar', item121 = 'fish16Boss', item122 = 'fish24Boss', item123 = 'fish32Boss',
-        item124 = 'fish40Boss' },
+        item124 = 'fish40Boss', item125 = 'fish48Boss', item126 = 'fish56Boss' },
 }
 
 -- 源表抽鱼行按钓鱼区分组；水域/钓鱼区映射见下文 Water.ZoneIdByWater。
@@ -737,6 +741,16 @@ for _, rows in pairs(sourceCastRows) do
 end
 GameCfg.Casting.Catalog = sourceCastRows
 GameCfg.Casting.BossBaitCatalog = bossBaitCatalog
+
+-- 火山岛完整内容采用源表原行，灰盒模型沿用已验证的鱼本体；正式资源由资源交付替换。
+GameCfg.Casting.Zones['volcanoIsland.water'] = sourceCastRows.volcanoIsland
+for _, species in pairs(GameCfg.Fish) do
+    if species.ZoneId == 'volcanoIsland' then
+        species.implemented, species.Model = true, '7000546'
+        if species.Grade == 'elite' then species.Combat = 'mosasaur' end
+        if species.Grade == 'boss' then species.Combat = 'godzilla' end
+    end
+end
 
 -- 首领近战（#88 占位，#134 头部攻击）：Combat='gar' 的鱼上岸放下后 Kinematic 追目标（仇恨 / 最近），
 -- 移速取鱼种 Speed，伤害取鱼种 Attack，逃跑时限取鱼种 EscapeSec（耗尽走精英直线逃脱）。
@@ -1035,6 +1049,12 @@ GameCfg.Ability = {
         ContactIntervalSec = 1, ContactDamage = 150, -- 叼走过程的接触伤害节奏与数值（伤害取自正文 150）
         FallDamage = 0,                       -- 落地额外伤害（正文未给，先 0）
     },
+    Aquatic = {
+        LeapIntervalSec = 15, LeapWindupSec = 1, LeapSec = 1.5, LeapHeight = 8,
+        LeapRadius = 5, LeapDamage = 35, -- 沧龙表基础攻击35；落点范围为灰盒判定细化
+        HeadRadius = 2.5, HeadWindupSec = 0.8, HeadDamage = 35,
+        GrabDamage = 300, ContactDamage = 150, -- 正文独立咬中/过程接触
+    },
     BossPhase = {
         -- 哥斯拉（fish56Boss，GameSpec §12）：低于 60% 入水、切沧龙式攻击（咬中 1000）；
         -- 低于 20% 重新上岸、伤害 +50%、原子吐息改为每 10 秒。阈值优先于普通招式循环。
@@ -1046,15 +1066,16 @@ GameCfg.Ability = {
         },
         -- 各阶段的招式集合；同一帧多个招式到期时按 Attacks 的书写顺序取唯一一个，保证确定性。
         AttackSets = {
-            normal = { 'claw', 'tail', 'breath' },
+            normal = { 'claw', 'tail', 'breath', 'stomp' },
             water = { 'bite' },
-            enraged = { 'claw', 'tail', 'breath' },
+            enraged = { 'claw', 'tail', 'breath', 'stomp' },
         },
         Attacks = {
-            claw = { IntervalSec = 2, Damage = 50 },   -- 表内 2 秒爪击（基础攻击 50）
-            tail = { IntervalSec = 6, Damage = 50 },   -- 表内每 6 秒甩尾
-            breath = { IntervalSec = 30, Range = 10, OneShot = true, WindupSec = 1.5 }, -- 正前 10 米秒杀
-            bite = { IntervalSec = 2 },                -- 入水后的咬击：伤害取阶段条目的 BiteDamage
+            claw = { IntervalSec = 2, Damage = 50, Range = 4 },   -- 表内 2 秒爪击（基础攻击 50）
+            tail = { IntervalSec = 6, Damage = 50, Range = 5 },   -- 表内每 6 秒甩尾
+            breath = { IntervalSec = 30, Range = 10, Width = 2, OneShot = true, WindupSec = 1.5 }, -- 正前 10 米秒杀；2米宽灰盒可躲避
+            bite = { IntervalSec = 2, Range = 2.5 },                -- 入水后的咬击：伤害取阶段条目的 BiteDamage
+            stomp = { IntervalSec = 2, Damage = 150, Range = 10, WindupSec = 0.8 }, -- 正文独立跺脚
         },
         -- 走阶段机的鱼种（键为 GameCfg.Fish 的 Id）。本单只登记哥斯拉；
         -- 正式接入由 #144 决定是加 Combat 标签还是建「首领」注册表（本单不改 common/cfg/Fish.lua）。
@@ -1144,6 +1165,7 @@ GameCfg.Water = {
         -- 与树林岛相距 200 米（> 两个半宽之和），无重叠。
         { Id = "beachIsland.water", Center = { x = 660, y = 2, z = 144 }, HalfX = 40, HalfZ = 12, SurfaceY = 3 },
         { Id = 'reefIsland.water', Center = { x = 880, y = 2, z = 144 }, HalfX = 40, HalfZ = 12, SurfaceY = 3 },
+        { Id = 'volcanoIsland.water', Center = { x = 1160, y = 2, z = 144 }, HalfX = 40, HalfZ = 12, SurfaceY = 3 },
     },
 }
 

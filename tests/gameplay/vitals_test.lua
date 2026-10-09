@@ -77,6 +77,31 @@ end
 
 function TestVitals:ctrl(p) return (p or self.a).Character.Controller end
 
+-- #38 失败方式：核废料桶只检查选中格、移入背包不伤、转移后仍伤旧持有人、濒死绕过锁血。
+-- 接缝：真实 PlayerData 库存与 MgrVitals.Update / Controller。
+function TestVitals:test_nuclear_bait_damages_current_holder_in_bar_or_backpack_once_per_second()
+    local PD = assert(loadfile('server/Data/PlayerData.lua'))()
+    local a, b = PD.New(self.a, function() end), PD.New(self.b, function() end)
+    a:Init(); b:Init()
+    local entries = { [self.a] = a, [self.b] = b }
+    self.mgr.PlayerData = { GetDataInst = function(_, p) return entries[p] end }
+    self:ctrl(self.a).Health = 300
+    self:ctrl(self.b).Health = 300
+    a.Data.Containers.backpack[1] = { itemId = 'item126', count = 1 }
+    self:tick(1)
+    lu.assertEquals(self:ctrl(self.a).Health, 299)
+    lu.assertEquals(self:ctrl(self.b).Health, 300)
+    a.Data.Containers.backpack[1] = nil
+    b.Data.Containers.itemBar[1] = { itemId = 'item126', count = 1 }
+    self:tick(1)
+    lu.assertEquals(self:ctrl(self.a).Health, 299)
+    lu.assertEquals(self:ctrl(self.b).Health, 299)
+    self.mgr:SetLifeHooks({ LifeStatus = function() return 'downed' end,
+        CanTakeDamage = function() return false end })
+    self:tick(2)
+    lu.assertEquals(self:ctrl(self.b).Health, 299)
+end
+
 function TestVitals:test_config_is_centralized_and_matches_design()
     local v = self.cfg.Vitals
     lu.assertEquals(v.MaxHealth, 300)

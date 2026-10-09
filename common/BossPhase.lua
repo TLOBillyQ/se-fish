@@ -217,8 +217,7 @@ function M.Update(state, now, dt, input)
     -- 取本帧唯一一个到期招式（按 AttackSets 的书写顺序，保证确定性）
     for _, name in ipairs(attackSet(state)) do
         local readyAt = state.Cooldown[name] or 0
-        if now >= readyAt then
-            if not withinRange(state, name) then return events end
+        if now >= readyAt and withinRange(state, name) then
             local attack = state.Cfg.Attacks[name] or {}
             if not isBadNumber(attack.WindupSec) and attack.WindupSec > 0 then
                 state.Pending = { Name = name, ReadyAt = now + attack.WindupSec,
