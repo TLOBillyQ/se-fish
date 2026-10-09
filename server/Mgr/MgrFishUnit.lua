@@ -1499,7 +1499,12 @@ end
 ---该鱼种是否走飞行（GameCfg.Ability.Flight.Species 按鱼种 Id 登记）
 function Mgr:FlightProfile(fishId)
     local species = GameCfg.Ability.Flight.Species
-    return species and species[fishId] or nil
+    if species and species[fishId] then return species[fishId] end
+    local fish = GameCfg.Fish[fishId]
+    if fish and fish.CatchSource == 'air' and (fish.Grade == 'normal' or fish.Grade == 'rare') then
+        return { Speed = fish.Speed, CruiseHeight = GameCfg.Ability.Flight.CruiseHeight,
+            DiveIntervalSec = math.huge }
+    end
 end
 
 ---该鱼种是否走分阶段首领（GameCfg.Ability.BossPhase.Species 按鱼种 Id 登记）
@@ -1510,9 +1515,20 @@ end
 
 ---飞行边界：优先本区场景合同（#125 的 Scene.Boundary），缺失时用配置兜底围栏；
 ---两者都拿不到就不飞（返回 nil），绝不无边界乱飞。
-function Mgr:FlightBounds(fishId)
+function Mgr:FlightBounds(fishId, position)
     local species = GameCfg.Fish[fishId]
     local scene = species and zoneScene(species.ZoneId)
+    -- 首领饵不限水域：边界按当前上岸地块，不能按鱼种出生区把首领传去远处。
+    if position and species and species.ZoneId == 'reefIsland' then
+        for _, zone in ipairs(GameCfg.Zones) do
+            local boundary = zone.Scene and zone.Scene.Boundary
+            if boundary and position.x >= boundary.MinX and position.x <= boundary.MaxX
+                and position.z >= boundary.MinZ and position.z <= boundary.MaxZ then
+                scene = zone.Scene
+                break
+            end
+        end
+    end
     local bounds = FlightPath.BoundsOf(scene, GameCfg.Ability.Flight)
     if bounds then return bounds end
     local fallback = GameCfg.Ability.Flight.FallbackBounds
@@ -1524,13 +1540,20 @@ end
 function Mgr:StartFlight(fish, now)
     if self.Ai then self.Ai:Custom(fish) end
     local profile = self:FlightProfile(fish.FishId)
-    local bounds = self:FlightBounds(fish.FishId)
-    if not profile or not bounds then return false end
     local pos = readPosition(fish.Carrier.Body)
+    local bounds = self:FlightBounds(fish.FishId, pos)
+    if not profile or not bounds then return false end
     fish.Flight = FlightPath.New(bounds, GameCfg.Ability.Flight, profile, pos, now)
     fish.FlightAt = now
     fish.State = Mgr.State.Flying
     fish.DiveActive = false
+    if GameCfg.Fish[fish.FishId].ZoneId == 'reefIsland' then
+        fish.Flight.NextDiveAt = math.huge -- 礁石岛由预警→锁点→命中流程驱动，禁用无预警原型俯冲。
+        fish.NextReefDiveAt = now + (profile.DiveIntervalSec or math.huge)
+        fish.NextThrowAt = now + (profile.ThrowIntervalSec or math.huge)
+        fish.AirAttacks = {}
+        self:PublishCombat(fish)
+    end
     -- 飞行期间由脚本给速度驱动：Kinematic 不受重力影响（与在逃鱼同口径，BodyType=2 见本文件 280 行注释）
     pcall(function() fish.Carrier.Body.BodyType = 2 end)
     print('[MgrFishUnit] 起飞', fish.FishId, 'fish=' .. tostring(fish.Id))
@@ -1539,11 +1562,13 @@ end
 
 ---结束飞行，回落到既有的在逃逻辑（入水即销毁）。
 function Mgr:ExitFlight(fish, now, reason)
+    self:EndAirAttacks(fish, reason)
     fish.Flight = nil
     fish.DiveActive = false
     if self.Fish[fish.Id] ~= fish then return end
     fish.State = Mgr.State.Escaping
     fish.StraightEscape = true
+    self:PublishCombat(fish, true)
     fish.EscapeAt = now
     fish.EscapeBy = nil
     fish.TurnAt = now + cfg().TurnSec
@@ -1551,6 +1576,81 @@ function Mgr:ExitFlight(fish, now, reason)
     if fish.CombatRotation then pcall(function() fish.Carrier.Body.Rotation = fish.CombatRotation end) end
     self:SetHeading(fish, towardWater(readPosition(fish.Carrier.Body) or fish.Anchor))
     print('[MgrFishUnit] 结束飞行', reason or '', fish.FishId, 'fish=' .. tostring(fish.Id))
+end
+
+-- 每次招式独立预警编号，投掷与俯冲并发时不覆盖；负数与普通鱼预警编号分离。
+function Mgr:StartAirAttack(fish, kind, pos, now)
+    local flight, profile = GameCfg.Ability.Flight, fish.Flight.Profile
+    self.NextAirAttackId = (self.NextAirAttackId or 0) + 1
+    local dive = kind == 'airDive'
+    local duration = dive and (flight.ReefDiveWarnSec + flight.ReefDiveSec) or flight.ThrowFlightSec
+    local attack = { Id = -self.NextAirAttackId, Kind = kind, At = now, StrikeAt = now + duration,
+        Center = { x = pos.x, y = pos.y, z = pos.z },
+        Origin = { x = fish.Flight.Pos.x, y = fish.Flight.Pos.y, z = fish.Flight.Pos.z },
+        Radius = dive and flight.DiveRadius or profile.ThrowRadius,
+        Damage = dive and profile.DiveDamage or profile.ThrowDamage }
+    local b = fish.Flight.Bounds
+    attack.Center.x = math.max(b.MinX,math.min(b.MaxX,attack.Center.x))
+    attack.Center.z = math.max(b.MinZ,math.min(b.MaxZ,attack.Center.z))
+    attack.Center.y = math.max(b.GroundY,math.min(b.CeilingY,attack.Center.y))
+    fish.AirAttacks[kind] = attack
+    local payload = GarBiteNotice.Lock(attack.Id, attack.Center, 0, 1, attack.Radius, 180, duration)
+    payload.shape, payload.move, payload.ownerFishId = 'circle', kind, fish.Id
+    payload.flightOrigin = attack.Origin
+    publishBite(self, payload)
+    print('[MgrFishUnit] 空战预警', fish.FishId, kind, attack.Id, attack.Damage)
+    return attack
+end
+
+function Mgr:EndAirAttacks(fish, reason)
+    for _, attack in pairs(fish.AirAttacks or {}) do
+        publishBite(self, GarBiteNotice.Clear(attack.Id, reason or 'gone'))
+    end
+    fish.AirAttacks = nil
+end
+
+-- 只认起手时锁定的落点；每次更新至多发一招，暂停后的大dt不补发多轮伤害。
+function Mgr:UpdateAirAttacks(fish, targetPos, now)
+    local state, flight = fish.Flight, GameCfg.Ability.Flight
+    if not fish.AirAttacks then return false end
+    for kind, attack in pairs(fish.AirAttacks) do
+        if now >= attack.StrikeAt - 1e-8 then
+            fish.AirAttacks[kind] = nil -- 先消费，再结算，重复事件不能重复扣血。
+            local hit = false
+            for _, player in ipairs(self:Players()) do
+                local valid, cp = self:IsTargetValid(player, attack.Center)
+                if valid and (cp.x-attack.Center.x)^2 + (cp.z-attack.Center.z)^2 <= attack.Radius^2
+                    and math.abs(cp.y-attack.Center.y) <= attack.Radius then
+                    hit = self:Hit(fish, player, attack.Damage, kind) or hit
+                end
+            end
+            publishBite(self, GarBiteNotice.Clear(attack.Id, hit and 'hit' or 'miss'))
+            if kind == 'airDive' then
+                state.Pos = {x=attack.Center.x,y=attack.Center.y,z=attack.Center.z}
+                state.Last = {x=state.Pos.x,y=state.Pos.y,z=state.Pos.z}
+                state.Phase = 'climb'
+            end
+        end
+    end
+    if targetPos then
+        if now >= (fish.NextThrowAt or math.huge) - 1e-8 then
+            fish.NextThrowAt = now + state.Profile.ThrowIntervalSec
+            self:StartAirAttack(fish, 'airThrow', targetPos, now)
+        end
+        if now >= (fish.NextReefDiveAt or math.huge) - 1e-8 then
+            fish.NextReefDiveAt = now + state.Profile.DiveIntervalSec
+            self:StartAirAttack(fish, 'airDive', targetPos, now)
+        end
+    end
+    local dive = fish.AirAttacks.airDive
+    if not dive then return false end
+    local progress = math.min(1, math.max(0, (now-dive.At-flight.ReefDiveWarnSec)/flight.ReefDiveSec))
+    state.Pos = { x=dive.Origin.x+(dive.Center.x-dive.Origin.x)*progress,
+        y=dive.Origin.y+(dive.Center.y-dive.Origin.y)*progress,
+        z=dive.Origin.z+(dive.Center.z-dive.Origin.z)*progress }
+    state.Last = {x=state.Pos.x,y=state.Pos.y,z=state.Pos.z}
+    state.Vel = {x=0,y=0,z=0}
+    return true
 end
 
 ---飞行/俯冲每帧：轨迹与钳制由 FlightPath 保证，这里只把结果写回引擎并结算俯冲命中。
@@ -1567,7 +1667,12 @@ function Mgr:UpdateFlying(fish, now)
         self:Remove(fish)
         return
     end
-    if (fish.FleeAt and now >= fish.FleeAt) or inWater(pos) then
+    local species = GameCfg.Fish[fish.FishId]
+    if fish.FleeAt and now >= fish.FleeAt and (species.Grade == 'normal' or species.Grade == 'rare') then
+        self:Remove(fish)
+        return
+    end
+    if (fish.FleeAt and now >= fish.FleeAt) or (inWater(pos) and pos.y <= inWater(pos).SurfaceY) then
         self:ExitFlight(fish, now, (fish.FleeAt and now >= fish.FleeAt) and 'timeout' or 'water')
         return
     end
@@ -1582,7 +1687,8 @@ function Mgr:UpdateFlying(fish, now)
         local speed = GameCfg.Fish[fish.FishId].Speed
         if speed and speed > 0 then dt = dt * self:Speed(fish) / speed end
     end
-    local events = FlightPath.Step(state, now, dt)
+    local diving = self:UpdateAirAttacks(fish, tpos, now)
+    local events = diving and {} or FlightPath.Step(state, now, dt)
     -- 位置写回是飞行能不能动的关键：写失败只打一次日志（每帧打会刷屏），速度是只读镜像，失败就算了
     local moved, moveErr = pcall(function()
         body.Position = Vector3.New(state.Pos.x, state.Pos.y, state.Pos.z)
@@ -1591,6 +1697,8 @@ function Mgr:UpdateFlying(fish, now)
         print('[MgrFishUnit] 飞行位置写回失败', fish.FishId, tostring(moveErr))
         if self.Ai then self:Remove(fish); return end
     end
+    MgrFishCarrier:SyncPosition(fish.Carrier)
+    self:RefreshMovingCombat(fish, now)
     pcall(function()
         body.LinearVelocity = Vector3.New(state.Vel.x, state.Vel.y, state.Vel.z)
     end)
@@ -1787,6 +1895,7 @@ end
 
 function Mgr:Remove(fish)
     if not fish or self.Fish[fish.Id] ~= fish then return end
+    self:EndAirAttacks(fish, 'gone')
     if self.Ai then self.Ai:Remove(fish) end
     -- #132 T11：鱼被打死/清场时先把叼着的玩家放下来（否则玩家会跟着一条死鱼卡在空中）
     if fish.Carry then self:ReleaseCarried(fish, nil, 'died') end
@@ -1835,6 +1944,7 @@ function Mgr:ClearLinks(player)
 end
 
 function Mgr:Stop()
+    for _, fish in pairs(self.Fish) do self:EndAirAttacks(fish, 'stop') end
     if self.Ai then
         self.Ai:Stop()
         for _, fish in pairs(self.Fish) do

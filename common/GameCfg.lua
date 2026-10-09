@@ -603,6 +603,8 @@ GameCfg.Casting = {
     -- 取 M0 抓举夹具实测能抓中的角色局部 (0, 0.5, 2)（issue #25 台账 §6.5，tmp/qa25/lift-unforced.lua）
     LandingOffset = 2,
     LandingHeight = 0.5,
+    AirSourceHeight = 12, -- 空中来源灰盒高度；原表未给，低于普通金币枪械射程。
+    LineEffect = 'official://effect/5379', -- 官方连线绳子，来源见技术难点识别 §低风险。
     Zones = {
         WaterCircle2 = {
             { Id = 'tilapia', Bait = 0, RodLevel = 1, DrawWeight = 8 },
@@ -619,6 +621,22 @@ GameCfg.Casting = {
             { Id = 'item10', Bait = 'worm', RodLevel = 1, DrawWeight = 8 },
             { Id = 'item11', Bait = 'worm', RodLevel = 1, DrawWeight = 6 },
             { Id = 'item12', Bait = 'worm', RodLevel = 1, DrawWeight = 4 },
+        },
+        -- 礁石岛：普通/极品十二种加白头鹰；风神翼龙只由羊强制召唤。
+        ['reefIsland.water'] = {
+            { Id = 'item81', Bait = 0, RodLevel = 1, DrawWeight = 8 },
+            { Id = 'item82', Bait = 'item118', RodLevel = 1, DrawWeight = 8 },
+            { Id = 'item83', Bait = 'item118', RodLevel = 1, DrawWeight = 8 },
+            { Id = 'item84', Bait = 'item118', RodLevel = 6, DrawWeight = 32 },
+            { Id = 'item85', Bait = 'item118', RodLevel = 6, DrawWeight = 24 },
+            { Id = 'item86', Bait = 'item118', RodLevel = 6, DrawWeight = 16 },
+            { Id = 'item87', Bait = 0, RodLevel = 1, DrawWeight = 2 },
+            { Id = 'item88', Bait = 'item118', RodLevel = 1, DrawWeight = 2 },
+            { Id = 'item89', Bait = 'item118', RodLevel = 1, DrawWeight = 2 },
+            { Id = 'item90', Bait = 'item118', RodLevel = 6, DrawWeight = 8 },
+            { Id = 'item91', Bait = 'item118', RodLevel = 6, DrawWeight = 6 },
+            { Id = 'item92', Bait = 'item118', RodLevel = 6, DrawWeight = 4 },
+            { Id = 'fish47Elite', Bait = 'item118', RodLevel = 6, DrawWeight = 10 },
         },
         -- 虾池（#90，钓鱼表第二区）：虾米任意饵保底；沼虾/小龙虾起用香肠；波龙及以上竿级 2。
         -- 极品权重另列（普通 8/8/8/32/24/16，极品 2/2/2/8/6/4）
@@ -987,6 +1005,9 @@ GameCfg.Ability = {
         LeapSec = 1.5,       -- 沧龙跃起滞空时间（暂取）
         AggroRange = 60,     -- 飞行时的索敌半径（暂取）
         DiveRadius = 5,      -- 俯冲砸击的命中半径（暂取）
+        ReefDiveWarnSec = 1, ReefDiveSec = 0.8, -- 可躲避的灰盒预警/俯冲时长（原表未给）
+        ThrowFlightSec = 1.2, -- 落点锁定后给地面玩家离开5米范围的窗口（原表未给）
+        ThrowMesh = 'official://mesh/7000546', -- 已有可读灰盒；正式龙屎模型由资源交付替换。
         -- 按鱼种 Id 的飞行档案；Bounds 由鱼所在钓鱼区的 Scene.Boundary 提供，缺省用下面的 FallbackBounds。
         Species = {
             fish47Elite = { CruiseHeight = 12, DiveIntervalSec = 20, DiveDamage = 30 },
@@ -1122,6 +1143,7 @@ GameCfg.Water = {
         -- 80×24 米矩形（HalfX=40/HalfZ=12，MathWaterJudge 长方形口径）。SurfaceY 沿用场景合同值 3；
         -- 与树林岛相距 200 米（> 两个半宽之和），无重叠。
         { Id = "beachIsland.water", Center = { x = 660, y = 2, z = 144 }, HalfX = 40, HalfZ = 12, SurfaceY = 3 },
+        { Id = 'reefIsland.water', Center = { x = 880, y = 2, z = 144 }, HalfX = 40, HalfZ = 12, SurfaceY = 3 },
     },
 }
 
