@@ -113,7 +113,8 @@ function Screen:Button(parent, name, x, y, width, height, text, callback)
         TouchEnabled = true, SwallowTouchEnabled = true,
     })
     if not node then return end
-    self:Label(node, name .. 'Text', width / 2, height / 2, width - 10, height, text, 24)
+    -- 与钓场商店一致：文字和按钮同级。引擎实例下按钮子标签不显示，不能当作文字容器。
+    self:Label(parent, name .. 'Text', x, y, width - 10, height, text, 24)
     self.NodeConnections[#self.NodeConnections + 1] = node.OnClicked:Connect(callback)
     return node
 end
@@ -187,7 +188,8 @@ end
 function Screen:ClearNodes()
     for _, connection in ipairs(self.NodeConnections or {}) do connection:Disconnect() end
     self.NodeConnections = {}
-    for _, node in pairs({ panel = self.RootNode, entry = self.EntryNode }) do
+    for _, node in pairs({ panel = self.RootNode, entry = self.EntryNode,
+        entryText = self.Nodes.BtnCompendiumEntryText }) do
         local ok, err = pcall(function() node:Destroy() end)
         if not ok then print('[ScreenCompendium] 销毁节点失败', tostring(err)) end
     end
@@ -240,7 +242,7 @@ function Screen:BuildNodes(uiRoot)
             Image = GameCfg.Items.Definitions.tilapia.Icon, Color = Color.New(0, 0, 0, 255),
             TouchEnabled = false, SwallowTouchEnabled = false, LocalZOrder = 1,
         })
-        self:Label(button, 'LabelCompendiumFish' .. i, 305, 29, 440, 56, '', 22)
+        self:Label(panel, 'LabelCompendiumFish' .. i, x + 40, y, 440, 56, '', 22)
     end
     self:Label(panel, 'LabelCompendiumPersonal', 590, 175, 1100, 45, '', 26)
     self:Label(panel, 'LabelCompendiumRecord', 590, 125, 1100, 45, '', 24)
