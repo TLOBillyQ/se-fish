@@ -81,6 +81,7 @@ GameCfg.Items = {
 --   FlashImage               四边红框的底图 11081（圆角矩形），按 FlashColor 染红
 -- [未查证：环形图、红框观感与 HUD 位置是否与 LabelCoin / 任务条重叠，待 #55 截图迭代]
 GameCfg.Vitals = {
+    HeldDamage = { ItemId = 'item126', DamagePerSec = 1 }, -- 持有核废料桶每秒受伤，道具栏与背包均生效。
     MaxHealth = 300,
     MaxHunger = 300,
     HungerPerSec = 1,
@@ -141,7 +142,7 @@ GameCfg.Survival = {
 -- （server/Mgr/MgrGM.lua，客户端控制台 _G.GM.Coin / _G.GM.Item / _G.GM.SetHealth / _G.GM.SetHunger），进图时按 InitialGrants 白送（M1 的进图白送降级至此）。
 -- 关闭时正式获取路径只有拾饵、喂食换金币与商店购买。
 GameCfg.Debug = {
-    Enabled = true,
+    Enabled = false,
     InitialGrants = {
         { itemId = GameCfg.Items.Id.StarterRod, count = 1, containerId = GameCfg.Items.ContainerId.ItemBar },
         { itemId = GameCfg.Items.Id.Worm, count = 10, containerId = GameCfg.Items.ContainerId.Bait },
@@ -278,7 +279,7 @@ GameCfg.BaitSpots = {
 
 -- 新手任务（#51 前三步，#52 续写第 4–9 步；#40 规格）：文案对应策划案「新手任务」的 9 句（钓场老板按 CONTEXT.md 用词），
 -- Kind 是玩法事实种类（MgrQuest:Notify 的 kind），ItemId 是要求的物品，Category 是要求的物品类别（fish = 鱼获），
--- Need 是次数。任务不发奖励，进度单局内存态。
+-- Need 是次数。任务不发奖励，进度与事实去重落在 Extra.quest。
 -- 事实来源：PickBait 拾饵（MgrLoot）、Feed 喂食（MgrInteract）、Buy 购买（MgrShop）、EquipBait 鱼饵栏挂饵成功
 -- （MgrPlayerData）、CastWater 抛竿落点在水区（MgrCast）、Land 收线上岸（MgrCast）、DropShore 主动放下且落点
 -- 不在水区（MgrFishUnit）、Kill 鱼被打死，归属鱼的主人即上岸者（MgrFishUnit）。
@@ -290,27 +291,31 @@ GameCfg.Quest = {
     Steps = {
         { Kind = 'PickBait', ItemId = 'worm', Need = 5, Text = '拾取 5 只蚯蚓' },
         { Kind = 'Feed', ItemId = 'worm', Need = 5, Text = '喂钓鱼佬吃 5 只蚯蚓' },
-        { Kind = 'Buy', ItemId = 'starterRod', Need = 1, Text = '向钓场老板购买 1 只新手鱼竿' },
-        { Kind = 'EquipBait', ItemId = 'worm', Need = 1, Text = '捡只蚯蚓，挂饵' },
+        { Kind = 'Buy', ItemId = 'starterRod', Need = 1, Text = '向钓场老板购买 1 把新手鱼竿' },
+        { Kind = 'EquipBait', ItemId = 'worm', Need = 1, Text = '拾取蚯蚓，选中鱼饵栏挂饵' },
         { Kind = 'CastWater', Need = 1, Text = '水边第一次抛竿' },
-        { Kind = 'Land', Need = 1, Text = '咬钩后狂点收线，将它拉上岸' },
-        { Kind = 'DropShore', Need = 1, Text = '将鱼丢在岸上' },
+        { Kind = 'Land', Need = 1, Text = '上钩后连续点击收线，将鱼钓上岸' },
+        { Kind = 'DropShore', Need = 1, Text = '将活鱼放在岸上' },
         { Kind = 'Kill', Need = 1, Text = '揍它！把鱼打死！' },
-        { Kind = 'Feed', Category = 'fish', Need = 1, Text = '捡起鱼，再喂给钓鱼佬' },
+        { Kind = 'Feed', Category = 'fish', Need = 1, Text = '拾取鱼获，再喂给钓鱼佬' },
     },
 }
 
--- 开场对话（#54，#40 规格；设计案「游戏开场：对话介绍游戏背景」）：进图后（客户端主界面首次打开时）
--- 对每名玩家调一次 StoryService:StartStory(player, StoryId)，可跳过由剧情系统自带的跳过按钮负责；
--- 任务推进与剧情无关，剧情信号只打日志取证（server/Mgr/MgrStory.lua）。
--- 降级：StoryId 未配置、StoryService 不可用、StartStory 报错，或 StartTimeoutSec 秒内没收到 OnStoryStart，
--- 就改发一条单行公告 FallbackText，并打带「[MgrStory] 降级」前缀的日志（原因 / 影响 / 接受者）。
--- [未查证] 本图剧情配表里还没有开场剧情（CLI 没有剧情编辑子命令，要在编辑器里配），StoryId 暂为 nil 走降级；
--- 配好后只填这里。FallbackText 是占位文案，非策划定案。
+-- #40 开场：正式资源配置后使用 StoryService；当前可读对话兜底由玩家明确确认已读。
+-- 结束/跳过/确认共用 ReadKey，回流不重播；正式 Story 资源与表现验收留在 #44。
 GameCfg.Story = {
     StoryId = nil,
+    ReadKey = 'opening',
+    Title = '钓鱼怎么这么危险啊喂！',
     StartTimeoutSec = 3,
     FallbackText = '欢迎来到钓场！钓鱼佬什么都吃，钓场老板卖鱼竿——跟着左上角的新手任务开始吧。',
+    Lines = {
+        '欢迎来到钓场！这里的鱼可不会乖乖束手就擒。',
+        '先拾取蚯蚓、挂饵抛竿。上钩后连续收线，把活鱼钓上岸。',
+        '将活鱼放在岸上，打死后拾取鱼获。喂给钓鱼佬就能换金币。',
+        '钓场老板售卖鱼竿、鱼饵和武器。信物能换首领饵和下一钓鱼区的船票。',
+        '跟着左上角的九步新手任务开始吧！任务本身不额外发奖励。',
+    },
 }
 
 -- 上钩提示（#54，#40 规格的占位方案，非策划定案，替换点在此一处）：抛竿会话进入 hooked 相位的那一次，
@@ -371,6 +376,8 @@ GameCfg.Shop = {
         { AnchorName = 'Z4_Shop', Level = 4 },
         -- #142 沙滩岛摊位（5 级）：上架椰子 / 专业鱼竿 / 自动步枪与 5 级升级行（场景合同 Z5_Shop）
         { AnchorName = 'Z5_Shop', Level = 5 },
+        { AnchorName = 'Z6_Shop', Level = 6 },
+        { AnchorName = 'Z7_Shop', Level = 7 },
     },
     BubblePreset = 'map://preset/uf5ad80a4c6a40d59b7f6e0eb99a58c0',
     BubbleHeight = 7,
@@ -504,8 +511,11 @@ end
 -- 最终成就（#127 第七区，GameSpec §8.1「哥斯拉头 → 通关成就」）：兑换产物是 'achievement.<id>'
 -- 时写进 Extra.achievements[<id>]（不占道具格，重进照旧保留），这里只给客户端提示用的名字。
 GameCfg.Achievements = {
-    final = { Name = '通关成就' },
+    final = { Name = '通关成就', PlatformId = nil }, -- 平台后台ID未交付，本地先完成、保留补交。
 }
+-- 图鉴只读快照：打开时刷新，保持打开时补取盲盒/信物兑换后的权威状态。
+GameCfg.Compendium = { RefreshSec = 3, RootPollSec = 0.5, RequestCooldownSec = 0.2 }
+GameCfg.AchievementDelivery = { RetrySec = 15 }
 GameCfg.Shop.Catalog = ContentShop.Goods
 GameCfg.Shop.Excluded = ContentShop.Excluded
 GameCfg.Lottery = ContentLottery
@@ -603,6 +613,8 @@ GameCfg.Casting = {
     -- 取 M0 抓举夹具实测能抓中的角色局部 (0, 0.5, 2)（issue #25 台账 §6.5，tmp/qa25/lift-unforced.lua）
     LandingOffset = 2,
     LandingHeight = 0.5,
+    AirSourceHeight = 12, -- 空中来源灰盒高度；原表未给，低于普通金币枪械射程。
+    LineEffect = 'official://effect/5379', -- 官方连线绳子，来源见技术难点识别 §低风险。
     Zones = {
         WaterCircle2 = {
             { Id = 'tilapia', Bait = 0, RodLevel = 1, DrawWeight = 8 },
@@ -619,6 +631,22 @@ GameCfg.Casting = {
             { Id = 'item10', Bait = 'worm', RodLevel = 1, DrawWeight = 8 },
             { Id = 'item11', Bait = 'worm', RodLevel = 1, DrawWeight = 6 },
             { Id = 'item12', Bait = 'worm', RodLevel = 1, DrawWeight = 4 },
+        },
+        -- 礁石岛：普通/极品十二种加白头鹰；风神翼龙只由羊强制召唤。
+        ['reefIsland.water'] = {
+            { Id = 'item81', Bait = 0, RodLevel = 1, DrawWeight = 8 },
+            { Id = 'item82', Bait = 'item118', RodLevel = 1, DrawWeight = 8 },
+            { Id = 'item83', Bait = 'item118', RodLevel = 1, DrawWeight = 8 },
+            { Id = 'item84', Bait = 'item118', RodLevel = 6, DrawWeight = 32 },
+            { Id = 'item85', Bait = 'item118', RodLevel = 6, DrawWeight = 24 },
+            { Id = 'item86', Bait = 'item118', RodLevel = 6, DrawWeight = 16 },
+            { Id = 'item87', Bait = 0, RodLevel = 1, DrawWeight = 2 },
+            { Id = 'item88', Bait = 'item118', RodLevel = 1, DrawWeight = 2 },
+            { Id = 'item89', Bait = 'item118', RodLevel = 1, DrawWeight = 2 },
+            { Id = 'item90', Bait = 'item118', RodLevel = 6, DrawWeight = 8 },
+            { Id = 'item91', Bait = 'item118', RodLevel = 6, DrawWeight = 6 },
+            { Id = 'item92', Bait = 'item118', RodLevel = 6, DrawWeight = 4 },
+            { Id = 'fish47Elite', Bait = 'item118', RodLevel = 6, DrawWeight = 10 },
         },
         -- 虾池（#90，钓鱼表第二区）：虾米任意饵保底；沼虾/小龙虾起用香肠；波龙及以上竿级 2。
         -- 极品权重另列（普通 8/8/8/32/24/16，极品 2/2/2/8/6/4）
@@ -695,7 +723,7 @@ GameCfg.Casting = {
     -- 必出对应首领，无视抽签权重、鱼饵-鱼种匹配与竿级；首领饵占道具栏/背包格、不进 Bait 计数，
     -- 抛竿一刻从道具栏（优先）或背包扣 1 只，钓出首领后消耗，脱钩 / 逃脱不返还。
     BossBait = { duck = 'alligatorGar', item121 = 'fish16Boss', item122 = 'fish24Boss', item123 = 'fish32Boss',
-        item124 = 'fish40Boss' },
+        item124 = 'fish40Boss', item125 = 'fish48Boss', item126 = 'fish56Boss' },
 }
 
 -- 源表抽鱼行按钓鱼区分组；水域/钓鱼区映射见下文 Water.ZoneIdByWater。
@@ -719,6 +747,16 @@ for _, rows in pairs(sourceCastRows) do
 end
 GameCfg.Casting.Catalog = sourceCastRows
 GameCfg.Casting.BossBaitCatalog = bossBaitCatalog
+
+-- 火山岛完整内容采用源表原行，灰盒模型沿用已验证的鱼本体；正式资源由资源交付替换。
+GameCfg.Casting.Zones['volcanoIsland.water'] = sourceCastRows.volcanoIsland
+for _, species in pairs(GameCfg.Fish) do
+    if species.ZoneId == 'volcanoIsland' then
+        species.implemented, species.Model = true, '7000546'
+        if species.Grade == 'elite' then species.Combat = 'mosasaur' end
+        if species.Grade == 'boss' then species.Combat = 'godzilla' end
+    end
+end
 
 -- 首领近战（#88 占位，#134 头部攻击）：Combat='gar' 的鱼上岸放下后 Kinematic 追目标（仇恨 / 最近），
 -- 移速取鱼种 Speed，伤害取鱼种 Attack，逃跑时限取鱼种 EscapeSec（耗尽走精英直线逃脱）。
@@ -916,7 +954,13 @@ GameCfg.Ability = {
     -- DOT 每跳都重新走 T07/#128 统一伤害入口（MgrVitals:NewHit('dot') + ApplyHit）。
     -- #52 用户最终在地图创建五个不同的 modifier 预设后填写真实 AssetKey。
     -- 未绑定时明确报 modifier-preset-missing，不退回旧效果状态机。
-    ModifierPresets = { poison = '', burn = '', frost = '', paralyze = '', weak = '' },
+    ModifierPresets = {
+        poison = 'map://preset/u9e43507fb284064a1e74f5f803eb121',
+        burn = 'map://preset/u48318ffad0d437b91ce40317261af23',
+        frost = 'map://preset/u082e5229ff6481484d21b70d55d3088',
+        paralyze = 'map://preset/ud998c96a7da4f148825cc0b76ee525b',
+        weak = 'map://preset/uc03ba59d2344d85985be11d0a7af2d6',
+    },
     StatusEffects = {
         poison = { MaxStacks = 5, TickSec = 1, DamagePerStack = 1, DurationSec = 3 },
         burn = { MaxStacks = 5, TickSec = 1, DamagePerStack = 4, DurationSec = 3 },
@@ -981,6 +1025,9 @@ GameCfg.Ability = {
         LeapSec = 1.5,       -- 沧龙跃起滞空时间（暂取）
         AggroRange = 60,     -- 飞行时的索敌半径（暂取）
         DiveRadius = 5,      -- 俯冲砸击的命中半径（暂取）
+        ReefDiveWarnSec = 1, ReefDiveSec = 0.8, -- 可躲避的灰盒预警/俯冲时长（原表未给）
+        ThrowFlightSec = 1.2, -- 落点锁定后给地面玩家离开5米范围的窗口（原表未给）
+        ThrowMesh = 'official://mesh/7000546', -- 已有可读灰盒；正式龙屎模型由资源交付替换。
         -- 按鱼种 Id 的飞行档案；Bounds 由鱼所在钓鱼区的 Scene.Boundary 提供，缺省用下面的 FallbackBounds。
         Species = {
             fish47Elite = { CruiseHeight = 12, DiveIntervalSec = 20, DiveDamage = 30 },
@@ -1008,6 +1055,12 @@ GameCfg.Ability = {
         ContactIntervalSec = 1, ContactDamage = 150, -- 叼走过程的接触伤害节奏与数值（伤害取自正文 150）
         FallDamage = 0,                       -- 落地额外伤害（正文未给，先 0）
     },
+    Aquatic = {
+        LeapIntervalSec = 15, LeapWindupSec = 1, LeapSec = 1.5, LeapHeight = 8,
+        LeapRadius = 5, LeapDamage = 35, -- 沧龙表基础攻击35；落点范围为灰盒判定细化
+        HeadRadius = 2.5, HeadWindupSec = 0.8, HeadDamage = 35,
+        GrabDamage = 300, ContactDamage = 150, ContactRange = 2.5, -- 正文独立咬中/过程接触；接触半径为灰盒细化
+    },
     BossPhase = {
         -- 哥斯拉（fish56Boss，GameSpec §12）：低于 60% 入水、切沧龙式攻击（咬中 1000）；
         -- 低于 20% 重新上岸、伤害 +50%、原子吐息改为每 10 秒。阈值优先于普通招式循环。
@@ -1019,15 +1072,16 @@ GameCfg.Ability = {
         },
         -- 各阶段的招式集合；同一帧多个招式到期时按 Attacks 的书写顺序取唯一一个，保证确定性。
         AttackSets = {
-            normal = { 'claw', 'tail', 'breath' },
+            normal = { 'claw', 'tail', 'breath', 'stomp' },
             water = { 'bite' },
-            enraged = { 'claw', 'tail', 'breath' },
+            enraged = { 'claw', 'tail', 'breath', 'stomp' },
         },
         Attacks = {
-            claw = { IntervalSec = 2, Damage = 50 },   -- 表内 2 秒爪击（基础攻击 50）
-            tail = { IntervalSec = 6, Damage = 50 },   -- 表内每 6 秒甩尾
-            breath = { IntervalSec = 30, Range = 10, OneShot = true, WindupSec = 1.5 }, -- 正前 10 米秒杀
-            bite = { IntervalSec = 2 },                -- 入水后的咬击：伤害取阶段条目的 BiteDamage
+            claw = { IntervalSec = 2, Damage = 50, Range = 4 },   -- 表内 2 秒爪击（基础攻击 50）
+            tail = { IntervalSec = 6, Damage = 50, Range = 5 },   -- 表内每 6 秒甩尾
+            breath = { IntervalSec = 30, Range = 10, Width = 2, OneShot = true, WindupSec = 1.5 }, -- 正前 10 米秒杀；2米宽灰盒可躲避
+            bite = { IntervalSec = 2, Range = 2.5 },                -- 入水后的咬击：伤害取阶段条目的 BiteDamage
+            stomp = { IntervalSec = 2, Damage = 150, Range = 10, WindupSec = 0.8 }, -- 正文独立跺脚
         },
         -- 走阶段机的鱼种（键为 GameCfg.Fish 的 Id）。本单只登记哥斯拉；
         -- 正式接入由 #144 决定是加 Combat 标签还是建「首领」注册表（本单不改 common/cfg/Fish.lua）。
@@ -1116,6 +1170,8 @@ GameCfg.Water = {
         -- 80×24 米矩形（HalfX=40/HalfZ=12，MathWaterJudge 长方形口径）。SurfaceY 沿用场景合同值 3；
         -- 与树林岛相距 200 米（> 两个半宽之和），无重叠。
         { Id = "beachIsland.water", Center = { x = 660, y = 2, z = 144 }, HalfX = 40, HalfZ = 12, SurfaceY = 3 },
+        { Id = 'reefIsland.water', Center = { x = 880, y = 2, z = 144 }, HalfX = 40, HalfZ = 12, SurfaceY = 3 },
+        { Id = 'volcanoIsland.water', Center = { x = 1160, y = 2, z = 144 }, HalfX = 40, HalfZ = 12, SurfaceY = 3 },
     },
 }
 

@@ -41,6 +41,11 @@ end
 -- holding：头上顶着的活鱼 {fishId, mult}（#41），客户端 2 号位据此切到「放下」
 function Mgr:SendState(player, session, snapshot)
     local holding = self.FishUnit and self.FishUnit:HeldInfo(player) or nil
+    local species = session and session.fishId and GameCfg.Fish[session.fishId]
+    local source = species and species.CatchSource or 'water'
+    local landing = session and session.landing
+    local hookPosition = landing and { x=landing.x,
+        y=landing.y+(source=='air' and GameCfg.Casting.AirSourceHeight or 0), z=landing.z }
     REUtil:GetRE('CastState'):FireClient(player, session and {
         phase = session.phase,
         snapshot = snapshot == true,
@@ -48,6 +53,8 @@ function Mgr:SendState(player, session, snapshot)
         landing = session.landing,
         zoneId = session.zoneId,
         fishId = session.fishId,
+        catchSource = source,
+        hookPosition = hookPosition,
         mult = session.mult,
         reelSession = session.reelSession,
         holding = holding,

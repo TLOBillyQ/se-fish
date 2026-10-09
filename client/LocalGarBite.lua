@@ -14,6 +14,10 @@ function LocalGarBite:Hide(fishId)
     local entry = self.Active[fishId]
     if not entry then return end
     self.Active[fishId] = nil
+    if entry.Projectile then
+        local removed, err = pcall(function() entry.Projectile:Destroy() end)
+        if not removed then print('[LocalGarBite] 收起投掷物失败', fishId, tostring(err)) end
+    end
     if entry.Rain then
         local rainOk, rainErr = pcall(function() entry.Rain:Destroy() end)
         if not rainOk then print('[LocalGarBite] 收起暴雨失败', fishId, tostring(rainErr)) end
@@ -30,7 +34,8 @@ function LocalGarBite:Show(payload)
     local c = cfg()
     local world = game:GetService('World')
     local circle = payload.shape == 'circle'
-    local preset = circle and c.CirclePreset or c.EffectPreset
+    local line = payload.shape == 'line'
+    local preset = (circle or line) and c.CirclePreset or c.EffectPreset
     local ok, units = pcall(world.CreateAsset, world, preset)
     local effect = ok and type(units) == 'table' and units[1] or nil
     if not effect then
@@ -44,6 +49,13 @@ function LocalGarBite:Show(payload)
         -- 等比缩放：技能包 Sector/CirclePointer 对 7189/7187 写 y=0，但 7190 在技能包里从未实例化，
         -- y=0 对它是否仍可见无证据；等比缩放不会压成零厚度，贴地特效也仍是平的。
         effect.Scale = Vector3.New(scale, scale, scale)
+        if line then
+            local fx,fz = math.sin(payload.yaw),math.cos(payload.yaw)
+            effect.Position = Vector3.New(p.x+fx*payload.range/2,p.y+c.GroundOffset,p.z+fz*payload.range/2)
+            effect.Rotation = Quaternion.FromEulerAngles(0,math.deg(payload.yaw),0)
+            effect.Scale = Vector3.New((payload.width or 2)/(2*c.CircleRadius),scale,
+                payload.range/(2*c.CircleRadius))
+        end
     end)
     if not placed then
         print('[LocalGarBite] 预警特效摆放失败', 'fish=' .. tostring(fishId), tostring(err))
@@ -55,6 +67,21 @@ function LocalGarBite:Show(payload)
     end
     self.Generation = self.Generation + 1
     local entry = { Effect = effect, Generation = self.Generation }
+    if payload.move == 'airThrow' and type(payload.flightOrigin) == 'table' then
+        local o = payload.flightOrigin
+        if type(o.x)=='number' and type(o.y)=='number' and type(o.z)=='number'
+            and o.x==o.x and o.y==o.y and o.z==o.z
+            and math.abs(o.x)<math.huge and math.abs(o.y)<math.huge and math.abs(o.z)<math.huge then
+            local created, projectile = pcall(world.CreateUnit, world, 'WorldUnit', {
+                Name='FlightThrow_' .. tostring(fishId), Position=Vector3.New(o.x,o.y,o.z),
+                RenderMeshId=GameCfg.Ability.Flight.ThrowMesh, PhysicsActive=false, CanQuery=false,
+                Scale=Vector3.New(0.3,0.3,0.3) })
+            if created and projectile then
+                entry.Projectile, entry.Origin, entry.Destination = projectile, o, p
+                entry.At, entry.Duration = world:GetServerTime(), payload.duration
+            else print('[LocalGarBite] 投掷物创建失败',fishId,tostring(projectile)) end
+        end
+    end
     if payload.move == 'rain' then
         -- 暴雨是独立表现，方向指示器只表达危险范围；两者共用本招收尾生命周期。
         local rainOk, rainUnits = pcall(world.CreateAsset, world, GameCfg.FishCombat.dragon.RainEffect)
@@ -89,10 +116,25 @@ function LocalGarBite:Start()
     self.Conn = require('common.REUtil'):GetRE(GarBiteNotice.EventName).OnClientEvent:Connect(function(payload)
         self:Show(payload)
     end)
+    self.FrameConn = game:GetService('RunService').Heartbeat:Connect(function()
+        local now = game:GetService('World'):GetServerTime()
+        for id,entry in pairs(self.Active) do
+            if entry.Projectile then
+                local t=math.min(1,math.max(0,(now-entry.At)/entry.Duration))
+                local o,p=entry.Origin,entry.Destination
+                local ok,err=pcall(function() entry.Projectile.Position=Vector3.New(
+                    o.x+(p.x-o.x)*t,o.y+(p.y-o.y)*t,o.z+(p.z-o.z)*t) end)
+                if not ok then print('[LocalGarBite] 投掷轨迹失败',id,tostring(err)); self:Hide(id)
+                elseif t>=1 then self:Hide(id) end
+            end
+        end
+    end)
 end
 
 function LocalGarBite:Stop()
     if self.Conn then self.Conn:Disconnect() end
+    if self.FrameConn then self.FrameConn:Disconnect() end
+    self.FrameConn=nil
     self.Conn = nil
     for fishId in pairs(self.Active) do self:Hide(fishId) end
 end

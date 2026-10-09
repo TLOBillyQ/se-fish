@@ -296,6 +296,20 @@ function TestFishCarrierEngine:test_update_keeps_the_receiver_on_the_body()
   lu.assertEquals(carrier.Receiver.Position.z, 30)
 end
 
+-- #37 失败方式：本体写后仍读到上帧坐标；显式轨迹目标被忽略，受击体持续落后。
+function TestFishCarrierEngine:test_explicit_trajectory_target_does_not_read_stale_body_position()
+  local mgr, world = freshManager(), newFakeWorld()
+  withFakeEngine(world, function()
+    local carrier = mgr:Spawn(SPAWN_OPTS)
+    local target = Vector3.New(20, 15, 30)
+    mgr:SyncPosition(carrier, target)
+    lu.assertEquals(carrier.Receiver.Position, target + carrier.ReceiverOffset)
+    lu.assertEquals(carrier.LastPosition, {x=20,y=15,z=30})
+    mgr:Update(0.03) -- pairs 顺序可在脚本写回之后跑默认同步，不能再用旧本体位置覆盖。
+    lu.assertEquals(carrier.Receiver.Position, target + carrier.ReceiverOffset)
+  end)
+end
+
 function TestFishCarrierEngine:test_body_and_receiver_do_not_push_each_other()
   local mgr = freshManager()
   local world = newFakeWorld()

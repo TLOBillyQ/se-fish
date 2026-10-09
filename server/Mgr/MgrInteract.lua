@@ -164,6 +164,9 @@ local function deliver(target, exchange, product)
     local items = target.Data.Containers[ITEM_BAR]
     local kept = items[exchange.slot]
     if not kept or kept.count <= 0 or kept.itemId ~= exchange.tokenId then return false, 'nothing' end
+    if product.achievement and target.Extra.achievements and target.Extra.achievements[product.achievement] then
+        return false, 'already-completed'
+    end
     items[exchange.slot] = nil
     if product.achievement then
         target.Extra.achievements = target.Extra.achievements or {}
@@ -252,6 +255,9 @@ function Mgr:Feed(player, data, anchor, point, seq, operation)
             if not earned then return nil, 'nothing' end
             local beforeCoin, beforeItem = draft.Data.FishCoin, itemCount(draft, id)
             if not draft:AddCoin(earned, consume, 'feed') then return nil, 'nothing' end
+            if self.Quest and self.Quest.RecordFact then
+                self.Quest:RecordFact(draft, 'Feed', { itemId = id, category = kind, eventId = operation.id })
+            end
             return { ok = true, action = 'Feed', coins = earned, itemId = id, category = kind,
                 coinBefore = beforeCoin, coinAfter = draft.Data.FishCoin,
                 itemBefore = beforeItem, itemAfter = itemCount(draft, id) }

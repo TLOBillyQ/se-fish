@@ -189,6 +189,20 @@ function TestExchangeZones:test_other_zone_token_is_recycled_not_exchanged()
     lu.assertNil(self:lastReply().exchange)
 end
 
+-- #38 失败方式：不同 operation 再交哥斯拉头又消耗；唯一性须随真实存档而非会话序号保存。
+function TestExchangeZones:test_final_achievement_refuses_another_head_without_consuming_it()
+    self:standAt(7)
+    local first = self:give('item112')
+    self.data:SelectSlot(first)
+    lu.assertTrue(self:feed())
+    local second = self:give('item112')
+    self.data:SelectSlot(second)
+    lu.assertFalse(self:feed())
+    lu.assertEquals(self:countItem('item112'), 1)
+    lu.assertTrue(self.data.Extra.achievements.final)
+    lu.assertEquals(self:lastReply().reason, 'already-completed')
+end
+
 -- 烤过的信物只售卖：按烤熟价（基础价 × 倍率 × 1.5）结金币，不再走兑换
 function TestExchangeZones:test_cooked_token_is_sold_only()
     local slot = self:give('garHead')

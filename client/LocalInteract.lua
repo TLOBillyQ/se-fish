@@ -1,6 +1,6 @@
 -- 钓鱼佬「对话」「喂食」文字泡（#44；#90 多锚点；#127 按区分派）：七区各一个钓鱼佬锚点
 -- （Interact.Fishermen[i].AnchorNames，锚点取 #125 场景合同）上方建一个场景 UI，放两个按钮，
--- 本地角色在该锚点 Radius 米内（只看 x/z）才显示。「对话」本地弹固定台词；「喂食」只发请求
+-- 本地角色在该锚点 Radius 米内（只看 x/z）才显示。「对话」读取本区配置并逐段显示；「喂食」只发请求
 -- （InteractAction{target, action, seq}，seq 递增防重放），结果以服务端回包为准。
 -- 喂食成功的吃动作是客户端缩放脉冲：对 ModelName 模型按 Heartbeat 帧数播 1→放大→还原，
 -- 仅喂食者本机可见；模型缺失或写 Scale 失败只记日志，不影响文字泡与结算。
@@ -8,6 +8,7 @@ local GameCfg = require('common.GameCfg')
 local BodyScale = require('common.BodyScale')
 local REUtil = require('common.REUtil')
 local Util = require('common.Util')
+local Dialogue = require('common.NpcDialogue')
 
 local Bubble = require('client.InteractionBubble')
 local LocalInteract = { Seq = 0, Bubbles = {} }
@@ -32,7 +33,7 @@ function LocalInteract:Feed()
     REUtil:GetRE('InteractAction'):FireServer({ target = 'fisherman', action = 'Feed', seq = self.Seq })
 end
 
-function LocalInteract:Create(anchor, suffix)
+function LocalInteract:Create(anchor, suffix, zoneId)
     local cfg = GameCfg.Interact.Fisherman
     local player = Players.LocalPlayer
     local eui = player and player.PlayerGui and player.PlayerGui.EuiManager
@@ -47,7 +48,15 @@ function LocalInteract:Create(anchor, suffix)
     local offset = (GameCfg.InteractionBubble.Width + GameCfg.InteractionBubble.Gap) / 2
     -- 按钮名带区后缀：七区钓鱼佬各有自己的文字泡，名字不能撞
     self:Button(node, 'BtnFishermanTalk' .. suffix, '对话', -offset,
-        function() notice(cfg.DialogText) end)
+        function()
+            local lines = Dialogue.Lines(zoneId)
+            local main = _G.MgrGameUI and _G.MgrGameUI:GetScreen('ScreenMain')
+            if main and lines then
+                main:ShowDialogue({ title = '钓鱼佬', lines = lines })
+            else
+                notice(Dialogue.Describe(zoneId) or cfg.DialogText)
+            end
+        end)
     self:Button(node, 'BtnFishermanFeed' .. suffix, '喂食', offset, function() self:Feed() end)
     node.Visible = false
     self.Bubbles[#self.Bubbles + 1] = { Node = node, Center = center, Visible = false }
@@ -130,7 +139,7 @@ function LocalInteract:Start()
         for _, name in ipairs(npc.AnchorNames) do
             local anchor = Util:WaitForChild(World, name)
             if anchor then
-                self:Create(anchor, index .. '_' .. name)
+                self:Create(anchor, index .. '_' .. name, npc.ZoneId)
             else
                 print('[LocalInteract] 找不到钓鱼佬单位', npc.ZoneId, name)
             end

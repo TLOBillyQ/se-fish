@@ -441,6 +441,7 @@ function Mgr:OnPlayerAdded(player)
     if not player or self.States[player.UserId] then return end
     local state = { player = player, hunger = cfg().MaxHunger, lastSec = math.floor(self:Now()), dead = false }
     self.States[player.UserId] = state
+    self:RefreshHeldDamage(player, self.PlayerData and self.PlayerData:GetDataInst(player))
     self:WriteHunger(state)
     if player.CharacterAdded then
         state.added = player.CharacterAdded:Connect(function(character) self:Bind(state, character) end)
@@ -454,6 +455,22 @@ function Mgr:OnPlayerRemoving(player)
     self:Unbind(state)
     if state.added then state.added:Disconnect() end
     self.States[player.UserId] = nil
+end
+
+-- 库存发布与轮询只刷新已确认持有状态；写档暂时关闭 getter 时继续沿用快照。
+function Mgr:RefreshHeldDamage(player, data)
+    local state = self.States[player.UserId]
+    if not state or state.player ~= player or not data or not data.Inited then return end
+    local held = cfg().HeldDamage
+    local carrying = false
+    if held then
+        for _, id in ipairs({ GameCfg.Items.ContainerId.ItemBar, GameCfg.Items.ContainerId.Backpack }) do
+            for _, entry in pairs(data.Data.Containers[id] or {}) do
+                if entry.itemId == held.ItemId and entry.count > 0 then carrying = true; break end
+            end
+        end
+    end
+    state.heldDamage = carrying
 end
 
 function Mgr:UpdateState(state, now)
@@ -481,10 +498,17 @@ function Mgr:UpdateState(state, now)
         self:OnDied(state)
         return
     end
+    local data = self.PlayerData and self.PlayerData:GetDataInst(state.player)
+    self:RefreshHeldDamage(state.player, data)
     local sec = math.floor(now)
     if sec <= state.lastSec then return end
+    local elapsed = math.min(sec - state.lastSec, c.MaxCatchUpSec)
     local hunger, damage = Vitals.Advance(state.hunger, sec - state.lastSec, c)
     state.lastSec = sec
+    local held = c.HeldDamage
+    if held and state.heldDamage then
+        self:ApplyDamage(state.player, held.DamagePerSec * elapsed, self:NewHit(nil, 'heldItem'))
+    end
     if hunger ~= state.hunger then
         state.hunger = hunger
         self:WriteHunger(state)

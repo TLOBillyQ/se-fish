@@ -32,6 +32,7 @@ local MgrMap = {
     MgrSpecialItem = require("server.Mgr.MgrSpecialItem"),
     MgrCompendium = require("server.Mgr.MgrCompendium"),
     MgrRecords = require("server.Mgr.MgrRecords"),
+    MgrAchievements = require("server.Mgr.MgrAchievements"),
     MgrGrill = require("server.Mgr.MgrGrill"),
     MgrPlatform = require("server.Mgr.MgrPlatform"),
     MgrBlindbox = require("server.Mgr.MgrBlindbox"),
@@ -61,12 +62,19 @@ MgrMap.MgrPlayerData.Quest = MgrMap.MgrQuest
 MgrMap.MgrCast.Quest = MgrMap.MgrQuest
 MgrMap.MgrFishUnit.Quest = MgrMap.MgrQuest
 MgrMap.MgrPlayerData.Vitals = MgrMap.MgrVitals
+MgrMap.MgrVitals.PlayerData = MgrMap.MgrPlayerData
 MgrMap.MgrGM.Vitals = MgrMap.MgrVitals
 MgrMap.MgrGM.Save = MgrMap.MgrSave
 MgrMap.MgrFerry.PlayerData = MgrMap.MgrPlayerData
 MgrMap.MgrFerry.Interact = MgrMap.MgrInteract
 MgrMap.MgrPlayerData.Save = MgrMap.MgrSave
+MgrMap.MgrQuest.PlayerData = MgrMap.MgrPlayerData
+MgrMap.MgrQuest.Save = MgrMap.MgrSave
+MgrMap.MgrStory.PlayerData = MgrMap.MgrPlayerData
+MgrMap.MgrStory.Save = MgrMap.MgrSave
 MgrMap.MgrInteract.Save = MgrMap.MgrSave
+MgrMap.MgrAchievements.PlayerData = MgrMap.MgrPlayerData
+MgrMap.MgrAchievements.Save = MgrMap.MgrSave
 MgrMap.MgrFerry.Save = MgrMap.MgrSave
 MgrMap.MgrShop.Save = MgrMap.MgrSave
 MgrMap.MgrFerry.Save = MgrMap.MgrSave
@@ -80,6 +88,7 @@ MgrMap.MgrLottery.Interact = MgrMap.MgrInteract
 --- 所以条目与个人最大重量和操作日志同键落账、重进保留；只有上岸这一个写入口（击杀与掉落走 MgrLoot）。
 MgrMap.MgrCompendium.Save = MgrMap.MgrSave
 MgrMap.MgrCompendium.PlayerData = MgrMap.MgrPlayerData
+MgrMap.MgrCompendium.Quest = MgrMap.MgrQuest
 MgrMap.MgrCast.Compendium = MgrMap.MgrCompendium
 
 --- #149 T28 全服纪录：上岸经 MgrCompendium 的「刷新个人纪录」回调通知 MgrRecords，
@@ -175,6 +184,8 @@ MgrMap.MgrFerry.SpecialItem = MgrMap.MgrSpecialItem
 
 -- 存档就绪前不创建 Vitals/Ability 等玩家状态；退出先撤销就绪标记，再清理管理器。
 local ActivePlayers = {}
+local CurrentPlayers = {}
+local LeavingPlayers = {}
 local Started = false
 local ReadyQueue = {}
 local function invoke(name, mgr, method, ...)
@@ -183,7 +194,8 @@ local function invoke(name, mgr, method, ...)
     if not ok then print('[server.main]', name, method, tostring(err)) end
 end
 MgrMap.MgrSave.OnReady = function(player, data)
-    if MgrMap.MgrPlayerData:GetDataInst(player) ~= data or ActivePlayers[player.UserId] == player then return end
+    if CurrentPlayers[player.UserId] ~= player or LeavingPlayers[player.UserId]
+        or MgrMap.MgrPlayerData:GetDataInst(player) ~= data or ActivePlayers[player.UserId] == player then return end
     if not Started then ReadyQueue[player.UserId] = { player, data } return end
     ActivePlayers[player.UserId] = player
     -- 这些管理器直接操作角色与生命状态，先于依赖它们的其他管理器初始化。
@@ -200,12 +212,24 @@ MgrMap.MgrSave.OnReady = function(player, data)
     end
 end
 local function HandlePlayerAdded(player)
+    local leaving = LeavingPlayers[player.UserId]
+    if leaving then
+        -- 同一 UserId 的新读档不能抢占尚未落账的旧会话；只接纳最后一次重进。
+        leaving.Waiting = player
+        player:SetAttribute('SaveState', 'pending')
+        return
+    end
+    CurrentPlayers[player.UserId] = player
     invoke('MgrPlayerData', MgrMap.MgrPlayerData, 'OnPlayerAdded', player)
 end
 
-local function HandlePlayerRemoving(player)
-    local queued = ReadyQueue[player.UserId]
-    if queued and queued[1] == player then ReadyQueue[player.UserId] = nil end
+local function ContinuePlayerRemoving(player, leaving)
+    -- 回调绑定这次离场，重复回调与迟到事件不能清理新会话。
+    if LeavingPlayers[player.UserId] ~= leaving or leaving.Cleaned then return end
+    local function resume() ContinuePlayerRemoving(player, leaving) end
+    if MgrMap.MgrQuest:FlushBeforeLeave(player, resume) then return end
+    if MgrMap.MgrStory:FlushBeforeLeave(player, resume) then return end
+    leaving.Cleaned = true
     local active = ActivePlayers[player.UserId] == player
     if active then ActivePlayers[player.UserId] = nil end
     -- 终镜像必须先于 MgrPlayerData 的 SaveLeaving 序列化，离线标记才是最新的
@@ -219,6 +243,26 @@ local function HandlePlayerRemoving(player)
             if name ~= 'MgrPlayerData' then invoke(name, mgr, 'OnPlayerRemoving', player) end
         end
     end
+    -- SaveLeaving/ReleaseSession 登记后仍须排空最终快照，才能让新会话认领同一存档键。
+    MgrMap.MgrSave:AfterIdle(player.UserId, function()
+        if LeavingPlayers[player.UserId] ~= leaving then return end
+        LeavingPlayers[player.UserId], CurrentPlayers[player.UserId] = nil, nil
+        if leaving.Waiting then HandlePlayerAdded(leaving.Waiting) end
+    end)
+end
+
+local function HandlePlayerRemoving(player)
+    local leaving = LeavingPlayers[player.UserId]
+    if leaving then
+        if leaving.Waiting == player then leaving.Waiting = nil end
+        return
+    end
+    if CurrentPlayers[player.UserId] ~= player then return end
+    leaving = {}
+    LeavingPlayers[player.UserId] = leaving
+    local queued = ReadyQueue[player.UserId]
+    if queued and queued[1] == player then ReadyQueue[player.UserId] = nil end
+    ContinuePlayerRemoving(player, leaving)
 end
 
 local function HandleTimeUpdate(deltaTime)
@@ -250,7 +294,3 @@ end
 
 GameStart()
 RunService.Heartbeat:Connect(HandleTimeUpdate)
-
-
-
-

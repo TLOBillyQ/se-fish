@@ -90,7 +90,7 @@ end
 
 -- ===== 攻击入口 =====
 
-function Mgr:Attack(player)
+function Mgr:Attack(player, aim)
     if self.Vitals and not self.Vitals:CanAct(player) then
         return self:Fail(player, 'attack', 'cannot-act')
     end
@@ -100,7 +100,7 @@ function Mgr:Attack(player)
     end
     local weaponId = self:EquippedWeapon(data)
     local guns, melee = acfg().Guns, acfg().MeleeWeapons
-    if weaponId and guns[weaponId] then return self:AttackGun(player, weaponId, guns[weaponId], data) end
+    if weaponId and guns[weaponId] then return self:AttackGun(player, weaponId, guns[weaponId], data, aim) end
     if weaponId and melee[weaponId] then return self:AttackMelee(player, weaponId, data) end
     if weaponId then
         print('[MgrWeapon] 武器未配置攻击数值，回落空手', player.UserId, weaponId)
@@ -160,7 +160,7 @@ function Mgr:RefreshMag(mag, magazine, now)
     end
 end
 
-function Mgr:AttackGun(player, weaponId, gcfg, data)
+function Mgr:AttackGun(player, weaponId, gcfg, data, aim)
     local now = self:Now()
     local state = self:GetState(player.UserId)
     -- #130：弹容强化向上取整（PlayerData:MagazineSize），0 级即基础值
@@ -184,7 +184,7 @@ function Mgr:AttackGun(player, weaponId, gcfg, data)
     mag.ammo = mag.ammo - 1
     state.fireAt[weaponId] = now
 
-    local target, hitPos = self:GunHit(player, gcfg)
+    local target, hitPos = self:GunHit(player, gcfg, aim)
     local pellets = gcfg.Pellets or 1
     local damage = gcfg.Damage * scale
     if target then
@@ -243,7 +243,7 @@ function Mgr:Vec3(x, y, z)
     return { x = x, y = y, z = z }
 end
 
-function Mgr:GunHit(player, gcfg)
+function Mgr:GunHit(player, gcfg, aim)
     local character = player.Character
     local pos = character and character.Position
     if not pos then return nil, nil end
@@ -252,6 +252,7 @@ function Mgr:GunHit(player, gcfg)
         local f = character.Rotation:GetForward()
         fx, fy, fz = f.x or 0, f.y or 0, f.z or 1
     end)
+    if aim then fx, fy, fz = aim.x, aim.y, aim.z end
     local range = acfg().GunShared.Range or 30
     local origin = { x = pos.x, y = pos.y + 1, z = pos.z }
     local endPos = { x = origin.x + fx * range, y = origin.y + fy * range, z = origin.z + fz * range }
@@ -599,7 +600,20 @@ end
 
 function Mgr:Handle(player, payload)
     if type(payload) ~= 'table' or type(player) ~= 'table' then return false end
-    if payload.action == 'attack' then self:Attack(player) return true end
+    if payload.action == 'attack' then
+        local aim = payload.aim
+        if aim ~= nil then
+            if type(aim) ~= 'table' or isBadNumber(aim.x) or isBadNumber(aim.y) or isBadNumber(aim.z) then
+                self:Fail(player, 'attack', 'bad-aim'); return false
+            end
+            local length = math.sqrt(aim.x*aim.x + aim.y*aim.y + aim.z*aim.z)
+            if isBadNumber(length) or length < 1e-6 then
+                self:Fail(player, 'attack', 'bad-aim'); return false
+            end
+            aim = {x=aim.x/length,y=aim.y/length,z=aim.z/length}
+        end
+        self:Attack(player, aim); return true
+    end
     if payload.action == 'reload' then self:Reload(player) return true end
     if payload.action == 'throw' then return self:Throw(player, payload) end
     return false

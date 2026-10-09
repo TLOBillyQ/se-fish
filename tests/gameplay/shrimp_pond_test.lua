@@ -131,7 +131,8 @@ function TestShrimpPond:test_sausage_definition_and_shop_rows()
     -- （等级语义：第 N 钓鱼区起售竿级 N，#84；蟹湖摊 #136、树林岛摊 #141、沙滩岛摊 #142 接入）
     local stands = {}
     for _, stand in ipairs(self.cfg.Shop.Stands) do stands[stand.AnchorName] = stand.Level end
-    lu.assertEquals(stands, { TGUnitShop = 1, TGUnitShopShrimp = 2, Z3_Shop = 3, Z4_Shop = 4, Z5_Shop = 5 })
+    lu.assertEquals(stands, { TGUnitShop = 1, TGUnitShopShrimp = 2, Z3_Shop = 3, Z4_Shop = 4,
+        Z5_Shop = 5, Z6_Shop = 6, Z7_Shop = 7 })
 end
 
 -- 虾池摊买香肠：扣 2 金、进 Bait 计数、不占道具栏格
