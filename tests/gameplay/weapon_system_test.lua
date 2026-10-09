@@ -243,6 +243,43 @@ end
 
 -- ===== MgrWeapon：空手 / 近战 / 枪械 =====
 TestMgrWeapon = {}
+-- #37 失败方式：客户端俯仰丢失；方向尺度扩大射程；NaN/inf/零向量消耗弹药；
+-- 客户端声称命中绕过墙；正常攻击按钮/武器栏入口未带相机瞄准。
+function TestMgrWeapon:test_attack_payload_aims_up_with_authoritative_origin_and_range()
+    self.data:GrantWeapon('item141',1); self.data:HoldWeapon('item141')
+    self.mgr:Start()
+    self.reHandler(self.player,{action='attack',aim={x=0,y=30,z=40}})
+    lu.assertAlmostEquals(self.lastRay.d.y,GameCfg.Ability.GunShared.Range*0.6,1e-6)
+    lu.assertAlmostEquals(self.lastRay.d.z,GameCfg.Ability.GunShared.Range*0.8,1e-6)
+    lu.assertEquals(self.lastRay.o,{x=0,y=3,z=0})
+    -- 首命中墙，客户端的伪造目标不会绕过它；已发一枪仍只扣票面一发。
+    self.now=self.now+2
+    self.rayHit={Instance={},Position={x=0,y=4,z=2}}
+    self.reHandler(self.player,{action='attack',aim={x=0,y=3,z=4},target=self.other})
+    lu.assertEquals(#self.applied,0)
+    local ammo=self.mgr:GetState(self.player.UserId).mags.item141.ammo
+    for _,bad in ipairs({false,{}, {x=0,y=0,z=0}, {x=0,y=0/0,z=1},
+        {x=0,y=math.huge,z=1}, {x='0',y=1,z=1}, {x=1e308,y=1,z=1}}) do
+        self.now=self.now+2
+        self.reHandler(self.player,{action='attack',aim=bad})
+        lu.assertEquals(self:lastReply().reason,'bad-aim')
+        lu.assertEquals(self.mgr:GetState(self.player.UserId).mags.item141.ammo,ammo)
+    end
+end
+
+function TestMgrWeapon:test_camera_aim_payload_uses_normalized_viewport_center()
+    local prior=_G.game
+    _G.game={GetService=function(_,name)
+        if name=='CameraService' then return {ViewportPointToRay=function(_,x,y)
+            lu.assertEquals({x,y},{0.5,0.5})
+            return {Direction={x=0,y=0.6,z=0.8}}
+        end} end
+    end}
+    local ok,payload=pcall(function() return require('client.WeaponAim'):AttackPayload() end)
+    _G.game=prior
+    lu.assertTrue(ok,tostring(payload))
+    lu.assertEquals(payload,{action='attack',aim={x=0,y=0.6,z=0.8}})
+end
 local function weaponPlayer(id)
     return { UserId = id, Character = { Position = { x = 0, y = 2, z = 0 },
         Rotation = { GetForward = function() return { x = 0, y = 0, z = 1 } end } } }
