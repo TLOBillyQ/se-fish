@@ -509,6 +509,8 @@ end
 GameCfg.Achievements = {
     final = { Name = '通关成就', PlatformId = nil }, -- 平台后台ID未交付，本地先完成、保留补交。
 }
+-- 图鉴只读快照：打开时刷新，保持打开时补取盲盒/信物兑换后的权威状态。
+GameCfg.Compendium = { RefreshSec = 3, RootPollSec = 0.5, RequestCooldownSec = 0.2 }
 GameCfg.AchievementDelivery = { RetrySec = 15 }
 GameCfg.Shop.Catalog = ContentShop.Goods
 GameCfg.Shop.Excluded = ContentShop.Excluded
