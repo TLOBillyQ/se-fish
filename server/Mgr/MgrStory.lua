@@ -79,6 +79,16 @@ function Mgr:Complete(player, readKey, source)
 end
 
 function Mgr:PersistRead(player, state)
+    if self.Save and state.leave then
+        local status = self.Save:Status(player.UserId)
+        if status.autosavePaused or status.loadState == 'failed' then
+            state.failed = true
+            local leave = state.leave
+            state.leave = nil
+            leave()
+            return false
+        end
+    end
     local data = self.PlayerData and self.PlayerData:GetDataInst(player)
     if self.Save and not data then return true end
     if not self.Save then
@@ -123,6 +133,11 @@ function Mgr:FlushBeforeLeave(player, done)
     local state = player and self.States[player.UserId]
     if not self.Save or not state or state.player ~= player or state.failed
         or not state.completeSource or self.Save:Status(player.UserId).loadState ~= 'ready' then return false end
+    if self.Save:Status(player.UserId).autosavePaused then
+        state.failed, state.leave = true, nil
+        print('[MgrStory] 保存已暂停，离场保留未读', player.UserId)
+        return false
+    end
     state.leave = done
     if state.phase ~= 'saving' then self:PersistRead(player, state) end
     return true

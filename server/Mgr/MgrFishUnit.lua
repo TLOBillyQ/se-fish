@@ -1906,6 +1906,7 @@ function Mgr:UpdateAquatic(fish, now)
             z=leap.Origin.z+(leap.Center.z-leap.Origin.z)*progress}
         body.Position=Vector3.New(p.x,p.y,p.z)
         if progress>=1 then
+            local phase = fish.Phase and fish.Phase.Phase
             state.Leap=nil
             self:EndBossAttack(fish,'land')
             for _, player in ipairs(self:Players()) do
@@ -1914,11 +1915,17 @@ function Mgr:UpdateAquatic(fish, now)
                     self:Hit(fish,player,cfg.LeapDamage,'leap')
                 end
             end
+            -- 命中可能同步触发死亡、移除或阶段切换，旧跳跃到此必须失效。
+            if self.Fish[fish.Id] ~= fish or fish.Aquatic ~= state
+                or (fish.Phase and fish.Phase.Phase) ~= phase then return end
             local valid,cp=self:IsTargetValid(leap.Target,p)
             if valid and (cp.x-p.x)^2+(cp.z-p.z)^2<=GameCfg.Ability.Carry.GrabRange^2 then
                 local damage=fish.Phase and GameCfg.Ability.BossPhase.Thresholds[1].BiteDamage or cfg.GrabDamage
                 self:GrabPlayer(fish,leap.Target,now,damage)
             end
+            if self.Fish[fish.Id] ~= fish or fish.Aquatic ~= state
+                or (fish.Phase and fish.Phase.Phase) ~= phase
+                or not self:IsTargetValid(leap.Target,p) then return end
             state.HeadAt=now+cfg.HeadWindupSec
             state.HeadCenter={x=p.x,y=p.y,z=p.z}
             local n=GarBiteNotice.Lock(fish.Id,p,0,1,cfg.HeadRadius,180,cfg.HeadWindupSec)
@@ -2150,6 +2157,17 @@ end
 function Mgr:Start()
     if self.Ai then self.Ai:Start() end
     self.World = game:GetService('World')
+    local now = self:Now()
+    for _, fish in pairs(self.Fish) do
+        -- Stop 已取消旧预警；重启以完整冷却恢复现存礁石飞行鱼，不补历史攻击。
+        if fish.Flight and not fish.AirAttacks and GameCfg.Fish[fish.FishId].ZoneId == 'reefIsland' then
+            local profile = fish.Flight.Profile
+            fish.AirAttacks = {}
+            fish.NextReefDiveAt = now + (profile.DiveIntervalSec or math.huge)
+            fish.NextThrowAt = now + (profile.ThrowIntervalSec or math.huge)
+            fish.FlightAt = now
+        end
+    end
     self:StartCombatChannel()
 end
 

@@ -88,6 +88,7 @@ MgrMap.MgrLottery.Interact = MgrMap.MgrInteract
 --- 所以条目与个人最大重量和操作日志同键落账、重进保留；只有上岸这一个写入口（击杀与掉落走 MgrLoot）。
 MgrMap.MgrCompendium.Save = MgrMap.MgrSave
 MgrMap.MgrCompendium.PlayerData = MgrMap.MgrPlayerData
+MgrMap.MgrCompendium.Quest = MgrMap.MgrQuest
 MgrMap.MgrCast.Compendium = MgrMap.MgrCompendium
 
 --- #149 T28 全服纪录：上岸经 MgrCompendium 的「刷新个人纪录」回调通知 MgrRecords，
@@ -260,5 +261,4 @@ end
 
 GameStart()
 RunService.Heartbeat:Connect(HandleTimeUpdate)
-
 

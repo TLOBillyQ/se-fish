@@ -255,6 +255,9 @@ function Mgr:Feed(player, data, anchor, point, seq, operation)
             if not earned then return nil, 'nothing' end
             local beforeCoin, beforeItem = draft.Data.FishCoin, itemCount(draft, id)
             if not draft:AddCoin(earned, consume, 'feed') then return nil, 'nothing' end
+            if self.Quest and self.Quest.RecordFact then
+                self.Quest:RecordFact(draft, 'Feed', { itemId = id, category = kind, eventId = operation.id })
+            end
             return { ok = true, action = 'Feed', coins = earned, itemId = id, category = kind,
                 coinBefore = beforeCoin, coinAfter = draft.Data.FishCoin,
                 itemBefore = beforeItem, itemAfter = itemCount(draft, id) }

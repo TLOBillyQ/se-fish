@@ -140,6 +140,10 @@ function Mgr:Drain(player)
     if mode == 'replay' then return onlyEvent and 'replay' or nil end
     local weight = self:Weight(event.fishId, event.mult)
     self.Save:Execute(player, data, operation, function(draft)
+        if self.Quest and self.Quest.RecordFact then
+            self.Quest:RecordFact(draft, 'Land', { itemId = event.fishId,
+                eventId = 'reel:' .. tostring(event.reelSerial) })
+        end
         return apply(draft, event, weight)
     end, function(written, result)
         if not written then
@@ -149,6 +153,7 @@ function Mgr:Drain(player)
         print('[MgrCompendium] 图鉴', player.UserId, result.fishId,
             'weight=' .. tostring(result.weight), 'best=' .. tostring(result.best),
             'count=' .. tostring(result.count), 'total=' .. tostring(result.total))
+        if self.Quest and self.Quest.RefreshCommitted then self.Quest:RefreshCommitted(player, data) end
         -- #149 T28：只有刷新了个人最大重量的那次上岸（result.record）才通知全服纪录，
         -- 只调用、不改 #133 的个人口径；提交走 MgrRecords:NoteLanding（合并窗口 + CAS），
         -- 个人图鉴落账与全服纪录写成功是两条独立链路，后者失败不影响前者。
