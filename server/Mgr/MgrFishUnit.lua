@@ -2039,6 +2039,8 @@ function Mgr:AiControlled(fish, now)
             if fish.Flight then fish.Flight.Phase = 'cruise'; fish.DiveActive = false end
             self:EndBite(fish, 'controlled')
             self:EndMove(fish, 'controlled')
+            self:EndAirAttacks(fish, 'controlled')
+            if fish.Flight then fish.AirAttacks = {} end
             if fish.Carry then self:ReleaseCarried(fish, nil, 'controlled') end
         end
         self.Ai:Pause(fish, true)
@@ -2049,7 +2051,8 @@ function Mgr:AiControlled(fish, now)
     if fish.ControlAt then
         local elapsed = now - fish.ControlAt
         for _, key in ipairs({ 'ActiveUntil', 'SpecialAt', 'JabAt', 'PinchAt', 'ChargeAt',
-            'JumpAt', 'RoarAt', 'TailAt', 'ClawAt', 'NextDischargeAt', 'WakeAt' }) do
+            'JumpAt', 'RoarAt', 'TailAt', 'ClawAt', 'NextDischargeAt', 'WakeAt',
+            'NextReefDiveAt', 'NextThrowAt' }) do
             if fish[key] then fish[key] = fish[key] + elapsed end
         end
         if fish.Phase then
