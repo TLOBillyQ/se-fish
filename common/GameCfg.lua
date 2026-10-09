@@ -279,7 +279,7 @@ GameCfg.BaitSpots = {
 
 -- 新手任务（#51 前三步，#52 续写第 4–9 步；#40 规格）：文案对应策划案「新手任务」的 9 句（钓场老板按 CONTEXT.md 用词），
 -- Kind 是玩法事实种类（MgrQuest:Notify 的 kind），ItemId 是要求的物品，Category 是要求的物品类别（fish = 鱼获），
--- Need 是次数。任务不发奖励，进度单局内存态。
+-- Need 是次数。任务不发奖励，进度与事实去重落在 Extra.quest。
 -- 事实来源：PickBait 拾饵（MgrLoot）、Feed 喂食（MgrInteract）、Buy 购买（MgrShop）、EquipBait 鱼饵栏挂饵成功
 -- （MgrPlayerData）、CastWater 抛竿落点在水区（MgrCast）、Land 收线上岸（MgrCast）、DropShore 主动放下且落点
 -- 不在水区（MgrFishUnit）、Kill 鱼被打死，归属鱼的主人即上岸者（MgrFishUnit）。
@@ -291,27 +291,31 @@ GameCfg.Quest = {
     Steps = {
         { Kind = 'PickBait', ItemId = 'worm', Need = 5, Text = '拾取 5 只蚯蚓' },
         { Kind = 'Feed', ItemId = 'worm', Need = 5, Text = '喂钓鱼佬吃 5 只蚯蚓' },
-        { Kind = 'Buy', ItemId = 'starterRod', Need = 1, Text = '向钓场老板购买 1 只新手鱼竿' },
-        { Kind = 'EquipBait', ItemId = 'worm', Need = 1, Text = '捡只蚯蚓，挂饵' },
+        { Kind = 'Buy', ItemId = 'starterRod', Need = 1, Text = '向钓场老板购买 1 把新手鱼竿' },
+        { Kind = 'EquipBait', ItemId = 'worm', Need = 1, Text = '拾取蚯蚓，选中鱼饵栏挂饵' },
         { Kind = 'CastWater', Need = 1, Text = '水边第一次抛竿' },
-        { Kind = 'Land', Need = 1, Text = '咬钩后狂点收线，将它拉上岸' },
-        { Kind = 'DropShore', Need = 1, Text = '将鱼丢在岸上' },
+        { Kind = 'Land', Need = 1, Text = '上钩后连续点击收线，将鱼钓上岸' },
+        { Kind = 'DropShore', Need = 1, Text = '将活鱼放在岸上' },
         { Kind = 'Kill', Need = 1, Text = '揍它！把鱼打死！' },
-        { Kind = 'Feed', Category = 'fish', Need = 1, Text = '捡起鱼，再喂给钓鱼佬' },
+        { Kind = 'Feed', Category = 'fish', Need = 1, Text = '拾取鱼获，再喂给钓鱼佬' },
     },
 }
 
--- 开场对话（#54，#40 规格；设计案「游戏开场：对话介绍游戏背景」）：进图后（客户端主界面首次打开时）
--- 对每名玩家调一次 StoryService:StartStory(player, StoryId)，可跳过由剧情系统自带的跳过按钮负责；
--- 任务推进与剧情无关，剧情信号只打日志取证（server/Mgr/MgrStory.lua）。
--- 降级：StoryId 未配置、StoryService 不可用、StartStory 报错，或 StartTimeoutSec 秒内没收到 OnStoryStart，
--- 就改发一条单行公告 FallbackText，并打带「[MgrStory] 降级」前缀的日志（原因 / 影响 / 接受者）。
--- [未查证] 本图剧情配表里还没有开场剧情（CLI 没有剧情编辑子命令，要在编辑器里配），StoryId 暂为 nil 走降级；
--- 配好后只填这里。FallbackText 是占位文案，非策划定案。
+-- #40 开场：正式资源配置后使用 StoryService；当前可读对话兜底由玩家明确确认已读。
+-- 结束/跳过/确认共用 ReadKey，回流不重播；正式 Story 资源与表现验收留在 #44。
 GameCfg.Story = {
     StoryId = nil,
+    ReadKey = 'opening',
+    Title = '钓鱼怎么这么危险啊喂！',
     StartTimeoutSec = 3,
     FallbackText = '欢迎来到钓场！钓鱼佬什么都吃，钓场老板卖鱼竿——跟着左上角的新手任务开始吧。',
+    Lines = {
+        '欢迎来到钓场！这里的鱼可不会乖乖束手就擒。',
+        '先拾取蚯蚓、挂饵抛竿。上钩后连续收线，把活鱼钓上岸。',
+        '将活鱼放在岸上，打死后拾取鱼获。喂给钓鱼佬就能换金币。',
+        '钓场老板售卖鱼竿、鱼饵和武器。信物能换首领饵和下一钓鱼区的船票。',
+        '跟着左上角的九步新手任务开始吧！任务本身不额外发奖励。',
+    },
 }
 
 -- 上钩提示（#54，#40 规格的占位方案，非策划定案，替换点在此一处）：抛竿会话进入 hooked 相位的那一次，
