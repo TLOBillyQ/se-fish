@@ -193,6 +193,8 @@ function Screen:ClearNodes()
     end
     self.Nodes, self.Inited, self.BoundRootNode, self.RootNode, self.EntryNode = {}, nil, nil, nil, nil
     self.IsOpen = false
+    self.SelectedId, self.RecordState = nil, nil
+    self.RecordSeq = self.RecordSeq + 1
 end
 
 function Screen:BuildNodes(uiRoot)
@@ -245,6 +247,7 @@ function Screen:BuildNodes(uiRoot)
     self:Label(panel, 'LabelCompendiumHint', 590, 65, 1100, 45, '', 22)
     if self.BuildFailed then self:ClearNodes() self.UIRoot = nil return false end
     _G.MgrGameUI:GetScreen('ScreenCompendium') -- 由界面管理器绑定与初始化 handler
+    _G.MgrGameUI:CloseScreen('ScreenCompendium') -- Root 更换后同时清除管理器旧的已打开状态
     return true
 end
 
@@ -270,6 +273,9 @@ end
 function Screen:Stop()
     for _, connection in ipairs(self.Connections) do connection:Disconnect() end
     self.Connections = {}
+    if self.RootNode and self.UIRoot == GameUI:GetUIRoot() then
+        _G.MgrGameUI:CloseScreen('ScreenCompendium')
+    end
     self:ClearNodes()
     self.UIRoot, self.RootElapsed = nil, 0
 end

@@ -64,6 +64,11 @@ function Mgr:Start()
     end)
 end
 
+function Mgr:Stop()
+    if self.Connection then self.Connection:Disconnect() end
+    self.Connection, self.LastSeq = nil, {}
+end
+
 -- 上榜条件只看个体重量，与售价无关；重量口径与 MgrFishUnit:Weight 同一个纯函数
 function Mgr:Weight(fishId, mult)
     local species = GameCfg.Fish[fishId]
