@@ -182,3 +182,34 @@ function TestReefCombat:test_boss_summoned_at_other_water_keeps_the_current_zone
     local b=Cfg.Zones[1].Scene.Boundary
     lu.assertTrue(fish.Carrier.Body.Position.x>=b.MinX and fish.Carrier.Body.Position.x<=b.MaxX)
 end
+
+-- 官方 AI 的停止/恢复是外部边界，业务驱动与预警/Vitals 仍走真实 Update。
+function TestReefCombat:test_control_cancels_air_warning_and_never_hits_old_locked_point()
+    local fish=self:drop('fish48Boss'); self:advance(4)
+    local attack=fish.AirAttacks.airThrow
+    lu.assertNotNil(attack)
+    self.mgr.Ai={Stopped=true,Sync=function() return true end,Pause=function() end,Custom=function() end}
+    self.mgr:Update()
+    lu.assertEquals(self.notices[#self.notices],{kind='clear',fishId=attack.Id,reason='controlled'})
+    self:advance(6)
+    self.mgr.Ai.Stopped=false; self.mgr:Update()
+    lu.assertEquals(self.player.Character.Controller.Health,300)
+    lu.assertNil(fish.AirAttacks.airThrow)
+    self.mgr.Ai=nil
+end
+
+function TestReefCombat:test_control_freezes_throw_and_dive_cooldowns_without_catchup()
+    local fish=self:drop('fish48Boss'); self:advance(3)
+    self.mgr.Ai={Stopped=true,Sync=function() return true end,Pause=function() end,Custom=function() end}
+    self.mgr:Update()
+    local throwAt,diveAt=fish.NextThrowAt,fish.NextReefDiveAt
+    self:advance(13)
+    self.mgr.Ai.Stopped=false; self.mgr:Update()
+    lu.assertAlmostEquals(fish.NextThrowAt,throwAt+10,1e-6)
+    lu.assertAlmostEquals(fish.NextReefDiveAt,diveAt+10,1e-6)
+    lu.assertNil(fish.AirAttacks.airThrow)
+    self:advance(14)
+    lu.assertNotNil(fish.AirAttacks.airThrow)
+    lu.assertEquals(self.player.Character.Controller.Health,300)
+    self.mgr.Ai=nil
+end
