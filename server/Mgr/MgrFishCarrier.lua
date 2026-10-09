@@ -111,7 +111,7 @@ end
 
 -- 把受击体挪到鱼本体上。举着 / 逃脱 / 落地都靠这一句跟住：受击体与鱼本体之间没有约束，
 -- 引擎也没有「子节点跟随父节点」的开关给 EggyUnit 用（实测 ModelBindParent 在 EggyUnit 上不存在）。
-local function syncReceiver(carrier)
+local function syncReceiver(carrier, targetPosition)
 	-- #53 官方模式受击体是唯一移动源；业务轨迹模式才由本体同步受击体。
 	if carrier.AiOwnsMovement then return end
 	local body = carrier.Body
@@ -119,7 +119,8 @@ local function syncReceiver(carrier)
 	if not body or not receiver then
 		return
 	end
-	local ok, pos = pcall(readPosition, body)
+	local ok, pos = true, targetPosition
+	if not pos then ok, pos = pcall(readPosition, body) end
 	if not ok or not pos then
 		return
 	end
@@ -142,8 +143,9 @@ function Mgr:SubscribeDied(fn)
 end
 
 -- 脚本轨迹写回本体后立即同步，避免入口 pairs 顺序使受击体落后一帧。
-function Mgr:SyncPosition(carrier)
-	syncReceiver(carrier)
+function Mgr:SyncPosition(carrier, targetPosition)
+	carrier.SkipNextAutoSync = targetPosition ~= nil
+	syncReceiver(carrier, targetPosition)
 end
 
 -- 死亡单点：`Died` 与 `HealthChanged(<=0)` 两条路都可能来，只往外通知一次（同 D-11 的兜底口径）。
@@ -412,7 +414,8 @@ end
 -- 6 条鱼 × 30Hz 的量级与 M0-V4 实测的 12 条 0.074 ms/帧 同量级，不构成开销问题。
 function Mgr:Update(deltaTime)
 	for _, carrier in pairs(self.Carriers) do
-		syncReceiver(carrier)
+		if carrier.SkipNextAutoSync then carrier.SkipNextAutoSync = nil
+		else syncReceiver(carrier) end
 	end
 end
 

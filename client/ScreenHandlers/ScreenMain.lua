@@ -1,6 +1,7 @@
 local World = game:GetService('World')
 local GameCfg = require('common.GameCfg')
 local LocalAttackButton = require('client.LocalAttackButton')
+local WeaponAim = require('client.WeaponAim')
 local PressGesture = require('client.PressGesture')
 local DamageFloat = require('client.DamageFloat')
 local FishCombatLabel = require('client.FishCombatLabel')
@@ -1073,7 +1074,7 @@ function ScreenHandler:Init()
         self.LastOperateOperation = result.operation or self.LastOperateOperation
         -- #129：武器已手持时再点武器列表=出击（结算在 MgrWeapon，伤害以服务端为准）
         if result.reason == 'combat-pending' then
-            _G.REUtil:GetRE('WeaponAction'):FireServer({ action = 'attack' })
+            _G.REUtil:GetRE('WeaponAction'):FireServer(WeaponAim:AttackPayload())
             return
         end
         local hints = { empty = '物品已不在格子里', ['cannot-eat'] = '现在不能吃',
