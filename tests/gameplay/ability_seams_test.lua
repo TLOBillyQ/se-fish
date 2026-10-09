@@ -135,7 +135,8 @@ function TestFishAbilitySeams:setUp()
         if name == 'Players' then return { GetPlayers = function() return env.players end } end
         return {}
     end }
-    package.loaded['server.Mgr.MgrFishCarrier'] = { Spawn = function() return nil end, Despawn = function() end }
+    package.loaded['server.Mgr.MgrFishCarrier'] = { Spawn = function() return nil end, Despawn = function() end,
+        SyncPosition = function() end }
     package.loaded['server.AbilityAPI'] = {
         AttachToSocket = function(_, unit, host, socketName, offset)
             local mount = { UnitType = 'SkeletalSocketMount', Parent = host, SocketName = socketName,

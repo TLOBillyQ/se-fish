@@ -25,6 +25,7 @@ local ScreenBlindbox = require("client.ScreenHandlers.ScreenBlindbox")
 local ScreenPlatform = require("client.ScreenHandlers.ScreenPlatform")
 -- #134 鳄雀鳝头部攻击贴地预警
 local LocalGarBite = require("client.LocalGarBite")
+local LocalCastSource = require('client.LocalCastSource')
 local LocalAttr = require('client.LocalAttr')
 
 -- 运行时 require 失败只进日志并返回 nil，所以这里判一次再调
@@ -44,6 +45,7 @@ Task:Spawn(function()
 end)
 -- 等钓鱼佬单位要轮询，单独起协程免得拖住上面的启动
 Task:Spawn(function() LocalGarBite:Start() end)
+Task:Spawn(function() LocalCastSource:Start() end)
 Task:Spawn(function() LocalAttr:Start() end)
 Task:Spawn(function() LocalInteract:Start() end)
 Task:Spawn(function() LocalShop:Start() end)

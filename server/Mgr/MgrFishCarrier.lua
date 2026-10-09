@@ -141,6 +141,11 @@ function Mgr:SubscribeDied(fn)
 	return true
 end
 
+-- 脚本轨迹写回本体后立即同步，避免入口 pairs 顺序使受击体落后一帧。
+function Mgr:SyncPosition(carrier)
+	syncReceiver(carrier)
+end
+
 -- 死亡单点：`Died` 与 `HealthChanged(<=0)` 两条路都可能来，只往外通知一次（同 D-11 的兜底口径）。
 -- 实测（M18 台账 §11.3）：致命那一下引擎**只发 `Died`、不发 `HealthChanged`**，所以两条都要接。
 -- 通知前把 Controller 的真血量同步回记录：致命一击时 Died 早于 HealthChanged，

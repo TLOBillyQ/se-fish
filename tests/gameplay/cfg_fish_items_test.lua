@@ -139,10 +139,12 @@ function TestCfgFishItems:testUnimplementedContentAndInventorySemanticsRemainExp
         -- 其余未实装区与全部精英/首领仍保持 implemented=false。
         local built = row.ZoneId == 'fishPond' or row.ZoneId == 'shrimpPond'
             or row.ZoneId == 'crabLake' or row.ZoneId == 'forestIsland' or row.ZoneId == 'beachIsland'
+            or row.ZoneId == 'reefIsland'
         if not built or row.Grade == 'elite' or row.Grade == 'boss' then
             if row.Id ~= 'fish23Elite' and row.Id ~= 'fish24Boss'
                 and row.Id ~= 'fish31Elite' and row.Id ~= 'fish32Boss'
-                and row.Id ~= 'fish39Elite' and row.Id ~= 'fish40Boss' then
+                and row.Id ~= 'fish39Elite' and row.Id ~= 'fish40Boss'
+                and row.ZoneId ~= 'reefIsland' then
                 lu.assertFalse(row.implemented, row.source)
             end
         end
