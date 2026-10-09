@@ -23,17 +23,27 @@ function Mgr:RefreshHeldRod(player, character)
     if not data then return end
     character = character or player.Character
     local selected = data.Data.SelectedSlot
-    local entry = selected and data.Data.Containers[GameCfg.Items.ContainerId.ItemBar][selected]
-    local shouldHold = character and entry and entry.count > 0
-        and entry.itemId == GameCfg.Items.Id.StarterRod
+    local heldSelection = data.Extra.inventory.selection.held
+    local slot = heldSelection and heldSelection.kind == 'slot' and heldSelection.slot or nil
+    -- 兼容 `SelectedSlot` 轻量动作与 `held` 两次点击语义：以 held 槽为准，
+    -- 旧直接选中但没有 held 的存档仍按 SelectedSlot 恢复展示。
+    slot = heldSelection.kind ~= nil and slot or selected
+    local entry = slot and data.Data.Containers[GameCfg.Items.ContainerId.ItemBar][slot]
+    local itemId = entry and entry.count > 0 and entry.itemId or nil
+    local item = itemId and GameCfg.Items.Definitions[itemId]
+    if not item or item.Type ~= '鱼竿' then
+        itemId = heldSelection and heldSelection.kind == 'weapon' and heldSelection.id or nil
+        item = itemId and GameCfg.Items.Definitions[itemId]
+    end
+    local shouldHold = character and item and item.Visual and item.Visual.Socket
     if not shouldHold then
         self:ClearHeldRod(player)
         return
     end
     local held = RodMounts[player.UserId]
-    if held and held.Character == character then return end
+    if held and held.Character == character and held.ItemId == itemId then return end
     self:ClearHeldRod(player)
-    local cfg = GameCfg.Items.RodVisual
+    local cfg = item.Type == '鱼竿' and GameCfg.Items.RodVisual or item.Visual
     local world = game:GetService('World')
     local okMount, mount = pcall(world.CreateUnit, world, 'SkeletalSocketMount', {
         Name = 'HeldRodMount_' .. tostring(player.UserId),
@@ -55,13 +65,14 @@ function Mgr:RefreshHeldRod(player, character)
         CanTrigger = false,
         CanQuery = false,
         ModelVisible = true,
+        ModelColor1 = Color.New(item.IconColor[1], item.IconColor[2], item.IconColor[3], item.IconColor[4]),
     })
     if not okModel or not model then
         pcall(function() mount:Destroy() end)
         print('[MgrPlayerData] 左手鱼竿模型创建失败', player.UserId, model)
         return
     end
-    RodMounts[player.UserId] = { Character = character, Mount = mount, Model = model }
+    RodMounts[player.UserId] = { Character = character, ItemId = itemId, Mount = mount, Model = model }
 end
 
 function Mgr:SendItemBar(player)

@@ -183,7 +183,11 @@ function ScreenHandler:Show(state)
         slot.Background.Visible = index <= capacity
         slot.Background.TouchEnabled = index <= capacity
         slot.Icon.Visible = index <= capacity and definition ~= nil
-        if definition then slot.Icon.Image = definition.Icon end
+        if definition then
+            slot.Icon.Image = definition.Icon
+            local tint = definition.IconColor
+            slot.Icon.Color = Color.New(tint[1], tint[2], tint[3], tint[4])
+        end
         -- #137：烤过的物品名字加前缀；CookRate 统一口径（含旧布尔档 saved.cooked==true）
         slot.Label.Text = definition
             and ((GameCfg.Items.CookRate(entry) ~= nil and GameCfg.Grill.CookedPrefix or '') .. definition.Name) or ''

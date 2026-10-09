@@ -148,7 +148,9 @@ function Screen:Render()
             local drop = fish.Drops and fish.Drops[1]
             local item = GameCfg.Items.Definitions[entry.id] or drop and GameCfg.Items.Definitions[drop.ItemId]
             icon.Image = item and item.Icon or GameCfg.Items.Definitions.tilapia.Icon
-            icon.Color = entry.silhouette and Color.New(0, 0, 0, 255) or Color.New(255, 255, 255, 255)
+            local tint = fish.VisualColor
+            icon.Color = entry.silhouette and Color.New(0, 0, 0, 255)
+                or Color.New(tint[1], tint[2], tint[3], tint[4])
         end
     end
     local selected

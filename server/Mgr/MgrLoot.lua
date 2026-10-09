@@ -240,6 +240,7 @@ function Mgr:Spawn(fishId, mult, pos, itemId)
         Name = 'FishLoot_' .. tostring(id),
         Position = position,
         RenderMeshId = 'official://mesh/' .. tostring(species.Model),
+        ModelColor1 = Color.New(species.VisualColor[1], species.VisualColor[2], species.VisualColor[3], species.VisualColor[4]),
         BodyType = 1, -- Enums.BodyType.Static
         PhysicsActive = false,
         GravityEnabled = false,
@@ -267,6 +268,12 @@ end
 function Mgr:MeshOf(itemId)
     local species = GameCfg.Fish[itemId]
     if species and species.Model then return 'official://mesh/' .. tostring(species.Model) end
+    local item = GameCfg.Items.Definitions[itemId]
+    local visual = item and item.Visual
+    if visual then
+        local scale = visual.Scale
+        return visual.Mesh, Vector3.New(scale.x, scale.y, scale.z)
+    end
     local scale = cfg().ItemScale
     return cfg().ItemMesh, Vector3.New(scale, scale, scale)
 end
@@ -289,6 +296,9 @@ local function createLoot(self, itemId, mult, cooked, position)
         ModelVisible = false, -- 预留期隐藏；上屏（Live）才显示
     }
     if scale then values.Scale = scale end
+    local item = GameCfg.Items.Definitions[itemId]
+    local tint = item and item.IconColor
+    if tint then values.ModelColor1 = Color.New(tint[1], tint[2], tint[3], tint[4]) end
     local ok, unit = pcall(world.CreateUnit, world, 'WorldUnit', values)
     if not ok or not unit then
         print('[MgrLoot] 掉落实例创建失败', itemId, tostring(unit))

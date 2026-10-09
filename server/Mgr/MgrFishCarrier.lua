@@ -304,6 +304,8 @@ function Mgr:Spawn(opts)
 	end
 
 	local cfg = GameCfg.FishCarrier or {}
+	local species = GameCfg.Fish[opts.FishId]
+	local tint = species and species.VisualColor
 	local values = {
 		Name = Mgr.BODY_NAME_PREFIX .. "_" .. tostring(opts.FishId or "unknown"),
 		Position = opts.Position or Vector3.New(0, 0, 0),
@@ -317,6 +319,7 @@ function Mgr:Spawn(opts)
 		Mass = opts.Mass or 10,
 		GravityEnabled = opts.GravityEnabled,
 	}
+	if tint then values.ModelColor1 = Color.New(tint[1], tint[2], tint[3], tint[4]) end
 	if opts.PhysicsMeshId then
 		values.PhysicsMeshId = opts.PhysicsMeshId
 	elseif cfg.PhysicsMeshId and cfg.PhysicsMeshId ~= "" then
