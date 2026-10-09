@@ -12,6 +12,6 @@
 
 skill 提到某个角色时（例如「打上 AFK-ready 的 triage 标签」），用右列的字符串。
 
-现状（2026-09-21）：五个标签都已建在 `qinyuanj/se-fish`——`ready-for-agent` = 124、`needs-triage` = 125、`needs-info` = 126、`ready-for-human` = 127、`wontfix` = 128（`tea labels list -r qinyuanj/se-fish` 可复核）。REST API 建 issue 时标签传 id 最稳，传名字也行；`tea issues edit --add-labels/--remove-labels` 传名字可用。
+标签以 GitHub `TLOBillyQ/se-fish` 为准，用 `gh label list -R TLOBillyQ/se-fish --limit 100` 查询。`gh issue create --label` 与 `gh issue edit --add-label/--remove-label` 传标签名。需要的标签不存在时，用 `gh label create <标签名> -R TLOBillyQ/se-fish --description "<含义>" --color "<六位颜色>"` 创建后再使用。
 
-需要人（或无法在被操作目录内运行的会话）执行的活儿挂 `ready-for-human`，例：#2 迁移工作区。
+需要人（或无法在被操作目录内运行的会话）执行的活儿挂 `ready-for-human`，例如需要人工操作的工作区迁移。
