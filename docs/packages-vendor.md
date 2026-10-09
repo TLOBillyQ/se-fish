@@ -19,6 +19,9 @@
 | `attr_rule` | 属性规则（属性单位 / 属性Buff单位） | 2026-10-08（#153） | `server/AttrAPI.lua`、`client/AttrAPI.lua`（名单在 `common/AttrAPIBase.lua`） |
 | `modifier_system` | 效果（Buff）系统 | 2026-10-08（#153） | `server/ModifierAPI.lua`、`client/ModifierAPI.lua`（名单在 `common/ModifierAPIBase.lua`） |
 | `official_ai_feature` | 生物 AI（依赖 `ability_system` 服务端门面） | 2026-10-08（#153） | `server/AiAPI.lua`（名单在 `common/AiAPIBase.lua`，client 侧无 api.lua） |
+| `win_rule` | 胜负结算规则 | 2026-10-09（从宿主整包回灌） | 尚未接入业务聚合入口 |
+
+`win_rule` 暂缓接入正式结算：结算枚举遮蔽会造成异常与半结算状态（[GitHub #58](https://github.com/TLOBillyQ/se-fish/issues/58)，独立模拟已复现）；未结算玩家离开后缺少全员结算重判（[GitHub #59](https://github.com/TLOBillyQ/se-fish/issues/59)，静态审查发现，待编辑器验证）。包内保持原文，优先等待官方整包修正版，业务接缝方案另行评估。
 
 接缝契约：聚合入口的转发名单与包内 `api.lua` 导出由单测拿源码文本校对（`tests/gameplay/ability_api_test.lua`、`tests/gameplay/package_api_test.lua`），包升级改名/删名时在加载期与单测同时暴露。
 
