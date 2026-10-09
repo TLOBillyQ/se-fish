@@ -934,7 +934,13 @@ GameCfg.Ability = {
     -- DOT 每跳都重新走 T07/#128 统一伤害入口（MgrVitals:NewHit('dot') + ApplyHit）。
     -- #52 用户最终在地图创建五个不同的 modifier 预设后填写真实 AssetKey。
     -- 未绑定时明确报 modifier-preset-missing，不退回旧效果状态机。
-    ModifierPresets = { poison = '', burn = '', frost = '', paralyze = '', weak = '' },
+    ModifierPresets = {
+        poison = 'map://preset/u9e43507fb284064a1e74f5f803eb121',
+        burn = 'map://preset/u48318ffad0d437b91ce40317261af23',
+        frost = 'map://preset/u082e5229ff6481484d21b70d55d3088',
+        paralyze = 'map://preset/ud998c96a7da4f148825cc0b76ee525b',
+        weak = 'map://preset/uc03ba59d2344d85985be11d0a7af2d6',
+    },
     StatusEffects = {
         poison = { MaxStacks = 5, TickSec = 1, DamagePerStack = 1, DurationSec = 3 },
         burn = { MaxStacks = 5, TickSec = 1, DamagePerStack = 4, DurationSec = 3 },
