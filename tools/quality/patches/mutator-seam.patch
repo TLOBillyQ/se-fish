@@ -1,0 +1,123 @@
+diff --git a/src/mutator/engine.py b/src/mutator/engine.py
+index e529424..9752dd9 100644
+--- a/src/mutator/engine.py
++++ b/src/mutator/engine.py
+@@ -84,6 +84,33 @@ def _select(
+     return chosen
+
+
++def _decisions(sites, covered, history, digests, mutate_all, lines, selected):
++    """记录实际选择分支；行过滤和未覆盖均不计作历史复用。"""
++    chosen = {site.mutation_id for site in selected}
++    decisions = {}
++    for site in sites:
++        prior = history.forms.get((site.namespace, site.form_id))
++        previous = history.outcomes.get(site.mutation_id, "none")
++        if not covered[site.mutation_id]:
++            action, reason = "uncovered", "uncovered"
++        elif lines is not None and site.line not in lines:
++            action, reason = "excluded", "line-filter"
++        elif site.mutation_id not in chosen:
++            action, reason = "reused", "unchanged-killed"
++        elif mutate_all:
++            action, reason = "executed", "explicit-all"
++        elif prior is None:
++            action, reason = "executed", "no-history"
++        elif prior.digest != digests.get((site.namespace, site.form_id)):
++            action, reason = "executed", "digest-changed"
++        elif previous == "survived":
++            action, reason = "executed", "previous-survived"
++        else:
++            action, reason = "executed", "id-changed"
++        decisions[site.mutation_id] = (action, reason, previous)
++    return decisions
++
++
+ def _carry_forward(sites: list[Site], covered: dict[str, bool], history, digests) -> dict[str, str]:
+     by_id = {site.mutation_id: site for site in sites}
+     carried = {}
+@@ -321,6 +348,7 @@ def mutate_file(
+         written=[item.as_posix() for item in written],
+         sites=found,
+         statuses=_statuses(found, covered, outcomes),
++        decisions=_decisions(found, covered, history, digests, mutate_all, lines, selected),
+     )
+
+
+diff --git a/src/mutator/metrics.py b/src/mutator/metrics.py
+index daf18ff..1aa70a5 100644
+--- a/src/mutator/metrics.py
++++ b/src/mutator/metrics.py
+@@ -7,6 +7,7 @@ or `defn-/<name>`, and it joins the file to a class on `:namespace`.
+
+ from __future__ import annotations
+
++import os
+ from datetime import datetime
+ from pathlib import Path
+
+@@ -256,10 +257,12 @@ def _write_namespace(
+         path.unlink(missing_ok=True)
+         return None
+     path.parent.mkdir(parents=True, exist_ok=True)
+-    path.write_text(
++    temporary = path.with_name(path.name + ".pending")
++    temporary.write_text(
+         _render_snapshot(namespace, _snapshot_source(fresh, kept_forms, file_key), rendered, merged),
+         encoding="utf-8",
+     )
++    os.replace(temporary, path)
+     return path
+
+
+diff --git a/src/mutator/model.py b/src/mutator/model.py
+index 37f5745..38115c2 100644
+--- a/src/mutator/model.py
++++ b/src/mutator/model.py
+@@ -76,6 +76,7 @@ class RunResult:
+     written: list[str]
+     sites: list[Site] = field(default_factory=list)
+     statuses: dict[str, str] = field(default_factory=dict)
++    decisions: dict[str, tuple[str, str, str]] = field(default_factory=dict)
+     baseline_failed: bool = False
+     baseline_message: str = ""
+     skipped: str = ""
+diff --git a/src/mutator/report.py b/src/mutator/report.py
+index e861390..0cd6a92 100644
+--- a/src/mutator/report.py
++++ b/src/mutator/report.py
+@@ -46,6 +46,34 @@ def format_results(forms: list[FormResult]) -> str:
+     return "\n".join(lines)
+
+
++def format_decisions(results, *, verbose=False) -> str:
++    """本轮执行和历史复用独立于快照中的 killed/survived 聚合。"""
++    counts = {action: 0 for action in ("executed", "reused", "uncovered", "excluded")}
++    lines = []
++    for result in results:
++        functions = {(form.namespace, form.id): dict.fromkeys(counts, 0) for form in result.forms}
++        details = []
++        for site in result.sites:
++            decision = result.decisions.get(site.mutation_id)
++            if decision is None:
++                continue
++            action, reason, previous = decision
++            counts[action] += 1
++            functions[(site.namespace, site.form_id)][action] += 1
++            if verbose:
++                outcome = result.statuses.get(site.mutation_id, "none")
++                details.append(f"{site.file}:{site.line} {site.namespace}/{site.name} "
++                               f"action={action} reason={reason} previous={previous} "
++                               f"result={outcome} id={site.mutation_id}")
++        for form in result.forms:
++            totals = functions[(form.namespace, form.id)]
++            lines.append(f"Mutation function: {form.namespace}/{form.name} " +
++                         " ".join(f"{key}={value}" for key, value in totals.items()))
++        lines.extend(details)
++    lines.append("Mutation run: " + " ".join(f"{key}={value}" for key, value in counts.items()))
++    return "\n".join(lines) + "\n"
++
++
+ def format_site_log(sites: list[Site], status: dict[str, str]) -> str:
+     lines = []
+     for site in sites:

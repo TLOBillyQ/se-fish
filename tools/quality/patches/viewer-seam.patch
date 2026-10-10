@@ -1,0 +1,46 @@
+diff --git a/scripts/uml-command.ps1 b/scripts/uml-command.ps1
+index 0aadec0..52cb305 100644
+--- a/scripts/uml-command.ps1
++++ b/scripts/uml-command.ps1
+@@ -46,6 +46,23 @@ try {
+     if ($commandArgs.Count -gt 0 -and $commandArgs[0] -in @('crap', 'mutate')) {
+         $alias = $commandArgs[0]
+         $forward = @($commandArgs | Select-Object -Skip 1)
++        # 项目质量接缝优先于语言通用工具；CRAP 必须先取得本轮完整覆盖率。
++        $projectConfig = Join-Path $root 'tools/quality/project.json'
++        $projectEntry = Join-Path $root 'tools/quality/project.ps1'
++        if (Test-Path -LiteralPath $projectConfig) {
++            if (-not (Test-Path -LiteralPath $projectEntry)) {
++                throw "Project quality entry is missing: $projectEntry"
++            }
++            if ($alias -eq 'crap') {
++                & $projectEntry coverage
++                if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
++                # 单类或组件选择不缩小快照范围；项目入口分析配置内全树。
++                & $projectEntry crap
++            } else {
++                & $projectEntry mutate @forward
++            }
++            exit $LASTEXITCODE
++        }
+         if (Test-Path 'deps.edn') {
+             $cli = Clojure-Command
+             # Official ClojureTools treats '-M:<alias>' as a source file; its
+diff --git a/src/uml_viewer/adapters/sketch.clj b/src/uml_viewer/adapters/sketch.clj
+index 5a587e4..17aecae 100644
+--- a/src/uml_viewer/adapters/sketch.clj
++++ b/src/uml_viewer/adapters/sketch.clj
+@@ -62,7 +62,12 @@
+        "Snapshots join by the class :ns, then by the class id.\n"
+        "./uml ir runs the IR generator on this project's policy. ./uml crap and\n"
+        "./uml mutate run the :crap / :mutate aliases when the project has\n"
+-       "deps.edn, otherwise crapper and mutator, for every language. Without\n"
++       "deps.edn, otherwise crapper and mutator, for every language.\n"
++       "若存在 tools/quality/project.json，公开 uml 命令优先使用项目\n"
++       "tools/quality/project.ps1；crap 先运行完整 coverage 再替换全树快照，\n"
++       "mutate 保留目标文件与差分/全量参数。任一步失败立即停止，\n"
++       "不得继续生成 IR 或发送 :display；mutation 退出 3 的有效缺口快照除外。\n"
++       "Without\n"
+        "./uml (the uml-viewer repo itself) use clj -M:ir, clj -M:crap and\n"
+        "clj -M:mutate.\n"
+        "2. Run ./uml crap on the whole tree; .metrics/crap.edn is replaced\n"

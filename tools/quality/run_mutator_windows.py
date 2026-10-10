@@ -1,14 +1,10 @@
-"""启动 mutator 前先安装原生 Windows 运行时适配。"""
-
+"""兼容旧 Windows 命令，转入项目质量入口与统一配置。"""
 from __future__ import annotations
 
+import subprocess
 import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent))
-
-import windows_adapter  # noqa: E402
-import mutator.cli  # noqa: E402
-
-windows_adapter.install()
-sys.exit(mutator.cli.main())
+if __name__ == "__main__":
+    entry = Path(__file__).resolve().parent / "project.py"
+    sys.exit(subprocess.run([sys.executable, "-B", str(entry), "mutation", *sys.argv[1:]]).returncode)

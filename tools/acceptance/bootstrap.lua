@@ -1,4 +1,4 @@
--- 四个 4lua 仓库按固定提交放入 .toolcache/；缓存存在时只校验，不访问网络。
+-- acceptance4lua 与 dry4lua 按固定提交放入 .toolcache/；缓存存在时只校验，不访问网络。
 -- acceptance4lua 的位置可用 SE_FISH_LUA_TOOLS 覆盖；不依赖 luarocks。
 local shell = require("tools.win_shell")
 
@@ -8,9 +8,7 @@ M.tree = os.getenv("SE_FISH_LUA_TOOLS") or ".toolcache/acceptance4lua"
 M.repo_url = "http://lzxsvn:3000/eggy/acceptance4lua"
 M.pins = {
   acceptance4lua = "8dd107144a7635596d75e4fccfce35121dc67570",
-  crap4lua = "ceba141e5d3138f8aadb78b2c3d6e8e20c571d6c",
   dry4lua = "1dd42d73116921cd54a00c7b132a9b097e4a288a",
-  mutate4lua = "18f68492e110462a22ee11b96bb411c6bd6f5398",
 }
 
 local function tree(name)
@@ -19,7 +17,6 @@ local function tree(name)
 end
 
 local function marker(name)
-  if name == "mutate4lua" then return tree(name) .. "/src/cli.lua" end
   return tree(name) .. "/src/" .. name .. "/" .. (name == "acceptance4lua" and "init" or "cli") .. ".lua"
 end
 
