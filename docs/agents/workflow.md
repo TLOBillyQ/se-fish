@@ -17,7 +17,8 @@ Lua 命令使用 **Lua 5.4**，执行前用 `lua -v` 核对；验收脚本可用
 
 - `.\uml.cmd ir`：修改三端代码后重新生成图；viewer 检测文件变化自动重载。
 - `.\uml.cmd`：启动 viewer 与 companion 看图、向 agent 发起图上操作。重启 viewer 由 companion 处理，不要直接杀进程。
-- 图上 `client|common|server` 为三棵树；`**/packages/**` 与 `server/_trigger/` 被 `:exclude` 排除，vendor 依赖显示为 `*.packages` 椭圆。类卡片全红表示缺 CRAP/mutation 数据；本次接入未配置 Lua 指标计算，属预期。
+- 图上 `client|common|server` 为三棵树；`**/packages/**` 与 `server/_trigger/` 被 `:exclude` 排除，vendor 依赖显示为 `*.packages` 椭圆。viewer 从 `.metrics/crap.edn` 与 `.metrics/mutate/*.edn` 加载指标；缺少任一指标的类卡片为红色。Lua 指标安装、原生 Windows 适配与命令见 [tools/quality/README.md](../../tools/quality/README.md)。
+- `target/` 放覆盖率与 mutation worker，属于忽略的临时产物；`.metrics/` 保留质量快照并纳入版本管理。无函数定义的配置或转发模块不生成 mutation 快照；当前工具不测试模块顶层语句。
 - 根目录 `uml`、`uml.ps1`、`uml.cmd` 由安装器拷贝，不要编辑；`.uml-viewer/` 缺失或入口过期时在仓库根运行 `get-uml-viewer`（来自 uml-viewer 仓库 `scripts/`）。
 
 **宿主目录专用于镜像。** 默认 `C:\Users\<用户名>\Desktop\dev\eggy\LuaSource_钓鱼怎么这么危险啊喂！`，可用 `EGGY_WORKSPACE` 覆盖。
