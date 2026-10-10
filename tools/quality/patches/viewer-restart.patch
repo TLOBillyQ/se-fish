@@ -1,0 +1,49 @@
+diff --git a/src/uml_viewer/application/document.clj b/src/uml_viewer/application/document.clj
+index c601df0..4163cf0 100644
+--- a/src/uml_viewer/application/document.clj
++++ b/src/uml_viewer/application/document.clj
+@@ -122,7 +122,8 @@
+   [state]
+   (when-let [path (:path state)]
+     (mailbox/write-session! (overlay/metrics-root path)
+-                            (select-keys state session-keys)))
++                            (assoc (select-keys state session-keys)
++                                   :path (.getCanonicalPath (io/file path)))))
+   state)
+
+ (defn- known-proposal-id [doc id]
+@@ -195,8 +196,15 @@
+ (defn restart-state
+   "Load `path` and restore the last saved view, if any."
+   [path]
+-  (restore-session (dissoc (load-path path) :waiting)
+-                   (mailbox/read-session (overlay/metrics-root path))))
++  (let [root (overlay/metrics-root path)
++        snap (mailbox/read-session root)
++        policy-file (io/file root "policy.edn")
++        out (when (.isFile policy-file)
++              (:out (edn/read-string (slurp policy-file))))
++        path (or (:path snap)
++                 (when out (.getPath (io/file root out)))
++                 path)]
++    (restore-session (dissoc (load-path path) :waiting) snap)))
+
+ (defn- resolve-display-path [state p]
+   (let [f (io/file p)]
+@@ -210,9 +218,13 @@
+   (let [state (assoc state :mail-seen (:id cmd))]
+     (case (keyword (:op cmd))
+       :display (if-let [p (:path cmd)]
+-                 (-> (load-path (resolve-display-path state p))
+-                     (assoc :mail-seen (:id cmd))
+-                     (dissoc :waiting))
++                 (let [path (resolve-display-path state p)
++                       loaded (load-path path)
++                       same? (= (.getCanonicalPath (io/file path))
++                                (.getCanonicalPath (io/file (:path state))))]
++                   (-> (if same? (restore-session loaded state) loaded)
++                       (assoc :mail-seen (:id cmd))
++                       (dissoc :waiting)))
+                  state)
+       :quit-for-restart (assoc state :quit-for-restart true)
+       state)))

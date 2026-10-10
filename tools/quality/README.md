@@ -61,7 +61,7 @@ mutation 的存活与未覆盖结果表示测试缺口，保留有效快照。�
 2. 打开代表模块卡片，对照 EDN 检查 CRAP、覆盖率、函数名与 mutation 数量。缺少任一指标仍显示红色；红色本身不作为工具失败。
 3. 右键刷新 CRAP，核对 companion 实际执行项目入口，完整 CRAP 快照仍含其他模块，IR 与窗口自动更新。
 4. 右键差分 mutation，再对同一明确选定文件执行右键全量 mutation。核对邮件队列按顺序消费、命令使用相同配置、结果与窗口更新。
-5. 在窗口中设置视图状态，通过 companion 写入 `:quit-for-restart`，等待旧 JVM 自然退出，再执行 `.\uml.ps1 --restart`；核对 companion 身份、恢复的视图与后续邮件处理。
+5. 在窗口中设置视图状态，通过 companion 写入 `:quit-for-restart`，等待旧 JVM 自然退出，再执行 `.\uml.ps1 --restart`；核对 companion 身份、恢复的视图与后续邮件处理。session 保存实际图的绝对路径；旧 session 缺少路径时读取项目 `policy.edn` 的 `:out`，同图 `:display` 保留当前视图。
 
 每步保留触发命令、日志、快照关联结果和窗口截图。只有 CLI 或 fixture 通过时，GUI 项仍标为未验证。保持 policy 中已有用户设置，IR 使用生成器更新。
 

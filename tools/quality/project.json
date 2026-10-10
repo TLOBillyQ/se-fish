@@ -12,7 +12,7 @@
     "mutation": ".metrics/mutate"
   },
   "tools": {
-    "viewer": {"directory": "uml-viewer", "source": "../uml-viewer", "commit": "26d262ec953c0005271d65a8d46740705529141e", "patches": ["tools/quality/patches/viewer-installer.patch", "tools/quality/patches/viewer-seam.patch"]},
+    "viewer": {"directory": "uml-viewer", "source": "../uml-viewer", "commit": "26d262ec953c0005271d65a8d46740705529141e", "patches": ["tools/quality/patches/viewer-installer.patch", "tools/quality/patches/viewer-seam.patch", "tools/quality/patches/viewer-restart-spec.patch", "tools/quality/patches/viewer-companion.patch", "tools/quality/patches/viewer-restart.patch"]},
     "crapper": {"directory": "crapper", "source": "../crapper", "commit": "00b8fb6ae8360d5ed7e144d08c290d970e10cc66", "patches": ["tools/quality/patches/crapper-lua-has-error.patch"]},
     "mutator": {"directory": "mutator", "source": "../mutator", "commit": "85ae015c07863b288bcafd6b8082be117922b102", "patches": ["tools/quality/patches/mutator-seam.patch"]}
   }

@@ -1,0 +1,50 @@
+diff --git a/spec/uml_viewer/application/document_spec.clj b/spec/uml_viewer/application/document_spec.clj
+index a6ed254..67dda54 100644
+--- a/spec/uml_viewer/application/document_spec.clj
++++ b/spec/uml_viewer/application/document_spec.clj
+@@ -46,6 +46,45 @@
+       (should (seq (:classes (:scene s))))
+       (should (pos? (:mtime s)))))
+
++  (it "重启优先恢复实际展示的图，并在同图 display 后保留视图"
++    (let [root (io/file "target" (str "restart-display-" (System/nanoTime)))
++          path (io/file root "docs" "uml" "project.edn")
++          fallback (io/file root "examples" "missing.edn")
++          view {:focus [:core] :cam-x 47 :cam-y -23 :zoom 1.35
++                :declutter :classes :selected {:kind :class :id :core.alpha}}]
++      (.mkdirs (.getParentFile path))
++      (.mkdirs (io/file root ".metrics"))
++      (spit path (pr-str {:hierarchical true :title "Project"
++                         :classes [{:id :core.alpha :name "Alpha" :ns "core.alpha"}]
++                         :edges [] :order [:core.alpha]}))
++      (try
++        (document/save-session! (merge (document/load-path (.getCanonicalPath path)) view))
++        (let [restored (document/restart-state (.getPath fallback))
++              displayed (document/apply-mail restored {:id 1 :op :display
++                                                       :path (.getCanonicalPath path)})]
++          (should= (.getCanonicalPath path) (:path restored))
++          (should-not (:error restored))
++          (should= view (select-keys restored (keys view)))
++          (should= view (select-keys displayed (keys view))))
++        (finally
++          (doseq [f (reverse (file-seq root))] (io/delete-file f true))))))
++
++  (it "旧会话未保存路径时从项目 policy 恢复图"
++    (let [root (io/file "target" (str "legacy-restart-" (System/nanoTime)))
++          path (io/file root "docs" "diagram.edn")]
++      (.mkdirs (.getParentFile path))
++      (.mkdirs (io/file root ".metrics"))
++      (spit path (slurp "examples/library.edn"))
++      (spit (io/file root "policy.edn") "{:out \"docs/diagram.edn\"}")
++      (mailbox/write-session! root {:cam-x 40 :selected {:kind :class :id :book}})
++      (try
++        (let [s (document/restart-state (.getPath (io/file root "examples" "missing.edn")))]
++          (should-not (:error s))
++          (should= (.getCanonicalPath path) (:path s))
++          (should= 40 (:cam-x s)))
++        (finally
++          (doseq [f (reverse (file-seq root))] (io/delete-file f true))))))
++
+   (it "restores pan, zoom, and declutter after restart"
+     (let [root (doto (io/file "target" (str "restart-" (System/nanoTime)))
+                  (.mkdirs))
