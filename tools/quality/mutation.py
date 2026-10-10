@@ -10,6 +10,7 @@ from pathlib import Path
 
 # 固定实际导入来源；公开入口和旧兼容入口使用同一 checkout。
 _TOOL_ROOT = Path(__file__).resolve().parents[2] / ".uml-viewer"
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 sys.path.insert(0, str(_TOOL_ROOT / "mutator/src"))
 sys.path.insert(0, str(_TOOL_ROOT / "crapper/src"))
 
@@ -36,15 +37,8 @@ def select_targets(root: Path, config: dict, paths: list[str], *, changed: bool,
         changed = True
     if changed:
         paths = _changed_lua(root, config)
-    owned = set()
-    for directory in config["sources"]["roots"]:
-        for path in (root / directory).rglob("*.lua"):
-            relative = path.relative_to(root).as_posix()
-            parts = path.relative_to(root).parts
-            excluded = config["sources"]["exclude"]
-            if any(rule in parts or relative.startswith(rule.rstrip("/") + "/") for rule in excluded):
-                continue
-            owned.add(relative)
+    from project import source_files
+    owned = set(source_files(root, config))
     selected = []
     for name in paths:
         path = (root / name).resolve()
@@ -71,16 +65,23 @@ def _same_snapshot(source: Path, destination: Path) -> bool:
     return fresh == current
 
 
-def _publish(root: Path, config: dict, staged: Path) -> None:
+def _publish(root: Path, config: dict, staged: Path, *, changed: set[str], removed: set[str]) -> None:
     destination_root = root / config["paths"]["mutation"]
-    for source in staged.rglob("*.edn"):
-        destination = destination_root / source.relative_to(staged)
+    for relative in changed:
+        source = staged / f"{relative}.edn"
+        if not source.is_file():
+            continue
+        destination = destination_root / f"{relative}.edn"
         if _same_snapshot(source, destination):
             continue
         destination.parent.mkdir(parents=True, exist_ok=True)
         temporary = destination.with_name(destination.name + ".pending")
         temporary.write_bytes(source.read_bytes())
         os.replace(temporary, destination)
+    for namespace in removed:
+        destination = destination_root / f"{namespace}.edn"
+        if destination.is_file():
+            destination.unlink()
 
 
 def _validate_tree(directory: Path, label: str) -> None:
@@ -160,6 +161,8 @@ def run(root: Path, config: dict, config_path: Path | str, paths: list[str], *, 
             shutil.copytree(source_metrics, staging_metrics)
         else:
             staging_metrics.mkdir(parents=True)
+        # 上游历史由项目公开快照提供，历史读取/写入一致，失败不会重写无关文件。
+        from mutator import engine as upstream_engine
         from mutator import metrics as upstream_metrics
         original_edn_files = upstream_metrics._edn_files
         original_snapshot_path = upstream_metrics.snapshot_path
@@ -167,6 +170,9 @@ def run(root: Path, config: dict, config_path: Path | str, paths: list[str], *, 
         upstream_metrics._edn_files = lambda _root: sorted(path for path in staging_metrics.rglob("*.edn") if path.is_file())
         upstream_metrics.snapshot_path = lambda root, namespace: staging_metrics.joinpath(*namespace.replace("\\", "/").replace("::", "/").split("/")[:-1], namespace.replace("\\", "/").replace("::", "/").split("/")[-1] + ".edn")
         upstream_metrics._remove_empty_dirs = lambda directory: None
+        original_load_history = upstream_engine.load_history
+        upstream_engine.load_history = lambda _root, file_key: original_load_history(staging_root, file_key)
+        upstream_metrics.load_history = upstream_engine.load_history
         try:
             _validate_tree(staging_metrics, "暂存")
             baseline = ProjectRunner(verbose=verbose).run(command_cwd, root, None)
@@ -177,14 +183,25 @@ def run(root: Path, config: dict, config_path: Path | str, paths: list[str], *, 
             from mutator.engine import mutate_file
             from mutator.coverage import covered_lines
             from mutator.report import format_decisions, format_results
+            changed = set()
+            removed = set()
             forms, written, baselines, results = [], [], {}, []
             code = 0
             for target in targets:
+                before = {path.stem for path in staging_metrics.rglob("*.edn")}
                 result = mutate_file(target, root, runner=ProjectRunner(verbose=verbose),
                                      covered_lines=covered_lines(root, target, "lua"),
                                      ignore_coverage=False, mutate_all=mutate_all,
                                      lines=lines, test_command=command_cwd, timeout_factor=10.0,
                                      mutation_warning=50, baselines=baselines, max_workers=max_workers)
+                after = {path.stem for path in staging_metrics.rglob("*.edn")}
+                changed.update(after)
+                removed.update(before - after)
+                # 空文件仍会产生空 forms；固定 mutator 保留快照，项目发布需按目标移除。
+                if not result.forms:
+                    namespace = target.resolve().relative_to(root.resolve()).with_suffix("").as_posix().replace("/", ".")
+                    removed.add(namespace)
+                    changed.discard(namespace)
                 if result.baseline_failed:
                     print(result.baseline_message, file=sys.stderr)
                     return 2
@@ -198,7 +215,9 @@ def run(root: Path, config: dict, config_path: Path | str, paths: list[str], *, 
             if any(path.read_bytes() != content for path, content in original.items()):
                 raise RuntimeError("mutation 改动了原始业务源码")
             if code in {0, 3}:
-                _publish(root, config, staging_metrics)
+                upstream_engine.load_history = original_load_history
+                upstream_metrics.load_history = original_load_history
+                _publish(root, config, staging_metrics, changed=changed, removed=removed)
                 _validate(root, config, "发布")
                 print(format_decisions(results, verbose=verbose), end="")
                 print("mutation 有效快照已保留；存活和未覆盖表示测试缺口")
@@ -207,6 +226,8 @@ def run(root: Path, config: dict, config_path: Path | str, paths: list[str], *, 
             print(f"mutation 基础设施失败：{exc}", file=sys.stderr)
             return 1
         finally:
+            upstream_engine.load_history = original_load_history
+            upstream_metrics.load_history = original_load_history
             upstream_metrics._edn_files = original_edn_files
             upstream_metrics.snapshot_path = original_snapshot_path
             upstream_metrics._remove_empty_dirs = original_remove_empty

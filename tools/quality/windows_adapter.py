@@ -29,6 +29,13 @@ def _overlay(worker: Path, root: Path, relative: str, original: bytes) -> None:
     destination = worker / relative
     destination.parent.mkdir(parents=True, exist_ok=True)
     destination.write_bytes(original)
+    # 被变异文件保持独立副本；仅补同目录 Lua 依赖，避免展开工具或构建目录。
+    for source in (root / relative).parent.iterdir():
+        if source.suffix != ".lua":
+            continue
+        copy = destination.parent / source.name
+        if source.is_file() and not copy.exists():
+            _copy_importer(worker, root, (root / relative).parent.relative_to(root).joinpath(source.name).as_posix())
 
 
 def install() -> None:
