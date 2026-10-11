@@ -11,7 +11,11 @@
 .\tools\quality\project.ps1 doctor
 ```
 
-本地工具来源与固定提交以 `project.json` 为准，默认来源为相邻的 `uml-viewer`、`crapper`、`mutator` 仓库。安装器生成根目录 `uml` 与 `uml.ps1`；业务仓库不手工修改这些启动入口。工具 checkout 更新与 Python 包安装是两个步骤，`doctor` 核对实际提交、未提交差异、解释器、依赖与实际导入路径。已有 Python venv 可用于安装；新环境可通过安装入口的 `-Python` 指定可执行文件。
+本地工具来源与固定提交以 `project.json` 为准，默认来源为相邻的 `uml-viewer`、`crapper`、`mutator` 仓库。独立检出位于其他目录时，先将配置的 `tools.*.source` 登记为从检出根到这些固定来源的相对路径；不复制已有缓存。安装器生成根目录 `uml` 与 `uml.ps1`；业务仓库不手工修改这些启动入口。工具 checkout 更新与 Python 包安装是两个步骤，`doctor` 核对实际提交、未提交差异、解释器、依赖与实际导入路径。已有 Python venv 可用于安装；新环境可通过安装入口的 `-Python` 指定可执行文件。
+
+完整安装同时准备 `project.json` 的 `lua_tools`：LuaCov、dry4lua、luacheck 和 acceptance4lua（DRY 使用其 JSON 模块）。每项登记 URL、固定提交与运行模块；沿用 acceptance bootstrap 的现有固定版本。`doctor` 检查这些 checkout 的提交、origin、运行源码和 Lua 模块加载，不借用全局 Lua 模块或其他检出的缓存。缺失依赖可重跑安装；版本、来源或源码不符时先将提示中的损坏缓存移走，再运行安装器，安装不会覆盖未知内容。`-InstallOnly` 仅准备 viewer/crapper/mutator checkout，不构成完整质量环境。
+
+acceptance4lua 的 Gherkin 解析、生成与验收仍使用 `tools/acceptance/` 独立入口及按需 bootstrap；质量安装不会替代该用途。旧 `deps.sh` 不在正式安装或 quality 调用链中，不接入旧 crap4lua/mutate4lua。
 
 ## 日常命令
 
@@ -49,8 +53,9 @@ mutation 的存活与未覆盖结果表示测试缺口，保留有效快照。�
 
 ## 可重跑验收
 
-代表文件必须显式指定；该命令包含一次选定文件的全量 mutation：
+空缓存安装回归使用公开入口；准备独立检出、登记兄弟工具来源后，首次执行 `install.ps1`，再从开发检出运行 `python -I tests/tooling/slow/quality_install_test.py <独立检出绝对路径>`。用例依次检查缺失/错误来源/污染诊断、真实完整 quality 和重复安装；只临时修改独立缓存，并恢复故障注入。完整 quality 日志保留在独立检出的 `build/quality/install-acceptance-quality.log`。
 
+代表文件必须显式指定；该命令包含一次选定文件的全量 mutation：
 ```powershell
 .\tools\quality\verify.ps1 -File common/RateLimit.lua
 ```
