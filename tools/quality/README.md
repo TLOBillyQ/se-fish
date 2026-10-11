@@ -41,7 +41,7 @@ acceptance4lua 的 Gherkin 解析、生成与验收仍使用 `tools/acceptance/`
 
 完整测试失败时停止覆盖率发布，旧 LCOV 失效；转换失败同样停止后续指标。任何 CRAP 刷新都替换完整业务树快照，选中单模块也保持其他模块的指标。DRY 保留重复代码候选报告，不设质量门槛。
 
-安装器登记的 `viewer-seam.patch` 使 `uml.ps1 crap` 在存在 `tools/quality/project.json` 时优先执行项目 `coverage` → `crap`，不进入通用 crapper 的测试发现；Unix `./uml crap` 经同一 PowerShell 分发器执行。该入口会忽略单类或组件目标并完整替换快照。成功后 companion 继续执行 `uml.ps1 ir` 并发送 `:display`；覆盖率、转换或 CRAP 失败时立即停止，不生成 IR、不发送成功展示通知。`uml.ps1 mutate <文件> [参数]` 同样转交项目 mutation 接缝并保留参数及退出码。手工复验可以运行 `.\uml.ps1 crap && .\uml.ps1 ir`。
+安装器登记的 `viewer-seam.patch` 使 `uml.ps1 crap` 在存在 `tools/quality/project.json` 时优先执行项目单次 `refresh-crap`（完整 `coverage` → `crap`），不进入通用 crapper 的测试发现；Unix `./uml crap` 经同一 PowerShell 分发器执行。该入口会忽略单类或组件目标并完整替换快照。成功后 companion 继续执行 `uml.ps1 ir` 并发送 `:display`；覆盖率、转换或 CRAP 失败时立即停止，不生成 IR、不发送成功展示通知。`uml.ps1 mutate <文件> [参数]` 同样转交项目 mutation 接缝并保留参数及退出码。手工复验可以运行 `.\uml.ps1 crap && .\uml.ps1 ir`。
 
 运行中的 companion 使用启动时取得的规则；新规则需通过 `:quit-for-restart` → 等待旧 JVM 自然退出 → `.\uml.ps1 --restart` 协议重启后载入。分发脚本每次命令执行时读取，因此旧 companion 执行 `.\uml.ps1 crap` 也立即使用修复后的质量入口。GUI 复验代表模块为 `client.LocalReelIn`。
 
@@ -50,6 +50,12 @@ acceptance4lua 的 Gherkin 解析、生成与验收仍使用 `tools/acceptance/`
 mutation 从覆盖率开始核对目标源码；worker 仅修改副本。运行期间原始文件被保存或删除时停止发布，保留外部编辑和上一份有效 mutation 快照；失败清理不会写回旧源码。下游入口同样在写快照前检查源码。旧版 `target/mutator-backup/` 没有工具最后写入字节的所有权记录，发现备份时停止运行并保留源码与备份，需人工核对后处理。
 
 mutation 的存活与未覆盖结果表示测试缺口，保留有效快照。差分流程不会因这些结果自动重跑或转为全量。基线失败与基础设施失败须按真实输出处理，不作为有效新指标。无函数定义的配置或转发模块可能没有 mutation 快照；工具当前不测试模块顶层语句。
+
+质量请求共用仓库 `target/quality.lock` 的操作系统锁。公开 PowerShell、Python 脚本、companion 分发及安装器使用同一锁；同仓库忙时明确拒绝并返回 1，进程异常退出自动释放，另一仓库独立运行。锁文件保持稳定，不通过删除文件解锁。安装器在工具替换完成后释放锁，再调用自行持锁的 doctor；启动解释器时若遇到安装切换可失败，但不得在未取得锁时消费统计或发布指标。
+
+`refresh-crap` 在一次持锁请求内执行完整 coverage → 全树 CRAP，供 viewer 使用。mutation 在同一请求内直接复用覆盖率流程，不启动另一个抢锁的项目请求。所有质量命令及 mutation-report/doctor 的一致性读取均受保护；IR 生成和 viewer 邮件/会话属于独立工具边界。
+
+mutation 发布先校验完整暂存树，准备新文件，再将受影响旧路径可逆移入事务备份；替换、过期路径删除或最终验证失败时恢复发布前快照。成功后清理备份。若回滚自身失败，报出并保留 `target/mutation-publication/publish-*` 恢复材料；该目录有遗留材料时停止后续 mutation，避免覆盖证据。此保护针对质量请求与可控发布失败，不能保证任意外部进程持续禁止恢复写入时仍能自动恢复。
 
 ## 可重跑验收
 

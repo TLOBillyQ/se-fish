@@ -70,21 +70,50 @@ def _same_snapshot(source: Path, destination: Path) -> bool:
 
 def _publish(root: Path, config: dict, staged: Path, *, changed: set[Path], removed: set[Path]) -> None:
     destination_root = root / config["paths"]["mutation"]
-    for relative in sorted(changed):
-        source = staged / relative
-        if not source.is_file():
-            continue
-        destination = destination_root / relative
-        if _same_snapshot(source, destination):
-            continue
-        destination.parent.mkdir(parents=True, exist_ok=True)
-        temporary = destination.with_name(destination.name + ".pending")
-        temporary.write_bytes(source.read_bytes())
-        os.replace(temporary, destination)
-    for relative in sorted(removed):
-        destination = destination_root / relative
-        if destination.is_file():
-            destination.unlink()
+    _validate_tree(staged, "暂存")
+    destination_root.mkdir(parents=True, exist_ok=True)
+    # 先准备全部新文件，再将旧路径可逆迁入备份；占用失败发生在发布前。
+    publication = root / "target/mutation-publication"
+    publication.mkdir(parents=True, exist_ok=True)
+    transaction = Path(tempfile.mkdtemp(prefix="publish-", dir=publication))
+    prepared, backed_up, published = [], [], []
+    preserve = False
+    try:
+        for relative in sorted(changed):
+            source = staged / relative
+            destination = destination_root / relative
+            if source.is_file() and not _same_snapshot(source, destination):
+                fresh = transaction / "new" / relative
+                fresh.parent.mkdir(parents=True, exist_ok=True)
+                fresh.write_bytes(source.read_bytes())
+                prepared.append(relative)
+        affected = set(prepared) | removed
+        for relative in sorted(affected):
+            destination = destination_root / relative
+            if destination.is_file():
+                backup = transaction / "old" / relative
+                backup.parent.mkdir(parents=True, exist_ok=True)
+                os.replace(destination, backup)
+                backed_up.append(relative)
+        for relative in prepared:
+            destination = destination_root / relative
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            os.replace(transaction / "new" / relative, destination)
+            published.append(relative)
+        _validate(root, config, "发布")
+    except Exception as error:
+        try:
+            for relative in reversed(published):
+                (destination_root / relative).unlink()
+            for relative in reversed(backed_up):
+                os.replace(transaction / "old" / relative, destination_root / relative)
+        except OSError as recovery:
+            preserve = True
+            raise RuntimeError(f"发布失败：{error}；回滚失败：{recovery}；恢复材料保留在 {transaction}") from error
+        raise
+    finally:
+        if not preserve:
+            shutil.rmtree(transaction)
 
 
 def _snapshot_path(directory: Path, namespace: str) -> Path:
@@ -162,11 +191,13 @@ def run(root: Path, config: dict, config_path: Path | str, paths: list[str], *, 
     if not isinstance(command, list) or not command:
         raise ValueError("项目测试命令必须是非空 argv")
     _validate(root, config)
+    publication = root / "target/mutation-publication"
+    if publication.is_dir() and any(publication.iterdir()):
+        raise RuntimeError(f"存在未完成发布的恢复材料，停止覆盖：{publication}")
     command_cwd = _test_command(root, command)
     original = {path: path.read_bytes() for path in targets}
-    coverage = subprocess.run([sys.executable, "-B", str(Path(__file__).parent / "project.py"),
-                               "--root", str(root), "--config", str(config_path), "coverage"], cwd=root)
-    if coverage.returncode:
+    from project import run_coverage
+    if run_coverage(root, config):
         return 2
     if any(not path.is_file() or path.read_bytes() != content for path, content in original.items()):
         raise RuntimeError("mutation 原始源码已变化或被删除，停止发布并保留外部编辑")

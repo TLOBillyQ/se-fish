@@ -167,7 +167,7 @@ def main(argv=None):
     parser.add_argument("--root", type=Path, default=PROJECT_ROOT)
     parser.add_argument("--config", type=Path)
     parser.add_argument("command", choices=["coverage", "test", "doctor", "run", "quality",
-                                            "crap", "dry", "mutation", "mutate", "mutation-report"])
+                                            "crap", "refresh-crap", "dry", "mutation", "mutate", "mutation-report"])
     parser.add_argument("files", nargs="*", help="mutation 目标业务 Lua（相对路径）")
     parser.add_argument("--mutate-all", action="store_true", help="显式全量 mutation（必须给文件）")
     parser.add_argument("--changed", action="store_true", help="对 git 变更的业务 Lua 差分")
@@ -176,9 +176,21 @@ def main(argv=None):
     parser.add_argument("--verbose", action="store_true")
     args = parser.parse_args(argv)
     root = args.root.resolve()
+    from locking import repository_lock
+    with repository_lock(root):
+        return dispatch(root, args)
+
+
+def dispatch(root, args):
     config = load_config(root, args.config)
     if args.command == "coverage":
         return run_coverage(root, config)
+    if args.command == "refresh-crap":
+        code = run_coverage(root, config)
+        if code:
+            return code
+        import crap
+        return crap.run_crap(root, config)
     if args.command == "doctor":
         return doctor(root, config)
     if args.command == "test":
