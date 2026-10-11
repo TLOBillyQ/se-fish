@@ -164,9 +164,8 @@ def run(root: Path, config: dict, config_path: Path | str, paths: list[str], *, 
     _validate(root, config)
     command_cwd = _test_command(root, command)
     original = {path: path.read_bytes() for path in targets}
-    coverage = subprocess.run([sys.executable, "-B", str(Path(__file__).parent / "project.py"),
-                               "--root", str(root), "--config", str(config_path), "coverage"], cwd=root)
-    if coverage.returncode:
+    from project import run_coverage
+    if run_coverage(root, config):
         return 2
     if any(not path.is_file() or path.read_bytes() != content for path, content in original.items()):
         raise RuntimeError("mutation 原始源码已变化或被删除，停止发布并保留外部编辑")
