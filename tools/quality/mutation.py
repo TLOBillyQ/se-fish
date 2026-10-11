@@ -189,7 +189,10 @@ def run(root: Path, config: dict, config_path: Path | str, paths: list[str], *, 
                     max_workers=max_workers, lines=lines, verbose=verbose)
     finally:
         # 附带报告变化，不抛新异常，保留原测试输出、异常与退出码。
-        reason = _source_change(original)
+        try:
+            reason = _source_change(original)
+        except OSError as error:
+            reason = f"mutation 原始源码无法核对，保留原失败与外部编辑：{error}"
         if reason:
             print(reason, file=sys.stderr)
 

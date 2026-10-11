@@ -13,6 +13,14 @@
 
 本地工具来源与固定提交以 `project.json` 为准，默认来源为相邻的 `uml-viewer`、`crapper`、`mutator` 仓库。独立检出位于其他目录时，先将配置的 `tools.*.source` 登记为从检出根到这些固定来源的相对路径；不复制已有缓存。安装器生成根目录 `uml` 与 `uml.ps1`；业务仓库不手工修改这些启动入口。工具 checkout 更新与 Python 包安装是两个步骤，`doctor` 核对实际提交、未提交差异、解释器、依赖与实际导入路径。已有 Python venv 可用于安装；新环境可通过安装入口的 `-Python` 指定可执行文件。
 
+旧环境若仍应用固定基点 `4cc471417c6f54f0b24b031d8e3a86300322905b` 的登记补丁，使用唯一支持的显式迁移命令：
+
+```powershell
+.\tools\quality\install.ps1 -UpgradeFrom 4cc471417c6f54f0b24b031d8e3a86300322905b
+```
+
+迁移先核对三个工具的固定 HEAD、完整登记 diff、空暂存差异与空未跟踪列表；全部通过后才恢复旧补丁清单中的 tracked 文件，再应用当前登记补丁。只归一化 CRLF 与补丁空白上下文行，不忽略源码改动。未知 tracked、暂存或未跟踪内容在任何工具撤销前拒绝并保留原字节；失败时保留现场供核对，不执行整树 reset/clean。此入口只支持上述固定版本，不自动迁移任意历史。
+
 完整安装同时准备 `project.json` 的 `lua_tools`：LuaCov、dry4lua、luacheck 和 acceptance4lua（DRY 使用其 JSON 模块）。每项登记 URL、固定提交与运行模块；沿用 acceptance bootstrap 的现有固定版本。`doctor` 检查这些 checkout 的提交、origin、运行源码和 Lua 模块加载，不借用全局 Lua 模块或其他检出的缓存。缺失依赖可重跑安装；版本、来源或源码不符时先将提示中的损坏缓存移走，再运行安装器，安装不会覆盖未知内容。`-InstallOnly` 仅准备 viewer/crapper/mutator checkout，不构成完整质量环境。
 
 acceptance4lua 的 Gherkin 解析、生成与验收仍使用 `tools/acceptance/` 独立入口及按需 bootstrap；质量安装不会替代该用途。`doctor` 只读取 bootstrap 公开 pins，拒绝 quality 与 acceptance 固定提交漂移，不触发 acceptance 安装。旧 `deps.sh` 不在正式安装或 quality 调用链中，不接入旧 crap4lua/mutate4lua。

@@ -1,5 +1,5 @@
 # 固定本地工具来源；安装器生成根入口，包安装单独验证。
-param([string]$Python, [string]$Root, [switch]$InstallOnly)
+param([string]$Python, [string]$Root, [switch]$InstallOnly, [string]$UpgradeFrom)
 $ErrorActionPreference = 'Stop'
 $projectRoot = Split-Path (Split-Path $PSScriptRoot -Parent) -Parent
 $root = if ($Root) { (Resolve-Path -LiteralPath $Root).Path } else { $projectRoot }
@@ -11,6 +11,40 @@ try {
     [IO.Directory]::CreateDirectory((Split-Path $lockPath -Parent)) | Out-Null
     $lockStream = [IO.File]::Open($lockPath, [IO.FileMode]::OpenOrCreate, [IO.FileAccess]::ReadWrite, [IO.FileShare]::ReadWrite)
     try { $lockStream.Lock(0, 1) } catch { throw '同仓库质量任务正在运行，请稍后重试。' }
+    if ($UpgradeFrom) {
+        if ($UpgradeFrom -cne '4cc471417c6f54f0b24b031d8e3a86300322905b') { throw '只支持显式迁移固定基点 4cc471417c6f54f0b24b031d8e3a86300322905b' }
+        $oldJson = (& git -C $projectRoot show "${UpgradeFrom}:tools/quality/project.json") -join "`n"
+        if ($LASTEXITCODE -ne 0) { throw '无法读取固定迁移登记' }
+        $oldConfig = $oldJson | ConvertFrom-Json
+        $migration = @()
+        # 所有工具先精确预检，全部通过后才撤销已知补丁；未知状态保持原样。
+        foreach ($name in @('viewer', 'crapper', 'mutator')) {
+            $tool = $oldConfig.tools.$name
+            $directory = Join-Path $root ".uml-viewer/$($tool.directory)"
+            $head = & git -C $directory rev-parse HEAD
+            if ($LASTEXITCODE -ne 0 -or $head -cne $tool.commit) { throw "$name 迁移 HEAD 不符，保留现场" }
+            $index = @(& git -C $directory diff --cached --name-only)
+            $untracked = @(& git -C $directory ls-files --others --exclude-standard)
+            if ($index -or $untracked) { throw "$name 有未登记暂存或未跟踪内容，保留现场" }
+            $patches = @()
+            foreach ($patch in @($tool.patches | Where-Object { $_ })) {
+                $text = (& git -C $projectRoot show "${UpgradeFrom}:$patch") -join "`n"
+                if ($LASTEXITCODE -ne 0) { throw "$name 无法读取迁移补丁 $patch" }
+                $patches += $text.TrimEnd()
+            }
+            $expected = (($patches -join "`n").Trim() -replace '(?m)^ $', '')
+            $actual = (((& git -C $directory diff --no-ext-diff) -join "`n").Trim() -replace '(?m)^ $', '')
+            if ($actual -cne $expected) { throw "$name 有未登记差异，不匹配固定旧补丁，保留现场" }
+            $migration += @{ Directory = $directory; Patches = $patches }
+        }
+        foreach ($item in $migration) {
+            # 精确匹配已证明这些文件只有登记差异；仅恢复清单内 tracked 文件。
+            $files = [regex]::Matches(($item.Patches -join "`n"), '(?m)^\+\+\+ b/(.+)$') |
+                ForEach-Object { $_.Groups[1].Value.TrimEnd("`r") } | Select-Object -Unique
+            & git -C $item.Directory restore --worktree -- $files
+            if ($LASTEXITCODE -ne 0) { throw '固定旧补丁撤销失败，保留现场' }
+        }
+    }
     foreach ($name in @('viewer', 'crapper', 'mutator')) {
         $tool = $config.tools.$name
         $source = (Resolve-Path -LiteralPath (Join-Path $projectRoot $tool.source)).Path
