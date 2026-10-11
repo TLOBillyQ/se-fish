@@ -28,6 +28,13 @@ design
 Thumbs.db
 desktop.ini
 
+# ===== Python 缓存与本地虚拟环境 =====
+__pycache__/
+*.pyc
+*.pyo
+/.venv/
+/venv/
+
 # ===== 工具链临时 / 缓存目录 =====
 tmp/
 build/
