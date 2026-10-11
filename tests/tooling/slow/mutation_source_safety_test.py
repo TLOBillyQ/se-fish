@@ -4,6 +4,7 @@ import os
 import shutil
 import subprocess
 import tempfile
+import time
 import unittest
 from pathlib import Path
 
@@ -131,6 +132,77 @@ class MutationSourceSafetyTest(unittest.TestCase):
                 self.assertIn('被删除', result.stdout + result.stderr)
                 self.assertFalse(source.exists())
                 self.assertEqual(snapshot.read_bytes(), OLD)
+
+    def _lock_source_during_failure(self, root, source):
+        # 外部进程用真实 Windows 句柄拒绝共享读取；公开入口结束后才释放。
+        (root / 'locker.py').write_text(
+            'import ctypes, time\nfrom pathlib import Path\n'
+            'from ctypes import wintypes\n'
+            'kernel=ctypes.WinDLL("kernel32", use_last_error=True)\n'
+            'kernel.CreateFileW.argtypes=[wintypes.LPCWSTR,wintypes.DWORD,wintypes.DWORD,ctypes.c_void_p,wintypes.DWORD,wintypes.DWORD,wintypes.HANDLE]\n'
+            'kernel.CreateFileW.restype=wintypes.HANDLE\n'
+            f'handle=kernel.CreateFileW({str(source)!r},0x80000000,0,None,3,0,None)\n'
+            'assert handle != ctypes.c_void_p(-1).value, ctypes.get_last_error()\n'
+            'Path("locked").touch()\n'
+            'try:\n'
+            ' deadline=time.monotonic()+100\n'
+            ' while not Path("release").exists() and time.monotonic()<deadline: time.sleep(0.05)\n'
+            'finally:\n'
+            ' kernel.CloseHandle.argtypes=[wintypes.HANDLE]\n'
+            ' kernel.CloseHandle(handle)\n'
+            ' Path("unlocked").touch()\n', encoding='utf-8')
+        (root / 'test.py').write_text(
+            'import subprocess,time\nfrom pathlib import Path\n'
+            f'subprocess.Popen([{str(PYTHON)!r},"-B","locker.py"],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)\n'
+            'deadline=time.monotonic()+10\n'
+            'while not Path("locked").exists():\n'
+            ' assert time.monotonic()<deadline,"外部锁未就绪"\n'
+            ' time.sleep(0.05)\n'
+            'print("不可读基线原错误",flush=True)\nraise SystemExit(7)\n', encoding='utf-8')
+
+    def _release_source_lock(self, root):
+        (root / 'release').touch()
+        deadline = time.monotonic() + 10
+        while not (root / 'unlocked').exists():
+            self.assertLess(time.monotonic(), deadline, '外部句柄未释放')
+            time.sleep(0.05)
+
+    @unittest.skipUnless(os.name == 'nt', '真实 Windows 文件共享句柄')
+    def test_unreadable_source_diagnostic_preserves_baseline_failure(self):
+        with tempfile.TemporaryDirectory(prefix='mutation-safety-') as directory:
+            root = Path(directory)
+            source, snapshot = self.fixture(root)
+            self._lock_source_during_failure(root, source)
+            try:
+                result = self.invoke(root, 'project')
+            finally:
+                self._release_source_lock(root)
+            output = result.stdout + result.stderr
+            self.assertEqual(result.returncode, 2, output)
+            self.assertIn('不可读基线原错误', output)
+            self.assertIn('无法核对', output)
+            self.assertEqual(source.read_bytes(), SOURCE)
+            self.assertEqual(snapshot.read_bytes(), OLD)
+
+    @unittest.skipUnless(os.name == 'nt', '真实 Windows 文件共享句柄')
+    def test_unreadable_source_diagnostic_preserves_coverage_exception(self):
+        with tempfile.TemporaryDirectory(prefix='mutation-safety-') as directory:
+            root = Path(directory)
+            source, snapshot = self.fixture(root)
+            self._lock_source_during_failure(root, source)
+            command = f'"{PYTHON}" -B test.py'
+            (root / 'coverage.lua').write_text(
+                'os.execute(' + json.dumps(command).replace('\\\\', '/') + ')\n', encoding='utf-8')
+            try:
+                result = self.invoke(root, 'project')
+            finally:
+                self._release_source_lock(root)
+            output = result.stdout + result.stderr
+            self.assertEqual(result.returncode, 1, output)
+            self.assertIn('未生成 LuaCov 统计', output)
+            self.assertIn('无法核对', output)
+            self.assertEqual(source.read_bytes(), SOURCE)
+            self.assertEqual(snapshot.read_bytes(), OLD)
 
     def test_legacy_backup_never_overwrites_user_source(self):
         with tempfile.TemporaryDirectory(prefix='mutation-safety-') as directory:
