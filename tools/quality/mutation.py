@@ -170,10 +170,33 @@ def report(root: Path, config: dict) -> int:
     return 0
 
 
+def _source_change(original: dict[Path, bytes]) -> str | None:
+    for path, content in original.items():
+        if not path.is_file():
+            return f"mutation 原始源码被删除，停止发布并保留外部编辑：{path}"
+        if path.read_bytes() != content:
+            return f"mutation 原始源码已变化，停止发布并保留外部编辑：{path}"
+    return None
+
+
 def run(root: Path, config: dict, config_path: Path | str, paths: list[str], *, mutate_all: bool = False,
         changed: bool = False, max_workers: int | None = None,
         lines: set[int] | None = None, verbose: bool = False) -> int:
     targets = select_targets(root, config, paths, changed=changed, mutate_all=mutate_all)
+    original = {path: path.read_bytes() for path in targets}
+    try:
+        return _run(root, config, targets, original=original, mutate_all=mutate_all,
+                    max_workers=max_workers, lines=lines, verbose=verbose)
+    finally:
+        # 附带报告变化，不抛新异常，保留原测试输出、异常与退出码。
+        reason = _source_change(original)
+        if reason:
+            print(reason, file=sys.stderr)
+
+
+def _run(root: Path, config: dict, targets: list[Path], *, original: dict[Path, bytes],
+         mutate_all: bool = False, max_workers: int | None = None,
+         lines: set[int] | None = None, verbose: bool = False) -> int:
     if not targets:
         print("没有选中的业务 Lua 文件；mutation 未运行")
         return 0
@@ -195,12 +218,12 @@ def run(root: Path, config: dict, config_path: Path | str, paths: list[str], *, 
     if publication.is_dir() and any(publication.iterdir()):
         raise RuntimeError(f"存在未完成发布的恢复材料，停止覆盖：{publication}")
     command_cwd = _test_command(root, command)
-    original = {path: path.read_bytes() for path in targets}
     from project import run_coverage
     if run_coverage(root, config):
         return 2
-    if any(not path.is_file() or path.read_bytes() != content for path, content in original.items()):
-        raise RuntimeError("mutation 原始源码已变化或被删除，停止发布并保留外部编辑")
+    reason = _source_change(original)
+    if reason:
+        raise RuntimeError(reason)
     staging_parent = root / "target/mutation-staging"
     staging_parent.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix="run-", dir=staging_parent) as directory:
@@ -248,8 +271,9 @@ def run(root: Path, config: dict, config_path: Path | str, paths: list[str], *, 
                     code = 3
             print(format_results(forms))
             _validate_tree(staging_metrics, "暂存")
-            if any(not path.is_file() or path.read_bytes() != content for path, content in original.items()):
-                raise RuntimeError("mutation 原始源码已变化或被删除，停止发布并保留外部编辑")
+            reason = _source_change(original)
+            if reason:
+                raise RuntimeError(reason)
             if code in {0, 3}:
                 final_files = {path.relative_to(staging_metrics) for path in staging_metrics.rglob("*.edn")}
                 _publish(root, config, staging_metrics, changed=final_files, removed=initial_files - final_files)

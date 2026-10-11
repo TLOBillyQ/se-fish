@@ -9,7 +9,8 @@ import subprocess
 import sys
 import unittest
 
-ROOT = Path(sys.argv.pop(1)).resolve()
+# discover 只导入并跳过；只有显式脚本入口才设置独立检出。
+ROOT = None
 
 
 def run(script, *args):
@@ -22,6 +23,11 @@ def run(script, *args):
 
 
 class QualityInstallTest(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        if ROOT is None:
+            raise unittest.SkipTest("安装验收需要显式独立检出入口")
+
     def test_doctor_names_missing_dependency_and_repair(self):
         cache = ROOT / ".toolcache/dry4lua"
         saved = cache.with_name("dry4lua-saved")
@@ -85,4 +91,9 @@ class QualityInstallTest(unittest.TestCase):
 
 
 if __name__ == "__main__":
+    if len(sys.argv) < 2 or not Path(sys.argv[1]).is_absolute():
+        raise SystemExit("需要显式独立检出绝对路径")
+    ROOT = Path(sys.argv.pop(1)).resolve()
+    if ROOT == Path(__file__).resolve().parents[3] or not (ROOT / "tools/quality/project.json").is_file():
+        raise SystemExit("安装验收必须使用另一个独立检出")
     unittest.main()
