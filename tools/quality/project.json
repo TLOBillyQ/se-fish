@@ -11,6 +11,12 @@
     "crap": ".metrics/crap.edn",
     "mutation": ".metrics/mutate"
   },
+  "lua_tools": {
+    "luacov": {"url": "https://github.com/lunarmodules/luacov.git", "commit": "b1f9eae400da976b93edb7f94cf5d05f538a0655", "modules": ["luacov", "luacov.stats"]},
+    "dry4lua": {"url": "http://lzxsvn:3000/eggy/dry4lua", "commit": "1dd42d73116921cd54a00c7b132a9b097e4a288a", "modules": ["dry4lua.analysis", "dry4lua.ast"]},
+    "luacheck": {"url": "https://github.com/lunarmodules/luacheck.git", "commit": "cc089e3f65acdd1ef8716cc73a3eca24a6b845e4", "modules": ["luacheck.parser"]},
+    "acceptance4lua": {"url": "http://lzxsvn:3000/eggy/acceptance4lua", "commit": "8dd107144a7635596d75e4fccfce35121dc67570", "modules": ["acceptance4lua.json"]}
+  },
   "tools": {
     "viewer": {"directory": "uml-viewer", "source": "../uml-viewer", "commit": "26d262ec953c0005271d65a8d46740705529141e", "patches": ["tools/quality/patches/viewer-installer.patch", "tools/quality/patches/viewer-seam.patch", "tools/quality/patches/viewer-restart-spec.patch", "tools/quality/patches/viewer-companion.patch", "tools/quality/patches/viewer-restart.patch"]},
     "crapper": {"directory": "crapper", "source": "../crapper", "commit": "00b8fb6ae8360d5ed7e144d08c290d970e10cc66", "patches": ["tools/quality/patches/crapper-lua-has-error.patch"]},

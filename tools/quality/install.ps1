@@ -91,15 +91,20 @@ try {
         & $interpreter -m pip check
         if ($LASTEXITCODE -ne 0) { throw "$name 依赖检查失败" }
     }
-    if (-not (Test-Path -LiteralPath '.toolcache/luacov/.git')) {
-        & git clone https://github.com/lunarmodules/luacov.git .toolcache/luacov
-        if ($LASTEXITCODE -ne 0) { throw 'LuaCov 克隆失败' }
-        & git -C .toolcache/luacov checkout --detach b1f9eae400da976b93edb7f94cf5d05f538a0655
-        if ($LASTEXITCODE -ne 0) { throw 'LuaCov 固定版本失败' }
+    foreach ($property in $config.lua_tools.PSObject.Properties) {
+        $name, $tool = $property.Name, $property.Value
+        $directory = Join-Path $root ".toolcache/$name"
+        if (-not (Test-Path -LiteralPath "$directory/.git")) {
+            if (Test-Path -LiteralPath $directory) { throw "$name 缓存不是 git checkout；请移走后重跑 tools/quality/install.ps1" }
+            & git clone $tool.url $directory
+            if ($LASTEXITCODE -ne 0) { throw "$name 克隆失败：$($tool.url)" }
+            & git -C $directory checkout --detach $tool.commit
+            if ($LASTEXITCODE -ne 0) { throw "$name 固定版本失败：$($tool.commit)" }
+        }
+        $actual = & git -C $directory rev-parse HEAD
+        if ($LASTEXITCODE -ne 0 -or $actual -ne $tool.commit) { throw "$name 缓存提交不符：$actual，预期 $($tool.commit)；请移走缓存后重跑 tools/quality/install.ps1" }
     }
-    $actual = & git -C .toolcache/luacov rev-parse HEAD
-    if ($actual -ne 'b1f9eae400da976b93edb7f94cf5d05f538a0655') { throw "LuaCov 缓存提交不符：$actual" }
-    & (Join-Path $PSScriptRoot 'project.ps1') doctor
+    & (Join-Path $PSScriptRoot 'project.ps1') --root $root --config (Join-Path $PSScriptRoot 'project.json') doctor
     exit $LASTEXITCODE
 } catch {
     [Console]::Error.WriteLine("quality install: $_")
