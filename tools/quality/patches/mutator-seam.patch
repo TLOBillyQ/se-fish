@@ -1,8 +1,26 @@
 diff --git a/src/mutator/engine.py b/src/mutator/engine.py
-index e529424..9752dd9 100644
+index e529424..11bf0bf 100644
 --- a/src/mutator/engine.py
 +++ b/src/mutator/engine.py
-@@ -84,6 +84,33 @@ def _select(
+@@ -21,13 +21,10 @@ def restore_backups(root: Path) -> list[Path]:
+     restored: list[Path] = []
+     if not base.is_dir():
+         return restored
+-    for backup in sorted(path for path in base.rglob("*") if path.is_file()):
+-        relative = backup.relative_to(base)
+-        target = root / relative
+-        target.parent.mkdir(parents=True, exist_ok=True)
+-        target.write_bytes(backup.read_bytes())
+-        backup.unlink()
+-        restored.append(target)
++    backups = sorted(path for path in base.rglob("*") if path.is_file())
++    # 老版本没有记录最后写入字节，无法判断当前文件是否仍归工具所有。
++    if backups:
++        raise RuntimeError(f"发现旧版 mutation 备份；停止运行，请人工核对，原始源码与备份均保留：{base}")
+     return restored
+
+
+@@ -84,6 +81,33 @@ def _select(
      return chosen
 
 
@@ -36,7 +54,28 @@ index e529424..9752dd9 100644
  def _carry_forward(sites: list[Site], covered: dict[str, bool], history, digests) -> dict[str, str]:
      by_id = {site.mutation_id: site for site in sites}
      carried = {}
-@@ -321,6 +348,7 @@ def mutate_file(
+@@ -256,8 +280,9 @@ def _statuses(found: list[Site], covered: dict[str, bool], outcomes: dict[str, s
+
+
+ def _restore_if_dirty(path: Path, original: bytes) -> None:
+-    if path.read_bytes() != original:
+-        path.write_bytes(original)
++    # worker 只修改副本；主树变化属于外部保存，不能恢复旧字节。
++    if not path.is_file() or path.read_bytes() != original:
++        raise RuntimeError(f"mutation 原始源码已变化或被删除，停止发布并保留外部编辑：{path}")
+
+
+ def mutate_file(
+@@ -313,14 +338,15 @@ def mutate_file(
+     if failure is not None:
+         return failure
+     forms = _forms(source, path, root, file_key, found, covered, outcomes, lines)
+-    written = write_results(root, file_key, forms, outcomes)
+     _restore_if_dirty(path, original)
++    written = write_results(root, file_key, forms, outcomes)
+     return RunResult(
+         path=file_key,
+         forms=forms,
          written=[item.as_posix() for item in written],
          sites=found,
          statuses=_statuses(found, covered, outcomes),
