@@ -32,6 +32,41 @@ class QualityLockTest(unittest.TestCase):
     def command(self, root):
         return ['pwsh', '-NoProfile', '-File', str(root / 'tools/quality/project.ps1'), 'test']
 
+    def test_installer_first_and_repeat_install_accept_atomic_viewer_patch(self):
+        tools = Path(os.environ.get('QUALITY_TEST_TOOLS_ROOT', str(ROOT)))
+        with tempfile.TemporaryDirectory(prefix='se-fish-install-76-') as directory:
+            sandbox = Path(directory)
+            project = sandbox / 'source'
+            shutil.copytree(ROOT / 'tools/quality', project / 'tools/quality')
+            config_path = project / 'tools/quality/project.json'
+            config = json.loads(config_path.read_text())
+            for tool in config['tools'].values():
+                tool['source'] = os.path.relpath((tools / tool['source']).resolve(), project)
+            config_path.write_text(json.dumps(config), encoding='utf-8')
+            destination = sandbox / 'installed'
+            destination.mkdir()
+            for _ in range(2):
+                result = subprocess.run(['pwsh', '-NoProfile', '-File', str(project / 'tools/quality/install.ps1'),
+                                         '-Root', str(destination), '-InstallOnly'], cwd=destination,
+                                        capture_output=True, text=True, encoding='utf-8', errors='replace', timeout=90)
+                self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            command = destination / '.uml-viewer/uml-viewer/scripts/uml-command.ps1'
+            self.assertIn('refresh-crap', command.read_text(encoding='utf-8'))
+
+    def test_powershell_lock_blocks_public_python_entry(self):
+        with tempfile.TemporaryDirectory(prefix='se-fish-install-lock-76-') as directory:
+            root = Path(directory)
+            self.fixture(root)
+            (root / 'target').mkdir()
+            (root / 'release').touch()
+            script = root / 'owner.ps1'
+            script.write_text("$s=[IO.File]::Open('target/quality.lock',[IO.FileMode]::OpenOrCreate,[IO.FileAccess]::ReadWrite,[IO.FileShare]::ReadWrite)\n"
+                              "$s.Lock(0,1)\ntry { & ./tools/quality/project.ps1 test; exit $LASTEXITCODE } finally { $s.Dispose() }\n", encoding='utf-8')
+            result = subprocess.run(['pwsh', '-NoProfile', '-File', str(script)], cwd=root,
+                                    capture_output=True, text=True, encoding='utf-8', errors='replace', timeout=10)
+            self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+            self.assertIn('正在运行', result.stdout + result.stderr)
+
     def test_atomic_refresh_failure_keeps_snapshot(self):
         with tempfile.TemporaryDirectory(prefix='se-fish-refresh-76-') as directory:
             root = Path(directory)
@@ -72,6 +107,26 @@ class QualityLockTest(unittest.TestCase):
                     self.fail('同仓库请求未明确拒绝，进入重叠测试')
                 self.assertEqual(second.returncode, 1, stdout + stderr)
                 self.assertIn('正在运行', stdout + stderr)
+                for action in ('coverage', 'quality', 'refresh-crap', 'crap', 'dry', 'mutation', 'mutation-report', 'doctor'):
+                    blocked = subprocess.run(self.command(root)[:-1] + [action], cwd=root,
+                                             capture_output=True, text=True, encoding='utf-8', errors='replace', timeout=5)
+                    self.assertEqual(blocked.returncode, 1, blocked.stdout + blocked.stderr)
+                    self.assertIn('正在运行', blocked.stdout + blocked.stderr)
+                direct = subprocess.run([os.sys.executable, '-B', str(root / 'tools/quality/project.py'), 'test'],
+                                        cwd=root, capture_output=True, text=True, encoding='utf-8', timeout=5)
+                self.assertEqual(direct.returncode, 1, direct.stdout + direct.stderr)
+                self.assertIn('正在运行', direct.stdout + direct.stderr)
+                installed = subprocess.run(['pwsh', '-NoProfile', '-File', str(ROOT / 'tools/quality/install.ps1'),
+                                            '-Root', str(root), '-InstallOnly'], cwd=root, capture_output=True,
+                                            text=True, encoding='utf-8', errors='replace', timeout=10)
+                self.assertEqual(installed.returncode, 1, installed.stdout + installed.stderr)
+                self.assertIn('正在运行', installed.stdout + installed.stderr)
+                # 另一项目的公开请求不会因当前项目持锁被拒绝。
+                other = root / 'other'
+                self.fixture(other)
+                (other / 'release').touch()
+                independent = subprocess.run(self.command(other), cwd=other, capture_output=True, timeout=10)
+                self.assertEqual(independent.returncode, 0, independent.stderr)
             finally:
                 # Windows 结束公开入口的整个进程树，覆盖 Python 持锁进程强杀。
                 subprocess.run(['taskkill', '/PID', str(first.pid), '/T', '/F'], capture_output=True)

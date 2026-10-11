@@ -8,21 +8,27 @@ import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[3]
-PYTHON = ROOT / '.uml-viewer/crapper/.venv/Scripts/python.exe'
+TOOLS = Path(os.environ.get('QUALITY_TEST_TOOLS_ROOT', str(ROOT)))
+PYTHON = TOOLS / '.uml-viewer/crapper/.venv/Scripts/python.exe'
 
 
 class UmlQualityEntryTest(unittest.TestCase):
     def fixture(self, root, command):
-        scripts = root / '.uml-viewer/uml-viewer/scripts'
-        scripts.mkdir(parents=True)
+        # 从固定提交和登记补丁重建隔离分发器，不修改实际工具缓存。
+        checkout = root / '.uml-viewer/uml-viewer'
+        config_tools = json.loads((ROOT / 'tools/quality/project.json').read_text())['tools']['viewer']
+        source = (TOOLS / config_tools['source']).resolve()
+        subprocess.run(['git', 'clone', '--no-checkout', str(source), str(checkout)], check=True, capture_output=True)
+        subprocess.run(['git', '-C', str(checkout), 'checkout', config_tools['commit']], check=True, capture_output=True)
+        for patch in config_tools['patches']:
+            subprocess.run(['git', '-C', str(checkout), 'apply', str(ROOT / patch)], check=True, capture_output=True)
         shutil.copy(ROOT / 'uml.ps1', root / 'uml.ps1')
-        shutil.copy(ROOT / '.uml-viewer/uml-viewer/scripts/uml-command.ps1', scripts)
         quality = root / 'tools/quality'
         quality.mkdir(parents=True)
         config = {
             'sources': {'roots': ['common'], 'exclude': ['packages']},
             'commands': {'coverage': command},
-            'paths': {'luacov': str(ROOT / '.toolcache/luacov/src'),
+            'paths': {'luacov': str(TOOLS / '.toolcache/luacov/src'),
                       'stats': 'build/quality/luacov.stats.out',
                       'lcov': 'target/coverage/lua/lcov.info', 'crap': '.metrics/crap.edn'},
         }
@@ -64,7 +70,7 @@ class UmlQualityEntryTest(unittest.TestCase):
             snapshot, lcov = self.fixture(root, ['lua', '-lluacov', 'tests.lua'])
             result = self.invoke(root, 'crap', 'common/First.lua')
             self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-            self.assertEqual(self.calls(root), ['coverage', 'crap'])
+            self.assertEqual(self.calls(root), ['refresh-crap'])
             text = snapshot.read_text(encoding='utf-8')
             self.assertIn('common.First', text)
             self.assertIn('common.Second', text)
@@ -78,7 +84,7 @@ class UmlQualityEntryTest(unittest.TestCase):
             snapshot, lcov = self.fixture(root, ['lua', '-e', 'error("覆盖率基线失败")'])
             result = self.invoke(root, 'crap')
             self.assertNotEqual(result.returncode, 0)
-            self.assertEqual(self.calls(root), ['coverage'])
+            self.assertEqual(self.calls(root), ['refresh-crap'])
             self.assertIn('覆盖率基线失败', result.stdout + result.stderr)
             self.assertEqual(snapshot.read_text(encoding='utf-8'), '旧快照')
             self.assertFalse(lcov.exists())
@@ -89,7 +95,7 @@ class UmlQualityEntryTest(unittest.TestCase):
             snapshot, lcov = self.fixture(root, ['lua', '-e', 'print("没有覆盖率统计")'])
             result = self.invoke(root, 'crap')
             self.assertNotEqual(result.returncode, 0)
-            self.assertEqual(self.calls(root), ['coverage'])
+            self.assertEqual(self.calls(root), ['refresh-crap'])
             self.assertEqual(snapshot.read_text(encoding='utf-8'), '旧快照')
             self.assertFalse(lcov.exists())
 
@@ -100,7 +106,7 @@ class UmlQualityEntryTest(unittest.TestCase):
                 'local f=assert(io.open("luacov.stats.out", "w")); f:write("损坏统计"); f:close()'])
             result = self.invoke(root, 'crap')
             self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
-            self.assertEqual(self.calls(root), ['coverage'])
+            self.assertEqual(self.calls(root), ['refresh-crap'])
             self.assertEqual(snapshot.read_text(encoding='utf-8'), '旧快照')
             self.assertFalse(lcov.exists())
 
@@ -111,7 +117,7 @@ class UmlQualityEntryTest(unittest.TestCase):
             (root / 'deps.edn').write_text('{:aliases {:crap {:main-opts ["通用别名"]}}}')
             result = self.invoke(root, 'crap')
             self.assertNotEqual(result.returncode, 0)
-            self.assertEqual(self.calls(root), ['coverage'])
+            self.assertEqual(self.calls(root), ['refresh-crap'])
             self.assertIn('项目配置优先', result.stdout + result.stderr)
 
     def test_mutation_forwards_arguments_to_project_entry(self):

@@ -4,8 +4,13 @@ $ErrorActionPreference = 'Stop'
 $projectRoot = Split-Path (Split-Path $PSScriptRoot -Parent) -Parent
 $root = if ($Root) { (Resolve-Path -LiteralPath $Root).Path } else { $projectRoot }
 $config = Get-Content -LiteralPath (Join-Path $PSScriptRoot 'project.json') -Raw | ConvertFrom-Json
+$lockStream = $null
 Push-Location -LiteralPath $root
 try {
+    $lockPath = Join-Path $root 'target/quality.lock'
+    [IO.Directory]::CreateDirectory((Split-Path $lockPath -Parent)) | Out-Null
+    $lockStream = [IO.File]::Open($lockPath, [IO.FileMode]::OpenOrCreate, [IO.FileAccess]::ReadWrite, [IO.FileShare]::ReadWrite)
+    try { $lockStream.Lock(0, 1) } catch { throw '同仓库质量任务正在运行，请稍后重试。' }
     foreach ($name in @('viewer', 'crapper', 'mutator')) {
         $tool = $config.tools.$name
         $source = (Resolve-Path -LiteralPath (Join-Path $projectRoot $tool.source)).Path
@@ -104,9 +109,15 @@ try {
         $actual = & git -C $directory rev-parse HEAD
         if ($LASTEXITCODE -ne 0 -or $actual -ne $tool.commit) { throw "$name 缓存提交不符：$actual，预期 $($tool.commit)；请移走缓存后重跑 tools/quality/install.ps1" }
     }
+    # 所有工具替换已完成；公开 doctor 自行获取同一锁，避免父子自锁。
+    $lockStream.Dispose()
+    $lockStream = $null
     & (Join-Path $PSScriptRoot 'project.ps1') --root $root --config (Join-Path $PSScriptRoot 'project.json') doctor
     exit $LASTEXITCODE
 } catch {
     [Console]::Error.WriteLine("quality install: $_")
     exit 1
-} finally { Pop-Location }
+} finally {
+    if ($lockStream) { $lockStream.Dispose() }
+    Pop-Location
+}

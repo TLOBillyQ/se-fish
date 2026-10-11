@@ -1,8 +1,8 @@
 diff --git a/scripts/uml-command.ps1 b/scripts/uml-command.ps1
-index 0aadec0..52cb305 100644
+index 0aadec0..c428d1b 100644
 --- a/scripts/uml-command.ps1
 +++ b/scripts/uml-command.ps1
-@@ -46,6 +46,23 @@ try {
+@@ -46,6 +46,21 @@ try {
      if ($commandArgs.Count -gt 0 -and $commandArgs[0] -in @('crap', 'mutate')) {
          $alias = $commandArgs[0]
          $forward = @($commandArgs | Select-Object -Skip 1)
@@ -14,10 +14,8 @@ index 0aadec0..52cb305 100644
 +                throw "Project quality entry is missing: $projectEntry"
 +            }
 +            if ($alias -eq 'crap') {
-+                & $projectEntry coverage
-+                if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-+                # 单类或组件选择不缩小快照范围；项目入口分析配置内全树。
-+                & $projectEntry crap
++                # 完整 coverage 与全树 CRAP 在同一仓库锁生命周期内执行。
++                & $projectEntry refresh-crap
 +            } else {
 +                & $projectEntry mutate @forward
 +            }
