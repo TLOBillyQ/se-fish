@@ -31,4 +31,9 @@ desktop.ini
 # ===== 工具链临时 / 缓存目录 =====
 tmp/
 build/
+target/
 .toolcache/
+# BEGIN UML-VIEWER
+.uml-viewer/
+uml-viewer-log.txt
+# END UML-VIEWER

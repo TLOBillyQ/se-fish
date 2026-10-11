@@ -1,61 +1,36 @@
-local common = require("crap4lua._internal.common")
-local coverage = require("crap4lua.coverage")
-local analyzer = require("crap4lua.analyzer")
-local json = require("crap4lua._internal.json_writer")
+-- DRY 与 CRAP 共用配置生成的三端业务清单；这里仅负责重复代码报告。
+-- 自包含路径：无论调用方是否设置 LUA_PATH，都从脚本位置加载固定工具。
+local script_dir = arg[0]:match("^(.*)[/\\][^/\\]*$") or "."
+local root = script_dir .. "/../.."
+package.path = root .. "/.toolcache/dry4lua/src/?.lua;"
+  .. root .. "/.toolcache/dry4lua/src/?/init.lua;"
+  .. root .. "/.toolcache/luacheck/src/?.lua;"
+  .. root .. "/.toolcache/luacheck/src/?/init.lua;"
+  .. root .. "/.toolcache/acceptance4lua/src/?.lua;"
+  .. root .. "/.toolcache/acceptance4lua/src/?/init.lua;"
+  .. package.path
+local json = require("acceptance4lua.json")
 local dry = require("dry4lua.analysis")
+local ast = require("dry4lua.ast")
 
-local owned = require("tools.quality.sources").owned
-
+local manifest, report = arg[1], arg[2]
+assert(manifest and report, "用法：lua tools/quality/report.lua <业务源码清单> <DRY JSON 输出>")
 local files = {}
-local handle = assert(io.popen('git ls-files --cached --others --exclude-standard "*.lua"'))
+local handle = assert(io.open(manifest, "rb"))
 for line in handle:lines() do
   line = line:gsub("\r$", "")
-  if owned(line) then files[#files + 1] = line end
+  if line ~= "" then files[#files + 1] = line end
 end
-assert(handle:close())
-assert(#files > 0, "没有可分析的自有 Lua 源码")
+handle:close()
+assert(#files > 0, "没有可分析的业务 Lua 源码")
 table.sort(files)
-local crap_ast = require("crap4lua.ast")
-local dry_ast = require("dry4lua.ast")
+-- 上游遇到解析失败会静默跳过，先显式校验以免发布不完整报告。
 for _, path in ipairs(files) do
-  local parsed_crap, err_crap = crap_ast.analyze_file(path)
-  assert(parsed_crap, path .. ": " .. tostring(err_crap))
-  local parsed_dry, err_dry = dry_ast.parse_file(path)
-  assert(parsed_dry, path .. ": " .. tostring(err_dry))
+  local parsed, err = ast.parse_file(path)
+  assert(parsed, path .. ": " .. tostring(err))
 end
 
-local source = assert(io.open("build/quality/luacov.report.out", "rb"))
-local report_text = source:read("a")
-source:close()
-local raw = coverage.parse_luacov_report(report_text)
-local parsed = {}
-for path, entry in pairs(raw) do
-  parsed[path:gsub("\\", "/")] = entry
-end
-local covered = 0
-for _, path in ipairs(files) do
-  if parsed[path] then covered = covered + 1 end
-end
-assert(covered > 0, "luacov 报告未匹配到自有 Lua 源码")
-local cwd = common.normalize_path(assert(io.popen("cd"):read("*l")))
-local original_collect = common.collect_files
-common.collect_files = function()
-  local selected = {}
-  for _, path in ipairs(files) do selected[#selected + 1] = common.resolve_path(cwd, path) end
-  return selected
-end
-local crap = analyzer.build_report({
-  project_root = cwd, project_name = "se-fish", source_roots = { "." }, top = 0,
-  coverage_result = { files = parsed, coverage_available = true, lanes = {{lane = "unit", failed = false}} },
-})
-common.collect_files = original_collect
-assert(#crap.functions > 0 and crap.summary.na_count < #crap.functions, "CRAP 无可度量函数")
-local out = assert(io.open("build/quality/crap.json", "wb"))
-out:write(json.encode(crap))
-out:close()
-
--- dry4lua 上游通过 POSIX find 枚举文件；Windows 原生 Lua 的 io.popen 走 cmd.exe，
--- 只在分析调用期间把这一步替换为同一份自有源码清单，不修改缓存中的上游实现。
+-- Windows 原生 Lua 的 io.popen 使用 cmd.exe；用统一清单替换上游 POSIX find。
 local original_popen = io.popen
 io.popen = function(cmd, mode)
   if cmd:sub(1, 5) == "find " then
@@ -75,7 +50,9 @@ end
 local ok, candidates = pcall(dry.find_duplicates, { paths = { "." } })
 io.popen = original_popen
 assert(ok, candidates)
-out = assert(io.open("build/quality/dry.json", "wb"))
-out:write(json.encode({ candidates = candidates, source_count = #files }))
+local out = assert(io.open(report, "wb"))
+-- 通用 writer 将无元素的 table 视为对象；候选清单固定输出 JSON 数组。
+local encoded_candidates = #candidates == 0 and "[]" or json.encode(candidates)
+out:write('{"source_count":' .. tostring(#files) .. ',"candidates":' .. encoded_candidates .. '}')
 out:close()
-print(string.format("质量分析完成：%d 个自有 Lua 文件，%d 个有覆盖数据，%d 个 CRAP 函数（%d 个 N/A），%d 对重复候选；仅报告、不设门槛。", #files, covered, #crap.functions, crap.summary.na_count, #candidates))
+print(string.format("DRY 分析完成：%d 个业务 Lua 文件，%d 对重复候选；仅报告、不设门槛。", #files, #candidates))

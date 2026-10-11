@@ -1,0 +1,1 @@
+{:version 1 :tested-at "2026-10-10T11:50:59+08:00" :source "common/AttrAPIBase.lua" :namespace "common.AttrAPIBase" :outcomes {} :forms [{:id "defn/AttrAPIBase.build" :kind "defn" :file "common/AttrAPIBase.lua" :line 38 :end-line 40 :hash "006bd377e97b1258a2d1e87696facc82ee652632b623c9a7e178c8ed98095ca2" :killed 0 :survived 0 :uncovered 0 :sites 0}]}

@@ -147,6 +147,38 @@ function Mgr:Apply(player, state, effect)
             appearance:SetAppearanceByAssetId(cfg().Godzilla.AppearanceAssetId)
         end) then return false end
         state.skinApplied, state.appearance = true, appearance
+    else
+        -- 正式外观未交付时挂内置模型；不修改角色皮肤、体型或碰撞。
+        local visual = GameCfg.PlaceholderAssets.Special[effect]
+        if visual then
+            local world = game:GetService('World')
+            local ok, mount = self:EngineCall(state, 'placeholderMount', character, function()
+                return world:CreateUnit('SkeletalSocketMount', {
+                    Name = 'SpecialPlaceholderMount_' .. tostring(player.UserId), Parent = character,
+                    SocketName = visual.Socket,
+                    SocketOffset = Vector3.New(visual.Offset.x, visual.Offset.y, visual.Offset.z),
+                })
+            end)
+            if not ok or not mount then return false end
+            local modelOk, model = self:EngineCall(state, 'placeholderModel', mount, function()
+                return world:CreateUnit('WorldUnit', {
+                    Name = 'SpecialPlaceholder_' .. effect, Parent = mount, RenderMeshId = visual.Mesh,
+                    Scale = Vector3.New(visual.Scale.x, visual.Scale.y, visual.Scale.z),
+                    PhysicsActive = false, CanCollide = false, CanTouch = false,
+                    CanTrigger = false, CanQuery = false,
+                })
+            end)
+            if not modelOk or not model then
+                if self:EngineCall(state, 'placeholderUnmount', mount, function() mount:Destroy() end) then
+                    state.placeholderMount = nil
+                else
+                    state.placeholderMount = mount
+                end
+                return false
+            end
+            state.placeholderMount = mount
+            state.placeholderModel = model
+        end
     end
     state.effect = effect
     return true
@@ -170,6 +202,16 @@ function Mgr:Restore(player, state)
     state.flightGroundY = nil
     local character = state.cleanupCharacter or player.Character
     local appearance = state.appearance or (character and character.EggyAppearance)
+    if state.placeholderModel then
+        if self:EngineCall(state, 'placeholderDestroy', state.placeholderModel, function()
+            state.placeholderModel:Destroy()
+        end) then state.placeholderModel = nil end
+    end
+    if state.placeholderMount and not state.placeholderModel then
+        if self:EngineCall(state, 'placeholderUnmount', state.placeholderMount, function()
+            state.placeholderMount:Destroy()
+        end) then state.placeholderMount = nil end
+    end
     if state.wingBindId then
         if self:EngineCall(state, 'unbind', appearance, function()
             return appearance:UnbindAppearance(state.wingBindId)
@@ -181,7 +223,7 @@ function Mgr:Restore(player, state)
         end
     end
     if state.gravityOff then self:Gravity(player, state, true) end
-    if state.wingBindId or state.skinApplied or state.gravityOff then
+    if state.wingBindId or state.skinApplied or state.gravityOff or state.placeholderMount or state.placeholderModel then
         state.restoring = true
         return false
     end

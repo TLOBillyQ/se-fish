@@ -1,0 +1,372 @@
+"""从公开质量入口验证 mutation 范围与失败快照保护。"""
+import json
+import subprocess
+import tempfile
+import unittest
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[3]
+
+
+class QualityMutationTest(unittest.TestCase):
+    def test_full_mutation_requires_an_explicit_target(self):
+        result = subprocess.run([
+            "pwsh", "-NoProfile", "-File", str(ROOT / "tools/quality/project.ps1"),
+            "mutation", "--mutate-all",
+        ], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace")
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("显式", result.stdout + result.stderr)
+
+    def test_vendor_target_is_rejected_before_tests(self):
+        result = subprocess.run([
+            "pwsh", "-NoProfile", "-File", str(ROOT / "tools/quality/project.ps1"),
+            "mutation", "server/packages/ability_system/init.lua",
+        ], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace")
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("配置范围", result.stdout + result.stderr)
+
+    def test_baseline_failure_keeps_valid_snapshot(self):
+        with tempfile.TemporaryDirectory(prefix="se-fish-mutation-") as directory:
+            root = Path(directory)
+            source = root / "common/Example.lua"
+            source.parent.mkdir()
+            source.write_text("local M = {}\nfunction M.value(x) return x + 1 end\nreturn M\n")
+            snapshot = root / ".metrics/mutate/common.Example.edn"
+            snapshot.parent.mkdir(parents=True)
+            old = b'{:namespace "common.Example" :forms []}\n'
+            snapshot.write_bytes(old)
+            config = root / "config.json"
+            settings = json.loads((ROOT / "tools/quality/project.json").read_text(encoding="utf-8"))
+            settings["commands"]["coverage"] = ["lua", "-e", "error('真实测试基线失败')"]
+            settings["commands"]["mutation_test"] = ["lua", "-e", "error('真实测试基线失败')"]
+            settings["paths"]["luacov"] = str(ROOT / ".toolcache/luacov/src")
+            config.write_text(json.dumps(settings), encoding="utf-8")
+            result = subprocess.run([
+                "pwsh", "-NoProfile", "-File", str(ROOT / "tools/quality/project.ps1"),
+                "--root", str(root), "--config", str(config), "mutation", "common/Example.lua",
+            ], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace")
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("真实测试基线失败", result.stdout + result.stderr)
+            self.assertEqual(snapshot.read_bytes(), old)
+
+    def test_corrupt_snapshot_is_reported_and_never_republished(self):
+        with tempfile.TemporaryDirectory(prefix="se-fish-mutation-") as directory:
+            root = Path(directory)
+            source = root / "common/Example.lua"
+            source.parent.mkdir()
+            source.write_text("local M = {}\nfunction M.value(x) return x + 1 end\nreturn M\n")
+            snapshot = root / ".metrics/mutate/bad.edn"
+            snapshot.parent.mkdir(parents=True)
+            snapshot.write_bytes(b'{:namespace "bad" :forms [')
+            config = root / "config.json"
+            settings = json.loads((ROOT / "tools/quality/project.json").read_text(encoding="utf-8"))
+            settings["paths"]["luacov"] = str(ROOT / ".toolcache/luacov/src")
+            config.write_text(json.dumps(settings), encoding="utf-8")
+            result = subprocess.run([
+                "pwsh", "-NoProfile", "-File", str(ROOT / "tools/quality/project.ps1"),
+                "--root", str(root), "--config", str(config), "mutation", "common/Example.lua",
+            ], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace")
+            self.assertEqual(result.returncode, 1)
+            self.assertIn("损坏", result.stdout + result.stderr)
+            self.assertEqual(snapshot.read_bytes(), b'{:namespace "bad" :forms [')
+
+    def test_scoped_publish_only_replaces_target_snapshot(self):
+        with tempfile.TemporaryDirectory(prefix="se-fish-mutation-") as directory:
+            root = Path(directory)
+            source = root / "common/Example.lua"
+            source.parent.mkdir()
+            source.write_text("local M = {}\nfunction M.enabled(flag) return flag and true or false end\nreturn M\n")
+            metrics = root / ".metrics/mutate"
+            metrics.mkdir(parents=True)
+            (metrics / "common.Example.edn").write_text(
+                '{:namespace "common.Example" :forms [] :outcomes {}}\n', encoding="utf-8")
+            other = metrics / "common.Other.edn"
+            untouched = b'{:namespace "common.Other" :forms [] :outcomes {}}\n'
+            other.write_bytes(untouched)
+            (root / "coverage_fixture.lua").write_text(
+                "local f=assert(io.open('luacov.stats.out','w'))\n"
+                "f:write('3:common\\\\Example.lua\\n1 1 1 \\n')\n"
+                "f:close()\n", encoding="utf-8")
+            (root / "mutation_fixture.lua").write_text("os.exit(0)\n", encoding="utf-8")
+            config = root / "config.json"
+            settings = json.loads((ROOT / "tools/quality/project.json").read_text(encoding="utf-8"))
+            settings["commands"]["coverage"] = ["lua", "coverage_fixture.lua"]
+            settings["commands"]["mutation_test"] = ["lua", "mutation_fixture.lua"]
+            settings["paths"]["luacov"] = str(ROOT / ".toolcache/luacov/src")
+            config.write_text(json.dumps(settings), encoding="utf-8")
+            result = subprocess.run([
+                "pwsh", "-NoProfile", "-File", str(ROOT / "tools/quality/project.ps1"),
+                "--root", str(root), "--config", str(config),
+                "mutation", "common/Example.lua", "--mutate-all", "--max-workers", "1",
+            ], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace")
+            self.assertIn(result.returncode, (0, 3), result.stdout + result.stderr)
+            self.assertEqual(other.read_bytes(), untouched)
+            self.assertIn(':file "common/Example.lua"',
+                          (metrics / "common.Example.edn").read_text(encoding="utf-8"))
+
+    def _reject_namespace(self, namespaces, *, link=False):
+        # seam：独立临时项目的公开 mutation CLI、公开快照与根外文件。
+        with tempfile.TemporaryDirectory(prefix="se-fish-boundary-") as directory:
+            sandbox = Path(directory)
+            root = sandbox / "project"
+            source = root / "common/Example.lua"
+            source.parent.mkdir(parents=True)
+            source.write_text("local M={}\nfunction M.value(x) return x + 1 end\nreturn M\n",
+                              encoding="utf-8")
+            self._configure_fixture(root, 'assert(require("common.Example").value(1)==2)\n')
+            metrics = root / ".metrics/mutate"
+            metrics.mkdir(parents=True)
+            valid = metrics / "common.Other.edn"
+            valid.write_text('{:namespace "common.Other" :forms [{:id "defn/M.other" '
+                             ':file "common/Other.lua" :hash "known" :killed 1 :survived 0 '
+                             ':uncovered 0 :sites 1}] :outcomes {}}\n', encoding="utf-8")
+            outside = sandbox / "outside"
+            outside.mkdir()
+            sentinel = outside / "sentinel.txt"
+            sentinel.write_bytes(b"root outside must remain unchanged\n")
+            if link:
+                subprocess.run(["cmd", "/c", "mklink", "/J",
+                    str(metrics / "linked"), str(outside)], check=True, capture_output=True)
+            bad = metrics / "history.edn"
+            for namespace in namespaces:
+                with self.subTest(namespace=namespace):
+                    bad.write_text('{:namespace ' + json.dumps(namespace) +
+                        ' :forms [{:id "defn/M.history" :file "common/History.lua" '
+                        ':hash "old" :killed 1 :survived 0 :uncovered 0 :sites 1}] '
+                        ':outcomes {}}\n', encoding="utf-8")
+                    before = {p.relative_to(metrics): p.read_bytes() for p in metrics.rglob("*.edn")}
+                    result = subprocess.run([
+                        "pwsh", "-NoProfile", "-File", str(ROOT / "tools/quality/project.ps1"),
+                        "--root", str(root), "--config", str(root / "config.json"),
+                        "mutation", "common/Example.lua", "--max-workers", "1",
+                    ], cwd=ROOT, timeout=90, capture_output=True, text=True,
+                        encoding="utf-8", errors="replace")
+                    output = result.stdout + result.stderr
+                    self.assertEqual(result.returncode, 1, output)
+                    self.assertIn("namespace", output)
+                    self.assertNotIn("本轮完整覆盖率", output)
+                    self.assertNotIn("Mutation run:", output)
+                    self.assertEqual({p.relative_to(metrics): p.read_bytes()
+                                      for p in metrics.rglob("*.edn")}, before)
+                    self.assertEqual(list(outside.iterdir()), [sentinel])
+                    self.assertEqual(sentinel.read_bytes(), b"root outside must remain unchanged\n")
+                    self.assertFalse(list((root / "target").rglob("escaped.edn")))
+            if link:
+                # 仅删除 junction 本身，避免临时目录清理遍历目标。
+                subprocess.run(["cmd", "/c", "rmdir", str(metrics / "linked")], check=True)
+
+    def test_snapshot_namespace_rejects_parent_traversal(self):
+        self._reject_namespace(["../../../../escaped"])
+
+    def test_snapshot_namespace_rejects_invalid_segments_and_absolute_paths(self):
+        self._reject_namespace(["", ".", "..", "common//Example", "common/./Example",
+                                "common/../Example", "/absolute", "\\absolute",
+                                "C:/absolute", "C:relative", "common/C:/absolute",
+                                "common::..::Example", "common\\..\\Example"])
+
+    def test_snapshot_namespace_rejects_resolved_path_outside_metrics(self):
+        self._reject_namespace(["linked/escaped"], link=True)
+
+    def _configure_fixture(self, root, script):
+        (root / "test.lua").write_text(script, encoding="utf-8")
+        settings = json.loads((ROOT / "tools/quality/project.json").read_text(encoding="utf-8"))
+        settings["commands"] = {"coverage": ["lua", "-lluacov", "test.lua"],
+                                "mutation_test": ["lua", "test.lua"]}
+        settings["paths"]["luacov"] = str(ROOT / ".toolcache/luacov/src")
+        (root / "config.json").write_text(json.dumps(settings), encoding="utf-8")
+
+    def _mutate_fixture(self, root, *targets):
+        result = subprocess.run([
+            "pwsh", "-NoProfile", "-File", str(ROOT / "tools/quality/project.ps1"),
+            "--root", str(root), "--config", str(root / "config.json"),
+            "mutation", *targets, "--max-workers", "1", "--verbose",
+        ], cwd=ROOT, timeout=90, capture_output=True, text=True,
+                      encoding="utf-8", errors="replace")
+        output = result.stdout + result.stderr
+        self.assertIn(result.returncode, (0, 3), output)
+        return output
+
+    def test_worker_loads_dependencies_at_every_source_path_level(self):
+        with tempfile.TemporaryDirectory(prefix="se-fish-worker-") as directory:
+            root = Path(directory)
+            for relative in ("common/nested/Sibling.lua", "common/nested/cfg/Value.lua",
+                             "common/Parent.lua"):
+                path = root / relative
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text("return 1\n", encoding="utf-8")
+            source = root / "common/nested/Example.lua"
+            original = ('local a=require("common.nested.Sibling")\n'
+                        'local b=require("common.nested.cfg.Value")\n'
+                        'local c=require("common.Parent")\n'
+                        'local M={}\nfunction M.value(x) return x + a + b + c end\nreturn M\n')
+            source.write_text(original, encoding="utf-8")
+            self._configure_fixture(root, 'local M=require("common.nested.Example")\n'
+                                    'assert(type(M.value(1))=="number")\nprint("依赖加载成功")\n')
+            output = self._mutate_fixture(root, "common/nested/Example.lua")
+            self.assertIn("result=survived", output)
+            self.assertEqual(source.read_text(encoding="utf-8"), original)
+
+    def test_shared_namespace_preserves_other_file_when_functions_are_removed(self):
+        with tempfile.TemporaryDirectory(prefix="se-fish-shared-") as directory:
+            root = Path(directory)
+            first = root / "common/Foo.lua"
+            second = root / "common/Foo/init.lua"
+            second.parent.mkdir(parents=True)
+            first.write_text("local M={}\nfunction M.first(x) return x + 1 end\nreturn M\n")
+            second.write_text("local M={}\nfunction M.second(x) return x + 2 end\nreturn M\n")
+            self._configure_fixture(root,
+                'for _,file in ipairs({"common/Foo.lua","common/Foo/init.lua"}) do\n'
+                ' local M=dofile(file)\n for _,fn in pairs(M) do assert(type(fn(1))=="number") end\nend\n')
+            self._mutate_fixture(root, "common/Foo.lua", "common/Foo/init.lua")
+            snapshot = root / ".metrics/mutate/common.Foo.edn"
+            initial = snapshot.read_text(encoding="utf-8")
+            self.assertIn(':file "common/Foo.lua"', initial)
+            self.assertIn(':file "common/Foo/init.lua"', initial)
+            other = snapshot.parent / "unrelated.edn"
+            untouched = b'{:namespace "unrelated" :forms [] :outcomes {}}\n'
+            other.write_bytes(untouched)
+            first.write_text("return {}\n")
+            self._mutate_fixture(root, "common/Foo.lua")
+            retained = snapshot.read_text(encoding="utf-8")
+            self.assertNotIn(':file "common/Foo.lua"', retained)
+            self.assertIn(':file "common/Foo/init.lua"', retained)
+            second.write_text("return {}\n")
+            self._mutate_fixture(root, "common/Foo/init.lua")
+            self.assertFalse(snapshot.exists())
+            self.assertEqual(other.read_bytes(), untouched)
+
+    def test_nested_history_is_folded_and_actual_stale_files_are_deleted(self):
+        with tempfile.TemporaryDirectory(prefix="se-fish-history-") as directory:
+            root = Path(directory)
+            source = root / "common/Example.lua"
+            source.parent.mkdir()
+            source.write_text("local M={}\nfunction M.value(x) return x + 1 end\nreturn M\n")
+            self._configure_fixture(root,
+                'local M=dofile("common/Example.lua")\n'
+                'if M.value then assert(type(M.value(1))=="number") end\n')
+            self._mutate_fixture(root, "common/Example.lua")
+            snapshot = root / ".metrics/mutate/common.Example.edn"
+            history = snapshot.parent / "legacy/deep/Example.edn"
+            history.parent.mkdir(parents=True)
+            snapshot.rename(history)
+            self._mutate_fixture(root, "common/Example.lua")
+            self.assertTrue(snapshot.exists())
+            self.assertFalse(history.exists())
+            snapshot.rename(history)
+            source.write_text("return {}\n")
+            self._mutate_fixture(root, "common/Example.lua")
+            self.assertFalse(snapshot.exists())
+            self.assertFalse(history.exists())
+
+    def test_multiple_targets_can_remove_then_rebuild_the_same_namespace(self):
+        with tempfile.TemporaryDirectory(prefix="se-fish-rebuild-") as directory:
+            root = Path(directory)
+            first = root / "common/Foo.lua"
+            second = root / "common/Foo/init.lua"
+            second.parent.mkdir(parents=True)
+            first.write_text("local M={}\nfunction M.first(x) return x + 1 end\nreturn M\n")
+            second.write_text("return {}\n")
+            self._configure_fixture(root,
+                'for _,file in ipairs({"common/Foo.lua","common/Foo/init.lua"}) do\n'
+                ' for _,fn in pairs(dofile(file)) do assert(type(fn(1))=="number") end\nend\n')
+            self._mutate_fixture(root, "common/Foo.lua")
+            snapshot = root / ".metrics/mutate/common.Foo.edn"
+            self.assertIn(':file "common/Foo.lua"', snapshot.read_text(encoding="utf-8"))
+            first.write_text("return {}\n")
+            second.write_text("local M={}\nfunction M.second(x) return x + 2 end\nreturn M\n")
+            self._mutate_fixture(root, "common/Foo.lua", "common/Foo/init.lua")
+            retained = snapshot.read_text(encoding="utf-8")
+            self.assertNotIn(':file "common/Foo.lua"', retained)
+            self.assertIn(':file "common/Foo/init.lua"', retained)
+
+    def test_infrastructure_failure_keeps_generated_snapshot_bytes(self):
+        with tempfile.TemporaryDirectory(prefix="se-fish-infrastructure-") as directory:
+            root = Path(directory)
+            source = root / "common/Example.lua"
+            source.parent.mkdir()
+            source.write_text("local M={}\nfunction M.value(x) return x + 1 end\nreturn M\n")
+            self._configure_fixture(root,
+                'assert(type(dofile("common/Example.lua").value(1))=="number")\n')
+            self._mutate_fixture(root, "common/Example.lua")
+            snapshot = root / ".metrics/mutate/common.Example.edn"
+            old = snapshot.read_bytes()
+            config = root / "config.json"
+            settings = json.loads(config.read_text(encoding="utf-8"))
+            settings["commands"]["mutation_test"] = [str(root / "missing-lua.exe")]
+            config.write_text(json.dumps(settings), encoding="utf-8")
+            result = subprocess.run([
+                "pwsh", "-NoProfile", "-File", str(ROOT / "tools/quality/project.ps1"),
+                "--root", str(root), "--config", str(config), "mutation", "common/Example.lua",
+                "--max-workers", "1",
+            ], cwd=ROOT, timeout=90, capture_output=True, text=True,
+                          encoding="utf-8", errors="replace")
+            self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+            self.assertIn("基础设施失败", result.stdout + result.stderr)
+            self.assertEqual(snapshot.read_bytes(), old)
+
+    def test_empty_history_without_a_source_is_retained(self):
+        with tempfile.TemporaryDirectory(prefix="se-fish-mutation-") as directory:
+            root = Path(directory)
+            source = root / "common/Example.lua"
+            source.parent.mkdir()
+            source.write_text("local M = {}\nreturn M\n", encoding="utf-8")
+            metrics = root / ".metrics/mutate"
+            metrics.mkdir(parents=True)
+            (metrics / "common.Example.edn").write_text(
+                '{:namespace "common.Example" :forms [] :outcomes {}}\n', encoding="utf-8")
+            other = metrics / "common.Other.edn"
+            untouched = b'{:namespace "common.Other" :forms [] :outcomes {}}\n'
+            other.write_bytes(untouched)
+            (root / "coverage_fixture.lua").write_text(
+                "local f=assert(io.open('luacov.stats.out','w'))\n"
+                "f:write('3:common\\\\Example.lua\\n1 1 1 \\n')\n"
+                "f:close()\n", encoding="utf-8")
+            (root / "mutation_fixture.lua").write_text("os.exit(0)\n", encoding="utf-8")
+            config = root / "config.json"
+            settings = json.loads((ROOT / "tools/quality/project.json").read_text(encoding="utf-8"))
+            settings["commands"]["coverage"] = ["lua", "coverage_fixture.lua"]
+            settings["commands"]["mutation_test"] = ["lua", "mutation_fixture.lua"]
+            settings["paths"]["luacov"] = str(ROOT / ".toolcache/luacov/src")
+            config.write_text(json.dumps(settings), encoding="utf-8")
+            result = subprocess.run([
+                "pwsh", "-NoProfile", "-File", str(ROOT / "tools/quality/project.ps1"),
+                "--root", str(root), "--config", str(config),
+                "mutation", "common/Example.lua", "--mutate-all", "--max-workers", "1",
+            ], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace")
+            self.assertIn(result.returncode, (0, 3), result.stdout + result.stderr)
+            self.assertTrue((metrics / "common.Example.edn").exists(), result.stdout + result.stderr)
+            self.assertEqual(other.read_bytes(), untouched)
+
+    def test_worker_keeps_sibling_dependency_for_luaunit(self):
+        with tempfile.TemporaryDirectory(prefix="se-fish-worker-") as directory:
+            root = Path(directory)
+            common = root / "common"
+            common.mkdir()
+            (common / "Dependency.lua").write_text(
+                "local M = {}\nfunction M.value(x) return x end\nreturn M\n", encoding="utf-8")
+            source = common / "Example.lua"
+            source.write_text("local M = {}\nfunction M.strict(x) return x + 1 end\nreturn M\n",
+                              encoding="utf-8")
+            test = root / "test.lua"
+            test.write_text('require("common.Dependency")\n'
+                            'local M=require("common.Example")\nassert(M.strict(1)==2)\n',
+                            encoding="utf-8")
+            settings = json.loads((ROOT / "tools/quality/project.json").read_text(encoding="utf-8"))
+            settings["commands"] = {"coverage": ["lua", "-lluacov", "test.lua"],
+                                    "mutation_test": ["lua", "test.lua"]}
+            settings["paths"]["luacov"] = str(ROOT / ".toolcache/luacov/src")
+            config = root / "config.json"
+            config.write_text(json.dumps(settings), encoding="utf-8")
+            result = subprocess.run([
+                "pwsh", "-NoProfile", "-File", str(ROOT / "tools/quality/project.ps1"),
+                "--root", str(root), "--config", str(config),
+                "mutation", "common/Example.lua", "--max-workers", "1", "--verbose",
+            ], cwd=ROOT, timeout=90, capture_output=True, text=True,
+                          encoding="utf-8", errors="replace")
+            output = result.stdout + result.stderr
+            self.assertEqual(result.returncode, 0, output)
+            self.assertIn("result=killed", output)
+
+
+if __name__ == "__main__":
+    unittest.main()

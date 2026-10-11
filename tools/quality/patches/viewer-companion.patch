@@ -1,0 +1,18 @@
+diff --git a/src/uml_viewer/adapters/sketch.clj b/src/uml_viewer/adapters/sketch.clj
+index 5a587e4..17aecae 100644
+--- a/src/uml_viewer/adapters/sketch.clj
++++ b/src/uml_viewer/adapters/sketch.clj
+@@ -62,7 +62,12 @@
+        "Snapshots join by the class :ns, then by the class id.\n"
+        "./uml ir runs the IR generator on this project's policy. ./uml crap and\n"
+        "./uml mutate run the :crap / :mutate aliases when the project has\n"
+-       "deps.edn, otherwise crapper and mutator, for every language. Without\n"
++       "deps.edn, otherwise crapper and mutator, for every language.\n"
++       "若存在 tools/quality/project.json，公开 uml 命令优先使用项目\n"
++       "tools/quality/project.ps1；crap 先运行完整 coverage 再替换全树快照，\n"
++       "mutate 保留目标文件与差分/全量参数。任一步失败立即停止，\n"
++       "不得继续生成 IR 或发送 :display；mutation 退出 3 的有效缺口快照除外。\n"
++       "Without\n"
+        "./uml (the uml-viewer repo itself) use clj -M:ir, clj -M:crap and\n"
+        "clj -M:mutate.\n"
+        "2. Run ./uml crap on the whole tree; .metrics/crap.edn is replaced\n"

@@ -1,0 +1,1 @@
+{:version 1 :tested-at "2026-10-10T11:50:59+08:00" :source "common/ModifierAPIBase.lua" :namespace "common.ModifierAPIBase" :outcomes {} :forms [{:id "defn/ModifierAPIBase.build" :kind "defn" :file "common/ModifierAPIBase.lua" :line 43 :end-line 45 :hash "bbee529b382371605b8c86675ad1e78073f40f8db6bda97478d81543ddc85125" :killed 0 :survived 0 :uncovered 0 :sites 0}]}

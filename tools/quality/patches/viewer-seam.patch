@@ -1,0 +1,26 @@
+diff --git a/scripts/uml-command.ps1 b/scripts/uml-command.ps1
+index 0aadec0..c428d1b 100644
+--- a/scripts/uml-command.ps1
++++ b/scripts/uml-command.ps1
+@@ -46,6 +46,21 @@ try {
+     if ($commandArgs.Count -gt 0 -and $commandArgs[0] -in @('crap', 'mutate')) {
+         $alias = $commandArgs[0]
+         $forward = @($commandArgs | Select-Object -Skip 1)
++        # 项目质量接缝优先于语言通用工具；CRAP 必须先取得本轮完整覆盖率。
++        $projectConfig = Join-Path $root 'tools/quality/project.json'
++        $projectEntry = Join-Path $root 'tools/quality/project.ps1'
++        if (Test-Path -LiteralPath $projectConfig) {
++            if (-not (Test-Path -LiteralPath $projectEntry)) {
++                throw "Project quality entry is missing: $projectEntry"
++            }
++            if ($alias -eq 'crap') {
++                # 完整 coverage 与全树 CRAP 在同一仓库锁生命周期内执行。
++                & $projectEntry refresh-crap
++            } else {
++                & $projectEntry mutate @forward
++            }
++            exit $LASTEXITCODE
++        }
+         if (Test-Path 'deps.edn') {
+             $cli = Clojure-Command
+             # Official ClojureTools treats '-M:<alias>' as a source file; its

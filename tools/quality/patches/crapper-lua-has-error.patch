@@ -1,0 +1,13 @@
+diff --git a/src/crapper/languages/lua.py b/src/crapper/languages/lua.py
+index e088cad..2c47151 100644
+--- a/src/crapper/languages/lua.py
++++ b/src/crapper/languages/lua.py
+@@ -124,6 +124,8 @@ def functions_in_source(
+     source: str, path: str, project_root: str | None = None
+ ) -> list[Function]:
+     data, tree = parse(source, "lua")
++    if tree.root_node.has_error:
++        raise ValueError(f"Lua 源码解析失败：{path}")
+     namespace = _module_namespace(path, project_root)
+     found: list[Function] = []
+     for node in descendants(tree.root_node):

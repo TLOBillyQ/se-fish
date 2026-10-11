@@ -1,0 +1,1 @@
+{:version 1 :tested-at "2026-10-10T11:50:59+08:00" :source "common/AiAPIBase.lua" :namespace "common.AiAPIBase" :outcomes {} :forms [{:id "defn/AiAPIBase.build" :kind "defn" :file "common/AiAPIBase.lua" :line 38 :end-line 40 :hash "9dc9b2081bdefed8d87e4cb1e53afa9537e51773ac24fdd1cbc768e609fdfb68" :killed 0 :survived 0 :uncovered 0 :sites 0}]}

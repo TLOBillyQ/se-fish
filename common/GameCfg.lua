@@ -1522,4 +1522,7 @@ GameCfg.FishCombatLabel = {
     IdleColor = { 255, 255, 255, 255 },
 }
 
+GameCfg.PlaceholderAssets = require('common.cfg.PlaceholderAssets')
+GameCfg.PlaceholderAssets.Apply(GameCfg)
+
 return GameCfg
