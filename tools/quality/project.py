@@ -85,6 +85,34 @@ def run_coverage(root, config):
 def doctor(root, config):
     root = Path(root).resolve()
     verify_lua(config["commands"]["coverage"])
+    for name, tool in config["lua_tools"].items():
+        directory = root / ".toolcache" / name
+        repair = "请移走损坏缓存后运行 tools/quality/install.ps1"
+        if not (directory / ".git").exists():
+            raise RuntimeError(f"{name} 缺少运行依赖 checkout：{directory}；{repair}")
+        actual = subprocess.check_output(["git", "-C", str(directory), "rev-parse", "HEAD"], text=True).strip()
+        if actual != tool["commit"]:
+            raise RuntimeError(f"{name} 提交不符：{actual}，预期 {tool['commit']}；{repair}")
+        origin = subprocess.check_output(["git", "-C", str(directory), "remote", "get-url", "origin"], text=True).strip()
+        if origin != tool["url"]:
+            raise RuntimeError(f"{name} 来源不符：{origin}，预期 {tool['url']}；{repair}")
+        dirty = subprocess.check_output(["git", "-C", str(directory), "status", "--porcelain", "--", "src"], text=True).strip()
+        if dirty:
+            raise RuntimeError(f"{name} 运行源码已修改或有未登记模块：{dirty}；{repair}")
+        source = directory / "src"
+        env = os.environ.copy()
+        sources = [source] + [root / ".toolcache" / other / "src" for other in config["lua_tools"] if other != name]
+        env["LUA_PATH"] = ";".join(pattern for path in sources for pattern in
+                                   (f"{path.as_posix()}/?.lua", f"{path.as_posix()}/?/init.lua"))
+        env["LUA_CPATH"] = ""
+        for module in tool["modules"]:
+            snippet = (f"local p=assert(package.searchpath({module!r}, package.path)); "
+                       f"print(p); assert(require({module!r}))")
+            result = subprocess.run([config["commands"]["coverage"][0], "-e", snippet],
+                                    cwd=root, env=env, capture_output=True, text=True)
+            if result.returncode:
+                raise RuntimeError(f"{name} 无法加载运行模块 {module}：{result.stderr.strip()}；{repair}")
+            print(f"{name} {actual} {result.stdout.strip()}")
     for name, tool in config["tools"].items():
         directory = root / ".uml-viewer" / tool["directory"]
         if not (directory / ".git").exists():
