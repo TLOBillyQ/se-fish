@@ -104,6 +104,69 @@ class QualityMutationTest(unittest.TestCase):
             self.assertIn(':file "common/Example.lua"',
                           (metrics / "common.Example.edn").read_text(encoding="utf-8"))
 
+    def _reject_namespace(self, namespaces, *, link=False):
+        # seam：独立临时项目的公开 mutation CLI、公开快照与根外文件。
+        with tempfile.TemporaryDirectory(prefix="se-fish-boundary-") as directory:
+            sandbox = Path(directory)
+            root = sandbox / "project"
+            source = root / "common/Example.lua"
+            source.parent.mkdir(parents=True)
+            source.write_text("local M={}\nfunction M.value(x) return x + 1 end\nreturn M\n",
+                              encoding="utf-8")
+            self._configure_fixture(root, 'assert(require("common.Example").value(1)==2)\n')
+            metrics = root / ".metrics/mutate"
+            metrics.mkdir(parents=True)
+            valid = metrics / "common.Other.edn"
+            valid.write_text('{:namespace "common.Other" :forms [{:id "defn/M.other" '
+                             ':file "common/Other.lua" :hash "known" :killed 1 :survived 0 '
+                             ':uncovered 0 :sites 1}] :outcomes {}}\n', encoding="utf-8")
+            outside = sandbox / "outside"
+            outside.mkdir()
+            sentinel = outside / "sentinel.txt"
+            sentinel.write_bytes(b"root outside must remain unchanged\n")
+            if link:
+                subprocess.run(["cmd", "/c", "mklink", "/J",
+                    str(metrics / "linked"), str(outside)], check=True, capture_output=True)
+            bad = metrics / "history.edn"
+            for namespace in namespaces:
+                with self.subTest(namespace=namespace):
+                    bad.write_text('{:namespace ' + json.dumps(namespace) +
+                        ' :forms [{:id "defn/M.history" :file "common/History.lua" '
+                        ':hash "old" :killed 1 :survived 0 :uncovered 0 :sites 1}] '
+                        ':outcomes {}}\n', encoding="utf-8")
+                    before = {p.relative_to(metrics): p.read_bytes() for p in metrics.rglob("*.edn")}
+                    result = subprocess.run([
+                        "pwsh", "-NoProfile", "-File", str(ROOT / "tools/quality/project.ps1"),
+                        "--root", str(root), "--config", str(root / "config.json"),
+                        "mutation", "common/Example.lua", "--max-workers", "1",
+                    ], cwd=ROOT, timeout=90, capture_output=True, text=True,
+                        encoding="utf-8", errors="replace")
+                    output = result.stdout + result.stderr
+                    self.assertEqual(result.returncode, 1, output)
+                    self.assertIn("namespace", output)
+                    self.assertNotIn("本轮完整覆盖率", output)
+                    self.assertNotIn("Mutation run:", output)
+                    self.assertEqual({p.relative_to(metrics): p.read_bytes()
+                                      for p in metrics.rglob("*.edn")}, before)
+                    self.assertEqual(list(outside.iterdir()), [sentinel])
+                    self.assertEqual(sentinel.read_bytes(), b"root outside must remain unchanged\n")
+                    self.assertFalse(list((root / "target").rglob("escaped.edn")))
+            if link:
+                # 仅删除 junction 本身，避免临时目录清理遍历目标。
+                subprocess.run(["cmd", "/c", "rmdir", str(metrics / "linked")], check=True)
+
+    def test_snapshot_namespace_rejects_parent_traversal(self):
+        self._reject_namespace(["../../../../escaped"])
+
+    def test_snapshot_namespace_rejects_invalid_segments_and_absolute_paths(self):
+        self._reject_namespace(["", ".", "..", "common//Example", "common/./Example",
+                                "common/../Example", "/absolute", "\\absolute",
+                                "C:/absolute", "C:relative", "common/C:/absolute",
+                                "common::..::Example", "common\\..\\Example"])
+
+    def test_snapshot_namespace_rejects_resolved_path_outside_metrics(self):
+        self._reject_namespace(["linked/escaped"], link=True)
+
     def _configure_fixture(self, root, script):
         (root / "test.lua").write_text(script, encoding="utf-8")
         settings = json.loads((ROOT / "tools/quality/project.json").read_text(encoding="utf-8"))

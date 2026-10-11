@@ -24,6 +24,9 @@ def _changed_lua(root: Path, config: dict) -> list[str]:
     result = subprocess.run(["git", "diff", "--name-only", "--diff-filter=d", "--", *config["sources"]["roots"]],
                             cwd=root, capture_output=True, text=True, check=True)
     changed = {line.strip() for line in result.stdout.splitlines() if line.strip()}
+    result = subprocess.run(["git", "diff", "--cached", "--name-only", "--diff-filter=d", "--", *config["sources"]["roots"]],
+                            cwd=root, capture_output=True, text=True, check=True)
+    changed.update(line.strip() for line in result.stdout.splitlines() if line.strip())
     result = subprocess.run(["git", "ls-files", "--others", "--exclude-standard", "--", *config["sources"]["roots"]],
                             cwd=root, capture_output=True, text=True, check=True)
     changed.update(line.strip() for line in result.stdout.splitlines() if line.strip())
@@ -84,6 +87,19 @@ def _publish(root: Path, config: dict, staged: Path, *, changed: set[Path], remo
             destination.unlink()
 
 
+def _snapshot_path(directory: Path, namespace: str) -> Path:
+    """历史输入和上游写入共用 namespace 边界。"""
+    parts = namespace.replace("\\", "/").replace("::", "/").split("/")
+    if any(part in {"", ".", ".."} or ":" in part for part in parts):
+        raise ValueError(f"mutation namespace 路径无效：{namespace!r}")
+    path = directory.joinpath(*parts[:-1], parts[-1] + ".edn")
+    try:
+        path.resolve().relative_to(directory.resolve())
+    except ValueError:
+        raise ValueError(f"mutation namespace 解析路径超出指标根：{namespace!r}") from None
+    return path
+
+
 def _validate_tree(directory: Path, label: str) -> None:
     from mutator.edn import loads
     from mutator.functions import mutation_file
@@ -94,6 +110,7 @@ def _validate_tree(directory: Path, label: str) -> None:
             raise ValueError(f"{label} mutation 快照损坏：{path}（{error}）") from None
         if not isinstance(data, dict) or not isinstance(data.get("namespace"), str) or not isinstance(data.get("forms"), list):
             raise ValueError(f"{label} mutation 快照损坏：{path}")
+        _snapshot_path(directory, data["namespace"])
         outcomes = data.get("outcomes", {})
         if not isinstance(outcomes, dict):
             raise ValueError(f"{label} mutation outcomes 损坏：{path}")
@@ -167,7 +184,7 @@ def run(root: Path, config: dict, config_path: Path | str, paths: list[str], *, 
         original_snapshot_path = upstream_metrics.snapshot_path
         original_remove_empty = upstream_metrics._remove_empty_dirs
         upstream_metrics._edn_files = lambda _root: sorted(path for path in staging_metrics.rglob("*.edn") if path.is_file())
-        upstream_metrics.snapshot_path = lambda root, namespace: staging_metrics.joinpath(*namespace.replace("\\", "/").replace("::", "/").split("/")[:-1], namespace.replace("\\", "/").replace("::", "/").split("/")[-1] + ".edn")
+        upstream_metrics.snapshot_path = lambda root, namespace: _snapshot_path(staging_metrics, namespace)
         upstream_metrics._remove_empty_dirs = lambda directory: None
         initial_files = {path.relative_to(staging_metrics) for path in staging_metrics.rglob("*.edn")}
         try:
