@@ -24,6 +24,9 @@ def _changed_lua(root: Path, config: dict) -> list[str]:
     result = subprocess.run(["git", "diff", "--name-only", "--diff-filter=d", "--", *config["sources"]["roots"]],
                             cwd=root, capture_output=True, text=True, check=True)
     changed = {line.strip() for line in result.stdout.splitlines() if line.strip()}
+    result = subprocess.run(["git", "diff", "--cached", "--name-only", "--diff-filter=d", "--", *config["sources"]["roots"]],
+                            cwd=root, capture_output=True, text=True, check=True)
+    changed.update(line.strip() for line in result.stdout.splitlines() if line.strip())
     result = subprocess.run(["git", "ls-files", "--others", "--exclude-standard", "--", *config["sources"]["roots"]],
                             cwd=root, capture_output=True, text=True, check=True)
     changed.update(line.strip() for line in result.stdout.splitlines() if line.strip())
