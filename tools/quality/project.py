@@ -85,6 +85,19 @@ def run_coverage(root, config):
 def doctor(root, config):
     root = Path(root).resolve()
     verify_lua(config["commands"]["coverage"])
+    # 读取 bootstrap 的公开 pins，不触发 ensure/install，保留 acceptance 独立入口。
+    pins = subprocess.run([
+        config["commands"]["coverage"][0], "-e",
+        'local b=require("tools.acceptance.bootstrap"); '
+        'for _,n in ipairs({"dry4lua","acceptance4lua"}) do print(n.."="..b.pins[n]) end',
+    ], cwd=root, capture_output=True, text=True)
+    if pins.returncode:
+        raise RuntimeError(f"无法读取 acceptance bootstrap 固定提交：{pins.stderr.strip()}")
+    for line in pins.stdout.splitlines():
+        name, commit = line.split("=", 1)
+        if config["lua_tools"][name]["commit"] != commit:
+            raise RuntimeError(f"{name} quality 与 acceptance bootstrap 固定提交不一致："
+                               f"{config['lua_tools'][name]['commit']} / {commit}")
     for name, tool in config["lua_tools"].items():
         directory = root / ".toolcache" / name
         repair = "请移走损坏缓存后运行 tools/quality/install.ps1"

@@ -110,11 +110,27 @@ class MutationSourceSafetyTest(unittest.TestCase):
             root = Path(directory)
             source, snapshot = self.fixture(root, phase='baseline')
             with (root / 'test.py').open('a', encoding='utf-8') as stream:
-                stream.write('raise SystemExit(7)\n')
+                stream.write('print("基线原错误", flush=True)\nraise SystemExit(7)\n')
             result = self.invoke(root, 'project')
             self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
+            self.assertIn('基线原错误', result.stdout + result.stderr)
+            self.assertIn('源码已变化', result.stdout + result.stderr)
             self.assertEqual(source.read_bytes(), EDIT)
             self.assertEqual(snapshot.read_bytes(), OLD)
+
+    def test_baseline_failure_reports_deleted_source_at_all_entries(self):
+        for entry in ('project', 'uml', 'downstream'):
+            with self.subTest(entry=entry), tempfile.TemporaryDirectory(prefix='mutation-safety-') as directory:
+                root = Path(directory)
+                source, snapshot = self.fixture(root, action='delete', phase='baseline')
+                with (root / 'test.py').open('a', encoding='utf-8') as stream:
+                    stream.write('print("删除基线原错误", flush=True)\nraise SystemExit(7)\n')
+                result = self.invoke(root, entry)
+                self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
+                self.assertIn('删除基线原错误', result.stdout + result.stderr)
+                self.assertIn('被删除', result.stdout + result.stderr)
+                self.assertFalse(source.exists())
+                self.assertEqual(snapshot.read_bytes(), OLD)
 
     def test_legacy_backup_never_overwrites_user_source(self):
         with tempfile.TemporaryDirectory(prefix='mutation-safety-') as directory:
@@ -142,6 +158,32 @@ class MutationSourceSafetyTest(unittest.TestCase):
             self.assertEqual(snapshot.read_bytes(), OLD, result.stdout + result.stderr)
             self.assertEqual(result.returncode, 1)
             self.assertIn('源码', result.stdout + result.stderr)
+
+    def test_coverage_failure_reports_save_and_preserves_original_error(self):
+        with tempfile.TemporaryDirectory(prefix='mutation-safety-') as directory:
+            root = Path(directory)
+            source, snapshot = self.fixture(root)
+            with (root / 'coverage.lua').open('a', encoding='utf-8') as stream:
+                stream.write("local f=assert(io.open('common/Example.lua','wb')); f:write('return {}\\n'); f:close(); print('覆盖率原错误'); os.exit(7)\n")
+            result = self.invoke(root, 'project')
+            self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
+            self.assertIn('覆盖率原错误', result.stdout + result.stderr)
+            self.assertIn('源码已变化', result.stdout + result.stderr)
+            self.assertEqual(source.read_bytes(), b'return {}\n')
+            self.assertEqual(snapshot.read_bytes(), OLD)
+
+    def test_coverage_exception_reports_deletion_and_original_error(self):
+        with tempfile.TemporaryDirectory(prefix='mutation-safety-') as directory:
+            root = Path(directory)
+            source, snapshot = self.fixture(root)
+            # 成功退出却不产生统计，触发公开 coverage 转换前异常。
+            (root / 'coverage.lua').write_text("assert(os.remove('common/Example.lua'))\n")
+            result = self.invoke(root, 'project')
+            self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+            self.assertIn('未生成 LuaCov 统计', result.stdout + result.stderr)
+            self.assertIn('被删除', result.stdout + result.stderr)
+            self.assertFalse(source.exists())
+            self.assertEqual(snapshot.read_bytes(), OLD)
 
     def test_project_baseline_edit_stops_before_publishing(self):
         with tempfile.TemporaryDirectory(prefix='mutation-safety-') as directory:

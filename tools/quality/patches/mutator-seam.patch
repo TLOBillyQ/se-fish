@@ -1,8 +1,15 @@
 diff --git a/src/mutator/engine.py b/src/mutator/engine.py
-index e529424..11bf0bf 100644
+index e529424..495b789 100644
 --- a/src/mutator/engine.py
 +++ b/src/mutator/engine.py
-@@ -21,13 +21,10 @@ def restore_backups(root: Path) -> list[Path]:
+@@ -15,19 +15,16 @@ from mutator.workers import run_mutants
+
+
+ def restore_backups(root: Path) -> list[Path]:
+-    """Put back sources left mutated by a killed run."""
++    """兼容上游 API 名；拒绝无所有权记录的旧备份，保留源码与备份。"""
+
+     base = root / "target" / "mutator-backup"
      restored: list[Path] = []
      if not base.is_dir():
          return restored
@@ -54,25 +61,69 @@ index e529424..11bf0bf 100644
  def _carry_forward(sites: list[Site], covered: dict[str, bool], history, digests) -> dict[str, str]:
      by_id = {site.mutation_id: site for site in sites}
      carried = {}
-@@ -256,8 +280,9 @@ def _statuses(found: list[Site], covered: dict[str, bool], outcomes: dict[str, s
+@@ -255,9 +279,10 @@ def _statuses(found: list[Site], covered: dict[str, bool], outcomes: dict[str, s
+     return statuses
 
 
- def _restore_if_dirty(path: Path, original: bytes) -> None:
+-def _restore_if_dirty(path: Path, original: bytes) -> None:
 -    if path.read_bytes() != original:
 -        path.write_bytes(original)
++def _assert_source_unchanged(path: Path, original: bytes) -> None:
 +    # worker 只修改副本；主树变化属于外部保存，不能恢复旧字节。
 +    if not path.is_file() or path.read_bytes() != original:
 +        raise RuntimeError(f"mutation 原始源码已变化或被删除，停止发布并保留外部编辑：{path}")
 
 
  def mutate_file(
-@@ -313,14 +338,15 @@ def mutate_file(
+@@ -296,31 +321,43 @@ def mutate_file(
+     selected = _select(found, covered, history, digests, mutate_all, lines)
+     outcomes = _carry_forward(found, covered, history, digests)
+     _warn_many(file_key, selected, mutation_warning)
+-    failure = _apply_selected(
+-        path,
+-        root,
+-        original,
+-        selected,
+-        runner,
+-        language,
+-        test_command,
+-        timeout_factor,
+-        file_key,
+-        baselines,
+-        outcomes,
+-        max_workers,
+-    )
++    try:
++        failure = _apply_selected(
++            path,
++            root,
++            original,
++            selected,
++            runner,
++            language,
++            test_command,
++            timeout_factor,
++            file_key,
++            baselines,
++            outcomes,
++            max_workers,
++        )
++    except Exception:
++        try:
++            _assert_source_unchanged(path, original)
++        except RuntimeError as change:
++            print(change, file=sys.stderr)
++        raise
      if failure is not None:
++        try:
++            _assert_source_unchanged(path, original)
++        except RuntimeError as change:
++            failure.baseline_message += f"\n{change}"
          return failure
      forms = _forms(source, path, root, file_key, found, covered, outcomes, lines)
--    written = write_results(root, file_key, forms, outcomes)
-     _restore_if_dirty(path, original)
-+    written = write_results(root, file_key, forms, outcomes)
++    _assert_source_unchanged(path, original)
+     written = write_results(root, file_key, forms, outcomes)
+-    _restore_if_dirty(path, original)
      return RunResult(
          path=file_key,
          forms=forms,
