@@ -146,11 +146,13 @@ def run(root: Path, config: dict, config_path: Path | str, paths: list[str], *, 
         raise ValueError("项目测试命令必须是非空 argv")
     _validate(root, config)
     command_cwd = _test_command(root, command)
+    original = {path: path.read_bytes() for path in targets}
     coverage = subprocess.run([sys.executable, "-B", str(Path(__file__).parent / "project.py"),
                                "--root", str(root), "--config", str(config_path), "coverage"], cwd=root)
     if coverage.returncode:
         return 2
-    original = {path: path.read_bytes() for path in targets}
+    if any(not path.is_file() or path.read_bytes() != content for path, content in original.items()):
+        raise RuntimeError("mutation 原始源码已变化或被删除，停止发布并保留外部编辑")
     staging_parent = root / "target/mutation-staging"
     staging_parent.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix="run-", dir=staging_parent) as directory:
@@ -198,8 +200,8 @@ def run(root: Path, config: dict, config_path: Path | str, paths: list[str], *, 
                     code = 3
             print(format_results(forms))
             _validate_tree(staging_metrics, "暂存")
-            if any(path.read_bytes() != content for path, content in original.items()):
-                raise RuntimeError("mutation 改动了原始业务源码")
+            if any(not path.is_file() or path.read_bytes() != content for path, content in original.items()):
+                raise RuntimeError("mutation 原始源码已变化或被删除，停止发布并保留外部编辑")
             if code in {0, 3}:
                 final_files = {path.relative_to(staging_metrics) for path in staging_metrics.rglob("*.edn")}
                 _publish(root, config, staging_metrics, changed=final_files, removed=initial_files - final_files)
@@ -214,6 +216,3 @@ def run(root: Path, config: dict, config_path: Path | str, paths: list[str], *, 
             upstream_metrics._edn_files = original_edn_files
             upstream_metrics.snapshot_path = original_snapshot_path
             upstream_metrics._remove_empty_dirs = original_remove_empty
-            for path, content in original.items():
-                if path.read_bytes() != content:
-                    path.write_bytes(content)
