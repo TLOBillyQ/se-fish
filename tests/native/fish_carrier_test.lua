@@ -146,55 +146,7 @@ local SPAWN_OPTS = {
   GravityEnabled = false,
 }
 
--- ===== 1. 纯函数（配置解析）=====
-
-describe('TestFishCarrierHealthConfig', function()
-  it('test_bad_max_health_falls_back', function()
-    -- 0 / 负数 / nan / inf / 非数：一律回落默认，不把「血量为 0」这种值放行进引擎
-    for _, bad in ipairs({ 0, -1, 0 / 0, math.huge, -math.huge, '50', true }) do
-      assert.are.equal(100, MgrFishCarrier.ResolveMaxHealth({ MaxHealth = bad }, {}))
-    end
-  end)
-
-  it('test_configured_max_health_would_win_over_default', function()
-    -- 本图配置落盘后（M17 的 GameCfg.FishCarrier）应当被优先采用；没落盘时这条自动跳过
-    local cfg = GameCfg.FishCarrier
-    if not cfg or cfg.MaxHealth == nil then
-      assert.are.equal(100, MgrFishCarrier.ResolveMaxHealth(nil))
-      return
-    end
-    assert.are.equal(cfg.MaxHealth, MgrFishCarrier.ResolveMaxHealth(nil))
-  end)
-
-  it('test_max_health_falls_back_to_engine_default', function()
-    assert.are.equal(100, MgrFishCarrier.ResolveMaxHealth(nil, {}))
-    assert.are.equal(100, MgrFishCarrier.ResolveMaxHealth({}, {}))
-  end)
-
-  it('test_max_health_priority_is_opts_then_config', function()
-    assert.are.equal(50, MgrFishCarrier.ResolveMaxHealth({ MaxHealth = 50 }, { MaxHealth = 30 }))
-    assert.are.equal(30, MgrFishCarrier.ResolveMaxHealth({}, { MaxHealth = 30 }))
-  end)
-
-  it('test_mesh_priority_is_opts_then_config', function()
-    assert.are.equal('official://mesh/1',
-      MgrFishCarrier.ResolveMesh({ RenderMeshId = 'official://mesh/1' }, { RenderMeshId = 'official://mesh/2' }))
-    assert.are.equal('official://mesh/2', MgrFishCarrier.ResolveMesh({}, { RenderMeshId = 'official://mesh/2' }))
-  end)
-
-  it('test_model_id_is_written_as_official_mesh_uri', function()
-    -- M0-V3 实测：official://preset/... 会建出 1×1×1 空壳，只有 official://mesh/<号> 是对的写法
-    assert.are.equal('official://mesh/7000544', MgrFishCarrier.ResolveMesh({ ModelId = 7000544 }, {}))
-    assert.are.equal('official://mesh/7000544', MgrFishCarrier.ResolveMesh({}, { ModelId = '7000544' }))
-  end)
-
-  it('test_no_mesh_anywhere_is_nil_so_spawn_refuses', function()
-    assert.is_nil(MgrFishCarrier.ResolveMesh({}, {}))
-    assert.is_nil(MgrFishCarrier.ResolveMesh({ ModelId = '' }, {}))
-  end)
-end)
-
--- ===== 2. 引擎侧（假引擎）=====
+-- ===== 1. 引擎侧（假引擎）=====
 
 describe('TestFishCarrierEngine', function()
   it('test_attach_destroys_the_orphan_receiver_when_controller_is_missing', function()
@@ -483,6 +435,54 @@ describe('TestFishCarrierEngine', function()
       assert.near(0.1, notices[1].amount, 0.00001)
     end)
     mgr.DamagePublisher = nil
+  end)
+end)
+
+-- ===== 2. 纯函数（配置解析）=====
+
+describe('TestFishCarrierHealthConfig', function()
+  it('test_bad_max_health_falls_back', function()
+    -- 0 / 负数 / nan / inf / 非数：一律回落默认，不把「血量为 0」这种值放行进引擎
+    for _, bad in ipairs({ 0, -1, 0 / 0, math.huge, -math.huge, '50', true }) do
+      assert.are.equal(100, MgrFishCarrier.ResolveMaxHealth({ MaxHealth = bad }, {}))
+    end
+  end)
+
+  it('test_configured_max_health_would_win_over_default', function()
+    -- 本图配置落盘后（M17 的 GameCfg.FishCarrier）应当被优先采用；没落盘时这条自动跳过
+    local cfg = GameCfg.FishCarrier
+    if not cfg or cfg.MaxHealth == nil then
+      assert.are.equal(100, MgrFishCarrier.ResolveMaxHealth(nil))
+      return
+    end
+    assert.are.equal(cfg.MaxHealth, MgrFishCarrier.ResolveMaxHealth(nil))
+  end)
+
+  it('test_max_health_falls_back_to_engine_default', function()
+    assert.are.equal(100, MgrFishCarrier.ResolveMaxHealth(nil, {}))
+    assert.are.equal(100, MgrFishCarrier.ResolveMaxHealth({}, {}))
+  end)
+
+  it('test_max_health_priority_is_opts_then_config', function()
+    assert.are.equal(50, MgrFishCarrier.ResolveMaxHealth({ MaxHealth = 50 }, { MaxHealth = 30 }))
+    assert.are.equal(30, MgrFishCarrier.ResolveMaxHealth({}, { MaxHealth = 30 }))
+  end)
+
+  it('test_mesh_priority_is_opts_then_config', function()
+    assert.are.equal('official://mesh/1',
+      MgrFishCarrier.ResolveMesh({ RenderMeshId = 'official://mesh/1' }, { RenderMeshId = 'official://mesh/2' }))
+    assert.are.equal('official://mesh/2', MgrFishCarrier.ResolveMesh({}, { RenderMeshId = 'official://mesh/2' }))
+  end)
+
+  it('test_model_id_is_written_as_official_mesh_uri', function()
+    -- M0-V3 实测：official://preset/... 会建出 1×1×1 空壳，只有 official://mesh/<号> 是对的写法
+    assert.are.equal('official://mesh/7000544', MgrFishCarrier.ResolveMesh({ ModelId = 7000544 }, {}))
+    assert.are.equal('official://mesh/7000544', MgrFishCarrier.ResolveMesh({}, { ModelId = '7000544' }))
+  end)
+
+  it('test_no_mesh_anywhere_is_nil_so_spawn_refuses', function()
+    assert.is_nil(MgrFishCarrier.ResolveMesh({}, {}))
+    assert.is_nil(MgrFishCarrier.ResolveMesh({ ModelId = '' }, {}))
   end)
 end)
 
