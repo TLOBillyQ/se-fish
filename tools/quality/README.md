@@ -12,7 +12,26 @@ Lua 解释器与测试命令是两条独立契约（#81）。`project.json` 的 
 
 LCOV reporter 的固定实现是 `tools/quality/report_lcov.lua`：基于 `luacov.runner` / `ReporterBase` 写出 `SF:`（反斜杠归一为正斜杠）、`DA:`、`LF:`、`LH:`、`end_of_record`。若未来替换为共享 reporter，只能替换内部生成器，必须保持 `paths.lcov` 输出路径、LCOV 字段、路径归一化与 `report_lcov.lua <stats> <output>` 参数契约；CRAP/mutation 只消费该文件，不感知 reporter 实现。
 
-原生 Busted 入口由根目录 `.busted` 定义车道：`fast`（default，日常）与 `full`（追加 `tests/tooling/slow`、`tests/native/slow` 的 slow Lua）；探针（`tests/probes`）、共享夹具（`tests/support`）、LuaUnit（`tests/lib`）与 Python 回归不进入发现范围。共享初始化 `tests/native/helper.lua` 在任何案例加载前建立与旧入口相同的 Debug/AcceptanceSlot 基线，并按案例快照恢复共享配置，案例失败不泄漏。迁移期旧入口 `lua tests/run.lua` 保持可用，覆盖率与 mutation 测试 argv 仍以旧入口为准。
+原生 Busted 入口由根目录 `.busted` 定义车道：`fast`（default，日常）与 `full`（追加 `tests/native/slow` 的 slow Lua）；探针（`tests/probes`）、共享夹具（`tests/support`）、LuaUnit（`tests/lib`）与 Python 回归不进入发现范围。共享初始化 `tests/native/helper.lua` 与旧入口 `tests/run.lua` 共用 `tests/support/baseline.lua` 建立同一份 Debug/AcceptanceSlot 基线，并按案例快照恢复共享配置，案例失败不泄漏。
+
+## 迁移期双 runner 与覆盖率合并
+
+`#82` 起两套 runner 分进程运行互斥集合，车道目录单点定义在 `tests/lanes.lua`：`.busted` 的 ROOT 只含 `tests/native*`，旧 LuaUnit 目录（`tests/gameplay`、`tests/tooling`、`tests/tooling/slow`）不交给 Busted——否则 Busted 会 `loadfile` 整个 LuaUnit 套件、注册 0 个案例且退出码为 0（跨 runner 加载加静默遗漏）。聚合入口是迁移期临时设施，`#93` 随 LuaUnit 一并移除。
+
+```powershell
+# 两套 runner 的案例清单（分段列出，Python 回归不在其中）
+lua tests/run_migration.lua full --list
+
+# 分进程跑两套：任一失败整体失败，空集合只报 skip
+lua tests/run_migration.lua fast
+
+# 两段覆盖率：各自独立统计，两段都成功后合并一次
+lua tests/run_migration.lua full --coverage
+```
+
+两段统计不共用文件（`build/quality/luacov-legacy.out`、`build/quality/luacov-native.out`），因此不会互相清空；旧段用 `-e` 显式 `init` 自己的 luacov 配置，不能用 `-lluacov`（它会先以默认配置 init，之后 luacov 忽略后到配置，两段统计就写进同一份文件）。只有两段都退出 0 才合并成仓库根 `luacov.stats.out`，`run_coverage` 再整份替换成 `paths.stats` 快照并转 LCOV；任一失败不合并、不发布 LCOV，并保留上一份统计快照供诊断。`project.json` 的 `commands.coverage`/`commands.mutation_test` 因此指向聚合入口，argv 仍整体不透明（解释器契约不变）。聚合入口不加载任一测试框架、不含断言桥接层。本票不运行真实 mutation。
+
+起 lua 子进程的回归统一从 `tests/support/interpreter.lua` 取解释器：Lua 把它记在 arg 的负索引，但下标随启动选项前移——`lua s.lua` 是 `arg[-1]`，`lua -lluacov s.lua` 是 `arg[-2]`，覆盖率旧段的 `lua -e 语句 s.lua` 是 `arg[-3]`（此时 `arg[-1]` 是 `-e` 的语句原文）。写死 `arg[-1]` 会让这类回归只在 `--coverage` 下整片失败，命令行里的"解释器"变成一段 Lua 源码，cmd 报「找不到路径」。
 
 
 ## 安装与校验

@@ -45,11 +45,16 @@ class BustedLaneConfigTest(unittest.TestCase):
     def test_fast_excludes_slow_and_full_includes_it(self):
         _, roots = self._dump()
         fast, full = roots.get("fast", []), roots.get("full", [])
-        for expected in ("tests/gameplay", "tests/tooling", "tests/native"):
+        # 双 runner 互斥发现（#82）：Busted ROOT 只含原生目录，旧 LuaUnit 目录交给 tests/run.lua，
+        # 否则 Busted 会 loadfile 整个 LuaUnit 套件、注册 0 案例且退出码为 0（跨 runner 加载）。
+        for expected in ("tests/native",):
             self.assertIn(expected, fast)
+        for banned in ("tests/gameplay", "tests/tooling", "tests/tooling/slow"):
+            self.assertNotIn(banned, fast, f"fast 的 Busted ROOT 不得含旧测试目录：{banned}")
+            self.assertNotIn(banned, full, f"full 的 Busted ROOT 不得含旧测试目录：{banned}")
         self.assertFalse(any("slow" in path.split("/") for path in fast),
                          f"fast 不得包含 slow 目录：{fast}")
-        for expected in list(fast) + ["tests/tooling/slow", "tests/native/slow"]:
+        for expected in list(fast) + ["tests/native/slow"]:
             self.assertIn(expected, full)
 
     def test_probes_support_and_lib_never_in_roots(self):

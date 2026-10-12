@@ -2,8 +2,8 @@
   "sources": {"roots": ["client", "common", "server"], "exclude": ["packages", "server/_trigger"]},
   "lua": {"executable": "lua", "version": "Lua 5.4."},
   "commands": {
-    "coverage": ["lua", "-lluacov", "tests/run.lua", "full"],
-    "mutation_test": ["lua", "tests/run.lua", "fast"]
+    "coverage": ["lua", "tests/run_migration.lua", "full", "--coverage"],
+    "mutation_test": ["lua", "tests/run_migration.lua", "fast"]
   },
   "busted": {
     "command": "busted",

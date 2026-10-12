@@ -1,6 +1,8 @@
--- Busted 共享初始化（#81）：由 .busted 的 helper 在任何案例文件发现/加载前执行；helper 失败则整个运行退出。
--- 顶层建立与 tests/run.lua 相同的离线基线；返回的函数注册根级 before_each/after_each，
--- 每案例快照并恢复共享配置——案例失败时 after_each 链仍从失败层向上执行，修改不泄漏到后续案例。
+-- Busted 共享初始化（#81 建立，#82 接共享基线接缝）：由 .busted 的 helper 在任何案例文件发现/加载前执行；
+-- helper 失败则整个运行退出。基线与旧入口 tests/run.lua 共用 tests/support/baseline.lua，
+-- 避免同一份配置在两处各写一遍。
+-- 返回的函数注册根级 before_each/after_each：每案例快照并在 after_each 恢复共享配置。
+-- before_each 失败时 Busted 仍从失败层向上执行 after_each，因此部分 setup 失败也完成清理，修改不泄漏到后续案例。
 
 package.path = table.concat({
   "./?.lua",
@@ -9,20 +11,16 @@ package.path = table.concat({
   package.path,
 }, ";")
 
-local GameCfg = require("common.GameCfg")
--- 离线套件的显式基线（对齐 tests/run.lua）：旧玩法夹具使用调试物资，验收槽为空串。
--- 只修改本测试进程的配置；业务默认保持关闭调试，编辑器验收槽不影响离线用例。
-GameCfg.Debug = { Enabled = true, InitialGrants = GameCfg.Debug.InitialGrants }
-GameCfg.Save.AcceptanceSlot = ""
+local baseline = require("tests.support.baseline")
+baseline.apply()
 
 return function(busted)
   local snapshot
   busted.executors.before_each(function()
-    snapshot = { Debug = GameCfg.Debug, AcceptanceSlot = GameCfg.Save.AcceptanceSlot }
+    snapshot = baseline.snapshot()
   end)
   busted.executors.after_each(function()
-    GameCfg.Debug = snapshot.Debug
-    GameCfg.Save.AcceptanceSlot = snapshot.AcceptanceSlot
+    baseline.restore(snapshot)
     snapshot = nil
   end)
   return true
