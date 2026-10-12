@@ -12,6 +12,14 @@ from pathlib import Path
 os.environ.setdefault("PYTHONDONTWRITEBYTECODE", "1")
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
+MANIFEST = "uml-quality.json"
+# 标准 quality 分发（#95）：图上右键与终端共用同一公开入口的声明式映射。
+DISPATCH = {
+    "crap": {"argv": ["./tools/quality/project.ps1", "refresh-crap"], "forwardArgs": "none",
+             "scope": "whole-tree", "validResultExitCodes": [0]},
+    "mutate": {"argv": ["./tools/quality/project.ps1", "mutation"], "forwardArgs": "append",
+               "validResultExitCodes": [0, 3]},
+}
 
 
 def load_config(root=None, config=None):
@@ -98,8 +106,44 @@ def run_coverage(root, config):
     return 0
 
 
+def doctor_dispatch(root, config):
+    """核对仓库根声明式分发映射：图上右键与终端必须落到同一项目公开入口。
+
+    在环境核对之前执行：分发前提缺失或错映射时先报配置，不让解释器噪音掩盖。
+    """
+    path = Path(root) / MANIFEST
+    if not path.is_file():
+        raise RuntimeError(f"缺少标准分发配置 {MANIFEST}；图上质量入口无法转交项目命令")
+    try:
+        declared = json.loads(path.read_text(encoding="utf-8-sig"))
+    except ValueError as error:
+        raise RuntimeError(f"{MANIFEST} 不是有效 JSON：{error}") from None
+    if declared.get("version") != 1:
+        raise RuntimeError(f"{MANIFEST} version 必须为 1：{declared.get('version')!r}")
+    operations = declared.get("operations")
+    if not isinstance(operations, dict):
+        raise RuntimeError(f"{MANIFEST} 缺少 operations：标准分发需要声明 crap 与 mutate")
+    problems = []
+    for name, expected in DISPATCH.items():
+        actual = operations.get(name)
+        if not isinstance(actual, dict):
+            problems.append(f"{name} 未声明")
+            continue
+        for field, want in expected.items():
+            got = actual.get(field)
+            if got != want:
+                problems.append(f"{name}.{field} 为 {got!r}，应为 {want!r}")
+    if problems:
+        raise RuntimeError(f"{MANIFEST} 与项目公开入口不一致：{'；'.join(problems)}")
+    extra = sorted(set(operations) - set(DISPATCH))
+    if extra:
+        raise RuntimeError(f"{MANIFEST} 声明了未知操作：{'、'.join(extra)}")
+    print(f"{MANIFEST} 标准分发映射相符（crap → refresh-crap，mutate → mutation）")
+
+
 def doctor(root, config):
     root = Path(root).resolve()
+    doctor_dispatch(root, config)
     verify_lua(config)
     executable = lua_executable(config)
     # 读取 bootstrap 的公开 pins，不触发 ensure/install，保留 acceptance 独立入口。
