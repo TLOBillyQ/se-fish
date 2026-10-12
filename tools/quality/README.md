@@ -84,6 +84,8 @@ acceptance4lua 的 Gherkin 解析、生成与验收仍使用 `tools/acceptance/`
 
 mutation 从覆盖率开始核对目标源码；worker 仅修改副本。运行期间原始文件被保存或删除时停止发布，保留外部编辑和上一份有效 mutation 快照；失败清理不会写回旧源码。下游入口同样在写快照前检查源码。旧版 `target/mutator-backup/` 没有工具最后写入字节的所有权记录，发现备份时停止运行并保留源码与备份，需人工核对后处理。
 
+worker 是 `target/mutation-workers/run-*/worker-*` 下的测试树副本（Windows 上没有 symlink 权限时整树复制）。它必须自足地跑起 `commands.mutation_test`：根目录 `.busted` 按 mutator 的配置文件清单快照进 worker，`tests/native/helper.lua` 等发现目标随测试目录进入 worker，`busted.bat` 由 PATH 上固定版本的 LuaRocks 垫片解析。三者任一缺失都会让基线非零退出，按基线失败处理而不是发布新快照。worker 与业务扫描都不得带上工具缓存：`sources.roots` 只列 `client`/`common`/`server`，`.toolcache`、`.uml-viewer` 同时从 worker 的复制范围里排除。`tests/tooling/slow/busted_worker_test.py` 钉住这三点，并要求 worker 的 fast 发现集合与主入口逐条一致、实际执行案例数等于该清单条数。
+
 mutation 的存活与未覆盖结果表示测试缺口，保留有效快照。差分流程不会因这些结果自动重跑或转为全量。基线失败与基础设施失败须按真实输出处理，不作为有效新指标。无函数定义的配置或转发模块可能没有 mutation 快照；工具当前不测试模块顶层语句。
 
 质量请求共用仓库 `target/quality.lock` 的操作系统锁。公开 PowerShell、Python 脚本、companion 分发及安装器使用同一锁；同仓库忙时明确拒绝并返回 1，进程异常退出自动释放，另一仓库独立运行。锁文件保持稳定，不通过删除文件解锁。安装器在工具替换完成后释放锁，再调用自行持锁的 doctor；启动解释器时若遇到安装切换可失败，但不得在未取得锁时消费统计或发布指标。
