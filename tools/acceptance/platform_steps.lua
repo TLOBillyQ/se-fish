@@ -1,9 +1,9 @@
 -- #147 验收复用单测的引擎边界夹具，调用真实管理器公共接口；支付替身不代表真实平台验收。
 package.path = './tests/lib/?.lua;' .. package.path
--- 盲盒结算夹具在 #87 迁移到原生 Busted 时下沉为共享模块（测试与验收各自实例化），
--- 不再借用全局 LuaUnit 类；濒死复活夹具仍属 #89，保持原样。
+-- 盲盒结算与濒死复活夹具迁移到原生 Busted 时都下沉为共享模块（测试与验收各自实例化），
+-- 不再 dofile 旧测试文件、也不借用全局 LuaUnit 类。
 local BlindboxWorld = require('tests.support.blindbox_world')
-dofile('tests/gameplay/revive_callback_test.lua')
+local ReviveWorld = require('tests.support.revive_world')
 local GameCfg = require('common.GameCfg')
 
 local function finish(w, check)
@@ -87,7 +87,7 @@ return { patterns = {
     { '^玩家濒死后购买一份肾上腺素并自救$', function(w)
         local f = w.fixture
         -- 生命夹具提供控制器与信号，结算仍用本场景真实存档和平台管理器。
-        local life = setmetatable({}, { __index = TestReviveCallback })
+        local life = ReviveWorld.new()
         life:setUp()
         w.life = life
         local s, v = life.s, life.v
@@ -118,9 +118,10 @@ return { patterns = {
         assert(ok, err)
     end },
     { '^复活回调测试档已死亡$', function(w)
-        w.fixture = setmetatable({}, { __index = TestReviveCallback })
+        w.fixture = ReviveWorld.new()
         w.fixture:setUp()
         w.fixture:enterDead()
+        assert(w.fixture.s:Phase(w.fixture.player) == 'dead')
     end },
     { '^广告成功后免费倒计时与迟到超时再次触发$', function(w)
         local f = w.fixture

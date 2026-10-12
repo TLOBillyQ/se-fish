@@ -117,12 +117,12 @@ local function ensureBar(data, itemId)
     end
 end
 
--- ===== 战斗世界：真实 MgrFishUnit（复用 fish_lift / fish_escape 测试的假引擎）=====
+-- ===== 战斗世界：真实 MgrFishUnit（复用 tests/support 的举鱼 / 逃脱共享夹具）=====
 local function combatWorld(world)
-    require('tests.gameplay.fish_escape_test')
-    local env = setmetatable({}, { __index = TestFishEscape })
-    TestFishEscape.setUp(env)
-    TestFishEscape.prepare(env)
+    local FishEscape = require('tests.support.fish_escape')
+    local env = setmetatable({}, { __index = FishEscape })
+    FishEscape.setUp(env)
+    FishEscape.prepare(env)
     env.casts, env.hits, env.notices = {}, {}, {}
     for _, p in ipairs({ env.player, env.other }) do
         p.Character.Controller.Health = 300
@@ -145,7 +145,7 @@ local function combatWorld(world)
 end
 
 local function closeCombat(world)
-    if world.combat then TestFishEscape.tearDown(world.combat) end
+    if world.combat then world.combat:tearDown() end
     world.combat = nil
 end
 
