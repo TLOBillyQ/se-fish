@@ -3,7 +3,7 @@
 -- 只读源码文本校对名单——包整包 vendor 不改，升级后改名/删名必须在这条接缝上立刻暴露。
 -- attr_rule / official_ai_feature 的导出嵌在 return 表的 Funcs 里（facade 拍平转发），
 -- modifier_system 平铺；Enums / Configs 等表字段由 facade 原样透传，不在名单里。
-local lu = require("luaunit")
+-- 迁移自 tests/gameplay/package_api_test.lua（#83）；案例顺序沿用旧入口的方法名字典序。
 
 -- 从 api.lua 末尾的 return 表里提取自赋值导出（`Name = Name,`）；
 -- Enums / Configs 是表字段透传，不是函数，排除在名单外。
@@ -42,22 +42,18 @@ local CASES = {
   { base = "common.AiAPIBase", field = "SERVER_API", path = "server/packages/official_ai_feature/api.lua" },
 }
 
-TestPackageAPI = {}
+describe("TestPackageAPI", function()
+  it("test_build_labels_failure_with_package_name", function()
+    assert.error_matches(function()
+      require("common.AttrAPIBase").build({}, { "Nope" })
+    end, "[AttrAPI] 属性规则包缺少接口: Nope", nil, true)
+  end)
 
-function TestPackageAPI:test_names_match_package_exports()
-  for _, case in ipairs(CASES) do
-    local base = require(case.base)
-    lu.assertEquals(
-      sorted(base[case.field]),
-      sorted(exported_names(case.path)),
-      case.base .. "." .. case.field .. " 与 " .. case.path .. " 导出不一致"
-    )
-  end
-end
-
-function TestPackageAPI:test_build_labels_failure_with_package_name()
-  lu.assertErrorMsgContains(
-    "[AttrAPI] 属性规则包缺少接口: Nope",
-    function() require("common.AttrAPIBase").build({}, { "Nope" }) end
-  )
-end
+  it("test_names_match_package_exports", function()
+    for _, case in ipairs(CASES) do
+      local base = require(case.base)
+      assert.same(sorted(exported_names(case.path)), sorted(base[case.field]),
+        case.base .. "." .. case.field .. " 与 " .. case.path .. " 导出不一致")
+    end
+  end)
+end)
