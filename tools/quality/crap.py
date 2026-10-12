@@ -9,7 +9,7 @@ import sys
 from dataclasses import asdict
 from pathlib import Path
 
-from project import PROJECT_ROOT, load_config, source_files
+from project import PROJECT_ROOT, load_config, lua_executable, source_files
 
 # 由固定 venv 解释器提供 crapper；doctor 负责验证实际导入来源，
 # 不在运行路径强制注入本地源码目录，以免遮蔽环境问题。
@@ -25,7 +25,7 @@ def run_crap(root, config, files=None, lcov_path=None):
     files = source_files(root, config)
     if not files:
         raise RuntimeError("没有可分析的业务 Lua 源码")
-    _validate_sources(root, files)
+    _validate_sources(root, config, files)
     coverage = Path(lcov_path or root / config["paths"]["lcov"])
     if not coverage.is_file():
         raise RuntimeError(f"缺少本轮 LCOV：{coverage}")
@@ -49,11 +49,11 @@ def run_crap(root, config, files=None, lcov_path=None):
     return 0
 
 
-def _validate_sources(root, files):
+def _validate_sources(root, config, files):
     """以 Lua loadfile 预校验业务源码，避免损坏文件静默跳过 CRAP。"""
     for relative in files:
         result = subprocess.run(
-            ["lua", "-e", f'assert(loadfile({str(root / relative)!r}))'],
+            [lua_executable(config), "-e", f'assert(loadfile({str(root / relative)!r}))'],
             cwd=root,
             capture_output=True,
             text=True,
@@ -78,7 +78,7 @@ def run_dry(root, config, files=None):
     report = output / "dry.json"
     temporary = report.with_suffix(".pending")
     temporary.unlink(missing_ok=True)
-    result = subprocess.run([config["commands"]["coverage"][0], str(PROJECT_ROOT / "tools/quality/report.lua"), str(manifest), str(temporary)], cwd=root, env=env)
+    result = subprocess.run([lua_executable(config), str(PROJECT_ROOT / "tools/quality/report.lua"), str(manifest), str(temporary)], cwd=root, env=env)
     if result.returncode:
         temporary.unlink(missing_ok=True)
         return result.returncode
