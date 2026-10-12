@@ -75,7 +75,9 @@ acceptance4lua 的 Gherkin 解析、生成与验收仍使用 `tools/acceptance/`
 
 完整测试失败时停止覆盖率发布，旧 LCOV 失效；转换失败同样停止后续指标。任何 CRAP 刷新都替换完整业务树快照，选中单模块也保持其他模块的指标。DRY 保留重复代码候选报告，不设质量门槛。
 
-viewer 上游固定版本通过标准 quality dispatch 执行项目入口：`uml.ps1 crap` 完整执行 `coverage` → `crap`，忽略单类或组件目标并完整替换快照；成功率/覆盖率失败立即停止。`uml.ps1 mutate <文件> [参数]` 转交项目 mutation 接缝并保留参数及退出码。手工复验可以运行 `.\uml.ps1 crap && .\uml.ps1 ir`。
+标准分发映射声明在仓库根 `uml-quality.json`（`version: 1`，`operations.crap` / `operations.mutate`），viewer 与 companion 每次执行命令时读取，无补丁。图上入口因此落到项目公开命令：`uml.ps1 crap` → `project.ps1 refresh-crap`（`forwardArgs: none`、`scope: whole-tree`，有效结果退出码 0），`uml.ps1 mutate <文件> [参数]` → `project.ps1 mutation`（`forwardArgs: append`，保留参数与退出码，0 与 3 视为有效结果）。`project.ps1 doctor` 会先核对这份声明与项目公开入口是否一致，缺失、无效 JSON 或错映射都在环境核对之前明确失败；校验不通过时图上操作失败关闭，不回退到通用 crapper/mutator 或 `deps.edn` 别名。
+
+`uml.ps1 crap` 完整执行 `coverage` → `crap`，忽略单类或组件目标并完整替换快照；成功率/覆盖率失败立即停止。`uml.ps1 mutate <文件> [参数]` 转交项目 mutation 接缝并保留参数及退出码。手工复验可以运行 `.\uml.ps1 crap && .\uml.ps1 ir`。分发后的结果记录在 `.uml-viewer/quality-result.json`，companion 只消费刚等到的那条记录，`validResult` 为真才使用 IR 与显示。
 
 运行中的 companion 使用启动时取得的规则；新规则需通过 `:quit-for-restart` → 等待旧 JVM 自然退出 → `.\uml.ps1 --restart` 协议重启后载入。分发脚本每次命令执行时读取，因此旧 companion 执行 `.\uml.ps1 crap` 也立即使用修复后的质量入口。GUI 复验代表模块为 `client.LocalReelIn`。
 
