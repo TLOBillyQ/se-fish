@@ -14,11 +14,11 @@
 --  10. 鱼被移除（死亡 / 清场）或逃跑时限到时，预警残留：仍结算伤害，或客户端预警不收起；
 --  11. 朝向不可辨识：追击 / 锁定不写 body.Rotation，或缺 Quaternion 时报错；预警广播字段缺失或推送失败把追咬打断。
 local lu = require('luaunit')
-require('tests.gameplay.fish_escape_test')
+local FishCombat = require('tests.support.fish_combat')
 
 TestGarCombat = {}
 for _, name in ipairs({ 'setUp', 'tearDown', 'newPlayer', 'land', 'mounts', 'prepare', 'heldFish' }) do
-    TestGarCombat[name] = TestFishEscape[name]
+    TestGarCombat[name] = FishCombat[name]
 end
 
 local function vec(x, y, z) return { x = x, y = y, z = z } end
@@ -30,37 +30,6 @@ local function armPlayer(player, health)
     return damages
 end
 
-local function armVitals(self)
-    self.vitalsCalls = {}
-    self.downed = {}
-    self.mgr.Vitals = {
-        NewHit = function(_, source, category) return { source = source, category = category } end,
-        ApplyHit = function(_, hit, player, amount)
-            self.vitalsCalls[#self.vitalsCalls + 1] = { hit, player, amount }
-            player.Character.Controller:TakeDamage(amount)
-            return true, amount
-        end,
-        CanTakeDamage = function(_, player)
-            return not self.downed[player] and (player.Character.Controller.Health or 0) > 0
-        end,
-    }
-end
-
-local baseSetUp = TestFishEscape.setUp
-local baseTearDown = TestFishEscape.tearDown
-function TestGarCombat:setUp()
-    baseSetUp(self)
-    armVitals(self)
-    self.savedQuaternion = rawget(_G, 'Quaternion')
-    self.notices = {}
-    local env = self
-    self.mgr.PublishBite = function(_, payload) env.notices[#env.notices + 1] = payload end
-end
-
-function TestGarCombat:tearDown()
-    _G.Quaternion = self.savedQuaternion
-    baseTearDown(self)
-end
 
 function TestGarCombat:test_drop_enters_combat_and_chases_nearest_living_player()
     self:prepare()

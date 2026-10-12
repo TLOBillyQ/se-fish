@@ -1,9 +1,9 @@
 -- #86 失败方式：部位掉落丢数量/倍率、重复死亡重复发放、错误地限制拾取者、拾取发成 eel。
 local lu = require('luaunit')
-require('tests.gameplay.fish_loot_test')
+local FishLoot = require('tests.support.fish_loot')
 TestEelLoot = {}
 for _, name in ipairs({ 'setUp', 'tearDown', 'newPlayer', 'land', 'mounts', 'kill', 'bar' }) do
-    TestEelLoot[name] = TestFishLoot[name]
+    TestEelLoot[name] = FishLoot[name]
 end
 function TestEelLoot:test_eel_drops_three_items_and_another_player_can_pick_them()
     local fish = self:land(self.player, 'eel', 1.7)

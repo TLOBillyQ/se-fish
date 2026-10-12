@@ -7,7 +7,7 @@
 --   5. 同一轮多人争抢或请求重放发出多份；
 --   6. 刷新计时误用到鱼获：鱼获被刷新、到时消失。
 local lu = require('luaunit')
-require('tests.gameplay.fish_loot_test')
+local FishLoot = require('tests.support.fish_loot')
 
 TestBaitSpot = {}
 
@@ -29,21 +29,21 @@ function TestBaitSpot:setUp()
         },
     }
     self.keepSpots = true
-    TestFishLoot.setUp(self)
+    FishLoot.setUp(self)
 end
 
 function TestBaitSpot:tearDown()
     require('common.GameCfg').Debug = self.savedGrantDebug
-    TestFishLoot.tearDown(self)
+    FishLoot.tearDown(self)
     self.cfg.BaitSpots = self.savedSpots
 end
 
-TestBaitSpot.land = TestFishLoot.land
-TestBaitSpot.kill = TestFishLoot.kill
-TestBaitSpot.bar = TestFishLoot.bar
-TestBaitSpot.lootUnits = TestFishLoot.lootUnits
-TestBaitSpot.mounts = TestFishLoot.mounts
-TestBaitSpot.newPlayer = TestFishLoot.newPlayer
+TestBaitSpot.land = FishLoot.land
+TestBaitSpot.kill = FishLoot.kill
+TestBaitSpot.bar = FishLoot.bar
+TestBaitSpot.lootUnits = FishLoot.lootUnits
+TestBaitSpot.mounts = FishLoot.mounts
+TestBaitSpot.newPlayer = FishLoot.newPlayer
 
 function TestBaitSpot:spot(id)
     for _, loot in pairs(self.loot.Loots) do

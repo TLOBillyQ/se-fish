@@ -235,11 +235,11 @@ check('买竿扣 ' .. tostring(rodPrice) .. ' 金并入库', spent == rodPrice a
     string.format('spent=%d rod=%d', spent, data:ItemCount('starterRod')))
 
 -- ===== 战斗环境：真实 MgrFishUnit（复用 fish_lift / fish_escape 测试的假引擎）=====
-require('tests.gameplay.fish_escape_test')
+local FishEscape = require('tests.support.fish_escape')
 local function combatEnv()
-    local env = setmetatable({}, { __index = TestFishEscape })
-    TestFishEscape.setUp(env)
-    TestFishEscape.prepare(env)
+    local env = setmetatable({}, { __index = FishEscape })
+    FishEscape.setUp(env)
+    FishEscape.prepare(env)
     env.notices, env.casts, env.hits, env.published = {}, {}, {}, {}
     local maxHealth = GameCfg.Vitals.MaxHealth or 300
     for _, p in ipairs({ env.player, env.other }) do
@@ -275,7 +275,7 @@ local function combatEnv()
     return env
 end
 local function closeEnv(env)
-    TestFishEscape.tearDown(env)
+    FishEscape.tearDown(env)
     _G.game = economyGame
 end
 local function weapon()

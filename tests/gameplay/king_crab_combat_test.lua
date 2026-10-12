@@ -11,11 +11,11 @@
 --   7. 预警残留：乱刺结束 / 逃跑 / 移除后客户端预警不收起（GarBiteNotice 缺 clear）；
 --   8. 头顶标签缺新招式名：客户端拿到 move=jab 显示「攻击」之外的乱码（本单只钉协议字段）。
 local lu = require('luaunit')
-require('tests.gameplay.gar_combat_test')
+local FishCombat = require('tests.support.fish_combat')
 
 TestKingCrabCombat = {}
 for _, name in ipairs({ 'setUp', 'tearDown', 'newPlayer', 'land', 'mounts', 'prepare', 'heldFish' }) do
-    TestKingCrabCombat[name] = TestGarCombat[name]
+    TestKingCrabCombat[name] = FishCombat[name]
 end
 
 local function drop(self)

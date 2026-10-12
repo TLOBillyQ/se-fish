@@ -3,11 +3,11 @@
 -- 删除后任务残留；多次启动叠加；无 Controller 静默成功；倍率重复；失败继续写位置。
 local lu = require('luaunit')
 local Loader = require('tests.tooling.official_ai_vendor_runtime')
-require('tests.gameplay.fish_lift_test')
+local FishLift = require('tests.support.fish_lift')
 local GameCfg = require('common.GameCfg')
 TestFishAiLifecycle = {}
 for _, name in ipairs({ 'setUp', 'tearDown', 'newPlayer', 'land', 'mounts' }) do
-    TestFishAiLifecycle[name] = TestFishLift[name]
+    TestFishAiLifecycle[name] = FishLift[name]
 end
 function TestFishAiLifecycle:test_every_configured_fish_hands_off_on_release_and_remove()
     local calls = {}

@@ -15,11 +15,11 @@
 --   9. 追击位移失败后仍按「没滚到的」目标位置结算，而不是按真实位置；
 --  10. 单一玩家被翻滚追击贴到时不结算接触伤害（只有多人贴身才算），或接触与扫头同帧并发多扣。
 local lu = require('luaunit')
-require('tests.gameplay.gar_combat_test')
+local FishCombat = require('tests.support.fish_combat')
 
 TestForestCombat = {}
 for _, name in ipairs({ 'setUp', 'tearDown', 'newPlayer', 'land', 'mounts', 'prepare', 'heldFish' }) do
-    TestForestCombat[name] = TestGarCombat[name]
+    TestForestCombat[name] = FishCombat[name]
 end
 
 local function vec(x, y, z) return { x = x, y = y, z = z } end

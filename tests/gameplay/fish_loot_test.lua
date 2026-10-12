@@ -8,100 +8,16 @@
 --   6. 请求重放或两人争抢发出两份；成功后不销毁地面实体、不同步库存与鱼获列表；
 --   7. 鱼种表没收敛：极品鱼仍能被钓到或留在鱼种表里。
 local lu = require('luaunit')
-require('tests.gameplay.fish_lift_test')
+local FishLoot = require('tests.support.fish_loot')
 
 TestFishLoot = {}
+
+for name, method in pairs(FishLoot) do TestFishLoot[name] = method end
 
 local function vec(x, y, z)
     return setmetatable({ x = x, y = y, z = z }, { __add = function(a, b)
         return vec(a.x + b.x, a.y + b.y, a.z + b.z)
     end })
-end
-
-function TestFishLoot:setUp()
-    self.savedColor = _G.Color
-    _G.Color = { New = function(r, g, b, a) return { r = r, g = g, b = b, a = a } end }
-    -- #49：进图白送只在调试开关下发放，这些用例沿用它的起始库存（鱼竿在第 1 格、蚯蚓若干）
-    self.savedGrantDebug = self.savedGrantDebug or require('common.GameCfg').Debug -- TestBaitSpot 复用本 setUp，别把已打开的开关存成原值
-    require('common.GameCfg').Debug = { Enabled = true, InitialGrants = self.savedGrantDebug.InitialGrants }
-    TestFishLift.setUp(self)
-    local env = self
-    self.lootModule = package.loaded['server.Mgr.MgrLoot']
-    self.diedSubs = {}
-    package.loaded['server.Mgr.MgrFishCarrier'].SubscribeDied = function(_, fn)
-        env.diedSubs[#env.diedSubs + 1] = fn
-        return true
-    end
-    self.groundY = 1.0
-    self.physics = { Raycast = function(_, origin, direction)
-        if direction.y < 0 then return { Position = vec(origin.x, env.groundY, origin.z), Distance = 1 } end
-    end }
-    _G.RaycastParams = { New = function() return { FilterDescendantsInstances = {} } end }
-    local get = _G.game.GetService
-    _G.game = { GetService = function(s, name)
-        if name == 'PhysicsService' then return env.physics end
-        return get(s, name)
-    end }
-    self.data = {}
-    local PlayerData = assert(loadfile('server/Data/PlayerData.lua'))()
-    for _, player in ipairs({ self.player, self.other }) do
-        player.SetAttribute = function() end
-        local data = PlayerData.New(player)
-        data:Init()
-        self.data[player.UserId] = data
-    end
-    self.synced = {}
-    self.broadcasts = 0
-    self.replies = {}
-    package.loaded['server.Mgr.MgrLoot'] = nil
-    self.loot = assert(loadfile('server/Mgr/MgrLoot.lua'))()
-    self.loot.FishUnit = self.mgr
-    self.loot.PlayerData = {
-        GetDataInst = function(_, player) return env.data[player.UserId] end,
-        SendItemBar = function(_, player) env.synced[#env.synced + 1] = player end,
-    }
-    self.loot.Broadcast = function() env.broadcasts = env.broadcasts + 1 end
-    self.loot.Reply = function(_, player, payload) env.replies[#env.replies + 1] = { player = player, payload = payload } end
-    self.loot.Listen = function() end
-    -- 固定点位鱼饵（#45）另有 tests/gameplay/bait_spot_test.lua，这里不生成，免得混进鱼获断言
-    if not self.keepSpots then self.loot.StartSpots = function() end end
-    self.loot:Start()
-end
-
-function TestFishLoot:tearDown()
-    _G.Color = self.savedColor
-    require('common.GameCfg').Debug = self.savedGrantDebug
-    package.loaded['server.Mgr.MgrLoot'] = self.lootModule
-    TestFishLift.tearDown(self)
-end
-
-TestFishLoot.newPlayer = TestFishLift.newPlayer
-TestFishLoot.land = TestFishLift.land
-TestFishLoot.mounts = TestFishLift.mounts
-
-function TestFishLoot:kill(fish)
-    for _, fn in ipairs(self.diedSubs) do fn(fish.Carrier) end
-end
-
-function TestFishLoot:lootUnits()
-    local list = {}
-    for _, unit in ipairs(self.created) do
-        if unit.UnitType == 'WorldUnit' and tostring(unit.Name):find('^FishLoot_') and not unit.Destroyed then
-            list[#list + 1] = unit
-        end
-    end
-    return list
-end
-
-function TestFishLoot:onlyLoot()
-    local ids = {}
-    for id in pairs(self.loot.Loots) do ids[#ids + 1] = id end
-    lu.assertEquals(#ids, 1)
-    return self.loot.Loots[ids[1]]
-end
-
-function TestFishLoot:bar(player)
-    return self.data[player.UserId]:GetItemBarSnapshot().slots
 end
 
 function TestFishLoot:test_death_spawns_one_static_loot_with_species_and_mult()

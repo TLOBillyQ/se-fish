@@ -1,10 +1,10 @@
 -- #135 失败模式：放下即逃；连击顺序/20点伤害错误；重复帧重复伤害；尾刺位移错误；
 -- 15秒后未眩晕5秒；雨云与俯冲重叠/漏招；雨云少于6次；移除后残留预警；绕后仍啄中。
 local lu = require('luaunit')
-require('tests.gameplay.gar_combat_test')
+local FishCombat = require('tests.support.fish_combat')
 TestShrimpCombat = {}
 for _, name in ipairs({ 'setUp', 'tearDown', 'newPlayer', 'land', 'mounts', 'prepare', 'heldFish' }) do
-    TestShrimpCombat[name] = TestGarCombat[name]
+    TestShrimpCombat[name] = FishCombat[name]
 end
 local function drop(self, id)
     self:prepare()
