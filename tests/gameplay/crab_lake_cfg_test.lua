@@ -29,12 +29,12 @@ local function crabWater(cfg)
     end
 end
 
--- 水区注册：Id 取内容层 WaterId，矩形 80×24，中心 (260,144)，映射到 crabLake 钓鱼区
+-- 水区注册：Id 取内容层 WaterId，矩形 80×24，中心 (480,-44)，映射到 crabLake 钓鱼区
 function TestCrabLakeCfg:test_crab_lake_water_zone_registered_and_disjoint()
     local water = crabWater(self.cfg)
     lu.assertNotNil(water, 'crabLake.water 未进 Water.Zones')
-    lu.assertEquals(water.Center.x, 260)
-    lu.assertEquals(water.Center.z, 144)
+    lu.assertEquals(water.Center.x, 480)
+    lu.assertEquals(water.Center.z, -44)
     lu.assertEquals(water.HalfX, 40)
     lu.assertEquals(water.HalfZ, 12)
     lu.assertEquals(type(water.SurfaceY), 'number')
@@ -184,5 +184,5 @@ function TestCrabLakeCfg:test_zone3_scene_contract_exposes_grill_anchor()
     end
     lu.assertNotNil(grill)
     lu.assertEquals(grill.Name, 'Z3_Grill')
-    lu.assertEquals(grill.Position, { x = 250, y = 5, z = 90 })
+    lu.assertEquals(grill.Position, { x = 490, y = 5, z = 10 })
 end

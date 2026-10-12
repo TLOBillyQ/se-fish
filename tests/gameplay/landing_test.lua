@@ -93,7 +93,7 @@ function TestLanding:setUp()
         return { Play = function() env.played[#env.played + 1] = uri end }
     end }
     self.player = { UserId = 7, messages = {}, CharacterAdded = signal(), CharacterRemoving = signal(),
-        Character = { Position = vec(10, 2, 20), Animator = animator,
+        Character = { Position = vec(10, 2, -20), Animator = animator,
             Rotation = { GetForward = function() return vec(0, 0, 1) end } } }
     self.reel:OnPlayerAdded(self.player)
 end
@@ -154,7 +154,7 @@ function TestLanding:test_fish_lands_in_front_of_player()
     self:reelIn(id, 10, 1)
     local pos = self.spawned[1].Opts.Position
     lu.assertAlmostEquals(pos.x, 10, 1e-6)
-    lu.assertTrue(pos.z > 20 and pos.z <= 22.5)
+    lu.assertTrue(pos.z > -20 and pos.z <= -17.5)
     lu.assertTrue(pos.y >= 2)
 end
 
@@ -306,7 +306,7 @@ end
 function TestLanding:test_downed_player_cannot_cast()
     -- #128 动作互斥：濒死（不能行动）的玩家不能发起抛竿，服务端直接拒绝，不依赖客户端界面
     self.cast.Vitals = { CanAct = function() return false end }
-    self.player.Character.Position = vec(-11.75, 2, 22.75)
+    self.player.Character.Position = vec(-11.75, 2, -17.25)
     self.cast:Cast(self.player, { slot = 1, itemId = 'starterRod' })
     lu.assertNil(self.cast.Sessions[self.player.UserId])
     lu.assertEquals(self:lastState().result.reason, 'cannotAct')
@@ -314,12 +314,12 @@ end
 
 function TestLanding:test_only_valid_water_cast_notifies_quest()
     self:spyQuest()
-    self.player.Character.Position = vec(10, 2, 20)
+    self.player.Character.Position = vec(10, 2, -20)
     self.cast:Cast(self.player, { slot = 1, itemId = 'starterRod' })
     lu.assertNil(self.cast.Sessions[self.player.UserId])
     lu.assertEquals(self:lastState().result.reason, 'invalidLanding')
     lu.assertEquals(#self.facts, 0)
-    self.player.Character.Position = vec(-11.75, 2, 22.75)
+    self.player.Character.Position = vec(-11.75, 2, -17.25)
     self.cast:Cast(self.player, { slot = 1, itemId = 'starterRod' })
     lu.assertNotNil(self.cast.Sessions[self.player.UserId].session.zoneId)
     self.cast:Reel(self.player)
@@ -361,7 +361,7 @@ end
 
 function TestLanding:test_landed_records_compendium_and_unhook_does_not()
     self:spyCompendium()
-    self.player.Character.Position = vec(-11.75, 2, 22.75)
+    self.player.Character.Position = vec(-11.75, 2, -17.25)
 
     -- 走真实流程抛竿 → 上钩，拿到服务端分配的收线会话序号
     self.cast:Cast(self.player, { slot = 1, itemId = 'starterRod' })

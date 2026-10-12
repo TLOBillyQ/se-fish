@@ -73,7 +73,7 @@ function TestReelUnhook:setUp()
     end }
     self.reel:Start()
     self.cast:Start()
-    self.player = { UserId = 7, messages = {}, Character = { Position = vec(-11.75, 2, 22.75),
+    self.player = { UserId = 7, messages = {}, Character = { Position = vec(-11.75, 2, -17.25),
         Rotation = { GetForward = function() return vec(0, 0, 1) end },
         Animator = { LoadAnimation = function() return { Play = function() end } end } } }
     self.reel:OnPlayerAdded(self.player)

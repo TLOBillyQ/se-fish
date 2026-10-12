@@ -41,7 +41,7 @@ function TestCastWaiting:setUp()
         CanCast = function() return env.canCast end, HeldInfo = function() end,
     }
     self.player = { UserId = 110, SetAttribute = function() end, Character = {
-        Position = { x = -11.75, y = 2, z = 22.75 },
+        Position = { x = -11.75, y = 2, z = -17.25 },
         Rotation = { GetForward = function() return { x = 0, y = 0, z = 1 } end },
     } }
     self.data = PlayerData.New(self.player)
@@ -95,7 +95,7 @@ function TestCastWaiting:test_valid_cast_sends_waiting_landing_and_consumes_bait
     lu.assertEquals(state.zoneId, 'WaterCircle2')
     lu.assertEquals(type(state.castId), 'number')
     lu.assertEquals(state.landing.x, -11.75)
-    lu.assertEquals(state.landing.z, 27.75)
+    lu.assertEquals(state.landing.z, -12.25)
     lu.assertEquals(self.data:GetItemBarSnapshot().bait.worm, 9)
     self:castRod()
     self.events.RequestCastState.OnServerEvent:Fire(self.player)
@@ -110,12 +110,12 @@ function TestCastWaiting:test_valid_cast_sends_waiting_landing_and_consumes_bait
 end
 
 function TestCastWaiting:test_invalid_landing_rejects_before_bait_and_result_is_not_replayed()
-    self.player.Character.Position = { x = 10, y = 2, z = 20 }
+    self.player.Character.Position = { x = 10, y = 2, z = -20 }
     self:castRod()
     local result = self:lastState()
     lu.assertEquals(result.phase, 'idle')
     lu.assertEquals(result.result.reason, 'invalidLanding')
-    lu.assertEquals(result.result.landing, { x = 10, y = 2, z = 25 })
+    lu.assertEquals(result.result.landing, { x = 10, y = 2, z = -15 })
     lu.assertNil(self.cast.Sessions[self.player.UserId])
     lu.assertEquals(self.consumeCount, 0)
     lu.assertEquals(self.data:GetItemBarSnapshot().bait.worm, 10)
@@ -126,25 +126,26 @@ function TestCastWaiting:test_invalid_landing_rejects_before_bait_and_result_is_
 end
 
 function TestCastWaiting:test_water_edge_repeated_failures_then_success_keep_bait_and_quest_fact()
-    -- 虾池东侧边界 x=108，线内含边界，线外拒绝；不改水区判定。
+    -- 虾池旋转后的西侧边界 x=232，线内含边界，线外拒绝。
     local position = self.player.Character.Position
-    position.y, position.z = 5, 101
-    for _, x in ipairs({ 108.001, 108.002 }) do
+    self.player.Character.Rotation = { GetForward = function() return { x=0, y=0, z=-1 } end }
+    position.y, position.z = 5, -1
+    for _, x in ipairs({ 231.999, 231.998 }) do
         position.x = x
         self:castRod()
         lu.assertEquals(self:lastState().phase, 'idle')
         lu.assertEquals(self:lastState().result.reason, 'invalidLanding')
-        lu.assertEquals(self:lastState().result.landing, { x = x, y = 5, z = 106 })
+        lu.assertEquals(self:lastState().result.landing, { x = x, y = 5, z = -6 })
         lu.assertEquals(self.data:GetItemBarSnapshot().bait.worm, 10)
         lu.assertEquals(#self.facts, 0)
         self.events.RequestCastState.OnServerEvent:Fire(self.player)
         lu.assertNil(self:lastState().result)
     end
-    position.x = 108
+    position.x = 232
     self:castRod()
     lu.assertEquals(self:lastState().phase, 'cast')
     lu.assertEquals(self:lastState().zoneId, 'ShrimpPool')
-    lu.assertEquals(self:lastState().landing, { x = 108, y = 5.6, z = 106 })
+    lu.assertEquals(self:lastState().landing, { x = 232, y = 5.6, z = -6 })
     lu.assertEquals(self.data:GetItemBarSnapshot().bait.worm, 9)
     lu.assertEquals(#self.facts, 1)
     lu.assertEquals(self.facts[1].kind, 'CastWater')
@@ -176,7 +177,7 @@ function TestCastWaiting:test_prerequisite_reasons_and_unavailable_are_distinct(
     self.data:SelectBait('worm')
     self.player.Character = nil
     expect('unavailable', function() self:castRod() end)
-    self.player.Character = { Position = { x = -11.75, y = 2, z = 22.75 },
+    self.player.Character = { Position = { x = -11.75, y = 2, z = -17.25 },
         Rotation = { GetForward = function() error('rotation-failed') end } }
     expect('unavailable', function() self:castRod() end)
     lu.assertEquals(self.consumeCount, 1)

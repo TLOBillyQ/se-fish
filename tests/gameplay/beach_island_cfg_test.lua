@@ -1,6 +1,6 @@
 -- #142 沙滩岛最小内容接线（GameSpec §5.5/§8/§12、钓鱼表 R58–R71、
 -- 商店表 R6/R7/R21/R30/R37/R44/R48、#121 裁定）：
--- 沙滩岛水区进 Water.Zones（中心 660,144、80×24，与树林岛水区不相交）；
+-- 沙滩岛水区进 Water.Zones（中心 720,364、80×24，与树林岛水区不相交）；
 -- 抽鱼池按原表 13 行（海参任意饵保底、海狗起椰子饵 + 专业鱼竿 5、海象入池权重 10）；
 -- 首领饵 item124（海豹）必出虎鲸；14 鱼种翻开 implemented，海象 / 虎鲸带 Combat 与
 -- 官方模型号（注册表 7000544–7000563 内，不虚构）；FishCombat 海象=甩头 25 + 40 秒突击
@@ -40,12 +40,12 @@ local function beachWater(cfg)
     end
 end
 
--- 水区注册：Id 取内容层 WaterId，矩形 80×24，中心 (660,144)，映射到 beachIsland 钓鱼区
+-- 水区注册：Id 取内容层 WaterId，矩形 80×24，中心 (720,364)，映射到 beachIsland 钓鱼区
 function TestBeachIslandCfg:test_beach_island_water_zone_registered_and_disjoint()
     local water = beachWater(self.cfg)
     lu.assertNotNil(water, 'beachIsland.water 未进 Water.Zones')
-    lu.assertEquals(water.Center.x, 660)
-    lu.assertEquals(water.Center.z, 144)
+    lu.assertEquals(water.Center.x, 720)
+    lu.assertEquals(water.Center.z, 364)
     lu.assertEquals(water.HalfX, 40)
     lu.assertEquals(water.HalfZ, 12)
     lu.assertEquals(type(water.SurfaceY), 'number')

@@ -1214,6 +1214,8 @@ GameCfg.Water.ZoneIdByWater = {
     ['crabLake.water'] = 'crabLake',
     ['forestIsland.water'] = 'forestIsland',
     ['beachIsland.water'] = 'beachIsland',
+    ['reefIsland.water'] = 'reefIsland',
+    ['volcanoIsland.water'] = 'volcanoIsland',
 }
 for _, zone in ipairs(GameCfg.Water.Zones) do
     if not GameCfg.Water.ZoneIdByWater[zone.Id] then
@@ -1521,6 +1523,49 @@ GameCfg.FishCombatLabel = {
     SleepColor = { 140, 200, 255, 255 },
     IdleColor = { 255, 255, 255, 255 },
 }
+
+-- 七区折返双排第一阶段：保留上方旧场景测量基线，只对场景坐标做一次刚体变换。
+-- 不改变高度、尺寸、局部技能偏移；后续设施精确落位另行校准。
+do
+    local destinations = {
+        { x = 0, z = 0 }, { x = 240, z = 0 }, { x = 480, z = 0 },
+        { x = 720, z = 0 }, { x = 720, z = 320 }, { x = 480, z = 320 },
+        { x = 240, z = 320 },
+    }
+    local visited = {}
+    local function point(position, origin, target, sign)
+        if not position or visited[position] then return end
+        visited[position] = true
+        position.x = target.x + sign * (position.x - origin.x)
+        position.z = target.z + sign * (position.z - origin.z)
+    end
+    local function rectangle(bounds, origin, target, sign)
+        if not bounds or visited[bounds] then return end
+        visited[bounds] = true
+        local x1, x2 = target.x + sign * (bounds.MinX - origin.x), target.x + sign * (bounds.MaxX - origin.x)
+        local z1, z2 = target.z + sign * (bounds.MinZ - origin.z), target.z + sign * (bounds.MaxZ - origin.z)
+        bounds.MinX, bounds.MaxX = math.min(x1, x2), math.max(x1, x2)
+        bounds.MinZ, bounds.MaxZ = math.min(z1, z2), math.max(z1, z2)
+    end
+    for index, zone in ipairs(GameCfg.Zones) do
+        -- 中心自身也被 AirCombat/BossArena 引用，先复制旧值，避免修改原点影响后续点。
+        local origin = { x = sceneCenters[index].x, z = sceneCenters[index].z }
+        local target, scene = destinations[index], zone.Scene
+        local sign = index >= 2 and index <= 4 and -1 or 1
+        point(scene.SafePoint, origin, target, sign)
+        rectangle(scene.Land, origin, target, sign)
+        rectangle(scene.Boundary, origin, target, sign)
+        for _, water in ipairs(GameCfg.Water.Zones) do
+            if water.ZoneId == zone.Id then point(water.Center, origin, target, sign) end
+        end
+        for _, water in ipairs(scene.Waters) do point(water.Center, origin, target, sign) end
+        for _, position in ipairs(scene.BaitSpots.Positions) do point(position, origin, target, sign) end
+        for _, entity in ipairs(scene.Entities) do point(entity.Position, origin, target, sign) end
+        point(sceneCenters[index], origin, target, sign)
+    end
+    -- Safe/鱼饵/水面/航线目的地通过共享表自然同步，不再二次变换。
+    -- Flight.FallbackBounds 已以新鱼塘原点配置，保持原值。
+end
 
 GameCfg.PlaceholderAssets = require('common.cfg.PlaceholderAssets')
 GameCfg.PlaceholderAssets.Apply(GameCfg)

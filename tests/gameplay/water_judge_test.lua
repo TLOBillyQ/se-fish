@@ -12,7 +12,7 @@ local MathWaterJudge = require("common.MathWaterJudge")
 --   WaterCircle1 Position(-11.75, 1.05, 27.75) Size(6, 1, 6) Scale(2, 1, 2)
 --   WaterCircle2 Position(-11.75, 1.05, 27.75) Size(12, 1, 12) Scale(4, 1, 4)
 local CENTER_X = -11.75
-local CENTER_Z = 27.75
+local CENTER_Z = -12.25 -- 原测量中心 27.75 随鱼塘整体平移 -40
 -- 水面高度（#31 改正）：Position.y 是底面、Size.y 是包围盒半长 ⇒ 水圈顶面 = 1.18 + 1 ≈ 2.183。
 -- 来源 issue #25 的 M0 试玩验证台账（评论 9865；M15 试玩里水圈会漂移，1.18 是 16:24 那次的高点）。
 local SURFACE_Y = 2.183
@@ -168,22 +168,22 @@ TestWallWater = {}
 
 -- 失败方式：墙内误判、墙外漏判、凹角或拼接接缝漏判、新水区没有鱼表。
 function TestWallWater:test_land_and_bait_positions_stay_dry()
-  for _, p in ipairs({ {5,31}, {5,40}, {10,28}, {15,34}, {10,45}, {-15,45} }) do
+  for _, p in ipairs({ {5,-9}, {5,0}, {10,-12}, {15,-6}, {10,5}, {-15,5} }) do
     lu.assertFalse(inWater(at(p[1], FLOOR_Y, p[2])))
   end
 end
 
 function TestWallWater:test_outside_walls_and_notch_are_water()
-  for _, p in ipairs({ {-40,45}, {28,40}, {0,12}, {0,68}, {-15,30}, {-10,34} }) do
+  for _, p in ipairs({ {-40,5}, {28,0}, {0,-28}, {0,28}, {-15,-10}, {-10,-6} }) do
     lu.assertTrue(inWater(at(p[1], FLOOR_Y, p[2])))
   end
 end
 
 function TestWallWater:test_tiling_has_no_holes_or_land_overlap()
   for x = -58, 31 do
-    for z = 11, 70 do
-      local outside = x < -24.25 or x > 21.75 or z < 16.25 or z > 61.25
-        or (x < -4.982 and z < 35.268)
+    for z = -29, 30 do
+      local outside = x < -24.25 or x > 21.75 or z < -23.75 or z > 21.25
+        or (x < -4.982 and z < -4.732)
       lu.assertEquals(inWater(at(x, FLOOR_Y, z)), outside, 'x=' .. x .. ', z=' .. z)
     end
   end

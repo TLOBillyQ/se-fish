@@ -86,8 +86,8 @@ function TestFishLift:setUp()
     self.pushed = {}
     self.mgr.Cast = { PushState = function(_, player) env.pushed[#env.pushed + 1] = player end }
     self.mgr:Start()
-    self.player = self:newPlayer(7, vec(10, 2, 20))
-    self.other = self:newPlayer(8, vec(30, 2, 20))
+    self.player = self:newPlayer(7, vec(10, 2, -20))
+    self.other = self:newPlayer(8, vec(30, 2, -20))
 end
 
 function TestFishLift:newPlayer(id, position)
@@ -274,10 +274,10 @@ end
 
 function TestFishLift:test_drop_in_water_death_and_lift_end_do_not_notify()
     self:spyQuest()
-    self.player.Character.Position = vec(-11.75, 2, 26)
+    self.player.Character.Position = vec(-11.75, 2, -14)
     self:hold(self.player)
     self.mgr:Drop(self.player)
-    self.player.Character.Position = vec(10, 2, 20)
+    self.player.Character.Position = vec(10, 2, -20)
     self:hold(self.player)
     self.mgr:OnDied(self.player)
     local fish = self:hold(self.player)

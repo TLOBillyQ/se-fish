@@ -12,7 +12,7 @@ function Util:WaitForChild(rootObj, childName, waitTime)
 	if not waitTime then waitTime = 10 end
 	local costTime = 0
 	while rootObj and costTime < waitTime do
-		local childObj = rootObj:FindFirstChild(childName)
+		local childObj = rootObj:FindFirstChild(childName, rootObj == World)
 		if childObj then 
 			--print("[ShaoTest] WaitForChild break", childObj, costTime)
 			return childObj

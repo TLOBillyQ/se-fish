@@ -164,7 +164,7 @@ function TestFishAirEscape:test_air_fish_rehead_after_three_seconds_and_release_
     lu.assertFalse(self.mgr:Release(fish, 'drop'))
     lu.assertEquals(fish.EscapeAt, escapeAt)
     -- 挪到礁石岛水区北侧：到三秒整点后应由朝北改为朝南。
-    body.Position = vec(880, body.Position.y, 170)
+    body.Position = vec(480, body.Position.y, 390)
     self.now = 2.95
     self.mgr:Update()
     lu.assertTrue(body.LinearVelocity.z > 0)

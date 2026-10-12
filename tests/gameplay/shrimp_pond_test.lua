@@ -188,8 +188,8 @@ function TestShrimpPond:test_shrimp_pool_water_zone_registered_and_disjoint()
         if zone.Id == 'ShrimpPool' then pool = zone end
     end
     lu.assertNotNil(pool)
-    lu.assertEquals(pool.Center.x, 105)
-    lu.assertEquals(pool.Center.z, 106)
+    lu.assertEquals(pool.Center.x, 235)
+    lu.assertEquals(pool.Center.z, -6)
     lu.assertEquals(pool.HalfXZ, 3)
     for _, zone in ipairs(self.cfg.Water.Zones) do
         if zone.Id ~= 'ShrimpPool' then
@@ -292,9 +292,10 @@ function TestShrimpPond:test_fisherman_multi_anchor_feeds_at_shrimp_pond()
     lu.assertEquals(self.data.Data.FishCoin, 14)
 end
 
--- 站在虾池南岸（105,5,100）朝 +z 抛 5 米，落点 (105,?,105) 进虾池
+-- 站在虾池北岸朝 -z 抛 5 米，落点 (235,?,-5) 进虾池。
 function TestShrimpPond:standAtPool()
-    self.me.Character.Position = vec(105, 5, 100)
+    self.me.Character.Position = vec(235, 5, 0)
+    self.me.Character.Rotation = { GetForward = function() return vec(0, 0, -1) end }
 end
 
 -- 钓虾竿挂香肠抛虾池：会话记 zoneId=ShrimpPool、竿级 2、饵 sausage（#90 起不限新手竿）

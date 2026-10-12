@@ -32,12 +32,12 @@ local function forestWater(cfg)
     end
 end
 
--- 水区注册：Id 取内容层 WaterId，矩形 80×24，中心 (460,144)，映射到 forestIsland 钓鱼区
+-- 水区注册：Id 取内容层 WaterId，矩形 80×24，中心 (720,-44)，映射到 forestIsland 钓鱼区
 function TestForestIslandCfg:test_forest_island_water_zone_registered_and_disjoint()
     local water = forestWater(self.cfg)
     lu.assertNotNil(water, 'forestIsland.water 未进 Water.Zones')
-    lu.assertEquals(water.Center.x, 460)
-    lu.assertEquals(water.Center.z, 144)
+    lu.assertEquals(water.Center.x, 720)
+    lu.assertEquals(water.Center.z, -44)
     lu.assertEquals(water.HalfX, 40)
     lu.assertEquals(water.HalfZ, 12)
     lu.assertEquals(type(water.SurfaceY), 'number')

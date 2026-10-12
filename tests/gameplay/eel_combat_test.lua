@@ -218,7 +218,7 @@ function TestEelCombat:test_escape_goes_straight_and_vanishes_in_water()
     self.hits = { { Instance = { Name = 'Wall' }, Distance = 1 } }
     self:at(184)
     lu.assertEquals(fish.Heading, heading)
-    fish.Carrier.Body.Position = Vector3.New(-11.75, 5, 27.75)
+    fish.Carrier.Body.Position = Vector3.New(-11.75, 5, -12.25)
     self.mgr:Update()
     lu.assertNil(self.mgr.Fish[fish.Id])
 end

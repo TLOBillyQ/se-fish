@@ -67,7 +67,7 @@ function TestFishEscape:test_drop_releases_in_front_and_starts_toward_water_with
     lu.assertTrue(self:mounts()[1].Destroyed)
     lu.assertEquals(body.BodyType, 2)
     lu.assertTrue(body.Position.x > 10 and body.Position.x <= 12.5)
-    lu.assertAlmostEquals(body.Position.z, 20, 1e-9)
+    lu.assertAlmostEquals(body.Position.z, -20, 1e-9)
     lu.assertAlmostEquals(speed(body.LinearVelocity), 3, 1e-6)
     -- 墙外水区已覆盖南岸，这个落点朝南即可回水。
     lu.assertTrue(body.LinearVelocity.z < 0)
@@ -137,14 +137,14 @@ function TestFishEscape:test_reheads_toward_the_nearest_zone_after_moving()
     local fish = self:heldFish()
     self.mgr:Drop(self.player)
     local body = fish.Carrier.Body
-    -- 虾池水面中心 (105,106)，半宽 3：这里两个落点都在水区之外、离虾池最近
-    body.Position = vec(105, 1, 112)
+    -- 虾池水面中心 (235,-6)，半宽 3：两个落点都在水区之外、离虾池最近。
+    body.Position = vec(235, 1, 0)
     self.now = self.now + 3.05
     self.mgr:Update()
     lu.assertAlmostEquals(body.LinearVelocity.x, 0, 1e-6)
     lu.assertAlmostEquals(body.LinearVelocity.z, -3, 1e-6)
     -- 挪到虾池另一侧：同一个 3 秒整点重算，方位从正南翻成正北
-    body.Position = vec(105, 1, 100)
+    body.Position = vec(235, 1, -12)
     self.now = self.now + 2.9
     self.mgr:Update()
     lu.assertAlmostEquals(body.LinearVelocity.z, -3, 1e-6)
@@ -184,16 +184,16 @@ end
 function TestFishEscape:test_only_escaping_fish_vanish_on_water_xz()
     self:prepare()
     local waiting = self:land(self.other, 'carp', 1)
-    waiting.Anchor = vec(-11.75, 5, 27.75)
+    waiting.Anchor = vec(-11.75, 5, -12.25)
     waiting.Carrier.Body.Position = waiting.Anchor
     local held = self:heldFish(self.player)
-    held.Carrier.Body.Position = vec(-11, 3, 27)
+    held.Carrier.Body.Position = vec(-11, 3, -13)
     self.mgr:Update()
     lu.assertNotNil(self.mgr.Fish[waiting.Id])
     lu.assertNotNil(self.mgr.Fish[held.Id])
     self.mgr:Drop(self.player)
     -- 岸上高度 y=3 高于水面 2.183，(x,z) 在池塘里就算入水
-    held.Carrier.Body.Position = vec(-10, 3, 28)
+    held.Carrier.Body.Position = vec(-10, 3, -12)
     self.mgr:Update()
     lu.assertNil(self.mgr.Fish[held.Id])
     lu.assertEquals(self.despawned[#self.despawned], held.Carrier)
@@ -213,9 +213,9 @@ end
 
 function TestFishEscape:test_global_cap_is_online_times_two_and_kicks_oldest()
     self:prepare()
-    local third = self:newPlayer(9, vec(10, 2, 45))
+    local third = self:newPlayer(9, vec(10, 2, 5))
     -- 数量上限用例把三条鱼都留在墙内，避免先触发入水回收。
-    self.other.Character.Position = vec(10, 2, 35)
+    self.other.Character.Position = vec(10, 2, -5)
     local a = self:heldFish(self.player)
     self.mgr:Drop(self.player)
     self.now = 1

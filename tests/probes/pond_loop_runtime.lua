@@ -45,10 +45,10 @@ local CLICK_SEC = 0.25        -- 收线批次间隔（每批 2 击，≤ 8 击/�
 local SETTLE_SEC = 1.5        -- 持久操作（Save:Execute）发出后等待落账
 local COMBAT_WAIT_SEC = 90    -- 战斗等待多久没进展就暂停
 local WORM_TARGET = 5         -- 免费补给余量：食用与抛竿共用
-local LAND_STAND = { x = 5, z = 31 } -- 上岸后先正常步行到陆地再放鱼，避开岸外不可达掉落
+local LAND_STAND = { x = 5, z = -9 } -- 上岸后先正常步行到陆地再放鱼，避开岸外不可达掉落
 local DAGGER = { Id = 'item135', Number = 25, MinLevel = 1 }
 local STAND_SHIFT = 4.4       -- 站位点：从 NPC 锚点向陆地中心移这么远（Radius 5 + Slack 0.5 内）
-local CAST_SPOT = { x = -1.5, z = 27.75 }  -- 面朝 -x 抛竿，落点 x≈-6.5 在 PondNotch/WaterCircle2 内
+local CAST_SPOT = { x = -1.5, z = -12.25 }  -- 面朝 -x 抛竿，落点 x≈-6.5 在 PondNotch/WaterCircle2 内
 
 local function now() return World:GetServerTime() end
 
@@ -733,7 +733,7 @@ local function step()
             if not RT.ignore[live.Id] then
                 RT.ignore[live.Id] = true
                 say('EARLY-BOSS', live.FishId, '尚无匕首，正常退开等待逃跑，不挑战')
-                return pause('提前钓到首领，先安全退开', { x = 5, z = 40 }, '安全退开 ' .. live.FishId)
+                return pause('提前钓到首领，先安全退开', { x = 5, z = 0 }, '安全退开 ' .. live.FishId)
             end
             return 'wait', 1
         end

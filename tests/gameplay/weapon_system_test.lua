@@ -728,8 +728,8 @@ end
 function TestMgrWeaponThrow:test_projectile_flies_then_detonates_in_water()
     giveExplosive(self.data, 'item143', 1)
     -- 20 米钳制是票面规则：站近水边投，选点才够得到 WaterCircle2 中心
-    self.player.Character.Position = { x = -11.75, y = 2, z = 12 }
-    local waterLanding = { x = -11.75, y = 2.183, z = 27.75 }
+    self.player.Character.Position = { x = -11.75, y = 2, z = -28 }
+    local waterLanding = { x = -11.75, y = 2.183, z = -12.25 }
     self.mgr.Random = function(a, b) if a and b then return a end return 0.5 end -- 数量 3
     self.mgr:Launch(self.player, 'item143', waterLanding)
     lu.assertEquals(#self.mgr.Flying, 1)

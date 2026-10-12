@@ -62,7 +62,7 @@ function TestShrimpCombat:test_airborne_dive_over_water_survives_and_timeout_lan
     self.now = 30; self.mgr:Update()
     self.now = 36; self.mgr:Update()
     local ground = fish.Move.Center.y
-    fish.Carrier.Body.Position = { x = 105, y = ground + 3, z = 106 }
+    fish.Carrier.Body.Position = { x = 235, y = ground + 3, z = -6 }
     self.now = 37; self.mgr:Update()
     lu.assertNotEquals(fish.State, 'escaping')
     self.now = fish.FleeAt; self.mgr:Update()

@@ -445,7 +445,7 @@ function TestSpecialItemMgr:test_flight_clamps_horizontal_position_inside_the_zo
     lu.assertTrue(player.Character.Position.x <= 60, 'x ' .. tostring(player.Character.Position.x))
     player.Character.Position = vec(6, player.Character.Position.y, -500)
     self:step(1, 0.05)
-    lu.assertTrue(player.Character.Position.z >= -10, 'z ' .. tostring(player.Character.Position.z))
+    lu.assertTrue(player.Character.Position.z >= -50, 'z ' .. tostring(player.Character.Position.z))
 end
 
 -- 失败方式 15：施法后还没心跳就离线，冷却镜像必须已写入，不能重进清 CD

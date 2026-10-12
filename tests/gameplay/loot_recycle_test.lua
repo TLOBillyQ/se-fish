@@ -66,14 +66,14 @@ function TestLootRecycle:spawnAt(x, z)
     return self.loot:Spawn('shrimp', 1, { x = x, y = 5, z = z })
 end
 
--- 第一钓鱼区（WaterCircle 中心 -11.75,27.75）边上的一个点
+-- 第一钓鱼区（WaterCircle 中心 -11.75,-12.25）边上的一个点
 function TestLootRecycle:spawnPond()
-    return self:spawnAt(-11, 27)
+    return self:spawnAt(-11, -13)
 end
 
--- 虾池（ShrimpPool 中心 105,106）边上的一个点
+-- 虾池（ShrimpPool 中心 235,-6）边上的一个点
 function TestLootRecycle:spawnPool()
-    return self:spawnAt(105, 106)
+    return self:spawnAt(235, -6)
 end
 
 -- 该鱼获所属区的 FIFO 队列（WaterCircle1/2 同心，归属由 MgrLoot 决定，用例不硬编区名）

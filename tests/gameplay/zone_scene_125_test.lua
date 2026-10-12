@@ -88,8 +88,10 @@ function TestZoneScene125:test_seven_zone_plan_keeps_unbuilt_entities_out_of_act
             else
                 lu.assertNil(Cfg.Casting.Zones[zone.WaterId])
             end
+            local bankZ = index <= 4 and scene.Land.MinZ + 1 - Cfg.Casting.Distance
+                or scene.Land.MaxZ - 1 + Cfg.Casting.Distance
             lu.assertNotNil(water({ x = scene.SafePoint.x, y = scene.Waters[1].SurfaceY,
-                z = scene.Land.MaxZ - 1 + Cfg.Casting.Distance }), zone.Name .. '岸边必须可抛入水')
+                z = bankZ }), zone.Name .. '岸边必须可抛入水')
         end
         for other = 1,index - 1 do
             local a,b = scene.Boundary,Cfg.Zones[other].Scene.Boundary
@@ -100,6 +102,57 @@ function TestZoneScene125:test_seven_zone_plan_keeps_unbuilt_entities_out_of_act
     lu.assertNotNil(Cfg.Zones[6].Scene.AirCombat)
     lu.assertNotNil(Cfg.Zones[7].Scene.CruiseWater)
     lu.assertNotNil(Cfg.Zones[7].Scene.BossArena)
+end
+
+-- 搬移失败方式：共享点被重复变换、矩形倒置、两套水域错位/错归属、摆渡与围栏留在旧址。
+function TestZoneScene125:test_folded_layout_keeps_runtime_geometry_and_shared_points_consistent()
+    local centers = { {0,0}, {240,0}, {480,0}, {720,0}, {720,320}, {480,320}, {240,320} }
+    local runtime = {}
+    for _, water in ipairs(Cfg.Water.Zones) do runtime[water.Id] = water end
+    for index, zone in ipairs(Cfg.Zones) do
+        local scene, center = zone.Scene, centers[index]
+        local b = scene.Boundary
+        lu.assertEquals((b.MinX + b.MaxX) / 2, center[1])
+        lu.assertEquals(b.MinZ, center[2] - (index >= 2 and index <= 4 and 70 or 50))
+        lu.assertEquals(b.MaxZ, center[2] + (index >= 2 and index <= 4 and 50 or 70))
+        lu.assertTrue(b.MinX < b.MaxX and b.MinZ < b.MaxZ)
+        lu.assertTrue(scene.Land.MinX < scene.Land.MaxX and scene.Land.MinZ < scene.Land.MaxZ)
+        if index > 1 then
+            lu.assertEquals(scene.SafePoint, { x=center[1], y=6, z=center[2] })
+        else
+            lu.assertAlmostEquals(scene.SafePoint.z, -0.71, 1e-9)
+        end
+        for _, water in ipairs(scene.Waters) do
+            lu.assertEquals(water.ZoneId, zone.Id)
+            local active = assert(runtime[water.Id])
+            lu.assertEquals(active.Center, water.Center)
+            lu.assertEquals(active.ZoneId, zone.Id)
+            lu.assertEquals(active.HalfX, water.HalfX)
+            lu.assertEquals(active.HalfZ, water.HalfZ)
+            lu.assertEquals(active.HalfXZ, water.HalfXZ)
+            lu.assertEquals(active.SurfaceY, water.SurfaceY)
+        end
+        for _, entity in ipairs(scene.Entities) do
+            if entity.Role == 'Safe' then lu.assertIs(entity.Position, scene.SafePoint) end
+            if index >= 3 and entity.Role == 'Water' then
+                lu.assertIs(entity.Position, scene.Waters[1].Center)
+            end
+        end
+        local judge = Judge.Build(Cfg.Water.Zones)
+        lu.assertNil(judge({ x=scene.SafePoint.x, y=-100, z=scene.SafePoint.z }))
+        for _, point in ipairs(scene.BaitSpots.Positions) do
+            lu.assertNil(judge({ x=point.x, y=-100, z=point.z }))
+        end
+    end
+    lu.assertEquals(Cfg.Water.ZoneIdByWater['reefIsland.water'], 'reefIsland')
+    lu.assertEquals(Cfg.Water.ZoneIdByWater['volcanoIsland.water'], 'volcanoIsland')
+    lu.assertEquals(Cfg.BaitSpots.Spots[1].Position, { x=5, y=6, z=-9 })
+    lu.assertIs(Cfg.BaitSpots.Spots[1].Position, Cfg.Zones[1].Scene.BaitSpots.Positions[1])
+    lu.assertIs(Cfg.Zones[7].Scene.CruiseWater, Cfg.Zones[7].Scene.Waters[1])
+    for i, route in ipairs(Cfg.Ferry.Routes) do
+        lu.assertIs(route.Outbound.Destination, Cfg.Zones[i+1].Scene.SafePoint)
+        lu.assertIs(route.Return.Destination, Cfg.Zones[i].Scene.SafePoint)
+    end
 end
 
 function TestZoneScene125:test_six_route_pairs_target_dry_same_zone_safe_points()

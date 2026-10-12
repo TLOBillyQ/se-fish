@@ -49,9 +49,13 @@ function Mgr:FindAnchor(name)
     local cached = self.Anchors[name]
     if cached then return cached end
     local world = game:GetService('World')
-    local ok, unit = pcall(world.FindFirstChild, world, name)
-    if ok and unit then self.Anchors[name] = unit end
-    return ok and unit or nil
+    local ok, unit = pcall(world.FindFirstChild, world, name, true)
+    if not ok then
+        print('[MgrGrill] 查找场景锚点失败', name, tostring(unit))
+        return nil
+    end
+    if unit then self.Anchors[name] = unit end
+    return unit
 end
 
 local function flatDistance(a, b)

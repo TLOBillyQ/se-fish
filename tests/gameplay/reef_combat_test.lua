@@ -181,7 +181,7 @@ end
 function TestReefCombat:test_dive_cannot_follow_a_target_outside_reef_boundary()
     local fish=self:drop('fish47Elite')
     local b=Cfg.Zones[6].Scene.Boundary
-    self.player.Character.Position=vec(b.MaxX+10,6,100)
+    self.player.Character.Position=vec(b.MaxX+10,6,Cfg.Zones[6].Scene.SafePoint.z)
     self:advance(20)
     while self.now<21.75 do
         self:advance(self.now+0.05)

@@ -73,7 +73,7 @@ function TestGarCombat:test_drop_enters_combat_and_chases_nearest_living_player(
     lu.assertEquals(fish.State, 'combat')
     lu.assertNotNil(fish.FleeAt)
     -- 放下后玩家走开：鱼追最近的 self.player（+z 方向），速度取鱼种 Speed=6；不走技能装配
-    self.player.Character.Position = vec(10, 2, 40)
+    self.player.Character.Position = vec(10, 2, 0)
     self.mgr:Update()
     local v = fish.Carrier.Body.LinearVelocity
     lu.assertAlmostEquals(v.x, 0, 1e-6)
@@ -171,7 +171,7 @@ function TestGarCombat:test_flee_deadline_switches_to_straight_escape()
     armPlayer(self.player, 300)
     local fish = self:heldFish(self.player, 'alligatorGar')
     self.mgr:Drop(self.player)
-    self.player.Character.Position = vec(10, 2, 40)
+    self.player.Character.Position = vec(10, 2, 0)
     self.now = 299
     self.mgr:Update()
     lu.assertEquals(fish.State, 'combat')
@@ -179,7 +179,7 @@ function TestGarCombat:test_flee_deadline_switches_to_straight_escape()
     self.mgr:Update()
     lu.assertEquals(fish.State, 'escaping')
     lu.assertTrue(fish.StraightEscape)
-    -- 直线逃脱朝最近的拼接水区 PondSouth_7_1（中心 11.5, 13.5），从 (10, 22) 朝南。
+    -- 直线逃脱朝最近的拼接水区 PondSouth_7_1（中心 11.5,-26.5），从 (10,-18) 朝南。
     lu.assertTrue(fish.Carrier.Body.LinearVelocity.z < 0)
 end
 

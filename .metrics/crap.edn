@@ -58,7 +58,6 @@
   {:name "Mgr:TryRecover", :namespace "server.Mgr.MgrGrill", :complexity 28, :coverage 87.5, :crap 29.5312}
   {:name "Mgr:UpdateCombat", :namespace "server.Mgr.MgrFishUnit", :complexity 29, :coverage 94.4444, :crap 29.1442}
   {:name "Mgr:ApplyHit", :namespace "server.Mgr.MgrVitals", :complexity 29, :coverage 96.4286, :crap 29.0383}
-  {:name "Mgr:FindAnchor", :namespace "server.Mgr.MgrGrill", :complexity 6, :coverage 14.2857, :crap 28.6706}
   {:name "Mgr:Start", :namespace "server.Mgr.MgrPlayerData", :complexity 28, :coverage 93.617, :crap 28.2039}
   {:name "Mgr:PlatformRevive", :namespace "server.Mgr.MgrSurvival", :complexity 28, :coverage 97.2222, :crap 28.0168}
   {:name "ScreenHandler:ShowBackpack", :namespace "client.ScreenHandlers.ScreenMain", :complexity 28, :coverage 100.0, :crap 28.0}
@@ -155,6 +154,7 @@
   {:name "Mgr:StartCombatChannel", :namespace "server.Mgr.MgrFishUnit", :complexity 8, :coverage 50.0, :crap 16.0}
   {:name "Mgr:OnSignal", :namespace "server.Mgr.MgrStory", :complexity 16, :coverage 100.0, :crap 16.0}
   {:name "MgrMap.MgrSave.OnReady", :namespace "server.main", :complexity 16, :coverage 100.0, :crap 16.0}
+  {:name "Mgr:FindAnchor", :namespace "server.Mgr.MgrGrill", :complexity 4, :coverage 10.0, :crap 15.664}
   {:name "Visual:Show", :namespace "client.LocalCastSource", :complexity 15, :coverage 95.2381, :crap 15.0243}
   {:name "Mgr:Apply", :namespace "server.Mgr.MgrSpecialItem", :complexity 15, :coverage 97.5, :crap 15.0035}
   {:name "Screen:NoteState", :namespace "client.ScreenHandlers.ScreenCompendium", :complexity 15, :coverage 100.0, :crap 15.0}
@@ -528,7 +528,6 @@
   {:name "passThrough", :namespace "server.Mgr.MgrFishUnit", :complexity 6, :coverage 100.0, :crap 6.0}
   {:name "readPosition", :namespace "server.Mgr.MgrFishUnit", :complexity 6, :coverage 100.0, :crap 6.0}
   {:name "grillable", :namespace "server.Mgr.MgrGrill", :complexity 6, :coverage 100.0, :crap 6.0}
-  {:name "Mgr:FindAnchor", :namespace "server.Mgr.MgrInteract", :complexity 6, :coverage 100.0, :crap 6.0}
   {:name "Mgr:Give", :namespace "server.Mgr.MgrLoot", :complexity 6, :coverage 100.0, :crap 6.0}
   {:name "createLoot", :namespace "server.Mgr.MgrLoot", :complexity 6, :coverage 100.0, :crap 6.0}
   {:name "Mgr:ClearTarget", :namespace "server.Mgr.MgrModifier", :complexity 6, :coverage 100.0, :crap 6.0}
@@ -646,6 +645,7 @@
   {:name "readPosition", :namespace "server.Mgr.MgrFishCarrier", :complexity 4, :coverage 77.7778, :crap 4.1756}
   {:name "segmentDistanceSq", :namespace "server.Mgr.MgrFishUnit", :complexity 4, :coverage 77.7778, :crap 4.1756}
   {:name "Aim:AttackPayload", :namespace "client.WeaponAim", :complexity 4, :coverage 80.0, :crap 4.128}
+  {:name "Mgr:FindAnchor", :namespace "server.Mgr.MgrInteract", :complexity 4, :coverage 80.0, :crap 4.128}
   {:name "Mgr:Refund", :namespace "server.Mgr.MgrLoot", :complexity 4, :coverage 80.0, :crap 4.128}
   {:name "zoneName", :namespace "common.NpcDialogue", :complexity 3, :coverage 50.0, :crap 4.125}
   {:name "Mgr:GetMeleeDamage", :namespace "server.Mgr.MgrGM", :complexity 3, :coverage 50.0, :crap 4.125}
@@ -828,6 +828,8 @@
   {:name "updateClimb", :namespace "common.FlightPath", :complexity 3, :coverage 100.0, :crap 3.0}
   {:name "addWaterStrip", :namespace "common.GameCfg", :complexity 3, :coverage 100.0, :crap 3.0}
   {:name "ferryEntity", :namespace "common.GameCfg", :complexity 3, :coverage 100.0, :crap 3.0}
+  {:name "point", :namespace "common.GameCfg", :complexity 3, :coverage 100.0, :crap 3.0}
+  {:name "rectangle", :namespace "common.GameCfg", :complexity 3, :coverage 100.0, :crap 3.0}
   {:name "finite", :namespace "common.GarBiteNotice", :complexity 3, :coverage 100.0, :crap 3.0}
   {:name "LotteryDraw.RollAxes", :namespace "common.LotteryDraw", :complexity 3, :coverage 100.0, :crap 3.0}
   {:name "rngOf", :namespace "common.LotteryDraw", :complexity 3, :coverage 100.0, :crap 3.0}

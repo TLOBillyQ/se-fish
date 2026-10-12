@@ -38,7 +38,7 @@ function TestBossBait:setUp()
     self.cfg.Debug = { Enabled = false }
     local PlayerData = assert(loadfile('server/Data/PlayerData.lua'))()
     self.player = { UserId = 1, Character = {
-        Position = vec(-11.75, 2.183, 22.75),
+        Position = vec(-11.75, 2.183, -17.25),
         Rotation = { GetForward = function() return vec(0, 0, 1) end } },
         SetAttribute = function() end }
     self.data = PlayerData.New(self.player, function() end)
