@@ -11,15 +11,9 @@
 .\tools\quality\project.ps1 doctor
 ```
 
-本地工具来源与固定提交以 `project.json` 为准，默认来源为相邻的 `uml-viewer`、`crapper`、`mutator` 仓库。独立检出位于其他目录时，先将配置的 `tools.*.source` 登记为从检出根到这些固定来源的相对路径；不复制已有缓存。安装器生成根目录 `uml` 与 `uml.ps1`；业务仓库不手工修改这些启动入口。工具 checkout 更新与 Python 包安装是两个步骤，`doctor` 核对实际提交、未提交差异、解释器、依赖与实际导入路径。已有 Python venv 可用于安装；新环境可通过安装入口的 `-Python` 指定可执行文件。
+本地工具来源与固定提交以 `project.json` 为准，默认来源为相邻的 `uml-viewer`、`crapper`、`mutator` 仓库。独立检出位于其他目录时，先将配置的 `tools.*.source` 登记为从检出根到这些固定来源的相对路径；不复制已有缓存。安装器使用 viewer 上游公开的 `scripts/get-uml-viewer.ps1`，按固定 SHA 执行 `git init → git fetch → git checkout`，生成根目录 `uml` 与 `uml.ps1`；业务仓库不手工修改这些启动入口。工具 checkout 更新与 Python 包安装是两个步骤，`doctor` 核对实际提交、未提交差异、解释器、依赖与实际导入路径。已有 Python venv 可用于安装；新环境可通过安装入口的 `-Python` 指定可执行文件。
 
-旧环境若仍应用固定基点 `4cc471417c6f54f0b24b031d8e3a86300322905b` 的登记补丁，使用唯一支持的显式迁移命令：
-
-```powershell
-.\tools\quality\install.ps1 -UpgradeFrom 4cc471417c6f54f0b24b031d8e3a86300322905b
-```
-
-迁移先核对三个工具的固定 HEAD、完整登记 diff、空暂存差异与空未跟踪列表；全部通过后才恢复旧补丁清单中的 tracked 文件，再应用当前登记补丁。只归一化 CRLF 与补丁空白上下文行，不忽略源码改动。未知 tracked、暂存或未跟踪内容在任何工具撤销前拒绝并保留原字节；失败时保留现场供核对，不执行整树 reset/clean。此入口只支持上述固定版本，不自动迁移任意历史。
+已有工具 checkout 先按当前 `project.json` 精确预检：任何未提交 diff 都必须等于仍需保留的登记补丁；历史 viewer 私有补丁、其他源码改动、暂存或未跟踪内容都会明确失败并保留原字节，安装器不执行 `git restore`、不覆盖用户未保存改动。失败后把对应 `.uml-viewer/<工具>` checkout 移到备份目录再重跑安装；`.uml-viewer` 下 session、policy、proposals、mailboxes 与项目 `.metrics/` 数据不属于工具 checkout，继续保留。`-UpgradeFrom` 已停用，历史自动撤销入口不再提供。
 
 完整安装同时准备 `project.json` 的 `lua_tools`：LuaCov、dry4lua、luacheck 和 acceptance4lua（DRY 使用其 JSON 模块）。每项登记 URL、固定提交与运行模块；沿用 acceptance bootstrap 的现有固定版本。`doctor` 检查这些 checkout 的提交、origin、运行源码和 Lua 模块加载，不借用全局 Lua 模块或其他检出的缓存。缺失依赖可重跑安装；版本、来源或源码不符时先将提示中的损坏缓存移走，再运行安装器，安装不会覆盖未知内容。`-InstallOnly` 仅准备 viewer/crapper/mutator checkout，不构成完整质量环境。
 
@@ -49,7 +43,7 @@ acceptance4lua 的 Gherkin 解析、生成与验收仍使用 `tools/acceptance/`
 
 完整测试失败时停止覆盖率发布，旧 LCOV 失效；转换失败同样停止后续指标。任何 CRAP 刷新都替换完整业务树快照，选中单模块也保持其他模块的指标。DRY 保留重复代码候选报告，不设质量门槛。
 
-安装器登记的 `viewer-seam.patch` 使 `uml.ps1 crap` 在存在 `tools/quality/project.json` 时优先执行项目单次 `refresh-crap`（完整 `coverage` → `crap`），不进入通用 crapper 的测试发现；Unix `./uml crap` 经同一 PowerShell 分发器执行。该入口会忽略单类或组件目标并完整替换快照。成功后 companion 继续执行 `uml.ps1 ir` 并发送 `:display`；覆盖率、转换或 CRAP 失败时立即停止，不生成 IR、不发送成功展示通知。`uml.ps1 mutate <文件> [参数]` 同样转交项目 mutation 接缝并保留参数及退出码。手工复验可以运行 `.\uml.ps1 crap && .\uml.ps1 ir`。
+viewer 上游固定版本通过标准 quality dispatch 执行项目入口：`uml.ps1 crap` 完整执行 `coverage` → `crap`，忽略单类或组件目标并完整替换快照；成功率/覆盖率失败立即停止。`uml.ps1 mutate <文件> [参数]` 转交项目 mutation 接缝并保留参数及退出码。手工复验可以运行 `.\uml.ps1 crap && .\uml.ps1 ir`。
 
 运行中的 companion 使用启动时取得的规则；新规则需通过 `:quit-for-restart` → 等待旧 JVM 自然退出 → `.\uml.ps1 --restart` 协议重启后载入。分发脚本每次命令执行时读取，因此旧 companion 执行 `.\uml.ps1 crap` 也立即使用修复后的质量入口。GUI 复验代表模块为 `client.LocalReelIn`。
 
