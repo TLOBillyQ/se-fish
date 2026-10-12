@@ -22,7 +22,7 @@
 
 `win_rule` 已于 2026-10-09 由开发者从宿主删除，并通过 `sync --packages` 从仓库移除；删除前未接入业务聚合入口或正式结算。原包存在结算枚举遮蔽（[GitHub #58](https://github.com/qinyuanj/se-fish/issues/58)）与未结算玩家离开后缺少全员结算重判（[GitHub #59](https://github.com/qinyuanj/se-fish/issues/59)）的问题，删除不代表原包缺陷已修复。后续重新引入须取得官方修正版，并验证结算与玩家离开时序。
 
-接缝契约：聚合入口的转发名单与包内 `api.lua` 导出由单测拿源码文本校对（`tests/gameplay/ability_api_test.lua`、`tests/gameplay/package_api_test.lua`），包升级改名/删名时在加载期与单测同时暴露。
+接缝契约：聚合入口的转发名单与包内 `api.lua` 导出由单测拿源码文本校对（`tests/native/ability_api_test.lua`、`tests/native/package_api_test.lua`），包升级改名/删名时在加载期与单测同时暴露。
 
 ## 编辑器侧预设依赖
 

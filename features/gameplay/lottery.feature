@@ -1,7 +1,7 @@
 # language: zh-CN
 功能: #138 T17 抽奖机服务端结算契约（资格、两同金币、三同大奖、幂等与断线恢复）
   # 三轴结果用脚本化序列锁定边界图案；真实随机分布与期望 2.119671 验算见
-  # tests/gameplay/lottery_draw_test.lua 与 tests/probes/lottery_runtime.lua。
+  # tests/native/lottery_draw_test.lua 与 tests/probes/lottery_runtime.lua。
   # 逻辑通过不等于真机验收：Z*_Lottery 场景单位摆放与停轴动画另行试玩取证。
 
   场景: 两同鳄雀鳝赔两倍实际价值

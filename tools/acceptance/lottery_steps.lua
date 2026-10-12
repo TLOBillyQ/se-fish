@@ -1,5 +1,5 @@
 -- #138 验收切片：抽奖机服务端结算契约的 Gherkin 步骤（只做断言；真实随机分布见
--- tests/probes/lottery_runtime.lua 的专项探针，期望验算在 tests/gameplay/lottery_draw_test.lua）。
+-- tests/probes/lottery_runtime.lua 的专项探针，期望验算在 tests/native/lottery_draw_test.lua）。
 -- 业务用真实模块：MgrSave / MgrPlayerData / MgrInteract / MgrLottery；
 -- 引擎边界是假的（DataStore、RE、锚点），三轴结果用脚本化 RNG 锁定（经 MgrLottery.Random 注入）。
 -- world 由 acceptance4lua 的 harness 提供，步骤间用它传状态；每个场景结束的「那么」步骤恢复全局。
@@ -13,7 +13,7 @@ local function signal()
     return { Connect = function() return { Disconnect = function() end } end }
 end
 
--- ===== 抽奖世界（照 tests/gameplay/lottery_settle_test.lua 的引擎边界）=====
+-- ===== 抽奖世界（照 tests/native/lottery_settle_test.lua 的引擎边界）=====
 local function lotteryWorld(world)
     world.saved = { game = rawget(_G, 'game'), REUtil = rawget(_G, 'REUtil'), Debug = GameCfg.Debug }
     GameCfg.Debug = { Enabled = false }

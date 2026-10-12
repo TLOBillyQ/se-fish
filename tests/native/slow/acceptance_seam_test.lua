@@ -6,8 +6,8 @@
 --   1. tools/ 与 tests/ 下 Lua 里的 dofile/loadfile/load 字符串字面量目标必须存在
 --      （删除或改名被复用为夹具的测试文件时，这条会红，不再靠人肉发现）；
 --   2. acceptance 步骤清单里的每个模块都能装载，且复活场景步骤真跑通（不止 require 成功）。
--- 车道：放 tests/native/slow，只被 full 发现。日常 fast 的两个入口
--- （lua tests/run.lua fast 与 busted --run=fast）计数因此不受本文件影响；
+-- 车道：放 tests/native/slow，只被 full 发现。日常 fast 入口
+-- （busted --run=fast）计数因此不受本文件影响；
 -- 本测试要遍历 tools/ 与 tests/ 全部 Lua 并装载十个步骤模块（拉起真实管理器与引擎替身），
 -- 比同级单元测试重，落在 slow 也符合语义。
 -- 边界：只检查「左括号后紧跟字符串字面量」的调用；拼路径、变量路径不在静态扫描范围。

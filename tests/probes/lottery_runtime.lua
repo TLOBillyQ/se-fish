@@ -34,7 +34,7 @@ local function quantity(label, value) print(string.format('K %s = %s', label, to
 local GameCfg = require('common.GameCfg')
 local ITEM_BAR = GameCfg.Items.ContainerId.ItemBar
 
--- ===== 引擎边界（照 tests/gameplay/lottery_settle_test.lua）=====
+-- ===== 引擎边界（照 tests/native/lottery_settle_test.lua）=====
 local env = { values = {}, queue = {}, events = {} }
 local store = {
     GetAsync = function(_, key) return env.values[key] end,

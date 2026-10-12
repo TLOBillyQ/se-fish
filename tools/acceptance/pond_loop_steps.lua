@@ -12,7 +12,7 @@ local function signal()
     return { Connect = function() return { Disconnect = function() end } end }
 end
 
--- ===== 经济世界（照 tests/gameplay/economy_persistence_test.lua 的引擎边界）=====
+-- ===== 经济世界（照 tests/native/economy_persistence_test.lua 的引擎边界）=====
 local function economyWorld(world)
     world.saved = { game = rawget(_G, 'game'), REUtil = rawget(_G, 'REUtil'),
         MgrPlayerData = rawget(_G, 'MgrPlayerData'), Debug = GameCfg.Debug }

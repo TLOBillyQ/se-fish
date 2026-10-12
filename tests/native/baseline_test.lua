@@ -1,4 +1,4 @@
--- 原生案例（#81）：helper 必须在案例加载前建立与 tests/run.lua 相同的离线基线，
+-- 原生案例（#81）：helper 必须在案例加载前建立统一的离线基线，
 -- 并在每案例后恢复共享配置，成功案例的修改也不泄漏到后续案例。
 local GameCfg = require("common.GameCfg")
 
