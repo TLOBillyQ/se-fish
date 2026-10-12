@@ -290,7 +290,7 @@ describe('TestWeakSpeedRouting', function()
             return { OnServerEvent = signal(), FireClient = function() end } end,
             CheckRECD = function() return false end }
         ctx.s = assert(loadfile('server/Mgr/MgrSurvival.lua'))()
-        require('tests.tooling.modifier_runtime').AttachSurvival(ctx.s, function() return state.now end)
+        require('tests.support.modifier_runtime').AttachSurvival(ctx.s, function() return state.now end)
         ctx.controller = { WalkSpeed = 21 } -- 已吃 20 个加速
         ctx.player = { UserId = 13962, Character = { Controller = ctx.controller } }
         ctx.state = { player = ctx.player, phase = 'alive' }

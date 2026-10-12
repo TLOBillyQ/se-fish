@@ -3,7 +3,7 @@
 -- TestFishAiLifecycle 沿用 tests/support/fish_lift 共享夹具；TestAiMigration 用官方 AI vendor 运行时。
 -- describe/it 名称保留旧类名与方法名，并按方法名字典序注册以保持旧套件执行顺序
 -- （旧套件里 TestAiMigration 整体先于 TestFishAiLifecycle，按类名字典序）。
-local Loader = require('tests.tooling.official_ai_vendor_runtime')
+local Loader = require('tests.support.official_ai_vendor_runtime')
 local FishLift = require('tests.support.fish_lift')
 local GameCfg = require('common.GameCfg')
 

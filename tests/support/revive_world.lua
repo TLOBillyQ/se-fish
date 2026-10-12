@@ -96,7 +96,7 @@ function World:install()
   self.v.Now = function() return state.now end
   self.s = assert(loadfile('server/Mgr/MgrSurvival.lua'))()
   self.s.Now = function() return state.now end
-  require('tests.tooling.modifier_runtime').AttachSurvival(self.s, function() return state.now end)
+  require('tests.support.modifier_runtime').AttachSurvival(self.s, function() return state.now end)
   self.s.Vitals = self.v
   self.s.Platform = self.platform
   self.v:SetLifeHooks(self.s:Hooks())

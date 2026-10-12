@@ -385,7 +385,7 @@ describe('TestMgrWeaponThrow', function()
         ctx.data:Init()
         ctx.mgr.PlayerData = { GetDataInst = function() return ctx.data end,
             SendItemBar = function() end }
-        ctx.mgr.Attr = require('tests.lib.attr_runtime').New(ctx.mgr.PlayerData)
+        ctx.mgr.Attr = require('tests.support.attr_runtime').New(ctx.mgr.PlayerData)
         ctx.mgr.Vitals = {
             CanAct = function() return true end,
             NewHit = function(_, source, category)

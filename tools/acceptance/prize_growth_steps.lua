@@ -33,10 +33,10 @@ local function ensure(world)
         PotionCount = function(_, itemId) return world.potions[itemId] or 0 end } end }
     mgr.Survival = { GetState = function()
         return world.weak and { weakUntil = world.now + 60 } or nil end }
-    world.runtime = require('tests.tooling.modifier_runtime').New(world.now)
+    world.runtime = require('tests.support.modifier_runtime').New(world.now)
     mgr.Modifier = world.runtime.loadModifier()
     mgr.Modifier.Vitals, mgr.Modifier.Ability = mgr.Vitals, mgr
-    mgr.Attr = require('tests.lib.attr_runtime').New(mgr.PlayerData,
+    mgr.Attr = require('tests.support.attr_runtime').New(mgr.PlayerData,
         function(p) return mgr.Modifier:GetMoveMultiplier(p) end)
     mgr.Attr.Vitals = mgr.Vitals
     world.ability = mgr
