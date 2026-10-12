@@ -10,7 +10,7 @@
 --   8. #126 预警期不设上限：活跃满 + 30 秒预警内继续新增，场上数量无界增长；峰值不可观测；
 --   9. #126 预警标记没进快照（客户端不会闪），或把别的区 / 未预警的件也标成预警。
 local lu = require('luaunit')
-require('tests.gameplay.fish_loot_test')
+local FishLoot = require('tests.support.fish_loot')
 
 TestLootRecycle = {}
 
@@ -23,7 +23,7 @@ function TestLootRecycle:setUp()
     lootCfg.PerZoneCap = 3
     lootCfg.FlashBeforeRecycleSec = 30
     self.cfg.Loot = lootCfg
-    TestFishLoot.setUp(self)
+    FishLoot.setUp(self)
 end
 
 function TestLootRecycle:tearDown()
@@ -31,7 +31,7 @@ function TestLootRecycle:tearDown()
         _G.print = self.realPrint
         self.realPrint = nil
     end
-    TestFishLoot.tearDown(self)
+    FishLoot.tearDown(self)
     self.cfg.Loot = self.savedLootCfg
 end
 
@@ -55,11 +55,11 @@ function TestLootRecycle:restoreLogs()
     end
 end
 
-TestLootRecycle.land = TestFishLoot.land
-TestLootRecycle.kill = TestFishLoot.kill
-TestLootRecycle.bar = TestFishLoot.bar
-TestLootRecycle.lootUnits = TestFishLoot.lootUnits
-TestLootRecycle.newPlayer = TestFishLoot.newPlayer
+TestLootRecycle.land = FishLoot.land
+TestLootRecycle.kill = FishLoot.kill
+TestLootRecycle.bar = FishLoot.bar
+TestLootRecycle.lootUnits = FishLoot.lootUnits
+TestLootRecycle.newPlayer = FishLoot.newPlayer
 
 -- 在指定坐标直接生成一份鱼获（shrimp 无 Drops，一件就是一条记录）
 function TestLootRecycle:spawnAt(x, z)
