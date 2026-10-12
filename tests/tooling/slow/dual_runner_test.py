@@ -156,8 +156,10 @@ class DualRunnerListTest(unittest.TestCase):
 
     def test_full_includes_slow_and_fast_excludes_it(self):
         full = self._list("full")
-        self.assertIn("tests/tooling/slow/", full, "full 旧清单必须含 tooling/slow")
+        # #92：tests/tooling/slow 的 Lua 案例已全部迁到 tests/native/slow（该目录只剩本文件这类
+        # Python 回归），所以 slow 边界改由原生车道承担，旧侧必须彻底为空。
         self.assertIn("tests/native/slow/", full, "full 原生清单必须含 native/slow")
+        self.assertNotIn("tests/tooling/slow/", full, "旧 slow 目录已迁空，full 清单不得再有它")
         fast = self._list("fast")
         for banned in ("tests/tooling/slow/", "tests/native/slow/"):
             self.assertNotIn(banned, fast, f"fast 清单不得含 slow：{banned}")
