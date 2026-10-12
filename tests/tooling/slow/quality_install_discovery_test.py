@@ -108,6 +108,9 @@ class QualityInstallDiscoveryTest(unittest.TestCase):
             sandbox = Path(directory)
             shutil.copytree(ROOT / "tools/acceptance", sandbox / "tools/acceptance")
             shutil.copy(ROOT / "tools/win_shell.lua", sandbox / "tools/win_shell.lua")
+            # doctor 先核对标准分发映射（#95），隔离沙箱按仓库根布局提供同一份声明，
+            # 本用例的核对对象仍是 bootstrap 固定提交漂移。
+            shutil.copy(ROOT / "uml-quality.json", sandbox / "uml-quality.json")
             settings = json.loads((ROOT / "tools/quality/project.json").read_text(encoding="utf-8"))
             settings["lua_tools"]["dry4lua"]["commit"] = "0" * 40
             config = sandbox / "config.json"

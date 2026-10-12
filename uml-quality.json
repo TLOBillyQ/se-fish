@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "operations": {
+    "crap": {
+      "argv": ["./tools/quality/project.ps1", "refresh-crap"],
+      "forwardArgs": "none",
+      "scope": "whole-tree",
+      "validResultExitCodes": [0]
+    },
+    "mutate": {
+      "argv": ["./tools/quality/project.ps1", "mutation"],
+      "forwardArgs": "append",
+      "validResultExitCodes": [0, 3]
+    }
+  }
+}
