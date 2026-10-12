@@ -1,6 +1,8 @@
 -- #147 验收复用单测的引擎边界夹具，调用真实管理器公共接口；支付替身不代表真实平台验收。
 package.path = './tests/lib/?.lua;' .. package.path
-dofile('tests/gameplay/blindbox_settle_test.lua')
+-- 盲盒结算夹具在 #87 迁移到原生 Busted 时下沉为共享模块（测试与验收各自实例化），
+-- 不再借用全局 LuaUnit 类；濒死复活夹具仍属 #89，保持原样。
+local BlindboxWorld = require('tests.support.blindbox_world')
 dofile('tests/gameplay/revive_callback_test.lua')
 local GameCfg = require('common.GameCfg')
 
@@ -12,7 +14,7 @@ end
 
 return { patterns = {
     { '^平台接缝测试档已就绪$', function(w)
-        w.fixture = setmetatable({}, { __index = TestBlindboxSettle })
+        w.fixture = BlindboxWorld.new()
         w.fixture:setUp()
     end },
     { '^盲盒连续未中为 (%d+)$', function(w, n)
