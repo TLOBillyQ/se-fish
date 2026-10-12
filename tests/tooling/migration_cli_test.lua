@@ -3,6 +3,7 @@
 local lu = require("luaunit")
 local shell = require("tools.win_shell")
 local interpreter = require("tests.support.interpreter")
+local lanes = require("tests.lanes")
 local migration = require("tests.run_migration")
 
 local ROOT = "tmp/migration-cli-test"
@@ -77,16 +78,24 @@ function TestMigrationCli:test_list_prints_both_case_lists_per_runner()
   -- 两套 runner 各有明确案例清单：分段标题带 runner 名与车道，逐文件列出。
   assertContainsText(output, "[legacy] full", "清单缺旧 runner 分段")
   assertContainsText(output, "[native] full", "清单缺原生 runner 分段")
-  assertContainsText(output, "tests/gameplay/rate_limit_test.lua", "旧清单缺案例文件")
-  assertContainsText(output, "tests/native/baseline_test.lua", "原生清单缺案例文件")
+  -- 锚点取自车道定义本身而不是写死某个案例文件名：迁移期旧清单逐批变短（#84~#92），
+  -- 写死名字会在它被迁走的那天误红；native 侧同理。
+  local legacy, native = lanes.legacy_files("full"), lanes.native_files("full")
+  lu.assertNotEquals(#legacy, 0, "full 旧清单为空，逐文件断言会失去意义")
+  lu.assertNotEquals(#native, 0, "full 原生清单为空，逐文件断言会失去意义")
+  assertContainsText(output, legacy[1], "旧清单缺案例文件")
+  assertContainsText(output, native[1], "原生清单缺案例文件")
   assertContainsText(output, "tests/native/slow/", "full 清单必须含原生 slow 案例")
   assertNotContainsText(output, "_test.py", "清单不得出现 Python 回归")
   -- 口径（#82 遗留）：清单只做发现、不起 runner，所以表头给的是文件数，标签必须说「文件」；
-  -- 数字还得与逐行列出的条数相等——旧 bug 把文件数标成「案例」，一个文件里有几十个案例，
-  -- 冒充案例数会让 coverage/CRAP 核对读到假数字。案例数由 report() 从 runner 统计行取。
+  -- 数字还得同时等于车道定义与该分段逐行列出的条数——旧 bug 把文件数标成「案例」，
+  -- 一个文件里有几十个案例，冒充案例数会让 coverage/CRAP 核对读到假数字。
+  -- 案例数由 report() 从 runner 统计行取，不在这里（清单阶段还没跑 runner）。
   for _, runner in ipairs({ "legacy", "native" }) do
+    local expected = #(runner == "legacy" and legacy or native)
     local files = output:match("%[" .. runner .. "%] full (%d+) 文件")
     lu.assertNotNil(files, runner .. " 分段表头缺「N 文件」：" .. output:sub(1, 200))
+    lu.assertEquals(tonumber(files), expected, runner .. " 表头的文件数与车道定义不符")
     lu.assertEquals(tonumber(files), listed_count(output, runner),
                     runner .. " 表头的文件数与逐行列出的文件数不一致")
   end
