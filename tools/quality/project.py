@@ -1,4 +1,4 @@
-"""项目公开质量接缝：LuaUnit、完整覆盖率与固定工具配置。"""
+"""项目公开质量接缝：Busted、完整覆盖率与固定工具配置。"""
 from __future__ import annotations
 
 import argparse
@@ -68,8 +68,8 @@ def verify_lua(config):
 def run_coverage(root, config):
     """仅将通过完整测试的新统计发布为可发现 LCOV。
 
-    迁移期（#82）测试命令是聚合入口：两套 runner 分进程跑互斥集合，各自统计不互相清空，
-    两段都成功后才合并成一份 luacov.stats.out。这里保持「成功后一次发布」：
+    测试命令是 Busted 完整套件（`commands.coverage`）：单进程跑完并写出仓库根
+    `luacov.stats.out`。这里保持「成功后一次发布」：
     失败时删除 LCOV 让下游失效，但保留上一份统计快照供诊断；不预先删除已发布快照。
     """
     root = Path(root).resolve()
@@ -90,7 +90,7 @@ def run_coverage(root, config):
         return result.returncode
     generated = root / "luacov.stats.out"
     if not generated.is_file() or generated.stat().st_size == 0:
-        raise RuntimeError("完整测试未生成 LuaCov 统计（两段合并结果缺失），停止指标刷新。")
+        raise RuntimeError("完整测试未生成 LuaCov 统计，停止指标刷新。")
     generated.replace(stats)
     result = subprocess.run([lua_executable(config), str(PROJECT_ROOT / "tools/quality/report_lcov.lua"),
                              str(stats), str(temporary)], cwd=root, env=env)
