@@ -17,7 +17,7 @@ local function integer(n, min, max)
 end
 
 -- #123：平台在列表型 table 跨越引擎边界（DataStore 回读、引擎 API 返回）时附加 __count 长度键，
--- 真机证据见 tests/gameplay/save_array_meta_test.lua 首部与 #123 评论：同一份回包里列表 bar/bp 带 __count、
+-- 真机证据见 tests/native/save_array_meta_test.lua 首部与 #123 评论：同一份回包里列表 bar/bp 带 __count、
 -- 字典型 bait 不带。这个键不是玩家数据，必须在校验之前剥掉。
 -- 只认「键名恰为 ARRAY_MARKER_KEY 且值为非负整数」的形态；其它同名形态原样保留，继续被严格校验当损坏拒绝。
 local ARRAY_MARKER_KEY = '__count'
