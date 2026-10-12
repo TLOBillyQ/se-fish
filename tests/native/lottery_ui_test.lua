@@ -196,6 +196,24 @@ describe("抽奖机界面表现（ScreenLottery）", function()
     end
   end)
 
+  it("test_awaiting_latch_releases_on_reply_timeout", function()
+    -- 审查回归：服务端限频（CheckRECD）与存档 pending 窗口（resolve 返回 nil）都静默丢弃不回包，
+    -- Awaiting 闩锁必须有超时兜底，否则界面永久卡死
+    env:snapshot(1, env:premiumEntry())
+    assert.is_true(env.handler:Draw())
+    assert.is_false(env.handler:DrawEnabled())
+    assert.is_false(env.handler:Draw()) -- 等待期间重复点击被忽略
+    local timeout = env.cfg.Lottery.ResultTimeoutSec
+    assert.is_true(timeout and timeout > 0)
+    env.handler:UpdateAnim(timeout - 0.1) -- 未到超时仍锁
+    assert.is_false(env.handler:DrawEnabled())
+    env.handler:UpdateAnim(0.2) -- 越过超时：解锁并提示
+    assert.is_true(env.handler:DrawEnabled())
+    assert.is_true(#env.notices > 0)
+    -- 解锁后能正常再抽（服务端对重发有序号/幂等保护）
+    assert.is_true(env.handler:Draw())
+  end)
+
   it("test_axis_stop_order_follows_config", function()
     -- 停轴顺序消费 GameCfg.Lottery.AxisOrder，不硬编码
     env.cfg.Lottery.AxisOrder = { "middle", "left", "right" }
@@ -264,6 +282,17 @@ describe("抽奖机界面表现（ScreenLottery）", function()
     end
   end)
 
+  it("test_recovered_result_shows_without_animation", function()
+    env:snapshot(1, env:premiumEntry())
+    local value = result({ 4, 4, 4 }, "triple",
+      { prize = { kind = "item", itemId = "item167", name = "加速药水" }, patternName = "三头鲨" })
+    value.recovered = true
+    env.handler:NoteResult(value)
+    assert.is_false(env.handler:IsSpinning())
+    assert.matches("加速药水", env.nodes.LabelLotteryResult.Text, 1, true)
+    assert.same("三头鲨", env.nodes.LabelReelLeft.Text) -- 三轴直接落到结果图案
+  end)
+
   it("test_reels_stop_left_right_middle_after_spin_seconds", function()
     env:snapshot(1, env:premiumEntry())
     env.handler:Draw()
@@ -297,17 +326,6 @@ describe("抽奖机界面表现（ScreenLottery）", function()
     assert.is_true(env.handler:AxisStopped(1))
   end)
 
-  it("test_recovered_result_shows_without_animation", function()
-    env:snapshot(1, env:premiumEntry())
-    local value = result({ 4, 4, 4 }, "triple",
-      { prize = { kind = "item", itemId = "item167", name = "加速药水" }, patternName = "三头鲨" })
-    value.recovered = true
-    env.handler:NoteResult(value)
-    assert.is_false(env.handler:IsSpinning())
-    assert.matches("加速药水", env.nodes.LabelLotteryResult.Text, 1, true)
-    assert.same("三头鲨", env.nodes.LabelReelLeft.Text) -- 三轴直接落到结果图案
-  end)
-
   it("test_start_requests_recovered_state_once", function()
     -- Start 连上 LotteryResult 回包通道后主动拉一次断线恢复（服务端补推可能早于客户端连接丢失）
     assert.same(1, #env.startCommands)
@@ -325,23 +343,5 @@ describe("抽奖机界面表现（ScreenLottery）", function()
     assert.matches("恭喜获得", env.nodes.LabelLotteryResult.Text, 1, true)
     assert.matches("加速药水", env.nodes.LabelLotteryResult.Text, 1, true)
     assert.matches("三头鲨", env.nodes.LabelLotteryResult.Text, 1, true)
-  end)
-
-  it("test_awaiting_latch_releases_on_reply_timeout", function()
-    -- 审查回归：服务端限频（CheckRECD）与存档 pending 窗口（resolve 返回 nil）都静默丢弃不回包，
-    -- Awaiting 闩锁必须有超时兜底，否则界面永久卡死
-    env:snapshot(1, env:premiumEntry())
-    assert.is_true(env.handler:Draw())
-    assert.is_false(env.handler:DrawEnabled())
-    assert.is_false(env.handler:Draw()) -- 等待期间重复点击被忽略
-    local timeout = env.cfg.Lottery.ResultTimeoutSec
-    assert.is_true(timeout and timeout > 0)
-    env.handler:UpdateAnim(timeout - 0.1) -- 未到超时仍锁
-    assert.is_false(env.handler:DrawEnabled())
-    env.handler:UpdateAnim(0.2) -- 越过超时：解锁并提示
-    assert.is_true(env.handler:DrawEnabled())
-    assert.is_true(#env.notices > 0)
-    -- 解锁后能正常再抽（服务端对重发有序号/幂等保护）
-    assert.is_true(env.handler:Draw())
   end)
 end)
