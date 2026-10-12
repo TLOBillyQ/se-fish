@@ -13,6 +13,22 @@ ROOT = Path(__file__).resolve().parents[3]
 
 OLD_REVISION = "4cc471417c6f54f0b24b031d8e3a86300322905b"
 
+# 直接问 loader「discover 收进了哪些模块」：verify.ps1 只看退出码，删掉或漏掉一个回归文件
+# 只会让 `Ran N tests` 静默下降，因此这里钉「目录全集 == 收集全集」（#93 补的防漏断言）。
+DISCOVER_PROBE = (
+    "import unittest\n"
+    "loader = unittest.TestLoader()\n"
+    "suite = loader.discover({directory!r}, pattern='*_test.py')\n"
+    "def walk(node):\n"
+    "    for child in node:\n"
+    "        if isinstance(child, unittest.TestSuite):\n"
+    "            walk(child)\n"
+    "        else:\n"
+    "            print(type(child).__module__)\n"
+    "walk(suite)\n"
+)
+
+
 
 def standard_installation(sandbox):
     driver = sandbox / "driver"
@@ -125,6 +141,24 @@ class QualityInstallDiscoveryTest(unittest.TestCase):
             self.assertIn("bootstrap", output)
             self.assertIn("固定提交不一致", output)
             self.assertFalse((sandbox / ".toolcache").exists())
+
+    def test_discovery_collects_every_regression_file(self):
+        """verify.ps1 的 Python 闸门只看退出码：删文件或漏收集只会让 `Ran N tests` 静默下降。
+
+        这里直接问 loader 收进了哪些模块，钉「目录中的 *_test.py 全集 == discover 收集全集」，
+        新加的文件没被 pattern 收进、或文件被误删导致覆盖面下降，都在这里红。
+        """
+        directory = ROOT / "tests/tooling/slow"
+        result = subprocess.run([
+            sys.executable, "-I", "-B", "-c", DISCOVER_PROBE.format(directory=str(directory)),
+        ], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace")
+        output = result.stdout + result.stderr
+        self.assertEqual(result.returncode, 0, output)
+        collected = {line.strip() for line in result.stdout.splitlines() if line.strip()}
+        expected = {path.stem for path in directory.glob("*_test.py")}
+        self.assertEqual(collected, expected,
+                         f"discover 未收全回归文件：漏 {sorted(expected - collected)}，"
+                         f"多 {sorted(collected - expected)}")
 
     def test_discovery_skips_installation_without_an_explicit_checkout(self):
         with tempfile.TemporaryDirectory(prefix="quality-discovery-") as directory:

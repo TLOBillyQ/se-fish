@@ -1,4 +1,7 @@
-"""Busted 车道契约（#81）：fast 排除 slow、full 包含 slow；探针与 Python 不进入发现范围。"""
+"""Busted 车道契约（#81；#93 全量切换后是唯一的 Lua 测试入口）：
+fast 排除 slow、full 包含 slow；探针、夹具与 Python 回归不进入发现范围。
+"""
+import re
 import shutil
 import subprocess
 import unittest
@@ -38,31 +41,31 @@ class BustedLaneConfigTest(unittest.TestCase):
         settings, _ = self._dump()
         self.assertEqual(settings.get("pattern"), "_test")
         self.assertEqual(settings.get("recursive"), "false",
-                         "recursive 必须显式为 false，否则 fast 会沿目录递归捕获 tests/tooling/slow")
+                         "recursive 必须显式为 false，否则 fast 会沿目录递归捕获 tests/native/slow")
         self.assertEqual(settings.get("helper"), "tests/native/helper.lua")
         self.assertEqual(settings.get("sort-files"), "true")
 
-    def test_fast_excludes_slow_and_full_includes_it(self):
-        _, roots = self._dump()
-        fast, full = roots.get("fast", []), roots.get("full", [])
-        # 双 runner 互斥发现（#82）：Busted ROOT 只含原生目录，旧 LuaUnit 目录交给 tests/run.lua，
-        # 否则 Busted 会 loadfile 整个 LuaUnit 套件、注册 0 案例且退出码为 0（跨 runner 加载）。
-        for expected in ("tests/native",):
-            self.assertIn(expected, fast)
-        for banned in ("tests/gameplay", "tests/tooling", "tests/tooling/slow"):
-            self.assertNotIn(banned, fast, f"fast 的 Busted ROOT 不得含旧测试目录：{banned}")
-            self.assertNotIn(banned, full, f"full 的 Busted ROOT 不得含旧测试目录：{banned}")
-        self.assertFalse(any("slow" in path.split("/") for path in fast),
-                         f"fast 不得包含 slow 目录：{fast}")
-        for expected in list(fast) + ["tests/native/slow"]:
-            self.assertIn(expected, full)
+    def test_lane_roots_are_exactly_the_native_dirs(self):
+        """ROOT 白名单是「谁会被发现」的唯一机制，因此钉精确集合而不是排除法。
 
-    def test_probes_support_and_lib_never_in_roots(self):
+        排除法（「不得含 tests/gameplay 等旧目录」）在旧目录删除后退化成恒真断言；
+        精确集合让「fast 不含 slow」「default 等价 fast」直接、不可绕过。
+        """
+        _, roots = self._dump()
+        self.assertEqual(sorted(roots.get("default", [])), ["tests/native"],
+                         f"default 的 ROOT 集合被改动：{roots.get('default')}")
+        self.assertEqual(sorted(roots.get("fast", [])), ["tests/native"],
+                         f"fast 的 ROOT 集合被改动：{roots.get('fast')}")
+        self.assertEqual(sorted(roots.get("full", [])), ["tests/native", "tests/native/slow"],
+                         f"full 的 ROOT 集合被改动：{roots.get('full')}")
+
+    def test_probes_and_support_never_in_roots(self):
         _, roots = self._dump()
         for task, paths in roots.items():
             for path in paths:
-                self.assertNotIn(path, ("tests/probes", "tests/support", "tests/lib"),
-                                 f"{task} 不得发现探针/夹具/LuaUnit：{path}")
+                for banned in ("tests/probes", "tests/support"):
+                    self.assertFalse(path == banned or path.startswith(banned + "/"),
+                                     f"{task} 不得发现探针/夹具：{path}")
 
 
 class BustedDiscoveryTest(unittest.TestCase):
@@ -92,6 +95,26 @@ class BustedDiscoveryTest(unittest.TestCase):
         self.assertNotIn("tests/probes", listed)
         self.assertNotIn("tests/support", listed)
         self.assertNotIn("_test.py", listed)
+
+    def test_fast_case_count_exceeds_file_count(self):
+        """案例数口径（接住 #92 在 run_migration.lua 里钉过、随入口删除丢掉的那条）。
+
+        车道报出的案例数必须来自 runner 自己的统计行，且严格大于案例文件数——
+        任何「把文件数当案例数」的回退都会在这里红。
+        """
+        busted = shutil.which("busted")
+        if busted is None:
+            self.skipTest("缺少 busted 命令；安装与版本由 doctor 校验")
+        result = subprocess.run([busted, "--run=fast"], cwd=ROOT,
+                                capture_output=True, text=True, encoding="utf-8", errors="replace")
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        # Busted 没有总数行：整行按四项取，词形随数量单复数变（pending 恒为 pending）。
+        matches = re.findall(r"(\d+) successes? / (\d+) failures? / (\d+) errors? / (\d+) pending",
+                             result.stdout)
+        self.assertTrue(matches, "找不到 Busted 统计行：\n" + result.stdout[-2000:])
+        cases = sum(int(value) for value in matches[-1])
+        files = sorted((ROOT / "tests/native").glob("*_test.lua"))
+        self.assertGreater(cases, len(files), f"fast 案例数 {cases} 不得退化成文件数 {len(files)}")
 
 
 if __name__ == "__main__":
