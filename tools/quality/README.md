@@ -1,10 +1,10 @@
 # 质量工具
 
-项目使用原生 Windows、PowerShell 7、Lua 5.4 与现有 LuaUnit。终端与 viewer 刷新共用 `project.json`：分析 `client/`、`common/`、`server/` 的业务 Lua，排除官方 `packages/` 与 `server/_trigger/`；CRAP 与 DRY 都使用这一范围。
+项目使用原生 Windows、PowerShell 7、Lua 5.4 与原生 Busted。终端与 viewer 刷新共用 `project.json`：分析 `client/`、`common/`、`server/` 的业务 Lua，排除官方 `packages/` 与 `server/_trigger/`；CRAP 与 DRY 都使用这一范围。
 
 ## 解释器与测试命令契约
 
-Lua 解释器与测试命令是两条独立契约（#81）。`project.json` 的 `lua.executable`（含 `lua.version` 版本断言）用于 `lua -v` 校验、LCOV/DRY 报告脚本和项目内 Lua 子命令；`commands.coverage` 与 `commands.mutation_test` 是整体不透明的测试 argv，首项可以是 `lua`，也可以是 Busted 启动器——质量入口不得从测试 argv 的首项推导解释器。
+Lua 解释器与测试命令是两条独立契约（#81）。`project.json` 的 `lua.executable`（含 `lua.version` 版本断言）用于 `lua -v` 校验、LCOV/DRY 报告脚本和项目内 Lua 子命令；`commands.coverage` 与 `commands.mutation_test` 是整体不透明的测试 argv，切换后首项是 Busted 启动器（Windows 上写 `busted.bat`：Python 的 `CreateProcess` 只补 `.exe`，裸 `busted` 解析不到 LuaRocks 的 `.bat` 垫片）——质量入口不得从测试 argv 的首项推导解释器。
 
 ## Busted 固定依赖与原生入口
 
@@ -12,28 +12,25 @@ Lua 解释器与测试命令是两条独立契约（#81）。`project.json` 的 
 
 LCOV reporter 的固定实现是 `tools/quality/report_lcov.lua`：基于 `luacov.runner` / `ReporterBase` 写出 `SF:`（反斜杠归一为正斜杠）、`DA:`、`LF:`、`LH:`、`end_of_record`。若未来替换为共享 reporter，只能替换内部生成器，必须保持 `paths.lcov` 输出路径、LCOV 字段、路径归一化与 `report_lcov.lua <stats> <output>` 参数契约；CRAP/mutation 只消费该文件，不感知 reporter 实现。
 
-原生 Busted 入口由根目录 `.busted` 定义车道：`fast`（default，日常）与 `full`（追加 `tests/native/slow` 的 slow Lua）；探针（`tests/probes`）、共享夹具（`tests/support`）、LuaUnit（`tests/lib`）与 Python 回归不进入发现范围。共享初始化 `tests/native/helper.lua` 与旧入口 `tests/run.lua` 共用 `tests/support/baseline.lua` 建立同一份 Debug/AcceptanceSlot 基线，并按案例快照恢复共享配置，案例失败不泄漏。
+原生 Busted 入口由根目录 `.busted` 定义车道：`fast`（default，日常）与 `full`（追加 `tests/native/slow` 的 slow Lua）；探针（`tests/probes`）、共享夹具（`tests/support`）与 Python 回归不进入发现范围。共享初始化 `tests/native/helper.lua` 通过 `tests/support/baseline.lua` 建立 Debug/AcceptanceSlot 基线，并按案例快照恢复共享配置，案例失败不泄漏。
 
-## 迁移期双 runner 与覆盖率合并
-
-`#82` 起两套 runner 分进程运行互斥集合，车道目录单点定义在 `tests/lanes.lua`：`.busted` 的 ROOT 只含 `tests/native*`，旧 LuaUnit 目录（`tests/gameplay`、`tests/tooling`、`tests/tooling/slow`）不交给 Busted——否则 Busted 会 `loadfile` 整个 LuaUnit 套件、注册 0 个案例且退出码为 0（跨 runner 加载加静默遗漏）。聚合入口是迁移期临时设施，`#93` 随 LuaUnit 一并移除。
+## 覆盖率
 
 ```powershell
-# 两套 runner 发现到的案例文件清单（分段列出，口径是「文件」不是「案例」；Python 回归不在其中）
-lua tests/run_migration.lua full --list
+# 完整套件发现的案例清单（口径是「案例」；Python 回归不在其中）
+busted --run=full --list
 
-# 分进程跑两套：任一失败整体失败，空集合只报 skip
-# 报告一行两个口径：`legacy: 55 文件 / 631 案例 ok code=0`——「文件」是发现到的案例文件数，
-# 「案例」取自该 runner 自己的统计行（旧段 `Ran N tests`，原生段四类计数相加），取不到写「未知」。
-lua tests/run_migration.lua fast
+# 日常车道
+busted --run=fast
 
-# 两段覆盖率：各自独立统计，两段都成功后合并一次
-lua tests/run_migration.lua full --coverage
+# 完整套件覆盖率（单段，直接写仓库根 luacov.stats.out）
+busted --run=full --coverage
 ```
 
-两段统计不共用文件（`build/quality/luacov-legacy.out`、`build/quality/luacov-native.out`），因此不会互相清空；旧段用 `-e` 显式 `init` 自己的 luacov 配置，不能用 `-lluacov`（它会先以默认配置 init，之后 luacov 忽略后到配置，两段统计就写进同一份文件）。只有两段都退出 0 才合并成仓库根 `luacov.stats.out`，`run_coverage` 再整份替换成 `paths.stats` 快照并转 LCOV；任一失败不合并、不发布 LCOV，并保留上一份统计快照供诊断。`project.json` 的 `commands.coverage`/`commands.mutation_test` 因此指向聚合入口，argv 仍整体不透明（解释器契约不变）。聚合入口不加载任一测试框架、不含断言桥接层。本票不运行真实 mutation。
+完整套件用 `busted --run=full --coverage` 单段统计，LuaCov 按默认 `statsfile` 写仓库根 `luacov.stats.out`；`run_coverage` 成功后整份替换成 `paths.stats` 快照并转 LCOV，失败时不发布 LCOV 并保留上一份统计快照供诊断。`project.json` 的 `commands.coverage`/`commands.mutation_test` 因此直接指向 Busted，argv 仍整体不透明（解释器契约不变）。Busted 不带 `--coverage` 不写任何文件。
 
-起 lua 子进程的回归统一从 `tests/support/interpreter.lua` 取解释器：Lua 把它记在 arg 的负索引，但下标随启动选项前移——`lua s.lua` 是 `arg[-1]`，`lua -lluacov s.lua` 是 `arg[-2]`，覆盖率旧段的 `lua -e 语句 s.lua` 是 `arg[-3]`（此时 `arg[-1]` 是 `-e` 的语句原文）。写死 `arg[-1]` 会让这类回归只在 `--coverage` 下整片失败，命令行里的"解释器"变成一段 Lua 源码，cmd 报「找不到路径」。
+起 lua 子进程的回归统一从 `tests/support/interpreter.lua` 取解释器：Lua 把它记在 arg 的负索引，但下标随启动选项前移——`lua s.lua` 是 `arg[-1]`，`lua -lluacov s.lua` 是 `arg[-2]`，Busted 启动形状 `lua -e 语句 busted` 是 `arg[-3]`（此时 `arg[-1]` 是 `-e` 的语句原文）。写死 `arg[-1]` 会让这类回归只在 `--coverage` 下整片失败，命令行里的"解释器"变成一段 Lua 源码，cmd 报「找不到路径」。
+
 
 
 ## 安装与校验
@@ -56,7 +53,7 @@ acceptance4lua 的 Gherkin 解析、生成与验收仍使用 `tools/acceptance/`
 ## 日常命令
 
 ```powershell
-# 完整 LuaUnit → 本轮 LCOV → DRY → 全树 CRAP
+# 完整 Busted → 本轮 LCOV → DRY → 全树 CRAP
 .\tools\quality\project.ps1 quality
 
 # 仅生成完整测试的覆盖率
@@ -68,7 +65,7 @@ acceptance4lua 的 Gherkin 解析、生成与验收仍使用 `tools/acceptance/`
 # 仅显式全量操作重新测试该文件的全部变异
 .\tools\quality\project.ps1 mutation --mutate-all common/RateLimit.lua --max-workers 12
 
-# viewer / companion 使用同一公开入口：完整 LuaUnit → 本轮 LCOV → 全树 CRAP
+# viewer / companion 使用同一公开入口：完整 Busted → 本轮 LCOV → 全树 CRAP
 .\uml.ps1 crap
 
 # 生成架构图；已有 viewer 自动重载

@@ -24,7 +24,7 @@
 --   * 鲸跃落点方向由替换的 math.random（固定 0）钉死为 +x，只验距离与范围。
 --   * 虎啸伤害 30 是 #121 未给伤的独立基础披露细化；预警 / 前摇参数是配置细化 [未查证]。
 --   * 攻击 / 躲避窗口与真机手感未验证 [未查证]：本探针只证明招式按契约结算，不证明“正常单杀可行”。
-package.path = table.concat({ './?.lua', './?/init.lua', './tests/lib/?.lua', package.path }, ';')
+package.path = table.concat({ './?.lua', './?/init.lua', package.path }, ';')
 
 local Pass, Fail = 0, 0
 local function check(name, ok, detail)

@@ -252,7 +252,7 @@ def _run(root: Path, config: dict, targets: list[Path], *, original: dict[Path, 
             if baseline.code != 0:
                 print(f"mutation 基线测试失败（退出码 {baseline.code}）\n{baseline.output}", file=sys.stderr)
                 return 2
-            print("完整 LuaUnit 基线通过；mutation 使用既有完整覆盖率做差分")
+            print("完整 Busted 基线通过；mutation 使用既有完整覆盖率做差分")
             from mutator.engine import mutate_file
             from mutator.coverage import covered_lines
             from mutator.report import format_decisions, format_results

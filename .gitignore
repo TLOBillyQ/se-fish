@@ -40,7 +40,7 @@ tmp/
 build/
 target/
 .toolcache/
-# 迁移期双 runner（#82）：聚合入口在仓库根产出合并统计，run_coverage 消费后立即搬走。
+# LuaCov 根产物：完整套件在仓库根产出统计与报告，run_coverage 消费后立即搬走。
 /luacov.stats.out
 /luacov.report.out
 # BEGIN UML-VIEWER

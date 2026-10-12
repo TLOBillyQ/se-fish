@@ -2,7 +2,7 @@
 -- 数值来源：GameSpec §2（体型 1 倍起、变大药水每个 +0.2 倍、上限 3 倍；血量 300 起、每个 +20%、上限 900）。
 -- 本模块不碰引擎：只把「药水数 → 倍率/血量」和「倍率 → 胶囊高/相机距离/交互距离/挂点位移」算清楚，
 -- 供 server/AbilityAPI.lua 的 SetScale 接缝与挂点装配消费；服务端单位与真机表现不在本模块职责内。
--- 失败方式与覆盖见 tests/gameplay/ability_proto_test.lua 顶部的清单。
+-- 失败方式与覆盖见 tests/native/ability_proto_test.lua 顶部的清单。
 local GameCfg = require('common.GameCfg')
 
 local M = {}

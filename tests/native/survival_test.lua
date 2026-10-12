@@ -12,7 +12,7 @@
 --   7. 原生 Died/Reborn 与轮询兜底同时触发时重复复活；MgrVitals 兜底 Reborn 在接管期抢跑；
 --   8. 抢救接缝：非濒死能救、救后血量不是 10%；状态泄漏到其他玩家；离开后状态残留。
 -- 接缝：真实 MgrVitals + MgrSurvival + 真实 MgrSave/PlayerData（Task 排队、DataStore 内存桶），
---   REUtil 桩收广播；modifier 走 tests/tooling/modifier_runtime，成长侧用 SpeedWriter 桩注入。
+--   REUtil 桩收广播；modifier 走 tests/support/modifier_runtime，成长侧用 SpeedWriter 桩注入。
 -- 迁移说明：旧套件用「类方法委托」（TestSurvivalRevive.setUp = TestSurvivalDowned.setUp 等）共享夹具，
 --   原生侧逐例 before_each/after_each 各自调用同一个 build()/teardown()，恢复面一致：
 --   替换的模块缓存 common.REUtil 与（attachSave 的类）_G.game 无条件写回原值（含 nil），
@@ -125,7 +125,7 @@ local function build()
     env.v.Now = function() return env.now end
     env.s = assert(loadfile('server/Mgr/MgrSurvival.lua'))()
     env.s.Now = function() return env.now end
-    require('tests.tooling.modifier_runtime').AttachSurvival(env.s, function() return env.now end)
+    require('tests.support.modifier_runtime').AttachSurvival(env.s, function() return env.now end)
     env.s.Vitals = env.v
     env.v:SetLifeHooks(env.s:Hooks())
     env.a, env.b = newPlayer(1), newPlayer(2)

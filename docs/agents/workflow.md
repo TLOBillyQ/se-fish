@@ -11,9 +11,7 @@ Lua 命令使用 **Lua 5.4**，执行前用 `lua -v` 核对；验收脚本可用
 - `lua tools/cli.lua sync --packages`：在上述清单外追加三端官方包字节镜像，删除过期包文件，保留三端根现有 `README.md`；任一端源 packages 缺失或为空时整次同步在写入前失败。
 - 技能包预设命令见 `lua tools/cli.lua ability-presets --help`；验收脚本说明见 `tools/acceptance/README.md`。
 - 质量入口为 `.\tools\quality\project.ps1`，安装、覆盖率、CRAP、DRY、差分 mutation 与复验步骤见 [tools/quality/README.md](../../tools/quality/README.md)；只出报告，不设指标门槛。
-- 单测按对象放入 `tests/gameplay/` 或 `tests/tooling/`；真实 CLI 子进程用例放入 `tests/tooling/slow/`。日常运行 `lua tests/run.lua fast`；分类运行 `lua tests/run.lua gameplay` 或 `lua tests/run.lua tooling`；完整运行 `lua tests/run.lua`（等价于 `full`）。
-- 原生 Busted 入口（迁移期与旧入口并行）：`busted --run=fast`（等价 default）与 `busted --run=full`；车道定义在根目录 `.busted`，共享初始化在 `tests/native/helper.lua`，原生案例放 `tests/native/`。完成判据仍以 `lua tests/run.lua` 为准。
-- **迁移期双 runner（#82）**：`.busted` 的 ROOT 只含 `tests/native`，旧 LuaUnit 目录（`tests/gameplay`、`tests/tooling`、`tests/tooling/slow`）一律不交给 Busted，否则 Busted 会加载整个 LuaUnit 套件却注册 0 个案例（跨 runner 加载、静默遗漏）。两套互斥集合由 `tests/lanes.lua` 单点定义，`tests/run.lua` 与 `.busted` 都从这里取清单。分进程跑两套并合并覆盖率：`lua tests/run_migration.lua [fast|full] [--coverage] [--list]`；任一 runner 失败使整体失败，空集合只报 skip。聚合入口是迁移期临时设施，#93 随 LuaUnit 一并移除。
+- 单测放 `tests/native/`（slow 车道放 `tests/native/slow/`），共享夹具放 `tests/support/`，探针放 `tests/probes/`（手工探针，不入任何车道）。日常运行 `busted --run=fast`（等价 `default`），收尾运行 `busted --run=full`；车道由根目录 `.busted` 定义，共享初始化在 `tests/native/helper.lua`。Windows 专用案例在案例内判平台，非 Windows 时 `return pending(...)`，`--list` 行数因此跨平台不变。
 
 **架构图（uml-viewer）。** 根目录 `policy.edn` 描述三端模块树，`docs/uml/se-fish.edn` 是生成的依赖图（不要手编）。
 
@@ -36,7 +34,7 @@ Lua 命令使用 **Lua 5.4**，执行前用 `lua -v` 核对；验收脚本可用
 
 - **试玩优先**：新增验证尽量只用编辑器 E2E，复杂功能以试玩证明可用；操作见 `eggy-lua` 的「试玩验收」。
 - **先列失败方式**：确需单独测试某个系统时，先列出所有可能失败的方式，再写代码；代码写完后不补写单测。
-- **局部开发、全量收尾**：开发期间用 `lua tests/run.lua fast` 或分类入口验证；业务功能仍按需试玩，收尾执行下面的全部检查。
+- **局部开发、全量收尾**：开发期间用 `busted --run=fast` 验证；业务功能仍按需试玩，收尾执行下面的全部检查。
 - **可复现取证**：每次试玩保留可重跑的触发步骤（`input` 命令、探针文件）与对应证据（`log grep` 命中行、截图路径）。
 
 ## 完成判据
@@ -45,9 +43,9 @@ Lua 命令使用 **Lua 5.4**，执行前用 `lua -v` 核对；验收脚本可用
 
 | 检查 | 通过条件 |
 |---|---|
-| `lua tests/run.lua fast`（日常） | gameplay 全部用例与不启动真实 CLI 的 tooling 用例，统计行 `0 failures`，末行 `OK` |
-| `lua tests/run.lua`（收尾，等价于 `full`） | 所有保留的单测（含回同步传输），统计行 `0 failures`，末行 `OK` |
-| `.\tools\quality\project.ps1 quality` | 完整单测通过，生成本轮 LCOV、全树 CRAP 与 DRY 报告 |
+| `busted --run=fast`（日常） | fast 车道全部用例通过，末行匹配 `N successes / 0 failures / 0 errors / 0 pending : T seconds`，退出码 0 |
+| `busted --run=full`（收尾） | 含 slow 车道，全部用例通过，末行匹配 `N successes / 0 failures / 0 errors / 0 pending : T seconds`，退出码 0 |
+| `.\tools\quality\project.ps1 quality` | 完整 Busted 套件通过，生成本轮 LCOV、全树 CRAP 与 DRY 报告 |
 | `bash tools/acceptance/run_acceptance.sh`（有 feature 时） | `N passed, 0 failed`，末行 `acceptance run OK`；无 feature 时提示跳过且返回 0 |
 | 每个改过的 `.lua` 执行 `lua -e "assert(loadfile('<file>'))"` | 无输出、退出码 0 |
 | `lua tools/cli.lua deploy` 后执行上面的 `code validate` | `ok=true`、`data.valid=true`、`data.is_se_map=true`，`data.issues` 与 `meta.warnings` 均为空 |

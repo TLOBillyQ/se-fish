@@ -88,11 +88,11 @@ describe('TestStatusEffect', function()
         state.mgr.Survival = { GetState = function()
             return state.weak and { weakUntil = state.now + 60 } or nil
         end }
-        state.runtime = require('tests.tooling.modifier_runtime').New(state.now)
+        state.runtime = require('tests.support.modifier_runtime').New(state.now)
         state.mgr.Modifier = state.runtime.loadModifier()
         state.mgr.Modifier.Vitals = state.mgr.Vitals
         state.mgr.Modifier.Ability = state.mgr
-        state.mgr.Attr = require('tests.lib.attr_runtime').New(state.mgr.PlayerData,
+        state.mgr.Attr = require('tests.support.attr_runtime').New(state.mgr.PlayerData,
             function(p) return state.mgr.Modifier:GetMoveMultiplier(p) end)
         local character = state.runtime.unit('character')
         character.Controller = { WalkSpeed = 7 }

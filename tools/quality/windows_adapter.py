@@ -50,7 +50,7 @@ def _overlay(worker: Path, root: Path, relative: str, original: bytes) -> None:
 
 def install() -> None:
     from mutator import workers
-    # 工具 checkout 和依赖缓存不属于 LuaUnit worker，复制它们会造成巨大开销。
+    # 工具 checkout 和依赖缓存不属于测试 worker，复制它们会造成巨大开销。
     workers.SKIP_LINK = workers.SKIP_LINK | {".uml-viewer", ".toolcache"}
     # 被变异文件必须始终作为独立副本进入 worker；目录 symlink 会写回真实源码。
     workers._copy_importer = _copy_importer

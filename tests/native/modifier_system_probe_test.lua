@@ -204,7 +204,7 @@ describe("TestModifierProbe", function()
         hits[#hits + 1] = { source = hit.source, category = hit.category, target = ref, amount = amount, at = clock }
       end,
     }
-    local runtime = require('tests.tooling.modifier_runtime').New(clock)
+    local runtime = require('tests.support.modifier_runtime').New(clock)
     target.Character = runtime.unit('target')
     mgr.Modifier = runtime.loadModifier()
     mgr.Modifier.Vitals = mgr.Vitals
