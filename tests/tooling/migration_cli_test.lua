@@ -3,6 +3,7 @@
 local lu = require("luaunit")
 local shell = require("tools.win_shell")
 local interpreter = require("tests.support.interpreter")
+local lanes = require("tests.lanes")
 local migration = require("tests.run_migration")
 
 local ROOT = "tmp/migration-cli-test"
@@ -64,8 +65,15 @@ function TestMigrationCli:test_list_prints_both_case_lists_per_runner()
   -- 两套 runner 各有明确案例清单：分段标题带 runner 名与车道，逐文件列出。
   assertContainsText(output, "[legacy] full", "清单缺旧 runner 分段")
   assertContainsText(output, "[native] full", "清单缺原生 runner 分段")
-  assertContainsText(output, "tests/gameplay/rate_limit_test.lua", "旧清单缺案例文件")
-  assertContainsText(output, "tests/native/baseline_test.lua", "原生清单缺案例文件")
+  -- 锚点取自车道定义本身而不是写死某个案例文件名：迁移期旧清单逐批变短（#84~#92），
+  -- 写死名字会在它被迁走的那天误红；native 侧同理。
+  local legacy, native = lanes.legacy_files("full"), lanes.native_files("full")
+  lu.assertNotEquals(#legacy, 0, "full 旧清单为空，逐文件断言会失去意义")
+  lu.assertNotEquals(#native, 0, "full 原生清单为空，逐文件断言会失去意义")
+  assertContainsText(output, legacy[1], "旧清单缺案例文件")
+  assertContainsText(output, native[1], "原生清单缺案例文件")
+  assertContainsText(output, "[legacy] full " .. #legacy .. " 案例", "旧清单计数与车道定义不符")
+  assertContainsText(output, "[native] full " .. #native .. " 案例", "原生清单计数与车道定义不符")
   assertContainsText(output, "tests/tooling/slow/", "full 清单必须含旧 slow 案例")
   assertContainsText(output, "tests/native/slow/", "full 清单必须含原生 slow 案例")
   assertNotContainsText(output, "_test.py", "清单不得出现 Python 回归")

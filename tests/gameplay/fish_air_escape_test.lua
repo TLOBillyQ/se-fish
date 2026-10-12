@@ -36,7 +36,7 @@ local function vec(x, y, z)
 end
 
 function TestFishAirEscape:setUp()
-    self.saved = { game = _G.game, Vector3 = _G.Vector3, Quaternion = _G.Quaternion }
+    self.saved = { game = _G.game, Vector3 = _G.Vector3, Quaternion = _G.Quaternion, Color = _G.Color }
     self.modules = {}
     for _, name in ipairs(MODULES) do
         self.modules[name] = package.loaded[name]
@@ -71,6 +71,9 @@ function TestFishAirEscape:setUp()
         end,
     }
     _G.Vector3 = { New = vec }
+    -- 空中鱼入水回收前会建物理载体，MgrFishCarrier 在有染色时读 Color.New；
+    -- #90 迁移把 damage_float 的 Color 替身收回后不能再依赖别处的泄漏，故自建并逐例恢复。
+    _G.Color = { New = function(r, g, b, a) return { r = r, g = g, b = b, a = a } end }
     _G.Quaternion = { FromEulerAngles = function()
         return { GetForward = function() return vec(0, 0, 1) end }
     end }
@@ -97,7 +100,7 @@ function TestFishAirEscape:tearDown()
     for _, fish in pairs(self.mgr.Fish) do self.mgr:Remove(fish) end
     self.mgr:Stop()
     for _, name in ipairs(MODULES) do package.loaded[name] = self.modules[name] end
-    for _, name in ipairs({ 'game', 'Vector3', 'Quaternion' }) do _G[name] = self.saved[name] end
+    for _, name in ipairs({ 'game', 'Vector3', 'Quaternion', 'Color' }) do _G[name] = self.saved[name] end
 end
 
 function TestFishAirEscape:drop(id)
