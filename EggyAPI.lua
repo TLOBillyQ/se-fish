@@ -457,7 +457,9 @@ function Connection:Disconnect() end
 ---@field Rotation Quaternion 外观整体的旋转（四元数）。
 ---@field Scale Vector3 外观整体的缩放。
 ---@field SkinId String 主模型应用的皮肤；为空时不设置皮肤。
+---@field SkinSlots SkinSlot[] 每个子网格的皮肤与染色配置，元素包含 SkinId、ModelColor1~4；槽位数量由模型子网格数决定。
 ---@field SubAppearance SubCustomAppearance[] 子模型列表；每个元素为一个 SubCustomAppearance（子自定义外观）。
+---@field UseSkinList Bool 启用后使用多槽位皮肤系统，每个子网格可独立配置皮肤与染色。
 local CustomAppearance = {}
 
 ---数据存储集合，提供键值对的增删改查操作。
@@ -2160,7 +2162,9 @@ local SkinSlot = {}
 ---@field Rotation Quaternion 子模型相对主模型的旋转（四元数）。
 ---@field Scale Vector3 子模型相对主模型的缩放。
 ---@field SkinId String 子模型应用的皮肤；为空时不设置皮肤。
+---@field SkinSlots SkinSlot[] 每个子网格的皮肤与染色配置，元素包含 SkinId、ModelColor1~4；槽位数量由模型子网格数决定。
 ---@field SocketName String 子模型挂接到主模型的挂点名称；为空时为默认挂点（仅主模型为蛋形生物时生效）。
+---@field UseSkinList Bool 启用后使用多槽位皮肤系统，每个子网格可独立配置皮肤与染色。
 SubCustomAppearance = {}
 
 ---创建一个子自定义外观（SubCustomAppearance）；传入属性表时按属性名初始化各属性（与 CreateData('SubCustomAppearance', {...}) 一致），省略时使用默认数据创建。创建后可添加到 CustomAppearance 的 SubAppearance 数组中。
@@ -3624,6 +3628,13 @@ Enums.SpaceCloseReason = {
 	OutOfMemory = 5,  ---Space 已达到游戏服务器的内存限制
 }
 
+---SurfaceGuiSizingMode
+---@enum Enums.SurfaceGuiSizingMode 
+Enums.SurfaceGuiSizingMode = {
+	FixedSize = 0,  ---固定逻辑尺寸
+	PixelsPerWorldUnit = 1,  ---像素密度锚定
+}
+
 ---TableMajorAxis
 ---@enum Enums.TableMajorAxis 
 Enums.TableMajorAxis = {
@@ -4763,7 +4774,7 @@ local ReplicatedStorage = {}
 ---运行时服务，提供帧循环各阶段的时序事件，并用于判断当前代码所处的运行环境（客户端、服务端或编辑器试玩）。
 ---@class RunService : Unit
 ---@field FrameUpdate Signal<fun(deltaTime: Float)> 每帧逻辑帧更新时触发。回调参数：deltaTime 逻辑帧时间长
----@field Heartbeat Signal<fun(deltaTime: Float, maxTaskCount: Int)> 每帧逻辑帧更新时触发。回调参数：deltaTime 逻辑帧时间长, maxTaskCount 最大任务数
+---@field Heartbeat Signal<fun(deltaTime: Float)> 每帧逻辑帧更新时触发。回调参数：deltaTime 逻辑帧时间长
 ---@field PostFrameUpdate Signal<fun(deltaTime: Float)> 每帧逻辑帧更新完成后触发。回调参数：deltaTime 逻辑帧时间长
 ---@field PostSimulation Signal<fun(deltaTimeSim: Float)> 每帧在物理模拟完成后触发。回调参数：deltaTimeSim 物理步长
 ---@field PreSimulation Signal<fun(deltaTimeSim: Float)> 每帧在物理模拟前触发。回调参数：deltaTimeSim 物理步长
@@ -5686,9 +5697,8 @@ function BasePart:IsWeldConstraintRoot() end
 ---@param player Player 要转移权限的玩家对象
 function BasePart:SetNetworkOwner(player) end
 
----设置物体的物理拥有者是否由引擎自动分配。传 true（缺省）恢复引擎自动分配，用于撤销 SetNetworkOwner 的手动固定；传 false 则锁定为手动。仅服务端调用生效，恢复自动后重新分配在下一次选择器求值时发生
----@param isAuto? Bool true 为恢复引擎自动分配（缺省），false 为锁定为手动
-function BasePart:SetNetworkOwnershipAuto(isAuto) end
+---设置物体的物理拥有者是否由引擎自动分配。一旦调用将owner的切换交给引擎，引擎会自动根据角色距离等信息来切换owner
+function BasePart:SetNetworkOwnershipAuto() end
 
 ---将本地渲染位置强制同步到最新的物理模拟位置，消除渲染延迟
 function BasePart:SyncRenderToPhysics() end
@@ -7049,7 +7059,9 @@ local QuadGradientSky = {}
 ---@field PhysicsMeshId String 物理网格资源ID。缺省时，若初始创建时传入了 RenderMeshId，则默认使用该 RenderMeshId 作为物理资源；后续修改 .RenderMeshId 不会影响 PhysicsMeshId
 ---@field RenderMeshId String 模型的资源路径，用于指定渲染使用的网格资源；启用自定义外观后该属性不生效
 ---@field SkinId String 模型使用的皮肤资源ID，用于切换模型外观；启用自定义外观后该属性不生效
+---@field SkinSlots SkinSlot[] 每个子网格的皮肤与染色配置，元素包含 SkinId、ModelColor1~4；启用自定义外观后该属性不生效
 ---@field UseCustomAppearance Bool 使用自定义外观
+---@field UseSkinList Bool 启用后使用多槽位皮肤系统，每个子网格可独立配置皮肤与染色；启用自定义外观后该属性不生效
 local RenderTriggerUnit = {}
 
 ---切换 RenderMeshId 并自动应用新模型的默认皮肤：默认皮肤 >1 个时进入多槽位模式（逐 Submesh 一个默认皮并回填默认染色），单个/无默认皮肤时回到单皮肤模式并写入默认 SkinId（含默认染色回填）。双端可调用，服务端权威（客户端仅本机生效）；自定义外观开启期间不可用
@@ -7075,8 +7087,10 @@ function RenderTriggerUnit:SetTexture(textureAssetId) end
 ---@field OcclusionType Int 当模型遮挡住摄像机与玩家之间的视线时的处理策略
 ---@field RenderMeshId String 模型的资源路径，用于指定渲染使用的网格资源；启用自定义外观后该属性不生效
 ---@field SkinId String 模型使用的皮肤资源ID，用于切换模型外观；启用自定义外观后该属性不生效
+---@field SkinSlots SkinSlot[] 每个子网格的皮肤与染色配置，元素包含 SkinId、ModelColor1~4；启用自定义外观后该属性不生效
 ---@field TransparentRenderBias Int 控制半透明物体的渲染层级偏置，值越小越先渲染。仅影响半透明物体，不透明物体不受此偏置影响。取值范围 [-15, 16]，超出会被截断到边界。注意：仅当遮挡规则(OcclusionType)为 组件半透明/镜头前推/玩家虚影 时生效；为 不处理 时本偏置不生效
 ---@field UseCustomAppearance Bool 启用后使用自定义外观替代默认模型渲染
+---@field UseSkinList Bool 启用后使用多槽位皮肤系统，每个子网格可独立配置皮肤与染色；启用自定义外观后该属性不生效
 local RenderUnit = {}
 
 ---切换 RenderMeshId 并自动应用新模型的默认皮肤：默认皮肤 >1 个时进入多槽位模式（逐 Submesh 一个默认皮并回填默认染色），单个/无默认皮肤时回到单皮肤模式并写入默认 SkinId（含默认染色回填）。双端可调用，服务端权威（客户端仅本机生效）；自定义外观开启期间不可用
@@ -7235,6 +7249,8 @@ local SketchEffect = {}
 ---@field ModelColor3 Color 模型第3染色区域的颜色覆盖值。仅当皮肤模型的color_mask包含第3位（值为4）时生效，用于自定义该区域的渲染颜色。
 ---@field ModelColor4 Color 模型第4染色区域的颜色覆盖值。仅当皮肤模型的color_mask包含第4位（值为8）时生效，用于自定义该区域的渲染颜色。
 ---@field SkinId String 皮肤资源标识符，用于指定当前SkinUnit引用的皮肤资源。设置后会通过AssetService加载对应的皮肤数据（染色、材质等），并覆盖父单位的默认渲染外观。
+---@field SkinSlots SkinSlot[] 每个子网格的皮肤与染色配置，元素包含 SkinId、ModelColor1~4；启用自定义外观后该属性不生效
+---@field UseSkinList Bool 启用后使用多槽位皮肤系统，每个子网格可独立配置皮肤与染色；启用自定义外观后该属性不生效
 local SkinUnit = {}
 
 ---普通天空
@@ -7257,7 +7273,7 @@ local SoundGroup = {}
 ---3D 空间音效
 ---@class SoundUnit : Unit
 ---@field CampRoleId Int 所属阵营
----@field Duration Float 设置音效强制播放窗口，时长后到期即销毁（非音频本身时长，无论是否在播）
+---@field Duration Float 存活倒计时（秒），与是否播放无关：设为 >0 时从此刻起计时，到期自动销毁整个音效单位。默认 -1 表示永久（不计时），需手动销毁。非音频本身时长。
 ---@field FadeDistance Float 衰减距离
 ---@field Looped Bool 循环播放
 ---@field Playing Bool 自动播放
@@ -7265,6 +7281,7 @@ local SoundGroup = {}
 ---@field SoundType String 音效类型
 ---@field Speed Float 播放速率
 ---@field Volume Float 音量
+---@field Ended Signal<fun()> 播放结束时触发
 ---@field Played Signal<fun()> 播放开始时触发
 ---@field Stopped Signal<fun()> 播放停止时触发
 local SoundUnit = {}
@@ -7272,8 +7289,8 @@ local SoundUnit = {}
 ---播放音效{#0}
 function SoundUnit:Play() end
 
----设置音效{#0}播放时长{#1}(设置时长后到期即销毁（无论是否在播）)
----@param duration Float 时长
+---存活倒计时，与是否播放无关：每次设置都重新计时，到期自动销毁整个音效单位。非音频本身时长。-1 表示永久。
+---@param duration Float 存活时长（秒，-1 永久）
 function SoundUnit:SetDuration(duration) end
 
 ---设置音效（3D）{#0}衰减距离{#1}
@@ -7374,6 +7391,7 @@ local Stars = {}
 ---@field LightInfluence Float 受场景光照影响程度，0.0~1.0，默认 1.0
 ---@field MaxDistance Float 世界单位，超出该距离则剔除不渲染；0 表示不限制
 ---@field PixelsPerWorldUnit Vector2 每轴像素密度，分量需 > 0。仅 PixelsPerWorldUnit 模式生效
+---@field SizingMode Enums.SurfaceGuiSizingMode 画布尺寸语义。FixedSize=以 CanvasSize 为固定布局尺寸；PixelsPerWorldUnit=以 PixelsPerWorldUnit 为像素密度锚定，实际尺寸=WorldScale.xy×密度
 ---@field WorldScale Vector3 画布在世界中的尺寸（各轴缩放）
 local SurfaceGui = {}
 
@@ -7660,13 +7678,15 @@ local WorldRoot = {}
 ---@field PhysicsActive Bool 是否启用物理模拟，关闭后物体不参与碰撞和物理计算
 ---@field PhysicsMeshId String 物理网格资源ID。缺省时，若初始创建时传入了 RenderMeshId，则默认使用该 RenderMeshId 作为物理资源；后续修改 .RenderMeshId 不会影响 PhysicsMeshId
 ---@field RenderMeshId String 模型的资源路径，用于指定渲染使用的网格资源；启用自定义外观后该属性不生效
+---@field SkinSlots SkinSlot[] 每个子网格的皮肤与染色配置，元素包含 SkinId、ModelColor1~4；启用自定义外观后该属性不生效
 ---@field TransparentRenderBias Int 控制半透明物体的渲染层级偏置，值越小越先渲染。仅影响半透明物体，不透明物体不受此偏置影响。取值范围 [-15, 16]，超出会被截断到边界。注意：仅当遮挡规则(OcclusionType)为 组件半透明/镜头前推/玩家虚影 时生效；为 不处理 时本偏置不生效
 ---@field UseCustomThrownAngle Bool 启用后使用自定义的投掷角度替代默认投掷角度
 ---@field UseCustomThrownForce Bool 启用后使用自定义的投掷力替代默认投掷力
 ---@field UseIndividualGravity Bool 启用后使用自定义的重力方向和大小替代全局重力
+---@field UseSkinList Bool 启用后使用多槽位皮肤系统，每个子网格可独立配置皮肤与染色；启用自定义外观后该属性不生效
 ---@field OnCollisionEnter Signal<fun(otherUnit: Unit)> 当其他物体开始与此物体发生碰撞时触发。回调参数：otherUnit 与之发生碰撞的另一个物体
 ---@field OnCollisionExit Signal<fun(otherUnit: Unit)> 当其他物体与此物体结束碰撞时触发。回调参数：otherUnit 结束碰撞的另一个物体
----@field OnLiftedBegin Signal<fun()> 当此物体被玩家抓举起来时触发
+---@field OnLiftedBegin Signal<fun(liftunit: EggyUnit)> 当此物体被玩家抓举起来时触发。回调参数：liftunit 举起当前对象的生物
 ---@field OnLiftedEnd Signal<fun()> 当此物体被玩家放下或投掷后触发
 ---@field OnLocalCollisionEnter Signal<fun(info: CollisionCallbackInfo)> 当其他物体开始与此物体发生碰撞时在本地触发，回调参数为 CollisionCallbackInfo。回调参数：info 碰撞回调信息
 ---@field OnLocalCollisionExit Signal<fun(info: CollisionCallbackInfo)> 当其他物体与此物体结束碰撞时在本地触发；若碰撞对方在结束碰撞前被销毁，也会补发该事件。回调参数为 CollisionCallbackInfo。回调参数：info 碰撞回调信息
