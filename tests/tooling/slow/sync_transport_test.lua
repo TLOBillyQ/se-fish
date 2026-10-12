@@ -4,6 +4,7 @@
 -- （LUA_PATH 指回本仓库，让 tools/cli.lua 能 require 到真模块），真仓库不被碰。
 local lu = require("luaunit")
 local shell = require("tools.win_shell")
+local interpreter = require("tests.support.interpreter")
 
 local function slurp(path)
   local f = io.open(path, "rb")
@@ -45,11 +46,11 @@ local function write_repo(rel, body)
   write_file(FAKE_REPO .. "\\" .. rel, body)
 end
 
--- 跑 CLI 的 lua 解释器：取启动本 runner 的那个（Lua 把解释器路径记在 arg[-1]），不走 PATH 猜。
+-- 跑 CLI 的 lua 解释器：取启动本 runner 的那个，不走 PATH 猜。
+-- 解释器在 arg 里的下标会随启动选项前移（覆盖率模式下 `-e` 的语句原文正占着最后一格），
+-- 所以交给 tests/support/interpreter.lua 逐格往回找。
 local function lua_bin()
-  local exe = arg and arg[-1]
-  if type(exe) == "string" and exe ~= "" and not exe:match("^%-") then return exe end
-  return "lua"
+  return interpreter.path()
 end
 
 -- 真 CLI 子进程：cd 进假仓库再跑 sync，拿回 stdout+stderr 与退出码。

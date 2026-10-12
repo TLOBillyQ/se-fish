@@ -1,11 +1,13 @@
--- Busted 车道配置（#81，ADR 0002）。
--- fast 为日常车道（default 等价 fast）；full 追加 slow Lua（tests/tooling/slow、tests/native/slow）。
--- recursive 必须显式为 false：Busted 默认递归，fast 沿目录递归会捕获 tests/tooling/slow。
+-- Busted 车道配置（#81 建立，#82 接通双 runner，ADR 0002）。
+-- ROOT 只来自 tests/lanes.lua 的原生目录清单：旧 LuaUnit 目录（tests/gameplay、tests/tooling、
+-- tests/tooling/slow）一律不交给 Busted，否则 Busted 会 loadfile 整个 LuaUnit 套件、注册 0 个案例
+-- 且退出码为 0（跨 runner 加载 + 静默遗漏）。旧集合由 tests/run.lua 与聚合入口分进程运行。
+-- fast 为日常车道（default 等价 fast）；full 追加 tests/native/slow。
+-- recursive 必须显式为 false：Busted 默认递归会捕获 tests/native/slow 之外的兄弟目录。
 -- pattern 只匹配 *_test.lua；探针（tests/probes）、共享夹具（tests/support）、LuaUnit（tests/lib）
 -- 与 Python 回归（tests/tooling/slow/*.py）不在任何 ROOT 内或没有 Lua 加载器，均不进入发现范围。
--- sort-files 保留旧入口 tests/run.lua 的文件名顺序；不开启 sort-tests，案例保持注册顺序。
-local fast_roots = { "tests/gameplay", "tests/tooling", "tests/native" }
-local full_roots = { "tests/gameplay", "tests/tooling", "tests/tooling/slow", "tests/native", "tests/native/slow" }
+-- sort-files 保留旧入口的文件名字典序；不开启 sort-tests，案例保持注册顺序。
+local lanes = dofile("tests/lanes.lua")
 
 return {
   _all = {
@@ -15,7 +17,7 @@ return {
     ["sort-files"] = true,
     output = "plainTerminal",
   },
-  default = { ROOT = fast_roots },
-  fast = { ROOT = fast_roots },
-  full = { ROOT = full_roots },
+  default = { ROOT = lanes.native_dirs("fast") },
+  fast = { ROOT = lanes.native_dirs("fast") },
+  full = { ROOT = lanes.native_dirs("full") },
 }
