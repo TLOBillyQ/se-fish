@@ -51,7 +51,13 @@ class QualityLockTest(unittest.TestCase):
                                         capture_output=True, text=True, encoding='utf-8', errors='replace', timeout=90)
                 self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
             command = destination / '.uml-viewer/uml-viewer/scripts/uml-command.ps1'
-            self.assertIn('refresh-crap', command.read_text(encoding='utf-8'))
+            runtime = command.read_text(encoding='utf-8')
+            # 标准分发：安装的 viewer runtime 无补丁即读取仓库根 uml-quality.json，
+            # 项目命令映射由声明式配置提供，不再有 refresh-crap 私补丁痕迹。
+            self.assertIn('Read-UmlQualityConfig', runtime)
+            self.assertNotIn('refresh-crap', runtime)
+            self.assertEqual('', subprocess.check_output(['git', '-C', str(destination / '.uml-viewer/uml-viewer'),
+                                                          'status', '--porcelain'], text=True).strip())
 
     def test_powershell_lock_blocks_public_python_entry(self):
         with tempfile.TemporaryDirectory(prefix='se-fish-install-lock-76-') as directory:
