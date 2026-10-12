@@ -20,11 +20,11 @@
 --      甩尾不打身后 / 打到身前、鲸跃周期 / 落点 / 范围 / 伤害错（25 秒 / 15 米 / 10 米 / 240）；
 --  11. 虎鲸位移失败（追击 / 鲸跃）仍按预定位置结算或无日志。
 local lu = require('luaunit')
-require('tests.gameplay.forest_combat_test')
+local FishCombat = require('tests.support.fish_combat')
 
 TestBeachCombat = {}
 for _, name in ipairs({ 'setUp', 'tearDown', 'newPlayer', 'land', 'mounts', 'prepare', 'heldFish' }) do
-    TestBeachCombat[name] = TestForestCombat[name]
+    TestBeachCombat[name] = FishCombat[name]
 end
 
 local function vec(x, y, z) return { x = x, y = y, z = z } end

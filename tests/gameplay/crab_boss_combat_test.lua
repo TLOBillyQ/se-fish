@@ -13,11 +13,11 @@
 --   8. 预警残留：招式结束 / 逃跑 / 移除后客户端预警不收起；
 --   9. 战斗快照缺新招式名（pinch / charge / spin），客户端标签协议字段缺失。
 local lu = require('luaunit')
-require('tests.gameplay.gar_combat_test')
+local FishCombat = require('tests.support.fish_combat')
 
 TestCrabBossCombat = {}
 for _, name in ipairs({ 'setUp', 'tearDown', 'newPlayer', 'land', 'mounts', 'prepare', 'heldFish' }) do
-    TestCrabBossCombat[name] = TestGarCombat[name]
+    TestCrabBossCombat[name] = FishCombat[name]
 end
 
 local function drop(self)

@@ -1,14 +1,14 @@
 -- 战斗岛（#141 树林岛 / #142 沙滩岛）探针与验收步骤共用的假引擎战斗世界。
 -- 复用 fish_escape 测试夹具：真实 MgrFishUnit + 假载体 / Vitals / RE；双人各 5000 血，
 -- 预警 payload 记入 env.notices，结算伤害记入 env.hits。在仓库根运行（require 路径以根为准）。
-require('tests.gameplay.fish_escape_test')
+local FishEscape = require('tests.support.fish_escape')
 
 local M = {}
 
 function M.new()
-    local env = setmetatable({}, { __index = TestFishEscape })
-    TestFishEscape.setUp(env)
-    TestFishEscape.prepare(env)
+    local env = setmetatable({}, { __index = FishEscape })
+    FishEscape.setUp(env)
+    FishEscape.prepare(env)
     env.hits, env.notices = {}, {}
     for _, p in ipairs({ env.player, env.other }) do
         p.Character.Controller.Health = 5000
@@ -32,7 +32,7 @@ end
 -- 恢复 pinRandom 替换的全局随机并拆除夹具
 function M.close(env)
     if env.savedRandom then math.random = env.savedRandom end
-    TestFishEscape.tearDown(env)
+    FishEscape.tearDown(env)
 end
 
 -- 推进到服务器时刻 now 并跑一帧

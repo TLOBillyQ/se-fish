@@ -8,46 +8,16 @@
 --   6. 每玩家在逃超过 1 条、全局超过在线人数 × 2，或清的不是最旧的（每人 1 条已保证优先清触发者自己的）；
 --   7. 死亡不放鱼、不断线；别人能放下我的鱼。
 local lu = require('luaunit')
-require('tests.gameplay.fish_lift_test')
+local FishEscape = require('tests.support.fish_escape')
 
 TestFishEscape = {}
-for _, name in ipairs({ 'setUp', 'tearDown', 'newPlayer', 'land', 'mounts' }) do
-    TestFishEscape[name] = TestFishLift[name]
-end
+for name, method in pairs(FishEscape) do TestFishEscape[name] = method end
 
 local function vec(x, y, z)
     return { x = x, y = y, z = z }
 end
 
 local WALL = { Name = 'Wall' }
-
-function TestFishEscape:prepare()
-    local env = self
-    self.rays = {}
-    self.hits = {}
-    _G.RaycastParams = { New = function() return { FilterDescendantsInstances = {} } end }
-    self.physics = { Raycast = function(_, origin, direction, params)
-        env.rays[#env.rays + 1] = { now = env.now, origin = origin, direction = direction, params = params }
-        local excluded = {}
-        for _, unit in ipairs(params and params.FilterDescendantsInstances or {}) do excluded[unit] = true end
-        for _, hit in ipairs(env.hits) do
-            if not excluded[hit.Instance] then return hit end
-        end
-    end }
-    local get = _G.game.GetService
-    _G.game = { GetService = function(s, name)
-        if name == 'PhysicsService' then return env.physics end
-        return get(s, name)
-    end }
-end
-
-function TestFishEscape:heldFish(player, fishId, mult)
-    player = player or self.player
-    local fish = self:land(player, fishId, mult)
-    fish.Carrier.Body.OnLiftedBegin:Fire(player.Character)
-    fish.Carrier.Body.BodyType = 2
-    return fish
-end
 
 local function speed(v)
     return math.sqrt(v.x * v.x + v.z * v.z)

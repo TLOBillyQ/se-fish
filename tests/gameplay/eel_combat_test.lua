@@ -9,10 +9,10 @@
 --   7. 放电范围不是 5 米、伤害不是 10、技能数值不在 GameCfg.Ability。
 local lu = require('luaunit')
 local GameCfg = require('common.GameCfg')
-require('tests.gameplay.fish_escape_test')
+local FishEscape = require('tests.support.fish_escape')
 TestEelCombat = {}
 for _, name in ipairs({ 'setUp', 'tearDown', 'newPlayer', 'land', 'mounts', 'prepare', 'heldFish' }) do
-    TestEelCombat[name] = TestFishEscape[name]
+    TestEelCombat[name] = FishEscape[name]
 end
 
 -- 放下一条电鳗；castOk 决定每次施法结果，返回鱼与计数表
