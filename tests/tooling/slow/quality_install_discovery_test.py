@@ -14,6 +14,30 @@ ROOT = Path(__file__).resolve().parents[3]
 OLD_REVISION = "4cc471417c6f54f0b24b031d8e3a86300322905b"
 
 
+def standard_installation(sandbox):
+    driver = sandbox / "driver"
+    shutil.copytree(ROOT / "tools/quality", driver / "tools/quality")
+    config = json.loads((ROOT / "tools/quality/project.json").read_text(encoding="utf-8"))
+    common = Path(subprocess.check_output(["git", "-C", str(ROOT), "rev-parse", "--git-common-dir"], text=True).strip())
+    if not common.is_absolute():
+        common = ROOT / common
+    siblings = common.resolve().parent.parent
+    for name, tool in config["tools"].items():
+        tool["source"] = os.path.relpath(siblings / ("uml-viewer" if name == "viewer" else name), driver)
+    config["tools"]["viewer"]["commit"] = "79c8d563c42f9c8912e2810fcf71b7c24a72a88d"
+    config["tools"]["viewer"]["patches"] = []
+    (driver / "tools/quality/project.json").write_text(json.dumps(config), encoding="utf-8")
+    target = sandbox / "installation"
+    target.mkdir()
+    return driver, target, config
+
+
+def install(driver, target):
+    return subprocess.run(["pwsh", "-NoProfile", "-File", str(driver / "tools/quality/install.ps1"),
+                           "-Root", str(target), "-InstallOnly"], capture_output=True, text=True,
+                          encoding="utf-8", errors="replace", timeout=90)
+
+
 class QualityInstallDiscoveryTest(unittest.TestCase):
     def _old_installation(self, sandbox):
         driver = sandbox / "driver"
@@ -38,50 +62,46 @@ class QualityInstallDiscoveryTest(unittest.TestCase):
         (driver / "tools/quality/project.json").write_text(json.dumps(config), encoding="utf-8")
         return driver, target, config
 
-    def test_explicit_upgrade_replaces_only_registered_old_patches(self):
-        with tempfile.TemporaryDirectory(prefix="quality-upgrade-") as directory:
-            driver, target, config = self._old_installation(Path(directory))
+    def test_standard_installer_supports_empty_cache_and_repeat_install(self):
+        with tempfile.TemporaryDirectory(prefix="quality-standard-") as directory:
+            driver, target, config = standard_installation(Path(directory))
+            for attempt in range(2):
+                result = install(driver, target)
+                self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+                viewer = target / ".uml-viewer/uml-viewer"
+                self.assertEqual(subprocess.check_output(["git", "-C", str(viewer), "rev-parse", "HEAD"], text=True).strip(),
+                                 config["tools"]["viewer"]["commit"])
+                self.assertEqual(subprocess.check_output(["git", "-C", str(viewer), "status", "--porcelain"], text=True), "")
+                self.assertTrue((target / "uml.ps1").is_file())
+
+    def test_install_rejects_edits_inside_registered_patch_files_before_any_update(self):
+        with tempfile.TemporaryDirectory(prefix="quality-dirty-") as directory:
+            driver, target, config = standard_installation(Path(directory))
+            result = install(driver, target)
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            source = target / ".uml-viewer/mutator/src/mutator/engine.py"
+            original = source.read_bytes() + b"\n# user unsaved change\n"
+            source.write_bytes(original)
+            result = install(driver, target)
+            self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+            self.assertIn("保留现场", result.stdout + result.stderr)
+            self.assertEqual(source.read_bytes(), original)
+
+    def test_upgrade_request_fails_closed_without_touching_registered_tool(self):
+        with tempfile.TemporaryDirectory(prefix="quality-upgrade-stop-") as directory:
+            driver, target, config = standard_installation(Path(directory))
+            result = install(driver, target)
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            source = target / ".uml-viewer/uml-viewer/scripts/get-uml-viewer.ps1"
+            before = source.read_bytes()
             result = subprocess.run([
                 "pwsh", "-NoProfile", "-File", str(driver / "tools/quality/install.ps1"),
                 "-Root", str(target), "-InstallOnly", "-UpgradeFrom", OLD_REVISION,
             ], capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=90)
-            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-            for tool in config["tools"].values():
-                checkout = target / ".uml-viewer" / tool["directory"]
-                for patch in tool.get("patches", []):
-                    check = subprocess.run(["git", "-C", str(checkout), "apply", "--reverse", "--check",
-                                            str(driver / patch)], capture_output=True)
-                    self.assertEqual(check.returncode, 0, check.stderr.decode(errors="replace"))
-
-    def test_explicit_upgrade_rejects_unknown_state_before_changing_any_tool(self):
-        for fault in ("tracked", "index", "untracked"):
-            with self.subTest(fault=fault), tempfile.TemporaryDirectory(prefix="quality-upgrade-") as directory:
-                driver, target, config = self._old_installation(Path(directory))
-                # 最后一个工具故障，证明前两个工具不会先被撤销。
-                mutator = target / ".uml-viewer/mutator"
-                if fault == "untracked":
-                    (mutator / "unknown.txt").write_bytes(b"unknown\n")
-                else:
-                    source = mutator / "src/mutator/engine.py"
-                    source.write_bytes(source.read_bytes() + b"\n# unknown\n")
-                    if fault == "index":
-                        subprocess.run(["git", "-C", str(mutator), "add", "src/mutator/engine.py"], check=True)
-                before = {p.relative_to(target): p.read_bytes() for p in target.rglob("*")
-                          if p.is_file() and ".git" not in p.relative_to(target).parts}
-                indices = {name: subprocess.check_output(["git", "-C", str(target / ".uml-viewer" / tool["directory"]),
-                                                          "diff", "--cached"]) for name, tool in config["tools"].items()}
-                result = subprocess.run([
-                    "pwsh", "-NoProfile", "-File", str(driver / "tools/quality/install.ps1"),
-                    "-Root", str(target), "-InstallOnly", "-UpgradeFrom", OLD_REVISION,
-                ], capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=90)
-                self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
-                self.assertIn("未登记", result.stdout + result.stderr)
-                self.assertEqual({p.relative_to(target): p.read_bytes() for p in target.rglob("*")
-                                  if p.is_file() and ".git" not in p.relative_to(target).parts
-                                  and "target" not in p.relative_to(target).parts}, before)
-                for name, tool in config["tools"].items():
-                    self.assertEqual(subprocess.check_output(["git", "-C", str(target / ".uml-viewer" / tool["directory"]),
-                                                              "diff", "--cached"]), indices[name])
+            self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+            self.assertIn("-UpgradeFrom 已停用", result.stdout + result.stderr)
+            self.assertIn("保留现场", result.stdout + result.stderr)
+            self.assertEqual(source.read_bytes(), before)
 
     def test_doctor_reports_bootstrap_pin_drift_before_cache_checks(self):
         with tempfile.TemporaryDirectory(prefix="quality-pin-") as directory:

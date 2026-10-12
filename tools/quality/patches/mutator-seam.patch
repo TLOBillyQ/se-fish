@@ -1,14 +1,14 @@
 diff --git a/src/mutator/engine.py b/src/mutator/engine.py
-index e529424..495b789 100644
+index eebd6da..dc0175d 100644
 --- a/src/mutator/engine.py
 +++ b/src/mutator/engine.py
 @@ -15,19 +15,16 @@ from mutator.workers import run_mutants
-
-
+ 
+ 
  def restore_backups(root: Path) -> list[Path]:
 -    """Put back sources left mutated by a killed run."""
 +    """兼容上游 API 名；拒绝无所有权记录的旧备份，保留源码与备份。"""
-
+ 
      base = root / "target" / "mutator-backup"
      restored: list[Path] = []
      if not base.is_dir():
@@ -25,12 +25,12 @@ index e529424..495b789 100644
 +    if backups:
 +        raise RuntimeError(f"发现旧版 mutation 备份；停止运行，请人工核对，原始源码与备份均保留：{base}")
      return restored
-
-
+ 
+ 
 @@ -84,6 +81,33 @@ def _select(
      return chosen
-
-
+ 
+ 
 +def _decisions(sites, covered, history, digests, mutate_all, lines, selected):
 +    """记录实际选择分支；行过滤和未覆盖均不计作历史复用。"""
 +    chosen = {site.mutation_id for site in selected}
@@ -61,10 +61,10 @@ index e529424..495b789 100644
  def _carry_forward(sites: list[Site], covered: dict[str, bool], history, digests) -> dict[str, str]:
      by_id = {site.mutation_id: site for site in sites}
      carried = {}
-@@ -255,9 +279,10 @@ def _statuses(found: list[Site], covered: dict[str, bool], outcomes: dict[str, s
+@@ -256,9 +280,10 @@ def _statuses(found: list[Site], covered: dict[str, bool], outcomes: dict[str, s
      return statuses
-
-
+ 
+ 
 -def _restore_if_dirty(path: Path, original: bytes) -> None:
 -    if path.read_bytes() != original:
 -        path.write_bytes(original)
@@ -72,10 +72,10 @@ index e529424..495b789 100644
 +    # worker 只修改副本；主树变化属于外部保存，不能恢复旧字节。
 +    if not path.is_file() or path.read_bytes() != original:
 +        raise RuntimeError(f"mutation 原始源码已变化或被删除，停止发布并保留外部编辑：{path}")
-
-
+ 
+ 
  def mutate_file(
-@@ -296,31 +321,43 @@ def mutate_file(
+@@ -298,32 +323,44 @@ def mutate_file(
      selected = _select(found, covered, history, digests, mutate_all, lines)
      outcomes = _carry_forward(found, covered, history, digests)
      _warn_many(file_key, selected, mutation_warning)
@@ -92,6 +92,7 @@ index e529424..495b789 100644
 -        baselines,
 -        outcomes,
 -        max_workers,
+-        busted_task,
 -    )
 +    try:
 +        failure = _apply_selected(
@@ -107,6 +108,7 @@ index e529424..495b789 100644
 +            baselines,
 +            outcomes,
 +            max_workers,
++            busted_task,
 +        )
 +    except Exception:
 +        try:
@@ -132,34 +134,8 @@ index e529424..495b789 100644
          statuses=_statuses(found, covered, outcomes),
 +        decisions=_decisions(found, covered, history, digests, mutate_all, lines, selected),
      )
-
-
-diff --git a/src/mutator/metrics.py b/src/mutator/metrics.py
-index daf18ff..1aa70a5 100644
---- a/src/mutator/metrics.py
-+++ b/src/mutator/metrics.py
-@@ -7,6 +7,7 @@ or `defn-/<name>`, and it joins the file to a class on `:namespace`.
-
- from __future__ import annotations
-
-+import os
- from datetime import datetime
- from pathlib import Path
-
-@@ -256,10 +257,12 @@ def _write_namespace(
-         path.unlink(missing_ok=True)
-         return None
-     path.parent.mkdir(parents=True, exist_ok=True)
--    path.write_text(
-+    temporary = path.with_name(path.name + ".pending")
-+    temporary.write_text(
-         _render_snapshot(namespace, _snapshot_source(fresh, kept_forms, file_key), rendered, merged),
-         encoding="utf-8",
-     )
-+    os.replace(temporary, path)
-     return path
-
-
+ 
+ 
 diff --git a/src/mutator/model.py b/src/mutator/model.py
 index 37f5745..38115c2 100644
 --- a/src/mutator/model.py
@@ -178,8 +154,8 @@ index e861390..0cd6a92 100644
 +++ b/src/mutator/report.py
 @@ -46,6 +46,34 @@ def format_results(forms: list[FormResult]) -> str:
      return "\n".join(lines)
-
-
+ 
+ 
 +def format_decisions(results, *, verbose=False) -> str:
 +    """本轮执行和历史复用独立于快照中的 killed/survived 聚合。"""
 +    counts = {action: 0 for action in ("executed", "reused", "uncovered", "excluded")}
