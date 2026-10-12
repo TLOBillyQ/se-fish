@@ -23,6 +23,56 @@ describe("持有与操作的数据层规则", function()
         GameCfg.Debug = ctx.debug
     end)
 
+    -- 各容量档位：满格互换不吞物不复制，越界/缺目标拒绝，跨容器倍率随实例走。
+    it("test_all_capacity_levels_move_swap_cancel_keep_instances", function()
+        for level, capacity in ipairs({ 5, 10, 15, 20, 25, 30, 40 }) do
+            local d = ctx.data
+            assert.is_true(d:ApplyGMPatch({ upgradeLevel = level - 1, coin = 0 }))
+            assert.same(level + 1, d:ItemBarCapacity())
+            assert.same(capacity, d:BackpackCapacity())
+            while d:AddItem('carp', 1.37) do end
+            assert.is_false(d:AddItem('bass', 1.99))
+            assert.is_true(d:ApplyGMPatch({ slots = {
+                { container = 'itemBar', index = 1, itemId = 'bass', count = 1, mult = 1.99 },
+            } }))
+            local before = d:GetItemBarSnapshot()
+            assert.is_false(d:MoveSlot('itemBar', 1, nil, nil))
+            assert.is_false(d:MoveSlot('itemBar', 1, 'backpack', capacity + 1))
+            assert.same(before, d:GetItemBarSnapshot())
+            assert.is_true(d:MoveSlot('itemBar', 1, 'backpack', capacity))
+            assert.same(1.99, d:GetItemBarSnapshot().backpack[capacity].mult)
+            assert.same(1.37, d:GetItemBarSnapshot().slots[1].mult)
+            assert.is_true(d:MoveSlot('backpack', capacity, 'itemBar', 1))
+            assert.same(before, d:GetItemBarSnapshot())
+            assert.is_true(d:DiscardSlot(2))
+            assert.is_true(d:MoveSlot('backpack', capacity, 'itemBar', 2))
+            assert.is_nil(d:GetItemBarSnapshot().backpack[capacity])
+            assert.same(1.37, d:GetItemBarSnapshot().slots[2].mult)
+        end
+    end)
+
+    -- 首领饵必须在道具栏选中才能用：背包里的饵不算持有。
+    it("test_boss_bait_must_be_selected_in_item_bar_before_use", function()
+        while ctx.data:AddItem('carp', 1.37) do end
+        assert.is_true(ctx.data:DiscardSlot(1))
+        assert.is_true(ctx.data:MoveSlot('backpack', 1, 'itemBar', 1))
+        assert.is_true(ctx.data:GrantItem('duck', 1))
+        assert.same('duck', ctx.data:GetItemBarSnapshot().backpack[1].itemId)
+        assert.is_false(ctx.data:SelectBait('duck'))
+        assert.is_false(ctx.data:HasBait('duck'))
+        local ok, bait = ctx.data:ConsumeSelectedBait()
+        assert.is_true(ok)
+        assert.is_nil(bait)
+        assert.same(1, ctx.data:ItemCount('duck'))
+        assert.is_true(ctx.data:MoveSlot('backpack', 1, 'itemBar', 1))
+        assert.is_true(ctx.data:SelectBait('duck'))
+        local ok, bait = ctx.data:ConsumeSelectedBait()
+        assert.is_true(ok)
+        assert.same('duck', bait)
+        assert.same(0, ctx.data:ItemCount('duck'))
+        assert.is_nil(ctx.data.Data.SelectedBait)
+    end)
+
     -- 重进恢复合法：手持持久化往返，槽位/武器失效时清空而不是悬空。
     it("test_held_persists_across_serialize_and_invalidates", function()
         local rod = GameCfg.Items.Id.StarterRod
@@ -87,34 +137,6 @@ describe("持有与操作的数据层规则", function()
         assert.is_nil(ctx.data:GetItemBarSnapshot().selectedWeapon)
     end)
 
-    -- 各容量档位：满格互换不吞物不复制，越界/缺目标拒绝，跨容器倍率随实例走。
-    it("test_all_capacity_levels_move_swap_cancel_keep_instances", function()
-        for level, capacity in ipairs({ 5, 10, 15, 20, 25, 30, 40 }) do
-            local d = ctx.data
-            assert.is_true(d:ApplyGMPatch({ upgradeLevel = level - 1, coin = 0 }))
-            assert.same(level + 1, d:ItemBarCapacity())
-            assert.same(capacity, d:BackpackCapacity())
-            while d:AddItem('carp', 1.37) do end
-            assert.is_false(d:AddItem('bass', 1.99))
-            assert.is_true(d:ApplyGMPatch({ slots = {
-                { container = 'itemBar', index = 1, itemId = 'bass', count = 1, mult = 1.99 },
-            } }))
-            local before = d:GetItemBarSnapshot()
-            assert.is_false(d:MoveSlot('itemBar', 1, nil, nil))
-            assert.is_false(d:MoveSlot('itemBar', 1, 'backpack', capacity + 1))
-            assert.same(before, d:GetItemBarSnapshot())
-            assert.is_true(d:MoveSlot('itemBar', 1, 'backpack', capacity))
-            assert.same(1.99, d:GetItemBarSnapshot().backpack[capacity].mult)
-            assert.same(1.37, d:GetItemBarSnapshot().slots[1].mult)
-            assert.is_true(d:MoveSlot('backpack', capacity, 'itemBar', 1))
-            assert.same(before, d:GetItemBarSnapshot())
-            assert.is_true(d:DiscardSlot(2))
-            assert.is_true(d:MoveSlot('backpack', capacity, 'itemBar', 2))
-            assert.is_nil(d:GetItemBarSnapshot().backpack[capacity])
-            assert.same(1.37, d:GetItemBarSnapshot().slots[2].mult)
-        end
-    end)
-
     -- #130：武器不占格，满格也可授予；移动目标不能是武器容器。
     it("test_weapon_inventory_and_boss_bait_location_rules", function()
         local ids = GameCfg.Items.ContainerId
@@ -134,27 +156,5 @@ describe("持有与操作的数据层规则", function()
         assert.is_nil(ctx.data:GetItemBarSnapshot().selectedWeapon)
         assert.is_false(ctx.data:MoveSlot(ids.Backpack, 1, 'weapon', 1))
         assert.same(granted, ctx.data:GetItemBarSnapshot())
-    end)
-
-    -- 首领饵必须在道具栏选中才能用：背包里的饵不算持有。
-    it("test_boss_bait_must_be_selected_in_item_bar_before_use", function()
-        while ctx.data:AddItem('carp', 1.37) do end
-        assert.is_true(ctx.data:DiscardSlot(1))
-        assert.is_true(ctx.data:MoveSlot('backpack', 1, 'itemBar', 1))
-        assert.is_true(ctx.data:GrantItem('duck', 1))
-        assert.same('duck', ctx.data:GetItemBarSnapshot().backpack[1].itemId)
-        assert.is_false(ctx.data:SelectBait('duck'))
-        assert.is_false(ctx.data:HasBait('duck'))
-        local ok, bait = ctx.data:ConsumeSelectedBait()
-        assert.is_true(ok)
-        assert.is_nil(bait)
-        assert.same(1, ctx.data:ItemCount('duck'))
-        assert.is_true(ctx.data:MoveSlot('backpack', 1, 'itemBar', 1))
-        assert.is_true(ctx.data:SelectBait('duck'))
-        local ok, bait = ctx.data:ConsumeSelectedBait()
-        assert.is_true(ok)
-        assert.same('duck', bait)
-        assert.same(0, ctx.data:ItemCount('duck'))
-        assert.is_nil(ctx.data.Data.SelectedBait)
     end)
 end)

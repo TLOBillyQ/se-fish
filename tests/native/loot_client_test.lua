@@ -85,20 +85,23 @@ describe("共享掉落的客户端侧", function()
         end
     end
 
-    -- 预警件按配置节奏闪：配置间隔的前半拍亮、后半拍暗（服务端模型同节奏）
-    it("test_warned_loot_flickers_at_configured_interval", function()
-        local interval = GameCfg.Loot.FlashIntervalSec
-        assert.same('number', type(interval))
-        ctx.events.LootState.OnClientEvent:Fire({ { id = 7, kind = 'fish', fishId = 'carp', x = 0, y = 0, z = 0, warn = true } })
-        local node = entry(7).Node
-        ctx.client:Update(interval / 2)
-        assert.is_true(node.Visible)
-        ctx.client:Update(interval / 2)
-        assert.is_false(node.Visible)
-        ctx.client:Update(interval / 2)
-        assert.is_false(node.Visible)
-        ctx.client:Update(interval / 2)
-        assert.is_true(node.Visible)
+    -- 点击只发这一件的拾取请求，服务端回包为准
+    it("test_click_sends_pickup_request_for_that_loot", function()
+        ctx.events.LootState.OnClientEvent:Fire({ { id = 9, kind = 'item', itemId = 'carp', x = 0, y = 0, z = 0 } })
+        local button = unitNamed('BtnPickup_9')
+        assert.is_not_nil(button)
+        ctx.sent = {}
+        button.OnClicked:Fire()
+        assert.same({ { name = 'ItemBarAction', payload = { action = 'Pickup', value = 9 } } }, ctx.sent)
+    end)
+
+    -- 掉落物从快照消失就销毁文字泡；
+    it("test_missing_loot_clears_its_bubble", function()
+        ctx.events.LootState.OnClientEvent:Fire({ { id = 3, kind = 'item', itemId = 'carp', x = 0, y = 0, z = 0 } })
+        local node = entry(3).Node
+        ctx.events.LootState.OnClientEvent:Fire({})
+        assert.is_nil(entry(3))
+        assert.is_true(node.Destroyed)
     end)
 
     -- 普通掉落不闪；出 2 米（PickupRadius）才隐藏
@@ -116,6 +119,22 @@ describe("共享掉落的客户端侧", function()
         assert.is_true(node.Visible)
     end)
 
+    -- 预警件按配置节奏闪：配置间隔的前半拍亮、后半拍暗（服务端模型同节奏）
+    it("test_warned_loot_flickers_at_configured_interval", function()
+        local interval = GameCfg.Loot.FlashIntervalSec
+        assert.same('number', type(interval))
+        ctx.events.LootState.OnClientEvent:Fire({ { id = 7, kind = 'fish', fishId = 'carp', x = 0, y = 0, z = 0, warn = true } })
+        local node = entry(7).Node
+        ctx.client:Update(interval / 2)
+        assert.is_true(node.Visible)
+        ctx.client:Update(interval / 2)
+        assert.is_false(node.Visible)
+        ctx.client:Update(interval / 2)
+        assert.is_false(node.Visible)
+        ctx.client:Update(interval / 2)
+        assert.is_true(node.Visible)
+    end)
+
     -- 预警结束（新快照不带 warn）后不再闪，节点回到常亮
     it("test_warning_flag_clears_with_the_next_snapshot", function()
         ctx.events.LootState.OnClientEvent:Fire({ { id = 5, kind = 'item', itemId = 'carp', x = 0, y = 0, z = 0, warn = true } })
@@ -124,24 +143,5 @@ describe("共享掉落的客户端侧", function()
         ctx.events.LootState.OnClientEvent:Fire({ { id = 5, kind = 'item', itemId = 'carp', x = 0, y = 0, z = 0 } })
         for _ = 1, 4 do ctx.client:Update(0.25) end
         assert.is_true(entry(5).Node.Visible)
-    end)
-
-    -- 掉落物从快照消失就销毁文字泡；
-    it("test_missing_loot_clears_its_bubble", function()
-        ctx.events.LootState.OnClientEvent:Fire({ { id = 3, kind = 'item', itemId = 'carp', x = 0, y = 0, z = 0 } })
-        local node = entry(3).Node
-        ctx.events.LootState.OnClientEvent:Fire({})
-        assert.is_nil(entry(3))
-        assert.is_true(node.Destroyed)
-    end)
-
-    -- 点击只发这一件的拾取请求，服务端回包为准
-    it("test_click_sends_pickup_request_for_that_loot", function()
-        ctx.events.LootState.OnClientEvent:Fire({ { id = 9, kind = 'item', itemId = 'carp', x = 0, y = 0, z = 0 } })
-        local button = unitNamed('BtnPickup_9')
-        assert.is_not_nil(button)
-        ctx.sent = {}
-        button.OnClicked:Fire()
-        assert.same({ { name = 'ItemBarAction', payload = { action = 'Pickup', value = 9 } } }, ctx.sent)
     end)
 end)

@@ -84,32 +84,6 @@ describe("持有操作的界面侧", function()
         end
     end)
 
-    -- 吃/丢弃走 Operate 两步：点击发带 seq 的 Operate 请求，手持确认态由服务端快照驱动。
-    it("test_eat_and_discard_send_operate_with_seq", function()
-        ctx.states:Fire({ slots = { [1] = { itemId = 'carp', count = 1 } },
-            bait = { worm = 10 }, selectedSlot = 1 })
-        ctx.nodes.BaitEat.OnClicked:Fire()
-        assert.same({ action = 'Operate', op = 'eat', slot = 1, seq = 1 }, ctx.commands[1])
-        -- 服务端回快照：手持已切 → 按钮进入确认态
-        ctx.states:Fire({ slots = { [1] = { itemId = 'carp', count = 1 } },
-            bait = { worm = 10 }, selectedSlot = 1, held = { kind = 'slot', id = 'carp', slot = 1 } })
-        assert.same('吃鲤鱼', ctx.nodes.BtnEatLabel.Text)
-        ctx.nodes.BaitEat.OnClicked:Fire()
-        assert.same({ action = 'Operate', op = 'eat', slot = 1, seq = 2 }, ctx.commands[2])
-        ctx.nodes.ItemDiscard.OnClicked:Fire()
-        assert.same({ action = 'Operate', op = 'discard', slot = 1, seq = 3 }, ctx.commands[3])
-    end)
-
-    -- 操作失败回包：给出具体提示，不出现裸 reason。
-    it("test_operate_failure_shows_notice", function()
-        ctx.results:Fire({ ok = false, op = 'eat', reason = 'potion-capped' })
-        assert.same({ '这类药水已到上限' }, ctx.notices)
-        ctx.results:Fire({ ok = false, op = 'discard', reason = 'drop-unavailable' })
-        assert.same('丢弃通道未就绪（地面物品）', ctx.notices[2])
-        ctx.results:Fire({ ok = true, op = 'eat', held = false, itemId = 'carp' })
-        assert.same(2, #ctx.notices)
-    end)
-
     -- 双向拖拽：道具栏格拖到背包格发 MoveSlot；原地按下抬起（点击）与拖出界都不发。
     it("test_drag_between_containers_sends_move_slot", function()
         ctx.states:Fire({ slots = { [1] = { itemId = 'carp', count = 1 } }, slotCount = 2,
@@ -152,5 +126,31 @@ describe("持有操作的界面侧", function()
         ctx.states:Fire({ slots = {}, bait = {}, weapons = {} })
         assert.is_false(baitBtn.Visible)
         assert.is_false(weaponBtn.Visible)
+    end)
+
+    -- 吃/丢弃走 Operate 两步：点击发带 seq 的 Operate 请求，手持确认态由服务端快照驱动。
+    it("test_eat_and_discard_send_operate_with_seq", function()
+        ctx.states:Fire({ slots = { [1] = { itemId = 'carp', count = 1 } },
+            bait = { worm = 10 }, selectedSlot = 1 })
+        ctx.nodes.BaitEat.OnClicked:Fire()
+        assert.same({ action = 'Operate', op = 'eat', slot = 1, seq = 1 }, ctx.commands[1])
+        -- 服务端回快照：手持已切 → 按钮进入确认态
+        ctx.states:Fire({ slots = { [1] = { itemId = 'carp', count = 1 } },
+            bait = { worm = 10 }, selectedSlot = 1, held = { kind = 'slot', id = 'carp', slot = 1 } })
+        assert.same('吃鲤鱼', ctx.nodes.BtnEatLabel.Text)
+        ctx.nodes.BaitEat.OnClicked:Fire()
+        assert.same({ action = 'Operate', op = 'eat', slot = 1, seq = 2 }, ctx.commands[2])
+        ctx.nodes.ItemDiscard.OnClicked:Fire()
+        assert.same({ action = 'Operate', op = 'discard', slot = 1, seq = 3 }, ctx.commands[3])
+    end)
+
+    -- 操作失败回包：给出具体提示，不出现裸 reason。
+    it("test_operate_failure_shows_notice", function()
+        ctx.results:Fire({ ok = false, op = 'eat', reason = 'potion-capped' })
+        assert.same({ '这类药水已到上限' }, ctx.notices)
+        ctx.results:Fire({ ok = false, op = 'discard', reason = 'drop-unavailable' })
+        assert.same('丢弃通道未就绪（地面物品）', ctx.notices[2])
+        ctx.results:Fire({ ok = true, op = 'eat', held = false, itemId = 'carp' })
+        assert.same(2, #ctx.notices)
     end)
 end)

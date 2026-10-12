@@ -78,6 +78,45 @@ describe("道具栏的界面侧", function()
         end
     end)
 
+    it("test_backpack_transfer_controls_and_slot_visibility", function()
+        ctx.states:Fire({ slots = { [1] = { itemId = 'starterRod', count = 1 } }, slotCount = 2,
+            backpack = { [1] = { itemId = 'bass', count = 1 } }, backpackCount = 5, bait = {} })
+        assert.is_true(ctx.nodes.ItemBarSlot2.Visible)
+        assert.is_false(ctx.nodes.ItemBarSlot3.Visible)
+        ctx.nodes.BtnBackpack.OnClicked:Fire()
+        assert.is_true(ctx.nodes.BackpackSlot1.Visible)
+        assert.is_false(ctx.nodes.BackpackSlot6.Visible)
+        ctx.nodes.BackpackSlot1.OnClicked:Fire()
+        assert.is_true(ctx.nodes.BtnMoveToItemBar.TouchEnabled)
+        ctx.nodes.BtnMoveToItemBar.OnClicked:Fire()
+        assert.same({ action = 'MoveToItemBar', value = 1 }, ctx.commands[#ctx.commands])
+        ctx.states:Fire({ slots = { [1] = { itemId = 'starterRod', count = 1 },
+            [2] = { itemId = 'carp', count = 1 } }, slotCount = 2,
+            backpack = { [1] = { itemId = 'bass', count = 1 } }, backpackCount = 5, bait = {} })
+        assert.is_false(ctx.nodes.BtnMoveToItemBar.TouchEnabled)
+    end)
+
+    it("test_empty_and_depleted_state_refresh", function()
+        ctx.states:Fire({ slots = {}, bait = { worm = 0 } })
+        assert.is_false(ctx.nodes.ItemBarIcon1.Visible)
+        assert.is_false(ctx.nodes.ItemBarLabel1.Visible)
+        assert.is_false(ctx.nodes.ItemBarAmount1.Visible)
+        assert.is_false(ctx.nodes.ItemAction2.Visible)
+        assert.is_false(ctx.nodes.BtnItemActionLabel.Visible)
+        assert.is_false(ctx.nodes.ItemDiscard.Visible)
+        assert.is_false(ctx.nodes.BtnDiscardLabel.Visible)
+        assert.is_false(ctx.nodes.BaitWorm.TouchEnabled)
+        assert.is_false(ctx.nodes.BaitEat.TouchEnabled)
+        assert.same('蚯蚓 ×0', ctx.nodes.BtnBaitLabel.Text)
+        assert.same('蚯蚓用尽', ctx.nodes.BtnEatLabel.Text)
+        assert.same('不挂鱼饵', ctx.nodes.BtnNoneLabel.Text)
+        ctx.nodes.BaitNone.OnClicked:Fire()
+        assert.same('SelectBait', ctx.commands[1].action)
+        assert.is_nil(ctx.commands[1].value)
+        ctx.nodes.ItemBarSlot8.OnClicked:Fire()
+        assert.same(8, ctx.commands[2].value)
+    end)
+
     it("test_fixed_slots_bait_and_action_placement", function()
         for index = 1, 8 do assert.is_not_nil(ctx.nodes['ItemBarSlot' .. index]) end
         assert.is_nil(ctx.nodes.ItemBarSlot9)
@@ -139,52 +178,6 @@ describe("道具栏的界面侧", function()
         assert.is_nil(ctx.commands[3].value)
     end)
 
-    it("test_backpack_transfer_controls_and_slot_visibility", function()
-        ctx.states:Fire({ slots = { [1] = { itemId = 'starterRod', count = 1 } }, slotCount = 2,
-            backpack = { [1] = { itemId = 'bass', count = 1 } }, backpackCount = 5, bait = {} })
-        assert.is_true(ctx.nodes.ItemBarSlot2.Visible)
-        assert.is_false(ctx.nodes.ItemBarSlot3.Visible)
-        ctx.nodes.BtnBackpack.OnClicked:Fire()
-        assert.is_true(ctx.nodes.BackpackSlot1.Visible)
-        assert.is_false(ctx.nodes.BackpackSlot6.Visible)
-        ctx.nodes.BackpackSlot1.OnClicked:Fire()
-        assert.is_true(ctx.nodes.BtnMoveToItemBar.TouchEnabled)
-        ctx.nodes.BtnMoveToItemBar.OnClicked:Fire()
-        assert.same({ action = 'MoveToItemBar', value = 1 }, ctx.commands[#ctx.commands])
-        ctx.states:Fire({ slots = { [1] = { itemId = 'starterRod', count = 1 },
-            [2] = { itemId = 'carp', count = 1 } }, slotCount = 2,
-            backpack = { [1] = { itemId = 'bass', count = 1 } }, backpackCount = 5, bait = {} })
-        assert.is_false(ctx.nodes.BtnMoveToItemBar.TouchEnabled)
-    end)
-
-    it("test_screen_main_is_opened_on_start", function()
-        local clientFile = assert(io.open('client/main.lua', 'r'))
-        local client = clientFile:read('*a')
-        clientFile:close()
-        assert.matches("OpenScreen('ScreenMain')", client, nil, true)
-    end)
-
-    it("test_empty_and_depleted_state_refresh", function()
-        ctx.states:Fire({ slots = {}, bait = { worm = 0 } })
-        assert.is_false(ctx.nodes.ItemBarIcon1.Visible)
-        assert.is_false(ctx.nodes.ItemBarLabel1.Visible)
-        assert.is_false(ctx.nodes.ItemBarAmount1.Visible)
-        assert.is_false(ctx.nodes.ItemAction2.Visible)
-        assert.is_false(ctx.nodes.BtnItemActionLabel.Visible)
-        assert.is_false(ctx.nodes.ItemDiscard.Visible)
-        assert.is_false(ctx.nodes.BtnDiscardLabel.Visible)
-        assert.is_false(ctx.nodes.BaitWorm.TouchEnabled)
-        assert.is_false(ctx.nodes.BaitEat.TouchEnabled)
-        assert.same('蚯蚓 ×0', ctx.nodes.BtnBaitLabel.Text)
-        assert.same('蚯蚓用尽', ctx.nodes.BtnEatLabel.Text)
-        assert.same('不挂鱼饵', ctx.nodes.BtnNoneLabel.Text)
-        ctx.nodes.BaitNone.OnClicked:Fire()
-        assert.same('SelectBait', ctx.commands[1].action)
-        assert.is_nil(ctx.commands[1].value)
-        ctx.nodes.ItemBarSlot8.OnClicked:Fire()
-        assert.same(8, ctx.commands[2].value)
-    end)
-
     it("test_reentry_cleans_old_root_and_listeners", function()
         local originals = {
             ['common.Util'] = package.loaded['common.Util'],
@@ -231,6 +224,13 @@ describe("道具栏的界面侧", function()
             'client.ScreenHandlers.ScreenMain' }) do
             package.loaded[key] = originals[key]
         end
-        if not ok then error(err, 0) end
+        assert.is_true(ok, tostring(err))
+    end)
+
+    it("test_screen_main_is_opened_on_start", function()
+        local clientFile = assert(io.open('client/main.lua', 'r'))
+        local client = clientFile:read('*a')
+        clientFile:close()
+        assert.matches("OpenScreen('ScreenMain')", client, nil, true)
     end)
 end)

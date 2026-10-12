@@ -57,81 +57,6 @@ describe("道具栏的请求流", function()
         _G.REUtil = ctx.previousREUtil
     end)
 
-    it("test_client_commands_are_authoritative_and_state_replies", function()
-        local action = ctx.events.ItemBarAction.OnServerEvent
-        action:Fire(ctx.player, { action = 'SelectSlot', value = 1 })
-        assert.same(1, ctx.player.lastState.selectedSlot)
-        action:Fire(ctx.player, { action = 'SelectBait', value = 'worm' })
-        assert.same(10, ctx.player.lastState.bait.worm)
-        action:Fire(ctx.player, { action = 'EatBait', value = 'worm' })
-        assert.same(9, ctx.player.lastState.bait.worm)
-        action:Fire(ctx.player, { action = 'SelectSlot', value = 2 })
-        assert.is_nil(ctx.player.lastState.selectedSlot)
-        ctx.events.RequestItemBar.OnServerEvent:Fire(ctx.player)
-        assert.same('worm', ctx.player.lastState.selectedBait)
-    end)
-
-    it("test_reject_invalid_commands_and_other_player", function()
-        local action = ctx.events.ItemBarAction.OnServerEvent
-        local previous = ctx.player.lastState
-        action:Fire(ctx.player, { action = 'Invalid' })
-        action:Fire(ctx.player, { action = 'DiscardSlot', value = '1' })
-        action:Fire(ctx.player, { action = 'SelectBait', value = 'other' })
-        action:Fire(ctx.player, { action = 'ConsumeSelectedBait' })
-        action:Fire(ctx.player, 'SelectSlot')
-        assert.equal(ctx.player.lastState, previous)
-        local stranger = { UserId = ctx.player.UserId }
-        action:Fire(stranger, { action = 'DiscardSlot', value = 1 })
-        assert.same('starterRod', Mgr:GetDataInst(ctx.player):GetItemBarSnapshot().slots[1].itemId)
-    end)
-
-    it("test_external_item_depletion_broadcasts_state", function()
-        ctx.events.ItemBarAction.OnServerEvent:Fire(ctx.player, { action = 'SelectSlot', value = 1 })
-        Mgr:GetDataInst(ctx.player):UpdateData(function(data)
-            data.Containers[GameCfg.Items.ContainerId.ItemBar][1].count = 0
-        end, true)
-        assert.is_nil(ctx.player.lastState.selectedSlot)
-        assert.is_nil(ctx.player.lastState.slots[1])
-    end)
-
-    it("test_cast_consumption_broadcasts_and_clears_last_bait", function()
-        local data = Mgr:GetDataInst(ctx.player)
-        data:UpdateData(function(state) state.Bait.worm = 1 end, true)
-        ctx.events.ItemBarAction.OnServerEvent:Fire(ctx.player, { action = 'SelectBait', value = 'worm' })
-        assert.same(1, ctx.player.lastState.bait.worm)
-        assert.same('worm', ctx.player.lastState.selectedBait)
-        local previous = ctx.player.lastState
-        local ok, itemId = data:ConsumeSelectedBait()
-        assert.is_true(ok)
-        assert.same('worm', itemId)
-        assert.is_not.equal(ctx.player.lastState, previous)
-        assert.same(0, ctx.player.lastState.bait.worm)
-        assert.is_nil(ctx.player.lastState.selectedBait)
-    end)
-
-    it("test_eating_last_selected_bait_broadcasts_clear", function()
-        local data = Mgr:GetDataInst(ctx.player)
-        data:UpdateData(function(state) state.Bait.worm = 1 end, true)
-        local action = ctx.events.ItemBarAction.OnServerEvent
-        action:Fire(ctx.player, { action = 'SelectBait', value = 'worm' })
-        local sent = ctx.player.stateCount
-        action:Fire(ctx.player, { action = 'EatBait', value = 'worm' })
-        assert.same(sent + 1, ctx.player.stateCount)
-        assert.same(0, ctx.player.lastState.bait.worm)
-        assert.is_nil(ctx.player.lastState.selectedBait)
-    end)
-
-    it("test_discard_and_depletion_update_reply", function()
-        local action = ctx.events.ItemBarAction.OnServerEvent
-        action:Fire(ctx.player, { action = 'SelectSlot', value = 1 })
-        action:Fire(ctx.player, { action = 'DiscardSlot', value = 1 })
-        assert.is_nil(ctx.player.lastState.selectedSlot)
-        assert.is_nil(ctx.player.lastState.slots[1])
-        Mgr:GetDataInst(ctx.player).Data.Bait.worm = 1
-        action:Fire(ctx.player, { action = 'EatBait', value = 'worm' })
-        assert.same(0, ctx.player.lastState.bait.worm)
-    end)
-
     it("test_action_rate_limit_and_recovery", function()
         ctx.enableCooldown = true
         local action = ctx.events.ItemBarAction.OnServerEvent
@@ -169,6 +94,46 @@ describe("道具栏的请求流", function()
         assert.same(9, ctx.player.lastState.bait.worm)
         assert.same(9, other.lastState.bait.worm)
         Mgr:OnPlayerRemoving(other)
+    end)
+
+    it("test_cast_consumption_broadcasts_and_clears_last_bait", function()
+        local data = Mgr:GetDataInst(ctx.player)
+        data:UpdateData(function(state) state.Bait.worm = 1 end, true)
+        ctx.events.ItemBarAction.OnServerEvent:Fire(ctx.player, { action = 'SelectBait', value = 'worm' })
+        assert.same(1, ctx.player.lastState.bait.worm)
+        assert.same('worm', ctx.player.lastState.selectedBait)
+        local previous = ctx.player.lastState
+        local ok, itemId = data:ConsumeSelectedBait()
+        assert.is_true(ok)
+        assert.same('worm', itemId)
+        assert.is_not.equal(ctx.player.lastState, previous)
+        assert.same(0, ctx.player.lastState.bait.worm)
+        assert.is_nil(ctx.player.lastState.selectedBait)
+    end)
+
+    it("test_client_commands_are_authoritative_and_state_replies", function()
+        local action = ctx.events.ItemBarAction.OnServerEvent
+        action:Fire(ctx.player, { action = 'SelectSlot', value = 1 })
+        assert.same(1, ctx.player.lastState.selectedSlot)
+        action:Fire(ctx.player, { action = 'SelectBait', value = 'worm' })
+        assert.same(10, ctx.player.lastState.bait.worm)
+        action:Fire(ctx.player, { action = 'EatBait', value = 'worm' })
+        assert.same(9, ctx.player.lastState.bait.worm)
+        action:Fire(ctx.player, { action = 'SelectSlot', value = 2 })
+        assert.is_nil(ctx.player.lastState.selectedSlot)
+        ctx.events.RequestItemBar.OnServerEvent:Fire(ctx.player)
+        assert.same('worm', ctx.player.lastState.selectedBait)
+    end)
+
+    it("test_discard_and_depletion_update_reply", function()
+        local action = ctx.events.ItemBarAction.OnServerEvent
+        action:Fire(ctx.player, { action = 'SelectSlot', value = 1 })
+        action:Fire(ctx.player, { action = 'DiscardSlot', value = 1 })
+        assert.is_nil(ctx.player.lastState.selectedSlot)
+        assert.is_nil(ctx.player.lastState.slots[1])
+        Mgr:GetDataInst(ctx.player).Data.Bait.worm = 1
+        action:Fire(ctx.player, { action = 'EatBait', value = 'worm' })
+        assert.same(0, ctx.player.lastState.bait.worm)
     end)
 
     -- EatSlot 动作通道（#53 吃鱼获；#85 验收「转入道具栏后可吃」依赖它）。失败方式（先列后写）：
@@ -221,6 +186,41 @@ describe("道具栏的请求流", function()
         if not ok then error(err, 0) end
     end)
 
+    it("test_eating_last_selected_bait_broadcasts_clear", function()
+        local data = Mgr:GetDataInst(ctx.player)
+        data:UpdateData(function(state) state.Bait.worm = 1 end, true)
+        local action = ctx.events.ItemBarAction.OnServerEvent
+        action:Fire(ctx.player, { action = 'SelectBait', value = 'worm' })
+        local sent = ctx.player.stateCount
+        action:Fire(ctx.player, { action = 'EatBait', value = 'worm' })
+        assert.same(sent + 1, ctx.player.stateCount)
+        assert.same(0, ctx.player.lastState.bait.worm)
+        assert.is_nil(ctx.player.lastState.selectedBait)
+    end)
+
+    it("test_external_item_depletion_broadcasts_state", function()
+        ctx.events.ItemBarAction.OnServerEvent:Fire(ctx.player, { action = 'SelectSlot', value = 1 })
+        Mgr:GetDataInst(ctx.player):UpdateData(function(data)
+            data.Containers[GameCfg.Items.ContainerId.ItemBar][1].count = 0
+        end, true)
+        assert.is_nil(ctx.player.lastState.selectedSlot)
+        assert.is_nil(ctx.player.lastState.slots[1])
+    end)
+
+    it("test_reject_invalid_commands_and_other_player", function()
+        local action = ctx.events.ItemBarAction.OnServerEvent
+        local previous = ctx.player.lastState
+        action:Fire(ctx.player, { action = 'Invalid' })
+        action:Fire(ctx.player, { action = 'DiscardSlot', value = '1' })
+        action:Fire(ctx.player, { action = 'SelectBait', value = 'other' })
+        action:Fire(ctx.player, { action = 'ConsumeSelectedBait' })
+        action:Fire(ctx.player, 'SelectSlot')
+        assert.equal(ctx.player.lastState, previous)
+        local stranger = { UserId = ctx.player.UserId }
+        action:Fire(stranger, { action = 'DiscardSlot', value = 1 })
+        assert.same('starterRod', Mgr:GetDataInst(ctx.player):GetItemBarSnapshot().slots[1].itemId)
+    end)
+
     -- #52 新手任务「挂饵」事实（失败方式：取消挂饵 / 挂不存在或已用完的饵也报挂饵；
     --   每次挂饵不带唯一 eventId；别的动作也报挂饵）
     it("test_select_bait_success_notifies_equip_with_distinct_ids", function()
@@ -242,7 +242,7 @@ describe("道具栏的请求流", function()
             assert.same(2, #facts)
             assert.same('EquipBait', facts[1].kind)
             assert.same('worm', facts[1].itemId)
-            assert.equal(ctx.player, facts[1].player)
+            assert.same(ctx.player, facts[1].player)
             assert.is_not_nil(facts[1].eventId)
             assert.is_not.equal(facts[1].eventId, facts[2].eventId)
             Mgr:GetDataInst(ctx.player):UpdateData(function(state) state.Bait.worm = 0 end, true)
