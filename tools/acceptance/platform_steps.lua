@@ -1,5 +1,4 @@
 -- #147 验收复用单测的引擎边界夹具，调用真实管理器公共接口；支付替身不代表真实平台验收。
-package.path = './tests/lib/?.lua;' .. package.path
 -- 盲盒结算与濒死复活夹具迁移到原生 Busted 时都下沉为共享模块（测试与验收各自实例化），
 -- 不再 dofile 旧测试文件、也不借用全局 LuaUnit 类。
 local BlindboxWorld = require('tests.support.blindbox_world')

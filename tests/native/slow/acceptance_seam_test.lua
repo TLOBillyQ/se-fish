@@ -14,7 +14,7 @@
 
 -- 步骤模块与夹具按仓库根相对路径 require；busted 从仓库根运行，这里补自己的路径。
 if not package.path:find('./?.lua', 1, true) then
-  package.path = table.concat({ './?.lua', './?/init.lua', './tests/lib/?.lua', package.path }, ';')
+  package.path = table.concat({ './?.lua', './?/init.lua', package.path }, ';')
 end
 
 local LOADER = { dofile = true, loadfile = true, load = true }

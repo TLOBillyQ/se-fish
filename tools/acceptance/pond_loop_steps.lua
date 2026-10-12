@@ -3,9 +3,6 @@
 -- MgrLoot:Give / OnCarrierDied（拾取发放、掉落结算），MgrFishUnit（电鳗 / 鳄雀鳝状态机）。
 -- 引擎边界是假的（锚点、射线、技能施放只计数、玩家命中），逻辑通过不等于真机验收。
 -- world 由 acceptance4lua 的 harness 提供，步骤间用它传状态；每个场景结束的「那么」步骤恢复全局。
-if not package.path:find('./tests/lib/?.lua', 1, true) then
-    package.path = './tests/lib/?.lua;' .. package.path
-end
 local GameCfg = require('common.GameCfg')
 
 local ITEM_BAR = GameCfg.Items.ContainerId.ItemBar

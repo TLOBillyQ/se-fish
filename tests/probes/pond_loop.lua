@@ -27,7 +27,7 @@
 --   * 走位 / 收线 / 上岸动作的耗时是估算常数（见 SIM），不是实测；卖鱼往返不单独计时。
 --   * 安全失败时电鳗的逃脱位移由探针按 LinearVelocity × dt 积分（假引擎无物理），回水判定走真实 MgrFishUnit。
 --   * 第 10 节多种子经济估算只用配置 + FishCatch（不走管理器），与主链同一套规则，结果标 [估算]。
-package.path = table.concat({ './?.lua', './?/init.lua', './tests/lib/?.lua', package.path }, ';')
+package.path = table.concat({ './?.lua', './?/init.lua', package.path }, ';')
 
 local Pass, Fail = 0, 0
 local function check(name, ok, detail)

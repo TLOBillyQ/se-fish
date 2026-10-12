@@ -3,9 +3,6 @@
 -- 业务用真实模块：MgrSave / MgrPlayerData / MgrInteract / MgrLottery；
 -- 引擎边界是假的（DataStore、RE、锚点），三轴结果用脚本化 RNG 锁定（经 MgrLottery.Random 注入）。
 -- world 由 acceptance4lua 的 harness 提供，步骤间用它传状态；每个场景结束的「那么」步骤恢复全局。
-if not package.path:find('./tests/lib/?.lua', 1, true) then
-    package.path = './tests/lib/?.lua;' .. package.path
-end
 local GameCfg = require('common.GameCfg')
 
 local ITEM_BAR = GameCfg.Items.ContainerId.ItemBar
