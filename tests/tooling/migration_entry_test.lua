@@ -47,6 +47,10 @@ function TestMigrationPlan:test_plan_files_match_the_lane_source()
   end
 end
 
+-- #92：旧 slow 目录（tests/tooling/slow）的 Lua 案例已全部迁到 tests/native/slow，
+-- 该目录只剩 Python 回归，不再有 *_test.lua。「full 含 slow、fast 排除 slow」这条边界因此
+-- 由原生车道承担；旧侧则必须彻底为空——若旧 slow 哪天又冒出 Lua 案例，说明迁移漏了一半，
+-- 这里要红。两侧方向相反，但都不放宽：fast 依旧一个 slow 都不许有。
 function TestMigrationPlan:test_full_includes_slow_and_fast_excludes_it()
   local slow = { legacy = "tests/tooling/slow/", native = "tests/native/slow/" }
   for _, lane in ipairs({ "fast", "full" }) do
@@ -60,8 +64,10 @@ function TestMigrationPlan:test_full_includes_slow_and_fast_excludes_it()
       end
       if lane == "fast" then
         lu.assertFalse(found, "fast 不得包含 slow 案例文件：" .. prefix)
+      elseif runner == "native" then
+        lu.assertTrue(found, "full 必须包含原生 slow 案例文件：" .. prefix)
       else
-        lu.assertTrue(found, "full 必须包含 slow 案例文件：" .. prefix)
+        lu.assertFalse(found, "旧 slow 目录已迁空，full 不得再有它的 Lua 案例：" .. prefix)
       end
     end
   end

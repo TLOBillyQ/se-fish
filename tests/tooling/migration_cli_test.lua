@@ -59,6 +59,19 @@ function TestMigrationCli:test_usage_rejects_unknown_lane()
   lu.assertStrContains(output, "full")
 end
 
+-- 某个 runner 分段在清单里逐行列出的文件条数（表头之下、下一个分段之前的非空行）。
+local function listed_count(output, runner)
+  local count, inside = 0, false
+  for line in (output:gsub("\r", "")):gmatch("[^\n]*") do
+    if line:sub(1, 1) == "[" then
+      inside = line:sub(1, #runner + 2) == "[" .. runner .. "]"
+    elseif inside and line:find("%S") then
+      count = count + 1
+    end
+  end
+  return count
+end
+
 function TestMigrationCli:test_list_prints_both_case_lists_per_runner()
   local output, code = run("full --list")
   lu.assertEquals(code, 0, output)
@@ -72,11 +85,53 @@ function TestMigrationCli:test_list_prints_both_case_lists_per_runner()
   lu.assertNotEquals(#native, 0, "full 原生清单为空，逐文件断言会失去意义")
   assertContainsText(output, legacy[1], "旧清单缺案例文件")
   assertContainsText(output, native[1], "原生清单缺案例文件")
-  assertContainsText(output, "[legacy] full " .. #legacy .. " 案例", "旧清单计数与车道定义不符")
-  assertContainsText(output, "[native] full " .. #native .. " 案例", "原生清单计数与车道定义不符")
-  assertContainsText(output, "tests/tooling/slow/", "full 清单必须含旧 slow 案例")
   assertContainsText(output, "tests/native/slow/", "full 清单必须含原生 slow 案例")
   assertNotContainsText(output, "_test.py", "清单不得出现 Python 回归")
+  -- 口径（#82 遗留）：清单只做发现、不起 runner，所以表头给的是文件数，标签必须说「文件」；
+  -- 数字还得同时等于车道定义与该分段逐行列出的条数——旧 bug 把文件数标成「案例」，
+  -- 一个文件里有几十个案例，冒充案例数会让 coverage/CRAP 核对读到假数字。
+  -- 案例数由 report() 从 runner 统计行取，不在这里（清单阶段还没跑 runner）。
+  for _, runner in ipairs({ "legacy", "native" }) do
+    local expected = #(runner == "legacy" and legacy or native)
+    local files = output:match("%[" .. runner .. "%] full (%d+) 文件")
+    lu.assertNotNil(files, runner .. " 分段表头缺「N 文件」：" .. output:sub(1, 200))
+    lu.assertEquals(tonumber(files), expected, runner .. " 表头的文件数与车道定义不符")
+    lu.assertEquals(tonumber(files), listed_count(output, runner),
+                    runner .. " 表头的文件数与逐行列出的文件数不一致")
+  end
+end
+
+-- #92：旧 slow 目录（tests/tooling/slow）的 Lua 案例已全部迁到 tests/native/slow，
+-- 该目录只剩 Python 回归，因此旧车道的清单里不再有 tests/tooling/slow 的 *.lua；
+-- 但 slow 边界本身不能松——native/slow 仍必须只在 full 出现、fast 排除。
+function TestMigrationCli:test_legacy_slow_dir_no_longer_contributes_lua_cases()
+  local legacy_full = require("tests.lanes").legacy_files("full")
+  for _, file in ipairs(legacy_full) do
+    lu.assertNil(file:find("tests/tooling/slow/", 1, true),
+                 "旧 slow 车道应已无 Lua 案例：" .. file)
+  end
+  local output, code = run("full --list")
+  lu.assertEquals(code, 0, output)
+  assertContainsText(output, "tests/native/slow/", "slow 边界必须由原生车道承担")
+end
+
+-- tests/native/slow 是独立子目录（#89 往里加了 acceptance_seam_test.lua），而枚举是非递归的
+-- `*_test.lua`：子目录必须在 full 的原生段里出现且只出现一次——漏了会少算案例，重了会重复执行。
+function TestMigrationCli:test_native_full_lists_slow_subdir_exactly_once()
+  local lanes = require("tests.lanes")
+  local full, seen, slow = lanes.native_files("full"), {}, 0
+  for _, file in ipairs(full) do
+    lu.assertNil(seen[file], "原生 full 清单出现重复文件：" .. file)
+    seen[file] = true
+    if file:sub(1, #"tests/native/slow/") == "tests/native/slow/" then
+      slow = slow + 1
+    end
+  end
+  lu.assertTrue(slow > 0, "full 的原生段必须含 tests/native/slow/ 子目录（非递归枚举会漏）")
+  lu.assertTrue(seen["tests/native/slow/"] == nil, "清单条目是文件，不是目录")
+  for _, file in ipairs(lanes.native_files("fast")) do
+    lu.assertNil(file:find("tests/native/slow/", 1, true), "fast 不得含 slow 子目录：" .. file)
+  end
 end
 
 function TestMigrationCli:test_fast_list_excludes_slow()

@@ -19,10 +19,12 @@ LCOV reporter 的固定实现是 `tools/quality/report_lcov.lua`：基于 `luaco
 `#82` 起两套 runner 分进程运行互斥集合，车道目录单点定义在 `tests/lanes.lua`：`.busted` 的 ROOT 只含 `tests/native*`，旧 LuaUnit 目录（`tests/gameplay`、`tests/tooling`、`tests/tooling/slow`）不交给 Busted——否则 Busted 会 `loadfile` 整个 LuaUnit 套件、注册 0 个案例且退出码为 0（跨 runner 加载加静默遗漏）。聚合入口是迁移期临时设施，`#93` 随 LuaUnit 一并移除。
 
 ```powershell
-# 两套 runner 的案例清单（分段列出，Python 回归不在其中）
+# 两套 runner 发现到的案例文件清单（分段列出，口径是「文件」不是「案例」；Python 回归不在其中）
 lua tests/run_migration.lua full --list
 
 # 分进程跑两套：任一失败整体失败，空集合只报 skip
+# 报告一行两个口径：`legacy: 55 文件 / 631 案例 ok code=0`——「文件」是发现到的案例文件数，
+# 「案例」取自该 runner 自己的统计行（旧段 `Ran N tests`，原生段四类计数相加），取不到写「未知」。
 lua tests/run_migration.lua fast
 
 # 两段覆盖率：各自独立统计，两段都成功后合并一次

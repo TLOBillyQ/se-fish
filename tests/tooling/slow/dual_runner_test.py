@@ -18,6 +18,7 @@ ROOT = Path(__file__).resolve().parents[3]
 """
 import json
 import os
+import re
 import subprocess
 import sys
 import tempfile
@@ -156,8 +157,10 @@ class DualRunnerListTest(unittest.TestCase):
 
     def test_full_includes_slow_and_fast_excludes_it(self):
         full = self._list("full")
-        self.assertIn("tests/tooling/slow/", full, "full 旧清单必须含 tooling/slow")
+        # #92：tests/tooling/slow 的 Lua 案例已全部迁到 tests/native/slow（该目录只剩本文件这类
+        # Python 回归），所以 slow 边界改由原生车道承担，旧侧必须彻底为空。
         self.assertIn("tests/native/slow/", full, "full 原生清单必须含 native/slow")
+        self.assertNotIn("tests/tooling/slow/", full, "旧 slow 目录已迁空，full 清单不得再有它")
         fast = self._list("fast")
         for banned in ("tests/tooling/slow/", "tests/native/slow/"):
             self.assertNotIn(banned, fast, f"fast 清单不得含 slow：{banned}")
@@ -179,8 +182,19 @@ class DualRunnerFastExecutionTest(unittest.TestCase):
     def test_aggregated_fast_runs_both_segments_successfully(self):
         result = _run("lua", "tests/run_migration.lua", "fast")
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-        self.assertRegex(result.stdout, r"legacy: \d+ 案例 ok code=0")
-        self.assertRegex(result.stdout, r"native: \d+ 案例 ok code=0")
+        # 口径（#82 遗留）：一行里两个数各标各的名字——「文件」是发现到的案例文件数，
+        # 「案例」是该 runner 统计行报出的真实案例数。旧 bug 下「案例」印的就是文件数
+        # （两数恒等），所以这里必须钉住「案例 > 文件」，任何回退都会红。
+        legacy = re.search(r"legacy: (\d+) 文件 / (\d+) 案例 ok code=0", result.stdout)
+        native = re.search(r"native: (\d+) 文件 / (\d+) 案例 ok code=0", result.stdout)
+        self.assertIsNotNone(legacy, result.stdout)
+        self.assertIsNotNone(native, result.stdout)
+        for runner, match in (("legacy", legacy), ("native", native)):
+            files, cases = int(match.group(1)), int(match.group(2))
+            self.assertGreater(cases, files, f"{runner} 的案例数不得退化成文件数")
+        # 案例数必须来自 runner 自己的统计行，不能是另算的一套口径。
+        self.assertIn(f"Ran {legacy.group(2)} tests", result.stdout)
+        self.assertIn(f"{native.group(2)} successes /", result.stdout)
 
     def test_merged_coverage_stats_sum_both_segments_without_wiping(self):
         for relative in ("luacov.stats.out", "build/quality/luacov-legacy.out",

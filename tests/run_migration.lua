@@ -104,6 +104,55 @@ function M.exit_code(results)
   return 0
 end
 
+-- 从一段 runner 的输出里取它自己报的案例数（口径与 runner 的统计行一致，不是静态方法数）：
+--   旧 LuaUnit -> "Ran 629 tests in 7.610 seconds, 627 successes, 2 failures"（Ran 就是总数）
+--   原生 Busted -> "703 successes / 0 failures / 0 errors / 0 pending : 5.718 seconds"
+--     （Busted 没有总数行，四类相加。必须整行按四项取：全篇抓 `(%d+) %a+` 会把耗时 "5.718"
+--      里的 718 当计数加进去；词形随数量单复数变（success/successes、failure/failures、
+--      error/errors，pending 恒为 pending），所以词形用 %a+ 通配。彩色输出会夹 ANSI 序列，
+--      先剥掉再匹配。）
+-- 取不到就返回 nil，由 report() 明说「案例数未知」，绝不拿文件数顶替。
+local ANSI = "\27%[[%d;]*m"
+local NATIVE_SUMMARY =
+  "(%d+)%s+%a+%s*/%s*(%d+)%s+%a+%s*/%s*(%d+)%s+%a+%s*/%s*(%d+)%s+%a+%s*:%s*[%d%.]+%s*seconds"
+
+function M.count_cases(runner, output)
+  if not output then
+    return nil
+  end
+  if runner == "legacy" then
+    local total
+    for found in output:gmatch("Ran (%d+) tests") do
+      total = tonumber(found)
+    end
+    return total
+  end
+  if runner ~= "native" then
+    return nil
+  end
+  local plain = output:gsub(ANSI, "")
+  local a, b, c, d = plain:match(NATIVE_SUMMARY)
+  if not a then
+    return nil
+  end
+  return tonumber(a) + tonumber(b) + tonumber(c) + tonumber(d)
+end
+
+-- 把 argv 拼成一条 cmd 命令行。含空格的 argv（例如 -e 语句）必须整体加引号，否则 cmd 会把
+-- 它拆成多个参数、lua 的 -e 只取到 `local` 就报 <name> expected。
+function M.command_line(command)
+  local parts = {}
+  for _, item in ipairs(command) do
+    local text = tostring(item)
+    if text:find("[ \t&^<>|]") then
+      parts[#parts + 1] = '"' .. text .. '"'
+    else
+      parts[#parts + 1] = text
+    end
+  end
+  return table.concat(parts, " ")
+end
+
 -- 覆盖率合并：读取各段独立统计，行命中相加，一次写出 out。
 -- 跳过段视为无贡献；运行段缺统计则整体失败，不产出半量合并（调用方因此保留上一次快照）。
 function M.merge(results, out)
@@ -151,24 +200,39 @@ function M.merge(results, out)
 end
 
 -- 分进程执行两段：旧段在前、原生段在后（与旧入口的车道顺序一致）。
--- hooks.runner(segment) 起一个进程并返回退出码；hooks.merged 给合并输出路径。
+-- hooks.runner(segment) 起一个进程并返回退出码与输出文本；hooks.merged 给合并输出路径。
 -- 只有两段都成功才合并一次；任一失败不合并，由调用方保留原快照。
+--
+-- 默认 runner 要把子进程输出同时做到两件事：留在控制台（失败原文是聚合入口的主要诊断面）
+-- 和交回本进程（report() 要从 runner 自己的统计行取案例数）。cmd 侧「既显示又落盘」的写法
+-- 要么 `& type` 回来——但那会让 os.execute 拿到 type 的退出码，把段失败当成成功（#82 的
+-- 退出码契约直接破），要么靠管道 tee——cmd 没有。所以取重定向落盘 + 本进程读回后自己打印：
+-- 退出码仍是那一段的，输出按段完整出现，顺序与旧行为一致（旧段在前）。
+-- 重定向落点目录不存在时 cmd 直接报错、命令根本不执行，所以先建目录。
+local CAPTURE_DIR = "tmp"
+
+function M.capture_file(runner)
+  return CAPTURE_DIR .. "\\run_migration-" .. tostring(runner) .. ".out"
+end
+
 function M.execute(plan, hooks)
   hooks = hooks or {}
   local runner = hooks.runner or function(segment)
-    local parts = {}
-    for _, item in ipairs(segment.command) do
-      local text = tostring(item)
-      -- 含空格的 argv（例如 -e 语句）必须整体加引号，否则 cmd 会把它拆成多个参数、
-      -- lua 的 -e 只取到 `local` 就报 <name> expected。
-      if text:find("[ \t&^<>|]") then
-        parts[#parts + 1] = '"' .. text .. '"'
-      else
-        parts[#parts + 1] = text
-      end
+    os.execute("if not exist " .. CAPTURE_DIR .. " md " .. CAPTURE_DIR .. " >nul 2>nul")
+    local capture = M.capture_file(segment.runner)
+    local line = "> \"" .. capture .. "\" 2>&1 " .. M.command_line(segment.command)
+    local _, _, code = os.execute(line)
+    local file = io.open(capture, "rb")
+    local output = file and (file:read("a") or "") or nil
+    if file then
+      file:close()
+      os.remove(capture)
     end
-    local _, _, code = os.execute(table.concat(parts, " "))
-    return code or 1
+    if output then
+      io.stdout:write(output)
+      io.stdout:flush()
+    end
+    return code or 1, output
   end
   local results = {}
   for _, segment in ipairs(plan.segments) do
@@ -183,10 +247,14 @@ function M.execute(plan, hooks)
         stats = segment.stats,
       }
     else
+      local code, output = runner(segment)
       results[#results + 1] = {
         runner = segment.runner,
         action = "run",
-        code = runner(segment) or 0,
+        code = code or 0,
+        output = output,
+        cases = M.count_cases(segment.runner, output),
+        files = #(segment.files or {}),
         stats = segment.stats,
       }
     end
@@ -202,7 +270,10 @@ function M.execute(plan, hooks)
   return results
 end
 
--- 两套 runner 的失败报告：列出每段 runner、案例数、动作与退出码；空集合只报 skip。
+-- 两套 runner 的失败报告：列出每段 runner、文件数与案例数、动作与退出码；空集合只报 skip。
+-- 「文件数」与「案例数」是两个口径，各自标各自的名字：一个案例文件里有几十个案例，
+-- 把 #segment.files 标成「案例」会让 coverage/CRAP 核对读到假数字（#82 遗留，#92 修正）。
+-- 案例数取自该段 runner 自己的统计行；取不到就写「案例数未知」而不是回落到文件数。
 function M.report(plan, results)
   local lines = { "迁移期双 runner（车道 " .. plan.lane .. "）" }
   local by_runner = M.by_runner(plan)
@@ -212,13 +283,17 @@ function M.report(plan, results)
                                         result.reason and (" " .. result.reason) or "")
     else
       local segment = by_runner[result.runner]
-      local count = segment and #segment.files or 0
+      local files = result.files or (segment and #(segment.files or {}) or 0)
+      local head = string.format("%d 文件", files)
+      if result.action == "run" then
+        head = head .. string.format(" / %s 案例", tonumber(result.cases) and tostring(result.cases) or "未知")
+      end
       if result.action == "skip" then
-        lines[#lines + 1] = string.format("%s: %d 案例 skip（空集合，不报失败）", result.runner, count)
+        lines[#lines + 1] = string.format("%s: %s skip（空集合，不报失败）", result.runner, head)
       elseif result.code == 0 then
-        lines[#lines + 1] = string.format("%s: %d 案例 ok code=0", result.runner, count)
+        lines[#lines + 1] = string.format("%s: %s ok code=0", result.runner, head)
       else
-        lines[#lines + 1] = string.format("%s: %d 案例 FAILED code=%d", result.runner, count, result.code)
+        lines[#lines + 1] = string.format("%s: %s FAILED code=%d", result.runner, head, result.code)
       end
     end
   end
@@ -245,8 +320,10 @@ function M.main(argv)
   end
   local plan = M.plan(lane, { coverage = coverage })
   if listing then
+    -- --list 只列发现到的文件，不起 runner，所以这里给的是文件数；案例数要执行才有，
+    -- 由 report() 那侧报（标成「案例」就是说谎）。
     for _, segment in ipairs(plan.segments) do
-      io.stdout:write("[" .. segment.runner .. "] " .. segment.lane .. " " .. #segment.files .. " 案例\n")
+      io.stdout:write("[" .. segment.runner .. "] " .. segment.lane .. " " .. #segment.files .. " 文件\n")
       for _, file in ipairs(segment.files) do
         io.stdout:write("  " .. file .. "\n")
       end

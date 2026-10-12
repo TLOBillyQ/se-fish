@@ -87,7 +87,7 @@ function TestSharedInit:test_child_spawning_regessions_use_the_helper()
   -- 防止退回顾 arg[-1] 的写法：起子进程的回归统一走 tests.support.interpreter。
   for _, path in ipairs({
     "tests/tooling/migration_cli_test.lua",
-    "tests/tooling/slow/sync_transport_test.lua",
+    "tests/native/slow/sync_transport_test.lua",
   }) do
     local source = assert(io.open(path, "rb")):read("a")
     lu.assertNotEquals(source:find("tests.support.interpreter", 1, true), nil,
