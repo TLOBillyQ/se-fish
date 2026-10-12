@@ -36,6 +36,9 @@ function TestLootDrop:setUp()
     local env = self
     self.oldGame, self.oldRE, self.oldVector3 = _G.game, _G.REUtil, _G.Vector3
     self.oldRaycastParams, self.oldCarrier = _G.RaycastParams, package.loaded['server.Mgr.MgrFishCarrier']
+    -- MgrLoot 给掉落实例上色时读全局 Color。旧套件里它一直蹭 damage_float 的全局泄漏跑通，
+    -- #90 把那份泄漏收回（迁进原生后逐例恢复）就会在这里炸 nil；改为自建替身并纳入恢复名单。
+    self.oldColor = _G.Color
     self.oldDebug = GameCfg.Debug
     GameCfg.Debug = { Enabled = false } -- 用例自己造库存，不受进图白送影响
     self.now, self.created, self.events = 0, {}, {}
@@ -56,6 +59,7 @@ function TestLootDrop:setUp()
         if direction.y < 0 then return { Position = vec(origin.x, env.groundY, origin.z), Distance = 1 } end
     end }
     _G.Vector3 = { New = vec }
+    _G.Color = { New = function(r, g, b, a) return { r = r, g = g, b = b, a = a } end }
     _G.RaycastParams = { New = function() return { FilterDescendantsInstances = {} } end }
     _G.game = { GetService = function(_, name)
         if name == 'World' then return env.world end
@@ -101,6 +105,7 @@ function TestLootDrop:tearDown()
     self.players:OnPlayerRemoving(self.other)
     _G.game, _G.REUtil, _G.Vector3 = self.oldGame, self.oldRE, self.oldVector3
     _G.RaycastParams = self.oldRaycastParams
+    _G.Color = self.oldColor
     package.loaded['server.Mgr.MgrFishCarrier'] = self.oldCarrier
     GameCfg.Debug = self.oldDebug
 end
