@@ -20,6 +20,7 @@ Lua 命令使用 **Lua 5.4**，执行前用 `lua -v` 核对；验收脚本可用
 - `.\uml.ps1 ir`：修改三端代码后重新生成图；viewer 检测文件变化自动重载。
 - `.\uml.ps1`：启动 viewer 与 companion 看图、向 agent 发起图上操作。重启 viewer 由 companion 处理，不要直接杀进程。
 - 图上 `client|common|server` 为三棵树；`**/packages/**` 与 `server/_trigger/` 被 `:exclude` 排除，vendor 依赖显示为 `*.packages` 椭圆。viewer 从 `.metrics/crap.edn` 与 `.metrics/mutate/*.edn` 加载指标；缺少任一指标的类卡片为红色。Lua 指标安装、原生 Windows 适配与命令见 [tools/quality/README.md](../../tools/quality/README.md)。
+- **标准 quality 分发**：根目录 `uml-quality.json`（版本管理）声明图上 `crap` / `mutate` 转交哪个项目公开命令，终端与右键走同一实现；参数、退出码、锁与失败报告一致。改项目质量入口时同步核对这份声明，`project.ps1 doctor` 会先校验它。
 - `target/` 放覆盖率与 mutation worker，属于忽略的临时产物；`.metrics/` 保留质量快照并纳入版本管理。无函数定义的配置或转发模块不生成 mutation 快照；当前工具不测试模块顶层语句。
 - 根目录 `uml`、`uml.ps1` 由安装器拷贝，不要编辑；固定工具组合的安装与校验使用 [tools/quality/README.md](../../tools/quality/README.md) 的项目入口。
 

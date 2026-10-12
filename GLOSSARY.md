@@ -13,5 +13,8 @@ se-fish 的质量发布规则：coverage 失败即停止并使旧 LCOV 失效；
 **业务树**:
 `client`、`common`、`server` 三端业务源码；排除 `packages`、`server/_trigger` 等非业务目录。
 
+**标准 quality 分发**:
+仓库根 `uml-quality.json` 声明的图上质量操作到项目公开命令的映射；viewer 与终端因此执行同一实现，参数、退出码、锁与失败报告保持一致。
+
 **Busted migration**:
 将全部 Lua 测试全面改写为原生 Busted 的过程：移除 LuaUnit 依赖及桥接层，保留断言含义、执行顺序、共享环境与失败清理行为；full 用于 coverage、fast 用于 mutation。
