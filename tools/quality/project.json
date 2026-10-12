@@ -1,8 +1,22 @@
 {
   "sources": {"roots": ["client", "common", "server"], "exclude": ["packages", "server/_trigger"]},
+  "lua": {"executable": "lua", "version": "Lua 5.4."},
   "commands": {
     "coverage": ["lua", "-lluacov", "tests/run.lua", "full"],
     "mutation_test": ["lua", "tests/run.lua", "fast"]
+  },
+  "busted": {
+    "command": "busted",
+    "version": "2.3.0",
+    "rocks": [
+      {"name": "luassert", "version": "1.9.0-1"},
+      {"name": "luacov", "version": "0.17.0-1"},
+      {"name": "busted", "version": "2.3.0-1"}
+    ],
+    "sources": {
+      "busted": {"url": "https://github.com/lunarmodules/busted.git", "commit": "56e6d68204d1456afa77f1346bf4e050df65b629"},
+      "luassert": {"url": "https://github.com/lunarmodules/luassert.git", "commit": "8d8dc8a54cc468048a128a867f6449a6c3fdd11a"}
+    }
   },
   "paths": {
     "luacov": ".toolcache/luacov/src",

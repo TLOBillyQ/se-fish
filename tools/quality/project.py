@@ -4,6 +4,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -40,11 +41,20 @@ def lua_environment(root, config):
     return env
 
 
-def verify_lua(command):
-    result = subprocess.run([command[0], "-v"], capture_output=True, text=True)
+def lua_executable(config):
+    """Lua 解释器只来自 lua.executable；测试命令 argv 整体不透明，首项不做解释器。"""
+    return config.get("lua", {}).get("executable", "lua")
+
+
+def verify_lua(config):
+    executable = lua_executable(config)
+    expected = config.get("lua", {}).get("version", "Lua 5.4.")
+    if shutil.which(executable) is None:
+        raise RuntimeError(f"缺少 Lua 解释器：{executable} 不在 PATH；质量入口要求 {expected}x")
+    result = subprocess.run([executable, "-v"], capture_output=True, text=True)
     version = result.stdout + result.stderr
-    if result.returncode or "Lua 5.4." not in version:
-        raise RuntimeError(f"质量入口要求 Lua 5.4，实际为：{version.strip()}")
+    if result.returncode or expected not in version:
+        raise RuntimeError(f"质量入口要求 {expected}x，实际为：{version.strip()}")
 
 
 def run_coverage(root, config):
@@ -56,7 +66,7 @@ def run_coverage(root, config):
     temporary = lcov.with_suffix(".pending")
     for path in (lcov, temporary, stats, root / "luacov.stats.out", root / "luacov.report.out"):
         path.unlink(missing_ok=True)
-    verify_lua(command)
+    verify_lua(config)
     lcov.parent.mkdir(parents=True, exist_ok=True)
     stats.parent.mkdir(parents=True, exist_ok=True)
     env = lua_environment(root, config)
@@ -68,7 +78,7 @@ def run_coverage(root, config):
     if not generated.is_file() or generated.stat().st_size == 0:
         raise RuntimeError("完整测试未生成 LuaCov 统计，停止指标刷新。")
     generated.replace(stats)
-    result = subprocess.run([command[0], str(PROJECT_ROOT / "tools/quality/report_lcov.lua"),
+    result = subprocess.run([lua_executable(config), str(PROJECT_ROOT / "tools/quality/report_lcov.lua"),
                              str(stats), str(temporary)], cwd=root, env=env)
     if result.returncode:
         temporary.unlink(missing_ok=True)
@@ -84,10 +94,11 @@ def run_coverage(root, config):
 
 def doctor(root, config):
     root = Path(root).resolve()
-    verify_lua(config["commands"]["coverage"])
+    verify_lua(config)
+    executable = lua_executable(config)
     # 读取 bootstrap 的公开 pins，不触发 ensure/install，保留 acceptance 独立入口。
     pins = subprocess.run([
-        config["commands"]["coverage"][0], "-e",
+        executable, "-e",
         'local b=require("tools.acceptance.bootstrap"); '
         'for _,n in ipairs({"dry4lua","acceptance4lua"}) do print(n.."="..b.pins[n]) end',
     ], cwd=root, capture_output=True, text=True)
@@ -121,11 +132,12 @@ def doctor(root, config):
         for module in tool["modules"]:
             snippet = (f"local p=assert(package.searchpath({module!r}, package.path)); "
                        f"print(p); assert(require({module!r}))")
-            result = subprocess.run([config["commands"]["coverage"][0], "-e", snippet],
+            result = subprocess.run([executable, "-e", snippet],
                                     cwd=root, env=env, capture_output=True, text=True)
             if result.returncode:
                 raise RuntimeError(f"{name} 无法加载运行模块 {module}：{result.stderr.strip()}；{repair}")
             print(f"{name} {actual} {result.stdout.strip()}")
+    doctor_busted(root, config)
     for name, tool in config["tools"].items():
         directory = root / ".uml-viewer" / tool["directory"]
         if not (directory / ".git").exists():
@@ -149,6 +161,43 @@ def doctor(root, config):
         subprocess.run([str(python), "-c", snippet], check=True)
         subprocess.run([str(python), "-m", "pip", "check"], check=True)
     return 0
+
+
+def doctor_busted(root, config):
+    """核对 Busted 固定依赖：命令可用、版本相符、pinned rocks 已安装；可重跑。
+
+    失败信息区分解释器缺失（verify_lua）、Busted 命令缺失、版本不符与 rock 未安装。
+    LuaCov 的运行时来源仍是 lua_tools.luacov 的固定 checkout（上面的 lua_tools 检查），
+    这里的 luacov rock 只为 busted --coverage 等直接用法保持同一固定版本。
+    """
+    spec = config.get("busted")
+    if not spec:
+        raise RuntimeError("project.json 缺少 busted 固定依赖配置")
+    repair = "请运行 tools/quality/install.ps1 安装固定依赖"
+    command = spec["command"]
+    path = shutil.which(command)
+    if path is None:
+        raise RuntimeError(f"缺少 Busted 命令：{command} 不在 PATH；{repair}")
+    result = subprocess.run([path, "--version"], capture_output=True, text=True)
+    if result.returncode:
+        raise RuntimeError(f"Busted 无法运行：{result.stderr.strip() or result.stdout.strip()}；{repair}")
+    actual = result.stdout.strip()
+    if actual != spec["version"]:
+        raise RuntimeError(f"Busted 版本不符：{actual}，预期 {spec['version']}；{repair}")
+    luarocks = shutil.which("luarocks")
+    if luarocks is None:
+        raise RuntimeError(f"缺少 LuaRocks 命令，无法核对 Busted 固定依赖；{repair}")
+    for rock in spec["rocks"]:
+        name, version = rock["name"], rock["version"]
+        result = subprocess.run([luarocks, "list", name, "--porcelain"], capture_output=True, text=True)
+        if result.returncode:
+            raise RuntimeError(f"无法查询 {name} 安装状态：{result.stderr.strip()}；{repair}")
+        rows = [line.split("\t") for line in result.stdout.splitlines() if line.strip()]
+        if not any(len(fields) >= 3 and fields[0] == name and fields[1] == version and fields[2] == "installed"
+                   for fields in rows):
+            raise RuntimeError(f"{name} 固定版本 {version} 未安装；{repair}")
+        print(f"{name} {version}（rock）")
+    print(f"busted {actual}（{path}）")
 
 
 def run_quality(root, config):
@@ -208,7 +257,7 @@ def dispatch(root, args):
         return doctor(root, config)
     if args.command == "test":
         command = config["commands"]["mutation_test"]
-        verify_lua(command)
+        verify_lua(config)
         return subprocess.run(command, cwd=root).returncode
     if args.command in ("run", "quality"):
         return run_quality(root, config)

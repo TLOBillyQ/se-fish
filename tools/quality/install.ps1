@@ -99,6 +99,19 @@ try {
         $actual = & git -C $directory rev-parse HEAD
         if ($LASTEXITCODE -ne 0 -or $actual -ne $tool.commit) { throw "$name 缓存提交不符：$actual，预期 $($tool.commit)；请移走缓存后重跑 tools/quality/install.ps1" }
     }
+    # Busted 固定依赖（#81）：按 project.json 的 busted.rocks 清单经 LuaRocks 安装固定版本；可重跑，已安装则跳过。
+    $luarocks = Get-Command luarocks -ErrorAction SilentlyContinue
+    if (-not $luarocks) { throw '缺少 LuaRocks 命令；无法安装 Busted 固定依赖，请先安装 LuaRocks 3.x' }
+    foreach ($rock in $config.busted.rocks) {
+        $found = $false
+        foreach ($line in @(& luarocks list $rock.name --porcelain 2>$null)) {
+            $fields = $line -split "`t"
+            if ($fields.Count -ge 3 -and $fields[0] -eq $rock.name -and $fields[1] -eq $rock.version -and $fields[2] -eq 'installed') { $found = $true; break }
+        }
+        if ($found) { continue }
+        & luarocks install $rock.name $rock.version
+        if ($LASTEXITCODE -ne 0) { throw "$($rock.name) $($rock.version) 安装失败" }
+    }
     # 所有工具替换已完成；公开 doctor 自行获取同一锁，避免父子自锁。
     $lockStream.Dispose()
     $lockStream = $null

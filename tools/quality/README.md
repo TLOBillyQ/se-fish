@@ -2,6 +2,19 @@
 
 项目使用原生 Windows、PowerShell 7、Lua 5.4 与现有 LuaUnit。终端与 viewer 刷新共用 `project.json`：分析 `client/`、`common/`、`server/` 的业务 Lua，排除官方 `packages/` 与 `server/_trigger/`；CRAP 与 DRY 都使用这一范围。
 
+## 解释器与测试命令契约
+
+Lua 解释器与测试命令是两条独立契约（#81）。`project.json` 的 `lua.executable`（含 `lua.version` 版本断言）用于 `lua -v` 校验、LCOV/DRY 报告脚本和项目内 Lua 子命令；`commands.coverage` 与 `commands.mutation_test` 是整体不透明的测试 argv，首项可以是 `lua`，也可以是 Busted 启动器——质量入口不得从测试 argv 的首项推导解释器。
+
+## Busted 固定依赖与原生入口
+
+`project.json` 的 `busted` 段登记固定依赖（#81）：Busted 2.3.0（rock `2.3.0-1`）、Luassert `1.9.0-1`、LuaCov `0.17.0-1`，并记录 Busted/Luassert 上游来源 commit 供核验。安装器经 LuaRocks 按 `busted.rocks` 清单安装固定版本（已安装则跳过，可重跑）；`doctor` 核对 busted 命令版本与 rocks 安装状态，失败信息区分解释器缺失、Busted 命令缺失、版本不符与 rock 未安装。LuaCov 的运行时来源仍是 `lua_tools.luacov` 的固定 checkout（与 rock 同一上游 commit），质量覆盖率流程不消费全局 rock。
+
+LCOV reporter 的固定实现是 `tools/quality/report_lcov.lua`：基于 `luacov.runner` / `ReporterBase` 写出 `SF:`（反斜杠归一为正斜杠）、`DA:`、`LF:`、`LH:`、`end_of_record`。若未来替换为共享 reporter，只能替换内部生成器，必须保持 `paths.lcov` 输出路径、LCOV 字段、路径归一化与 `report_lcov.lua <stats> <output>` 参数契约；CRAP/mutation 只消费该文件，不感知 reporter 实现。
+
+原生 Busted 入口由根目录 `.busted` 定义车道：`fast`（default，日常）与 `full`（追加 `tests/tooling/slow`、`tests/native/slow` 的 slow Lua）；探针（`tests/probes`）、共享夹具（`tests/support`）、LuaUnit（`tests/lib`）与 Python 回归不进入发现范围。共享初始化 `tests/native/helper.lua` 在任何案例加载前建立与旧入口相同的 Debug/AcceptanceSlot 基线，并按案例快照恢复共享配置，案例失败不泄漏。迁移期旧入口 `lua tests/run.lua` 保持可用，覆盖率与 mutation 测试 argv 仍以旧入口为准。
+
+
 ## 安装与校验
 
 在仓库根运行：

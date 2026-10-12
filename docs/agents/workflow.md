@@ -12,6 +12,7 @@ Lua 命令使用 **Lua 5.4**，执行前用 `lua -v` 核对；验收脚本可用
 - 技能包预设命令见 `lua tools/cli.lua ability-presets --help`；验收脚本说明见 `tools/acceptance/README.md`。
 - 质量入口为 `.\tools\quality\project.ps1`，安装、覆盖率、CRAP、DRY、差分 mutation 与复验步骤见 [tools/quality/README.md](../../tools/quality/README.md)；只出报告，不设指标门槛。
 - 单测按对象放入 `tests/gameplay/` 或 `tests/tooling/`；真实 CLI 子进程用例放入 `tests/tooling/slow/`。日常运行 `lua tests/run.lua fast`；分类运行 `lua tests/run.lua gameplay` 或 `lua tests/run.lua tooling`；完整运行 `lua tests/run.lua`（等价于 `full`）。
+- 原生 Busted 入口（迁移期与旧入口并行）：`busted --run=fast`（等价 default）与 `busted --run=full`；车道定义在根目录 `.busted`，共享初始化在 `tests/native/helper.lua`，原生案例放 `tests/native/`。完成判据仍以 `lua tests/run.lua` 为准。
 
 **架构图（uml-viewer）。** 根目录 `policy.edn` 描述三端模块树，`docs/uml/se-fish.edn` 是生成的依赖图（不要手编）。
 
