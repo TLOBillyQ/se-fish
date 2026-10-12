@@ -110,6 +110,8 @@ describe('TestLootRecycle', function()
         assert.are.equal(GameCfg.Loot.PerZoneCap, active)
         assert.are.equal(GameCfg.Loot.PendingCap, pending)
         assert.is_true(active + pending <= GameCfg.Loot.PerZoneCap + GameCfg.Loot.PendingCap)
+        -- 生成 20 件后场上只留 3 件活跃 + 2 件预警，不随生成次数增长
+        assert.are.equal(GameCfg.Loot.PerZoneCap + GameCfg.Loot.PendingCap, #env:lootUnits())
         local peak, earlyRecycle = false, false
         for _, line in ipairs(logs) do
             if line:find('[MgrLoot] 区峰值', 1, true) and line:find('active=', 1, true)
@@ -118,6 +120,10 @@ describe('TestLootRecycle', function()
         end
         assert.is_true(peak)
         assert.is_true(earlyRecycle)
+        -- 预警到点后剩下的一并销毁，场上只剩活跃的 3 件
+        env.now = GameCfg.Loot.FlashBeforeRecycleSec + 1
+        env.loot:Update()
+        assert.are.equal(GameCfg.Loot.PerZoneCap, #env:lootUnits())
     end)
 
     it('test_config_has_per_zone_cap_and_flash_seconds', function()
