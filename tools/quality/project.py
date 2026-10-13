@@ -23,6 +23,10 @@ DISPATCH = {
     "mutate": {"argv": ["./tools/quality/project.ps1", "mutation"], "forwardArgs": "append",
                "validResultExitCodes": [0, 3]},
 }
+# 声明与实现的显式重复（同 DISPATCH 的既有做法）：值必须等于 mutation.DEFAULT_MAX_WORKERS，
+# 由 tests/tooling/slow/mutation_budget_test.py 钉住。这里不导入 mutation，避免 coverage/doctor
+# 等无关命令也被 mutation 的 sys.path 注入影响。
+MUTATION_MAX_WORKERS = 1
 
 
 def load_config(root=None, config=None):
@@ -269,9 +273,12 @@ def run_mutation(root, config, args):
     import mutation
     try:
         config_path = Path(args.config) if args.config else root / "tools/quality/project.json"
+        budget = (mutation.DEFAULT_BUDGET_SECONDS if args.budget_seconds is None
+                  else args.budget_seconds)
         return mutation.run(root, config, config_path, args.files, mutate_all=args.mutate_all,
                             changed=args.changed, max_workers=args.max_workers,
-                            lines=set(args.lines) if args.lines else None, verbose=args.verbose)
+                            lines=set(args.lines) if args.lines else None, verbose=args.verbose,
+                            budget_seconds=budget, invocation=args.invocation)
     except ValueError as error:
         print(f"quality: {error}", file=sys.stderr)
         return 1
@@ -286,10 +293,15 @@ def main(argv=None):
     parser.add_argument("files", nargs="*", help="mutation 目标业务 Lua（相对路径）")
     parser.add_argument("--mutate-all", action="store_true", help="显式全量 mutation（必须给文件）")
     parser.add_argument("--changed", action="store_true", help="对 git 变更的业务 Lua 差分")
-    parser.add_argument("--max-workers", type=int)
+    parser.add_argument("--max-workers", type=int, default=MUTATION_MAX_WORKERS,
+                        help="mutation 并发 worker 数；默认单 worker，扩充前必须记录依据")
+    parser.add_argument("--budget-seconds", type=float,
+                        help="mutation 墙钟预算秒数；缺省为 mutation 模块的 60 分钟默认值")
     parser.add_argument("--lines", type=int, nargs="*")
     parser.add_argument("--verbose", action="store_true")
     args = parser.parse_args(argv)
+    # 启动前记录要给出可复制的日志采集命令，这里保留调用方原始 argv。
+    args.invocation = list(sys.argv[1:] if argv is None else argv)
     root = args.root.resolve()
     from locking import repository_lock
     with repository_lock(root):
