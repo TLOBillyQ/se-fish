@@ -13,6 +13,9 @@ Lua 命令使用 **Lua 5.4**，执行前用 `lua -v` 核对；验收脚本可用
 - 质量入口为 `.\tools\quality\project.ps1`，安装、覆盖率、CRAP、DRY、差分 mutation 与复验步骤见 [tools/quality/README.md](../../tools/quality/README.md)；只出报告，不设指标门槛。
 - 单测放 `tests/native/`（slow 车道放 `tests/native/slow/`），共享夹具放 `tests/support/`，探针放 `tests/probes/`（手工探针，不入任何车道）。日常运行 `busted --run=fast`（等价 `default`），收尾运行 `busted --run=full`；车道由根目录 `.busted` 定义，共享初始化在 `tests/native/helper.lua`。Windows 专用案例在案例内判平台，非 Windows 时 `return pending(...)`，`--list` 行数因此跨平台不变。
   - 与「完成判据」表里 `0 pending` 的关系：那张表的 `0 pending` 是在 **Windows**（本轮目标平台）上取的数；非 Windows 下这些案例会以 pending 出现，判据相应放松为「除已知平台案例外 0 pending」。本轮 macOS **仅设计未实机**，没有实机数据。
+  - **执行序只保证到文件内**：迁移保留的是**文件内**执行序（`it` 注册序 == 旧 LuaUnit 类内方法序），**不保留跨文件的全局类名字典序**。LuaUnit 的 `collectTests()` 排的是全局 `_G.Test*` **类名**，`.busted` 的 `sort-files=true` 排的是**文件路径字符串**，是两个键空间，技术上无法廉价复现；且 helper 在文件发现**之前**执行，插不进重排钩子。
+    - 为什么可以接受：跨类没有共享状态，夹具逐例隔离（`tests/native/helper.lua`）；**且不复刻旧序反而修了一个真 bug**——旧序下 `damage_float_test.lua` 与 `vitals_test.lua` 都定义全局 `TestDamageNotice`，后加载整表覆盖前者，导致 `test_rounding_and_effective_health` **从未被执行**，迁移后复活（+1，属修复而非回归）。
+    - 裁定原文见迁移台账 `issue-84-mapping.md:96` 与 `issue-85-mapping.md:63`（台账在仓库外，按文件名检索）。
   - `busted` 与 `busted.bat`：人手 shell 里敲、以及 `shutil.which`（会按 `PATHEXT` 找到 `.bat` 垫片）用裸 `busted` 即可；只有 Python `CreateProcess`/`shell=False` 起子进程时必须写 `busted.bat`（`CreateProcess` 只补 `.exe`，裸名会 `[WinError 2]`），`tools/quality/project.json` 的 `commands.*` 因此写 `busted.bat`，而 `busted.command` 仍写裸 `busted` 供 `shutil.which` 用。
 
 **架构图（uml-viewer）。** 根目录 `policy.edn` 描述三端模块树，`docs/uml/se-fish.edn` 是生成的依赖图（不要手编）。
