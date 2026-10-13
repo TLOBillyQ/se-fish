@@ -1,5 +1,7 @@
 """Busted 车道契约（#81；#93 全量切换后是唯一的 Lua 测试入口）：
 fast 排除 slow、full 包含 slow；探针、夹具与 Python 回归不进入发现范围。
+LuaUnit 基线（#82 验收，commit 3bfd870）：fast 1321 / full 1342；旧 runner 已由 #93（0e435b0）删除，
+当前分支不可复跑，要复现须 `git checkout 3bfd870`。
 """
 import re
 import shutil
