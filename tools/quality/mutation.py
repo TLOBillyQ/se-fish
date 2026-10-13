@@ -30,6 +30,19 @@ def _now() -> float:
     return time.monotonic()
 
 
+def _line_buffered_stdout() -> None:
+    """本工具自己的行要按发生顺序落进日志，否则启动前记录进不了日志头。
+
+    coverage 子进程（真实命令下是 `busted --run=full --coverage`）直写继承来的 stdout，
+    绕开 Python 缓冲；重定向到文件时 stdout 是整块缓冲（满 8KB 或进程结束才吐），
+    先打印的记录会被子进程输出整段压到日志中段。逐行缓冲让记录保持在日志头，
+    并让「完整 Busted 基线通过」等后续行同样落在它们发生的位置（#98 AC2）。
+    """
+    reconfigure = getattr(sys.stdout, "reconfigure", None)
+    if reconfigure is not None:
+        reconfigure(line_buffering=True)
+
+
 def _joined(command: list) -> str:
     return " ".join(f'"{item}"' if " " in str(item) else str(item) for item in command)
 
@@ -258,6 +271,7 @@ def run(root: Path, config: dict, config_path: Path | str, paths: list[str], *, 
         budget_seconds: float = DEFAULT_BUDGET_SECONDS,
         invocation: list[str] | None = None) -> int:
     scope = _scope_label(mutate_all=mutate_all, changed=changed, paths=paths)
+    _line_buffered_stdout()
     targets = select_targets(root, config, paths, changed=changed, mutate_all=mutate_all)
     original = {path: path.read_bytes() for path in targets}
     try:

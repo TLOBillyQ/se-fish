@@ -8,6 +8,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[3]
 PYTHON = ROOT / ".uml-viewer/crapper/.venv/Scripts/python.exe"
 SOURCE = "local M={}\nfunction M.value(x) return x + 1 end\nreturn M\n"
+# 夹具的 coverage 子命令真的往继承来的 stdout 写字：真实覆盖率的 busted 子进程
+# 正是这样绕过 Python 缓冲直写日志，缺了它「记录在日志头」这条断言就抓不到缺陷。
+COVERAGE_STDOUT = "fixture-coverage-stdout"
 
 
 class MutationBudgetTest(unittest.TestCase):
@@ -19,6 +22,7 @@ class MutationBudgetTest(unittest.TestCase):
         lines = len(SOURCE.splitlines())
         stats = "".join(f"{lines}:{name}\n" + "1 " * lines + "\n" for name in names)
         (root / "coverage.lua").write_text(
+            f"print({json.dumps(COVERAGE_STDOUT)})\n"
             "local f=assert(io.open('luacov.stats.out','w'))\n"
             f"f:write({json.dumps(stats)})\n"
             "f:close()\n", encoding="utf-8")
@@ -64,6 +68,17 @@ class MutationBudgetTest(unittest.TestCase):
             self.assertIn("tools/quality/project.ps1", record)
             self.assertIn("恢复: ", record)
             self.assertIn(".metrics/mutate", record)
+
+    def test_launch_record_stays_at_the_head_of_a_real_redirect(self):
+        with tempfile.TemporaryDirectory(prefix="se-fish-budget-") as directory:
+            root = Path(directory)
+            self.fixture(root, ("common/Alpha.lua",))
+            result = self.invoke(root, "common/Alpha.lua", "--max-workers", "1")
+            output = result.stdout + result.stderr
+            self.assertIn(result.returncode, (0, 3), output)
+            # 重定向到日志时子进程绕过 Python 缓冲直写；记录整段仍须在它之前。
+            self.assertLess(output.index("mutation 启动前记录结束"),
+                            output.index(COVERAGE_STDOUT), output)
 
     def test_exhausted_budget_skips_every_target_and_reports_the_unrun_scope(self):
         with tempfile.TemporaryDirectory(prefix="se-fish-budget-") as directory:
