@@ -26,8 +26,8 @@ function M.usage()
     "",
     "把宿主目录的 " .. table.concat(plan.ROOT_FILES, " / ") .. " 与 " .. plan.DATA_DIR .. "/ 整目录回同步进仓库根。",
     plan.DATA_DIR .. "/ 按镜像纪律抹平（宿主侧删掉的文件在仓库里跟着消失）；落盘前 CRLF→LF 归一。",
-    "--packages 追加三端 packages/ 字节镜像，删除过期文件，保留仓库三端根 README.md。",
-    "任一端源 packages/ 缺失或为空（只有根 README.md 也算空），整次同步在写入前失败。",
+    "--packages 追加三端 packages/ 字节镜像，删除过期文件。",
+    "任一端源 packages/ 缺失或为空，整次同步在写入前失败。",
     "全部源读成功才落盘，内容没变的文件不重写；仓库根与宿主目录的其余内容互不触碰。",
     "宿主目录默认 " .. workspace.DEFAULT .. "，环境变量 EGGY_WORKSPACE 可覆盖。",
     "",
@@ -79,7 +79,6 @@ local function read_sources(WS, with_packages)
   if with_packages then
     for _, dir in ipairs(plan.PACKAGE_DIRS) do
       local files = shell.list_files(WS .. "/" .. dir)
-      files = files and plan.package_files(files)
       if files == nil or #files == 0 then
         missing[#missing + 1] = dir .. "/（缺失或为空）"
       else
@@ -114,7 +113,6 @@ local function run_sync(with_packages)
       end
       repo_files = {}
     end
-    if tree.packages then repo_files = plan.package_files(repo_files) end
     for _, rel in ipairs(plan.stale_files(tree.files, repo_files)) do
       deletes[#deletes + 1] = tree.dir .. "/" .. rel
     end

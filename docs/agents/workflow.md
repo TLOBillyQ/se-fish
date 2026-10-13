@@ -6,10 +6,10 @@
 
 Lua 命令使用 **Lua 5.4**，执行前用 `lua -v` 核对；验收脚本可用 `ACCEPTANCE_LUA_BIN` 指定解释器。Lua 5.5 对循环变量重新赋值会报 `attempt to assign to const variable`，遇到此错误先检查版本。
 
-- `lua tools/cli.lua deploy`：将三端业务代码字节镜像到宿主目录，排除 `packages/`；编辑器开着本图时执行 validate → 只读 diff。有本地新增或不同文件时报告尚未同步并返回失败；为保留 packages，不执行全工作区 `code push`。
+- `lua tools/cli.lua deploy`：将三端一级子树字节镜像到宿主目录（`robocopy /MIR`，镜像前打印将被删掉的宿主多余文件）；编辑器开着本图时执行 validate → 有差异时 `code push` → `code diff` 复核，push 后仍不一致才返回失败。
 - `lua tools/cli.lua sync`：将宿主目录的 `eggy.json`、API 存根、`data/` 回灌仓库。
-- `lua tools/cli.lua sync --packages`：在上述清单外追加三端官方包字节镜像，删除过期包文件，保留三端根现有 `README.md`；任一端源 packages 缺失或为空时整次同步在写入前失败。
-- 技能包预设命令见 `lua tools/cli.lua ability-presets --help`；验收脚本说明见 `tools/acceptance/README.md`。
+- `lua tools/cli.lua sync --packages`：在上述清单外追加三端 `packages/` 字节镜像，删除过期文件；任一端源 packages 缺失或为空时整次同步在写入前失败。该方向以宿主为准，回灌前先确认工作区已提交。
+- 官方包升级、聚合入口与编辑器预设依赖见 [官方包接入参考](../packages-reference.md)。技能包预设命令见 `lua tools/cli.lua ability-presets --help`；验收脚本说明见 `tools/acceptance/README.md`。
 - 质量入口为 `.\tools\quality\project.ps1`，安装、覆盖率、CRAP、DRY、差分 mutation 与复验步骤见 [tools/quality/README.md](../../tools/quality/README.md)；只出报告，不设指标门槛。
 - 单测放 `tests/native/`（slow 车道放 `tests/native/slow/`），共享夹具放 `tests/support/`，探针放 `tests/probes/`（手工探针，不入任何车道）。日常运行 `busted --run=fast`（等价 `default`），收尾运行 `busted --run=full`；车道由根目录 `.busted` 定义，共享初始化在 `tests/native/helper.lua`。Windows 专用案例在案例内判平台，非 Windows 时 `return pending(...)`，`--list` 行数因此跨平台不变。
   - 与「完成判据」表里 `0 pending` 的关系：那张表的 `0 pending` 是在 **Windows**（本轮目标平台）上取的数；非 Windows 下这些案例会以 pending 出现，判据相应放松为「除已知平台案例外 0 pending」。本轮 macOS **仅设计未实机**，没有实机数据。
@@ -24,7 +24,7 @@ Lua 命令使用 **Lua 5.4**，执行前用 `lua -v` 核对；验收脚本可用
 - **companion 后端是 Herdr（0.9.3，且只有它）**：旧 tmux/psmux 路径已退役，Linux/WSL 不提供 companion。companion ownership 记录在 `.uml-viewer/companion.edn`，必须显式记为 Herdr；旧记录或缺 backend 的记录会保留并拒绝接管，不要猜着重连。能力契约与验收边界见 uml-viewer 的 `docs/herdr-backend-contract.md`。
 - **重启 viewer 必须走协议**：往 `.uml-viewer/to-viewer.edn` 写 `:quit-for-restart` → 等旧 JVM 自然退出 → `.\uml.ps1 --restart`；新 JVM 按持久化记录重新 bind 原 pane，不新建 companion。**绝不 SIGKILL**，也不要绕开公开 wrapper 直接传 `--restart`。
 - 图上 `crap` / `mutate`：companion 消费邮箱命令后执行项目公开入口（即 `uml-quality.json` 声明的 `project.ps1 refresh-crap` / `project.ps1 mutation`）。每次调用前删掉上一条 `.uml-viewer/quality-result.json`，运行后核对刚等到的记录里 `version`、`operation`、`projectRoot`、实际退出码与 `validResult`；只有 `validResult` 为真才继续 IR 与显示。
-- 图上 `client|common|server` 为三棵树；`**/packages/**` 与 `server/_trigger/` 被 `:exclude` 排除，vendor 依赖显示为 `*.packages` 椭圆。viewer 从 `.metrics/crap.edn` 与 `.metrics/mutate/*.edn` 加载指标；缺少任一指标的类卡片为红色。Lua 指标安装、原生 Windows 适配与命令见 [tools/quality/README.md](../../tools/quality/README.md)。
+- 图上 `client|common|server` 为三棵树，只排除 `server/_trigger/`。viewer 从 `.metrics/crap.edn` 与 `.metrics/mutate/*.edn` 加载指标；缺少任一指标的类卡片为红色。Lua 指标安装、原生 Windows 适配与命令见 [tools/quality/README.md](../../tools/quality/README.md)。
 - **标准 quality 分发**：根目录 `uml-quality.json`（版本管理）声明图上 `crap` / `mutate` 转交哪个项目公开命令，终端与右键走同一实现；参数、退出码、锁与失败报告一致。改项目质量入口时同步核对这份声明，`project.ps1 doctor` 会先校验它。
 - `target/` 放覆盖率与 mutation worker，属于忽略的临时产物；`.metrics/` 保留质量快照并纳入版本管理。无函数定义的配置或转发模块不生成 mutation 快照；当前工具不测试模块顶层语句。
 - 根目录 `uml`、`uml.ps1` 由安装器拷贝，不要编辑；固定工具组合的安装与校验使用 [tools/quality/README.md](../../tools/quality/README.md) 的项目入口。
@@ -74,5 +74,5 @@ foreach ($t in 'uml-viewer','crapper','mutator') {
 
 ## 产物归属
 
-执行过程产物（调研全文、验证台账、验收记录、开发计划）贴进对应 issue 的评论；`docs/` 只留长期参考（术语、技术难点、vendor 说明、ADR）。`eggy-dev-plan` 默认的 `docs/plan/` 输出在本仓库改为 issue 评论。
+执行过程产物（调研全文、验证台账、验收记录、开发计划）贴进对应 issue 的评论；`docs/` 只留长期参考（术语、技术难点、ADR）。`eggy-dev-plan` 默认的 `docs/plan/` 输出在本仓库改为 issue 评论。
 

@@ -199,7 +199,6 @@ describe("TestSyncPackages", function()
       write_repo("eggy.json", "sentinel\n")
       for _, side in ipairs({ "server", "client", "common" }) do
         write_host(side .. "\\packages\\fixture\\api.lua", "-- 官方包\r\nreturn {}\r\n")
-        write_repo(side .. "\\packages\\README.md", "-- 保留说明\n")
         write_repo(side .. "\\packages\\old\\stale.lua", "-- 旧包\n")
       end
     end)
@@ -240,20 +239,10 @@ describe("TestSyncPackages", function()
     assert.is_true(shell.exists(FAKE_REPO .. "\\common\\packages\\old\\stale.lua"))
   end)
 
-  it("test_package_source_with_only_readme_is_rejected", function()
-    if not WINDOWS then return pending("test_package_source_with_only_readme_is_rejected: " .. SKIP) end
-    rmrf(HOST .. "\\common\\packages")
-    write_host("common\\packages\\README.md", "-- 空包说明\n")
-    out, code = run_sync("--packages")
-    assert.are.equal(1, code, out)
-    assert.are.equal("sentinel\n", slurp(FAKE_REPO .. "\\eggy.json"))
-  end)
-
-  it("test_packages_are_mirrored_as_bytes_and_readmes_are_preserved", function()
+  it("test_packages_are_mirrored_as_bytes", function()
     if not WINDOWS then
-      return pending("test_packages_are_mirrored_as_bytes_and_readmes_are_preserved: " .. SKIP)
+      return pending("test_packages_are_mirrored_as_bytes: " .. SKIP)
     end
-    write_host("server\\packages\\README.md", "-- 宿主说明\r\n")
     local again
     out, code = run_sync("--packages")
     assert.are.equal(0, code, out)
@@ -261,11 +250,65 @@ describe("TestSyncPackages", function()
       local rel = side .. "\\packages\\fixture\\api.lua"
       assert.are.equal(slurp(HOST .. "\\" .. rel), slurp(FAKE_REPO .. "\\" .. rel))
       assert.is_nil(slurp(FAKE_REPO .. "\\" .. side .. "\\packages\\old\\stale.lua"))
-      assert.are.equal("-- 保留说明\n", slurp(FAKE_REPO .. "\\" .. side .. "\\packages\\README.md"))
     end
     again, code = run_sync("--packages")
     assert.are.equal(0, code, again)
     assert.matches("0 写入, 0 删除,", again, 1, true)
+  end)
+
+  -- 根 README 也是官方包字节：既要接收新文件，也要覆盖已有内容，不能归一 CRLF / 裸 CR。
+  it("test_package_root_readmes_are_copied_and_overwritten_as_bytes", function()
+    if not WINDOWS then
+      return pending("test_package_root_readmes_are_copied_and_overwritten_as_bytes: " .. SKIP)
+    end
+    local body = "# 官方包\r\n保留原始行尾\r末行\r\n"
+    for _, side in ipairs({ "server", "client", "common" }) do
+      write_host(side .. "\\packages\\README.md", body)
+    end
+    write_repo("client\\packages\\README.md", "旧说明\n")
+    out, code = run_sync("--packages")
+    assert.are.equal(0, code, out)
+    for _, side in ipairs({ "server", "client", "common" }) do
+      assert.are.equal(body, slurp(FAKE_REPO .. "\\" .. side .. "\\packages\\README.md"))
+      assert.are.equal(body, slurp(HOST .. "\\" .. side .. "\\packages\\README.md"))
+    end
+    out, code = run_sync("--packages")
+    assert.are.equal(0, code, out)
+    assert.matches("0 写入, 0 删除,", out, 1, true)
+  end)
+
+  it("test_stale_package_root_readmes_are_deleted", function()
+    if not WINDOWS then return pending("test_stale_package_root_readmes_are_deleted: " .. SKIP) end
+    for _, side in ipairs({ "server", "client", "common" }) do
+      write_repo(side .. "\\packages\\README.md", "宿主已删除的说明\n")
+    end
+    out, code = run_sync("--packages")
+    assert.are.equal(0, code, out)
+    for _, side in ipairs({ "server", "client", "common" }) do
+      assert.is_nil(slurp(FAKE_REPO .. "\\" .. side .. "\\packages\\README.md"))
+      assert.matches("delete " .. side .. "/packages/README.md", out, 1, true)
+      assert.are.equal(slurp(HOST .. "\\" .. side .. "\\packages\\fixture\\api.lua"),
+        slurp(FAKE_REPO .. "\\" .. side .. "\\packages\\fixture\\api.lua"))
+    end
+  end)
+
+  -- 非空按文件树判断：只有根 README 的来源也合法，旧包内容应按镜像纪律删除。
+  it("test_readme_only_package_sources_are_accepted", function()
+    if not WINDOWS then return pending("test_readme_only_package_sources_are_accepted: " .. SKIP) end
+    local body = "# 仅说明的官方包\r\n"
+    for _, side in ipairs({ "server", "client", "common" }) do
+      rmrf(HOST .. "\\" .. side .. "\\packages")
+      write_host(side .. "\\packages\\README.md", body)
+      write_repo(side .. "\\packages\\fixture\\api.lua", "旧实现\n")
+    end
+    out, code = run_sync("--packages")
+    assert.are.equal(0, code, out)
+    assert.are.equal(slurp(HOST .. "\\eggy.json"):gsub("\r\n", "\n"), slurp(FAKE_REPO .. "\\eggy.json"))
+    for _, side in ipairs({ "server", "client", "common" }) do
+      assert.are.equal(body, slurp(FAKE_REPO .. "\\" .. side .. "\\packages\\README.md"))
+      assert.is_nil(slurp(FAKE_REPO .. "\\" .. side .. "\\packages\\fixture\\api.lua"))
+      assert.is_nil(slurp(FAKE_REPO .. "\\" .. side .. "\\packages\\old\\stale.lua"))
+    end
   end)
 
   it("test_packages_can_be_imported_into_absent_repo_tree", function()

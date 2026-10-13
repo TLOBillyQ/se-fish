@@ -1,8 +1,17 @@
 {:entries [
+  {:name "SubAbilityHandler.create", :namespace "server.packages.ability_system.sub_ability", :complexity 91, :coverage 0.6173, :crap 8219.5889}
+  {:name "SOfficialAiFeatureManager.imitate", :namespace "server.packages.official_ai_feature.official_ai_feature", :complexity 58, :coverage 1.0204, :crap 3320.0685}
   {:name "Screen:Render", :namespace "client.ScreenHandlers.ScreenCompendium", :complexity 29, :coverage 6.6667, :crap 712.7634}
   {:name "M.Attach", :namespace "server.AbilityBehaviors.melee_hit", :complexity 73, :coverage 58.9404, :crap 441.884}
+  {:name "SOfficialAiFeatureManager.nav", :namespace "server.packages.official_ai_feature.official_ai_feature", :complexity 20, :coverage 2.0833, :crap 395.5176}
+  {:name "SubAbilityHandler.removeChild", :namespace "server.packages.ability_system.sub_ability", :complexity 20, :coverage 2.9412, :crap 385.7335}
+  {:name "SModifierSystemManager:_bindClientRequests", :namespace "server.packages.modifier_system.modifier_system", :complexity 20, :coverage 5.0, :crap 362.95}
+  {:name "SOfficialAiFeatureManager.alert", :namespace "server.packages.official_ai_feature.official_ai_feature", :complexity 18, :coverage 2.439, :crap 318.8664}
   {:name "Screen:BuildNodes", :namespace "client.ScreenHandlers.ScreenCompendium", :complexity 18, :coverage 2.5641, :crap 317.7105}
+  {:name "SubAbilityPlugin.OnAbilityReady", :namespace "server.packages.ability_system.sub_ability_plugin", :complexity 20, :coverage 12.8205, :crap 285.0349}
+  {:name "SOfficialAiFeatureManager.follow", :namespace "server.packages.official_ai_feature.official_ai_feature", :complexity 15, :coverage 4.5455, :crap 210.6914}
   {:name "ScreenHandler:PickAim", :namespace "client.ScreenHandlers.ScreenMain", :complexity 13, :coverage 6.25, :crap 152.2517}
+  {:name "ModifierHandler:_applyAttrChanges", :namespace "server.packages.modifier_system.ModifierHandler", :complexity 23, :coverage 37.5, :crap 152.1504}
   {:name "ScreenHandler:Init", :namespace "client.ScreenHandlers.ScreenMain", :complexity 120, :coverage 87.9257, :crap 145.3483}
   {:name "Mgr:Operate", :namespace "server.Mgr.MgrPlayerData", :complexity 80, :coverage 79.8507, :crap 132.3552}
   {:name "Visual:Start", :namespace "client.LocalCastSource", :complexity 12, :coverage 5.8824, :crap 132.0536}
@@ -10,22 +19,32 @@
   {:name "LocalShop:Update", :namespace "client.LocalShop", :complexity 11, :coverage 5.0, :crap 114.7424}
   {:name "ScreenHandler:Init", :namespace "client.ScreenHandlers.ScreenLottery", :complexity 11, :coverage 5.2632, :crap 113.8825}
   {:name "Screen:Update", :namespace "client.ScreenHandlers.ScreenCompendium", :complexity 10, :coverage 7.1429, :crap 90.0655}
+  {:name "AbilityServerAPI.SwitchNextAbility", :namespace "server.packages.ability_system.api", :complexity 10, :coverage 7.1429, :crap 90.0655}
   {:name "_applyHitPower", :namespace "server.AbilityBehaviors.melee_hit", :complexity 10, :coverage 8.6957, :crap 86.1156}
   {:name "PlayerData:Migrate", :namespace "server.Data.PlayerData", :complexity 83, :coverage 95.7746, :crap 83.5197}
   {:name "LocalShop:CreateBubble", :namespace "client.LocalShop", :complexity 9, :coverage 2.8571, :crap 83.2537}
+  {:name "ModifierStack:_addLayer", :namespace "server.packages.modifier_system.ModifierStack", :complexity 9, :coverage 3.4483, :crap 81.9063}
+  {:name "AbilityServerAPI.RegisterEvents", :namespace "server.packages.ability_system.api", :complexity 12, :coverage 23.0769, :crap 77.544}
+  {:name "ModifierStack:_onLayerExpire", :namespace "server.packages.modifier_system.ModifierStack", :complexity 9, :coverage 5.5556, :crap 77.236}
+  {:name "SOfficialAiFeatureManager.searchEnemy", :namespace "server.packages.official_ai_feature.official_ai_feature", :complexity 44, :coverage 74.2424, :crap 77.0843}
   {:name "Mgr:Throw", :namespace "server.Mgr.MgrWeapon", :complexity 43, :coverage 73.6842, :crap 76.6966}
   {:name "AbilityAPI.AttachAnchor", :namespace "server.AbilityAPI", :complexity 9, :coverage 7.1429, :crap 73.853}
   {:name "ScreenHandler:ShowDialoguePage", :namespace "client.ScreenHandlers.ScreenMain", :complexity 9, :coverage 7.6923, :crap 72.7087}
+  {:name "getAttrRuleFunc", :namespace "server.packages.modifier_system.ModifierHandler", :complexity 8, :coverage 0.0, :crap 72.0}
   {:name "GameUI:FindChildUINode", :namespace "client.GameUI", :complexity 9, :coverage 9.0909, :crap 69.8565}
   {:name "Panel:SendState", :namespace "client.ScreenHandlers.ScreenGM", :complexity 19, :coverage 50.0, :crap 64.125}
   {:name "Mgr:OnDied", :namespace "server.Mgr.MgrFishUnit", :complexity 19, :coverage 50.0, :crap 64.125}
   {:name "Mgr:SelectedExplosive", :namespace "server.Mgr.MgrWeapon", :complexity 9, :coverage 12.5, :crap 63.2637}
   {:name "LocalGarBite:Show", :namespace "client.LocalGarBite", :complexity 39, :coverage 75.3846, :crap 61.6856}
+  {:name "AbilityServerAPI.SetAbilityToSlot", :namespace "server.packages.ability_system.api", :complexity 8, :coverage 5.8824, :crap 61.3571}
   {:name "Mgr:GrantGoods", :namespace "server.Mgr.MgrPlatform", :complexity 22, :coverage 56.8182, :crap 60.9715}
+  {:name "SModifierSystemManager:hasTag", :namespace "server.packages.modifier_system.modifier_system", :complexity 8, :coverage 6.25, :crap 60.7344}
   {:name "Panel:Build", :namespace "client.ScreenHandlers.ScreenGM", :complexity 59, :coverage 97.006, :crap 59.0934}
+  {:name "SModifierSystemManager:addStackCount", :namespace "server.packages.modifier_system.modifier_system", :complexity 8, :coverage 8.3333, :crap 57.2964}
   {:name "equip", :namespace "server.Mgr.MgrAbility", :complexity 7, :coverage 0.0, :crap 56.0}
   {:name "setUpPlayer", :namespace "server.Mgr.MgrAbility", :complexity 7, :coverage 0.0, :crap 56.0}
   {:name "PlayerData:ApplyGMPatch", :namespace "server.Data.PlayerData", :complexity 53, :coverage 97.9592, :crap 53.0239}
+  {:name "SModifierSystemManager:getModifierIdByKey", :namespace "server.packages.modifier_system.modifier_system", :complexity 8, :coverage 11.1111, :crap 52.9493}
   {:name "Mgr:Apply", :namespace "server.Mgr.MgrModifier", :complexity 39, :coverage 79.2453, :crap 52.5981}
   {:name "Mgr:UpdateShrimpCombat", :namespace "server.Mgr.MgrFishUnit", :complexity 52, :coverage 97.7011, :crap 52.0329}
   {:name "GameUI:CreateHPBar", :namespace "client.GameUI", :complexity 8, :coverage 12.5, :crap 50.875}
@@ -35,18 +54,38 @@
   {:name "FishCombatLabel:Apply", :namespace "client.FishCombatLabel", :complexity 7, :coverage 5.2632, :crap 48.6632}
   {:name "Mgr:UpdateBossPhase", :namespace "server.Mgr.MgrFishUnit", :complexity 46, :coverage 93.3333, :crap 46.627}
   {:name "Mgr:Release", :namespace "server.Mgr.MgrFishUnit", :complexity 46, :coverage 97.6744, :crap 46.0266}
+  {:name "SubAbilityHandler.addChild", :namespace "server.packages.ability_system.sub_ability", :complexity 7, :coverage 7.6923, :crap 45.5398}
   {:name "ScreenHandler:Show", :namespace "client.ScreenHandlers.ScreenMain", :complexity 44, :coverage 100.0, :crap 44.0}
+  {:name "SModifierSystemManager:getModifierKeyOfEntity", :namespace "server.packages.modifier_system.modifier_system", :complexity 7, :coverage 9.0909, :crap 43.8144}
   {:name "Mgr:UpdateFlying", :namespace "server.Mgr.MgrFishUnit", :complexity 29, :coverage 74.0, :crap 43.7814}
   {:name "Mgr:RequestStart", :namespace "server.Mgr.MgrGrill", :complexity 27, :coverage 72.0, :crap 43.003}
+  {:name "SModifierSystemManager:getModifierUnitsByType", :namespace "server.packages.modifier_system.modifier_system", :complexity 7, :coverage 10.0, :crap 42.721}
+  {:name "SModifierSystemManager:setStackCount", :namespace "server.packages.modifier_system.modifier_system", :complexity 7, :coverage 10.0, :crap 42.721}
+  {:name "_buildShuffledList", :namespace "server.packages.ability_system.sub_ability", :complexity 6, :coverage 0.0, :crap 42.0}
+  {:name "_nextShuffle", :namespace "server.packages.ability_system.sub_ability", :complexity 6, :coverage 0.0, :crap 42.0}
+  {:name "_waitHandlers", :namespace "server.packages.ability_system.sub_ability_plugin", :complexity 6, :coverage 0.0, :crap 42.0}
   {:name "Mgr:UpdateAquatic", :namespace "server.Mgr.MgrFishUnit", :complexity 40, :coverage 100.0, :crap 40.0}
+  {:name "SModifierSystemManager:getCharMtgByKey", :namespace "server.packages.modifier_system.modifier_system", :complexity 7, :coverage 12.5, :crap 39.8262}
+  {:name "SModifierSystemManager:getMaxStackCountByKey", :namespace "server.packages.modifier_system.modifier_system", :complexity 7, :coverage 12.5, :crap 39.8262}
+  {:name "SModifierSystemManager:getModifierDescByKey", :namespace "server.packages.modifier_system.modifier_system", :complexity 7, :coverage 12.5, :crap 39.8262}
+  {:name "SModifierSystemManager:getModifierIconByKey", :namespace "server.packages.modifier_system.modifier_system", :complexity 7, :coverage 12.5, :crap 39.8262}
+  {:name "SModifierSystemManager:getModifierNameByKey", :namespace "server.packages.modifier_system.modifier_system", :complexity 7, :coverage 12.5, :crap 39.8262}
+  {:name "SModifierSystemManager:getModifierTypeByKey", :namespace "server.packages.modifier_system.modifier_system", :complexity 7, :coverage 12.5, :crap 39.8262}
+  {:name "SModifierSystemManager:getStackCountByKey", :namespace "server.packages.modifier_system.modifier_system", :complexity 7, :coverage 12.5, :crap 39.8262}
+  {:name "SModifierSystemManager:isActiveByKey", :namespace "server.packages.modifier_system.modifier_system", :complexity 7, :coverage 12.5, :crap 39.8262}
+  {:name "SModifierSystemManager:isPausedByKey", :namespace "server.packages.modifier_system.modifier_system", :complexity 7, :coverage 12.5, :crap 39.8262}
   {:name "Mgr:PotionCount", :namespace "server.Mgr.MgrAbility", :complexity 7, :coverage 14.2857, :crap 37.8572}
   {:name "Mgr:UpdateCrabBossCombat", :namespace "server.Mgr.MgrFishUnit", :complexity 35, :coverage 91.3793, :crap 35.7848}
   {:name "FishCombatLabel:Project", :namespace "client.FishCombatLabel", :complexity 7, :coverage 16.6667, :crap 35.3564}
   {:name "Mgr:Handle", :namespace "server.Mgr.MgrFerry", :complexity 29, :coverage 80.5556, :crap 35.1827}
   {:name "Mgr:Execute", :namespace "server.Mgr.MgrSave", :complexity 35, :coverage 95.0, :crap 35.1531}
+  {:name "SOfficialAiFeatureManager.basicCommand", :namespace "server.packages.official_ai_feature.official_ai_feature", :complexity 8, :coverage 25.0, :crap 35.0}
   {:name "Mgr:Command", :namespace "server.Mgr.MgrAi", :complexity 25, :coverage 75.0, :crap 34.7656}
   {:name "Mgr:Update", :namespace "server.Mgr.MgrStory", :complexity 12, :coverage 46.1538, :crap 34.4816}
   {:name "Mgr:Start", :namespace "server.Mgr.MgrStory", :complexity 13, :coverage 50.0, :crap 34.125}
+  {:name "AbilityServerAPI.RemoveAbilityByKey", :namespace "server.packages.ability_system.api", :complexity 6, :coverage 8.3333, :crap 33.7292}
+  {:name "SModifierSystemManager:addDuration", :namespace "server.packages.modifier_system.modifier_system", :complexity 6, :coverage 8.3333, :crap 33.7292}
+  {:name "SModifierSystemManager:setRemainTime", :namespace "server.packages.modifier_system.modifier_system", :complexity 6, :coverage 8.3333, :crap 33.7292}
   {:name "Mgr:LoadInto", :namespace "server.Mgr.MgrSave", :complexity 33, :coverage 94.7368, :crap 33.1588}
   {:name "_createHitSfx", :namespace "server.AbilityBehaviors.melee_hit", :complexity 7, :coverage 20.0, :crap 32.088}
   {:name "MgrMap.MgrFishCarrier.DamageListener", :namespace "server.main", :complexity 7, :coverage 20.0, :crap 32.088}
@@ -54,8 +93,10 @@
   {:name "Mgr:UseAdrenaline", :namespace "server.Mgr.MgrSurvival", :complexity 31, :coverage 92.5, :crap 31.4054}
   {:name "Util:DesignNumber", :namespace "common.Util", :complexity 6, :coverage 11.1111, :crap 31.284}
   {:name "Mgr:UpdateOrcaCombat", :namespace "server.Mgr.MgrFishUnit", :complexity 30, :coverage 94.6429, :crap 30.1384}
+  {:name "AbilityRegistry.findGroupByChild", :namespace "common.packages.ability_system.registry", :complexity 6, :coverage 12.5, :crap 30.1172}
   {:name "updateLeap", :namespace "common.FlightPath", :complexity 5, :coverage 0.0, :crap 30.0}
   {:name "Mgr:TryRecover", :namespace "server.Mgr.MgrGrill", :complexity 28, :coverage 87.5, :crap 29.5312}
+  {:name "SModifierSystemManager:_registerModifierChild", :namespace "server.packages.modifier_system.modifier_system", :complexity 20, :coverage 71.4286, :crap 29.3294}
   {:name "Mgr:UpdateCombat", :namespace "server.Mgr.MgrFishUnit", :complexity 29, :coverage 94.4444, :crap 29.1442}
   {:name "Mgr:ApplyHit", :namespace "server.Mgr.MgrVitals", :complexity 29, :coverage 96.4286, :crap 29.0383}
   {:name "Mgr:Start", :namespace "server.Mgr.MgrPlayerData", :complexity 28, :coverage 93.617, :crap 28.2039}
@@ -74,6 +115,7 @@
   {:name "Mgr:CastFish", :namespace "server.Mgr.MgrAbility", :complexity 6, :coverage 20.0, :crap 24.432}
   {:name "M:Start", :namespace "client.LocalAttr", :complexity 5, :coverage 8.3333, :crap 24.2564}
   {:name "REUtil:CheckRECD", :namespace "common.REUtil", :complexity 5, :coverage 8.3333, :crap 24.2564}
+  {:name "AbilityRegistry.removeTag", :namespace "common.packages.ability_system.registry", :complexity 5, :coverage 8.3333, :crap 24.2564}
   {:name "Mgr:Update", :namespace "server.Mgr.MgrSurvival", :complexity 24, :coverage 93.1034, :crap 24.1889}
   {:name "M.Update", :namespace "common.BossPhase", :complexity 24, :coverage 100.0, :crap 24.0}
   {:name "Screen:ClearNodes", :namespace "client.ScreenHandlers.ScreenCompendium", :complexity 5, :coverage 9.0909, :crap 23.7829}
@@ -101,16 +143,22 @@
   {:name "Mgr:Depart", :namespace "server.Mgr.MgrFerry", :complexity 21, :coverage 100.0, :crap 21.0}
   {:name "Mgr:Update", :namespace "server.Mgr.MgrFishUnit", :complexity 21, :coverage 100.0, :crap 21.0}
   {:name "Mgr:AttackGun", :namespace "server.Mgr.MgrWeapon", :complexity 21, :coverage 100.0, :crap 21.0}
+  {:name "SOfficialAiFeatureManager.chaseTarget", :namespace "server.packages.official_ai_feature.official_ai_feature", :complexity 20, :coverage 87.5, :crap 20.7812}
   {:name "Mgr:PersistRead", :namespace "server.Mgr.MgrStory", :complexity 16, :coverage 73.8095, :crap 20.5991}
   {:name "Mgr:Drain", :namespace "server.Mgr.MgrCompendium", :complexity 20, :coverage 93.5484, :crap 20.1074}
   {:name "Mgr:UpdateState", :namespace "server.Mgr.MgrVitals", :complexity 20, :coverage 94.2857, :crap 20.0746}
   {:name "updateStarving", :namespace "client.ScreenHandlers.ScreenMain", :complexity 4, :coverage 0.0, :crap 20.0}
   {:name "warnStarving", :namespace "client.ScreenHandlers.ScreenMain", :complexity 4, :coverage 0.0, :crap 20.0}
+  {:name "bindDestroyingRevoke", :namespace "common.packages.attr_rule.AttrBuffUnit", :complexity 4, :coverage 0.0, :crap 20.0}
   {:name "Mgr:Cast", :namespace "server.Mgr.MgrCast", :complexity 20, :coverage 100.0, :crap 20.0}
+  {:name "_createChildScript", :namespace "server.packages.ability_system.sub_ability_plugin", :complexity 4, :coverage 0.0, :crap 20.0}
+  {:name "getAttrRuleAPI", :namespace "server.packages.modifier_system.ModifierHandler", :complexity 4, :coverage 0.0, :crap 20.0}
   {:name "chaseStep", :namespace "server.Mgr.MgrFishUnit", :complexity 12, :coverage 61.9048, :crap 19.9611}
   {:name "GameUI:ApplyTextColor", :namespace "client.GameUI", :complexity 5, :coverage 16.6667, :crap 19.4676}
+  {:name "AttrUnit.ApplyInitValues", :namespace "common.packages.attr_rule.AttrUnit", :complexity 5, :coverage 16.6667, :crap 19.4676}
   {:name "Mgr:Start", :namespace "server.Mgr.MgrCompendium", :complexity 5, :coverage 16.6667, :crap 19.4676}
   {:name "LocalShop:Start", :namespace "client.LocalShop", :complexity 14, :coverage 70.0, :crap 19.292}
+  {:name "addExistingAbility", :namespace "server.packages.ability_system.api", :complexity 9, :coverage 50.0, :crap 19.125}
   {:name "ScreenHandler:ShowCoin", :namespace "client.ScreenHandlers.ScreenMain", :complexity 6, :coverage 28.5714, :crap 19.1195}
   {:name "LocalAttackButton:SetEquipped", :namespace "client.LocalAttackButton", :complexity 19, :coverage 93.75, :crap 19.0881}
   {:name "Mgr:Settle", :namespace "server.Mgr.MgrLottery", :complexity 19, :coverage 95.0, :crap 19.0451}
@@ -133,6 +181,9 @@
   {:name "Mgr:Handle", :namespace "server.Mgr.MgrLottery", :complexity 18, :coverage 94.1176, :crap 18.0659}
   {:name "Mgr:UpdateSharkCombat", :namespace "server.Mgr.MgrFishUnit", :complexity 18, :coverage 100.0, :crap 18.0}
   {:name "Mgr:UpdateFlight", :namespace "server.Mgr.MgrSpecialItem", :complexity 18, :coverage 100.0, :crap 18.0}
+  {:name "AbilityUtils.getRemainingCD", :namespace "common.packages.ability_system.util", :complexity 5, :coverage 20.0, :crap 17.8}
+  {:name "ModifierHandler:_computeCharMtg", :namespace "server.packages.modifier_system.ModifierHandler", :complexity 7, :coverage 40.0, :crap 17.584}
+  {:name "AbilityBridge.doReact", :namespace "server.packages.official_ai_feature.ability_bridge", :complexity 8, :coverage 47.0588, :crap 17.4965}
   {:name "Mgr:Begin", :namespace "server.Mgr.MgrStory", :complexity 17, :coverage 90.9091, :crap 17.2171}
   {:name "validActionValue", :namespace "server.Mgr.MgrPlayerData", :complexity 14, :coverage 75.0, :crap 17.0625}
   {:name "PlayerData:MoveSlot", :namespace "server.Data.PlayerData", :complexity 17, :coverage 94.4444, :crap 17.0496}
@@ -141,13 +192,16 @@
   {:name "valid", :namespace "client.DamageFloat", :complexity 17, :coverage 100.0, :crap 17.0}
   {:name "QuestSteps.Restore", :namespace "common.QuestSteps", :complexity 17, :coverage 100.0, :crap 17.0}
   {:name "Mgr:BreathTick", :namespace "server.Mgr.MgrSpecialItem", :complexity 17, :coverage 100.0, :crap 17.0}
+  {:name "AbilityServerAPI.AddAbility", :namespace "server.packages.ability_system.api", :complexity 13, :coverage 71.875, :crap 16.7598}
   {:name "appendJob", :namespace "server.Mgr.MgrSave", :complexity 6, :coverage 33.3333, :crap 16.6667}
   {:name "AbilityAPI.AttachToSocket", :namespace "server.AbilityAPI", :complexity 12, :coverage 68.1818, :crap 16.6386}
   {:name "Mgr:GrabPlayer", :namespace "server.Mgr.MgrFishUnit", :complexity 16, :coverage 88.4615, :crap 16.3933}
   {:name "Screen:Create", :namespace "client.ScreenHandlers.ScreenCompendium", :complexity 4, :coverage 8.3333, :crap 16.3241}
+  {:name "SOfficialAiFeatureManager.moveDirection", :namespace "server.packages.official_ai_feature.official_ai_feature", :complexity 16, :coverage 89.6552, :crap 16.2834}
   {:name "Mgr:Update", :namespace "server.Mgr.MgrLoot", :complexity 16, :coverage 91.3043, :crap 16.1683}
   {:name "Mgr:Read", :namespace "server.Mgr.MgrRecords", :complexity 16, :coverage 91.6667, :crap 16.1481}
   {:name "Mgr:RequestTakeout", :namespace "server.Mgr.MgrGrill", :complexity 16, :coverage 92.1053, :crap 16.126}
+  {:name "AbilityBridge.castAtSlot", :namespace "server.packages.official_ai_feature.ability_bridge", :complexity 9, :coverage 55.5556, :crap 16.1111}
   {:name "Mgr:UpdateKingCrabCombat", :namespace "server.Mgr.MgrFishUnit", :complexity 16, :coverage 92.8571, :crap 16.0933}
   {:name "M:Refresh", :namespace "client.LocalAttr", :complexity 16, :coverage 100.0, :crap 16.0}
   {:name "Mgr:CastFish", :namespace "server.Mgr.MgrAi", :complexity 16, :coverage 100.0, :crap 16.0}
@@ -155,6 +209,10 @@
   {:name "Mgr:OnSignal", :namespace "server.Mgr.MgrStory", :complexity 16, :coverage 100.0, :crap 16.0}
   {:name "MgrMap.MgrSave.OnReady", :namespace "server.main", :complexity 16, :coverage 100.0, :crap 16.0}
   {:name "Mgr:FindAnchor", :namespace "server.Mgr.MgrGrill", :complexity 4, :coverage 10.0, :crap 15.664}
+  {:name "AbilityServerAPI.RemoveAbility", :namespace "server.packages.ability_system.api", :complexity 4, :coverage 10.0, :crap 15.664}
+  {:name "_readSubAbilityIds", :namespace "server.packages.ability_system.sub_ability_plugin", :complexity 7, :coverage 44.4444, :crap 15.4019}
+  {:name "AbilityUtils.sortByIndex", :namespace "common.packages.ability_system.util", :complexity 4, :coverage 11.1111, :crap 15.2373}
+  {:name "AbilityUtils.sortByLevel", :namespace "common.packages.ability_system.util", :complexity 4, :coverage 11.1111, :crap 15.2373}
   {:name "Visual:Show", :namespace "client.LocalCastSource", :complexity 15, :coverage 95.2381, :crap 15.0243}
   {:name "Mgr:Apply", :namespace "server.Mgr.MgrSpecialItem", :complexity 15, :coverage 97.5, :crap 15.0035}
   {:name "Screen:NoteState", :namespace "client.ScreenHandlers.ScreenCompendium", :complexity 15, :coverage 100.0, :crap 15.0}
@@ -169,8 +227,10 @@
   {:name "Mgr:ChooseTarget", :namespace "server.Mgr.MgrFishUnit", :complexity 15, :coverage 100.0, :crap 15.0}
   {:name "Mgr:TakeKilled", :namespace "server.Mgr.MgrFishUnit", :complexity 15, :coverage 100.0, :crap 15.0}
   {:name "Mgr:ReadExplicit", :namespace "server.Mgr.MgrSave", :complexity 15, :coverage 100.0, :crap 15.0}
+  {:name "SModifierSystemManager:_createModifier", :namespace "server.packages.modifier_system.modifier_system", :complexity 13, :coverage 77.4194, :crap 14.9458}
   {:name "MgrGameUI:GetScreen", :namespace "client.MgrGameUI", :complexity 10, :coverage 63.6364, :crap 14.8084}
   {:name "Mgr:Update", :namespace "server.Mgr.MgrPlatform", :complexity 7, :coverage 46.1538, :crap 14.65}
+  {:name "AbilityBridge.castByKey", :namespace "server.packages.official_ai_feature.ability_bridge", :complexity 7, :coverage 46.1538, :crap 14.65}
   {:name "Mgr:Exchange", :namespace "server.Mgr.MgrInteract", :complexity 14, :coverage 86.9565, :crap 14.4349}
   {:name "Mgr:Land", :namespace "server.Mgr.MgrCast", :complexity 14, :coverage 88.8889, :crap 14.2689}
   {:name "Mgr:RecordLanding", :namespace "server.Mgr.MgrCompendium", :complexity 14, :coverage 88.8889, :crap 14.2689}
@@ -191,10 +251,14 @@
   {:name "Mgr:FlightBounds", :namespace "server.Mgr.MgrFishUnit", :complexity 14, :coverage 100.0, :crap 14.0}
   {:name "ContinuePlayerRemoving", :namespace "server.main", :complexity 14, :coverage 100.0, :crap 14.0}
   {:name "Mgr:EquipFish", :namespace "server.Mgr.MgrAbility", :complexity 13, :coverage 83.3333, :crap 13.7824}
+  {:name "AttrBuffUnit.InitAttrBuffUnit", :namespace "common.packages.attr_rule.AttrBuffUnit", :complexity 6, :coverage 40.0, :crap 13.776}
+  {:name "ModifierHandler:setStackCount", :namespace "server.packages.modifier_system.ModifierHandler", :complexity 9, :coverage 61.1111, :crap 13.7639}
   {:name "PlayerData:ExchangeSlot", :namespace "server.Data.PlayerData", :complexity 10, :coverage 66.6667, :crap 13.7037}
   {:name "Mgr:Resolve", :namespace "server.Mgr.MgrModifier", :complexity 11, :coverage 72.7273, :crap 13.4545}
   {:name "GameUI:ApplyText", :namespace "client.GameUI", :complexity 4, :coverage 16.6667, :crap 13.2592}
   {:name "Screen:SetPage", :namespace "client.ScreenHandlers.ScreenCompendium", :complexity 4, :coverage 16.6667, :crap 13.2592}
+  {:name "AbilityRegistry.findManagerForPlayer", :namespace "common.packages.ability_system.registry", :complexity 4, :coverage 16.6667, :crap 13.2592}
+  {:name "AbilityServerAPI.GetAbilitiesFromIndexRange", :namespace "server.packages.ability_system.api", :complexity 4, :coverage 16.6667, :crap 13.2592}
   {:name "Mgr:Handle", :namespace "server.Mgr.MgrWeapon", :complexity 13, :coverage 93.3333, :crap 13.0501}
   {:name "Mgr:SettleDeath", :namespace "server.Mgr.MgrGrill", :complexity 13, :coverage 96.4286, :crap 13.0077}
   {:name "FishCombatLabel.Valid", :namespace "client.FishCombatLabel", :complexity 13, :coverage 100.0, :crap 13.0}
@@ -214,12 +278,17 @@
   {:name "Mgr:Update", :namespace "server.Mgr.MgrSpecialItem", :complexity 13, :coverage 100.0, :crap 13.0}
   {:name "Mgr:FlushBeforeLeave", :namespace "server.Mgr.MgrQuest", :complexity 10, :coverage 69.2308, :crap 12.9131}
   {:name "Mgr:CommitDrop", :namespace "server.Mgr.MgrLoot", :complexity 12, :coverage 83.3333, :crap 12.6667}
+  {:name "SOfficialAiFeatureManager.moveToPos", :namespace "server.packages.official_ai_feature.official_ai_feature", :complexity 12, :coverage 84.2105, :crap 12.5668}
   {:name "Mgr:Attack", :namespace "server.Mgr.MgrWeapon", :complexity 11, :coverage 76.9231, :crap 12.487}
   {:name "Panel:ShowSlots", :namespace "client.ScreenHandlers.ScreenGM", :complexity 12, :coverage 85.7143, :crap 12.4198}
   {:name "deliver", :namespace "server.Mgr.MgrInteract", :complexity 12, :coverage 85.7143, :crap 12.4198}
+  {:name "AttrUnit.AddAttrBuff", :namespace "common.packages.attr_rule.AttrUnit", :complexity 12, :coverage 86.2069, :crap 12.3779}
   {:name "MgrGameUI:StartGM", :namespace "client.MgrGameUI", :complexity 4, :coverage 20.0, :crap 12.192}
+  {:name "utils.normalized", :namespace "common.packages.official_ai_feature.utils", :complexity 6, :coverage 44.4444, :crap 12.1729}
+  {:name "ModifierStack.new", :namespace "server.packages.modifier_system.ModifierStack", :complexity 12, :coverage 90.0, :crap 12.144}
   {:name "Panel:Start", :namespace "client.ScreenHandlers.ScreenGM", :complexity 10, :coverage 72.2222, :crap 12.1434}
   {:name "Mgr:AdvanceWalrusCharge", :namespace "server.Mgr.MgrFishUnit", :complexity 12, :coverage 90.3226, :crap 12.1305}
+  {:name "AttrBuffUnit.SetTargetUnit", :namespace "common.packages.attr_rule.AttrBuffUnit", :complexity 10, :coverage 72.4138, :crap 12.0993}
   {:name "applyAnchorAttributes", :namespace "server.Mgr.MgrAbility", :complexity 8, :coverage 60.0, :crap 12.096}
   {:name "Mgr:UpdateChase", :namespace "server.Mgr.MgrFishUnit", :complexity 12, :coverage 94.1176, :crap 12.0293}
   {:name "Screen:ResultText", :namespace "client.ScreenHandlers.ScreenBlindbox", :complexity 12, :coverage 100.0, :crap 12.0}
@@ -253,6 +322,8 @@
   {:name "Mgr:EquippedWeapon", :namespace "server.Mgr.MgrWeapon", :complexity 12, :coverage 100.0, :crap 12.0}
   {:name "Mgr:ResolveTarget", :namespace "server.Mgr.MgrWeapon", :complexity 12, :coverage 100.0, :crap 12.0}
   {:name "HandleTimeUpdate", :namespace "server.main", :complexity 3, :coverage 0.0, :crap 12.0}
+  {:name "_nextRandom", :namespace "server.packages.ability_system.sub_ability", :complexity 3, :coverage 0.0, :crap 12.0}
+  {:name "ModifierStack:resumeTimers", :namespace "server.packages.modifier_system.ModifierStack", :complexity 5, :coverage 35.7143, :crap 11.6418}
   {:name "Mgr:SpawnBait", :namespace "server.Mgr.MgrLoot", :complexity 11, :coverage 85.0, :crap 11.4084}
   {:name "DamageFloat:Update", :namespace "client.DamageFloat", :complexity 9, :coverage 69.2308, :crap 11.3596}
   {:name "Mgr:TryRecover", :namespace "server.Mgr.MgrSurvival", :complexity 11, :coverage 87.5, :crap 11.2363}
@@ -279,12 +350,15 @@
   {:name "Mgr:Handle", :namespace "server.Mgr.MgrRecords", :complexity 11, :coverage 100.0, :crap 11.0}
   {:name "Mgr:CallHelp", :namespace "server.Mgr.MgrSurvival", :complexity 11, :coverage 100.0, :crap 11.0}
   {:name "Mgr:RefreshHeldDamage", :namespace "server.Mgr.MgrVitals", :complexity 11, :coverage 100.0, :crap 11.0}
+  {:name "AbilityBridge.findSlotByPrefab", :namespace "server.packages.official_ai_feature.ability_bridge", :complexity 9, :coverage 71.4286, :crap 10.8892}
   {:name "Mgr:Drop", :namespace "server.Mgr.MgrCast", :complexity 4, :coverage 25.0, :crap 10.75}
   {:name "Mgr:Sync", :namespace "server.Mgr.MgrAi", :complexity 10, :coverage 83.3333, :crap 10.463}
   {:name "Mgr:OnLifted", :namespace "server.Mgr.MgrFishUnit", :complexity 10, :coverage 83.3333, :crap 10.463}
   {:name "Panel:OnResult", :namespace "client.ScreenHandlers.ScreenSurvival", :complexity 10, :coverage 85.7143, :crap 10.2915}
   {:name "Mgr:NoteLanding", :namespace "server.Mgr.MgrRecords", :complexity 10, :coverage 85.7143, :crap 10.2915}
+  {:name "ModifierHandler:addStackCount", :namespace "server.packages.modifier_system.ModifierHandler", :complexity 10, :coverage 86.3636, :crap 10.2536}
   {:name "Mgr:UpdateWalrusCombat", :namespace "server.Mgr.MgrFishUnit", :complexity 10, :coverage 86.9565, :crap 10.2219}
+  {:name "AbilityRegistry.hasTag", :namespace "common.packages.ability_system.registry", :complexity 7, :coverage 60.0, :crap 10.136}
   {:name "Mgr:ResolveLifter", :namespace "server.Mgr.MgrFishUnit", :complexity 7, :coverage 60.0, :crap 10.136}
   {:name "Panel:UpdateFishPage", :namespace "client.ScreenHandlers.ScreenGM", :complexity 10, :coverage 100.0, :crap 10.0}
   {:name "BlindboxDraw.DrawMany", :namespace "common.BlindboxDraw", :complexity 10, :coverage 100.0, :crap 10.0}
@@ -310,8 +384,11 @@
   {:name "Mgr:Start", :namespace "server.Mgr.MgrSave", :complexity 9, :coverage 76.9231, :crap 9.9954}
   {:name "Mgr:BeforeLeave", :namespace "server.Mgr.MgrGrill", :complexity 9, :coverage 77.7778, :crap 9.8889}
   {:name "Mgr:OnPlayerAdded", :namespace "server.Mgr.MgrAbility", :complexity 3, :coverage 9.0909, :crap 9.7618}
+  {:name "AbilityUtils.newRandom", :namespace "common.packages.ability_system.util", :complexity 3, :coverage 10.0, :crap 9.561}
   {:name "FishCombatLabel:Refresh", :namespace "client.FishCombatLabel", :complexity 3, :coverage 11.1111, :crap 9.321}
   {:name "Util:SplitString", :namespace "common.Util", :complexity 3, :coverage 11.1111, :crap 9.321}
+  {:name "AbilityServerAPI.StopAbility", :namespace "server.packages.ability_system.api", :complexity 3, :coverage 11.1111, :crap 9.321}
+  {:name "ModifierStack:_applyTimeStrategy", :namespace "server.packages.modifier_system.ModifierStack", :complexity 5, :coverage 44.4444, :crap 9.2867}
   {:name "Mgr:UpdateEscaping", :namespace "server.Mgr.MgrFishUnit", :complexity 9, :coverage 86.3636, :crap 9.2054}
   {:name "Mgr:SaveExplicit", :namespace "server.Mgr.MgrSave", :complexity 9, :coverage 87.5, :crap 9.1582}
   {:name "Mgr:PickBlastFish", :namespace "server.Mgr.MgrWeapon", :complexity 9, :coverage 87.5, :crap 9.1582}
@@ -321,6 +398,9 @@
   {:name "Mgr:Board", :namespace "server.Mgr.MgrFerry", :complexity 9, :coverage 92.3077, :crap 9.0369}
   {:name "ScreenHandler:ShowResult", :namespace "client.ScreenHandlers.ScreenLottery", :complexity 9, :coverage 92.8571, :crap 9.0295}
   {:name "Util:MsgNotice", :namespace "common.Util", :complexity 3, :coverage 12.5, :crap 9.0293}
+  {:name "AbilityRegistry.list", :namespace "common.packages.ability_system.registry", :complexity 3, :coverage 12.5, :crap 9.0293}
+  {:name "AbilityServerAPI.AccumulateAbility", :namespace "server.packages.ability_system.api", :complexity 3, :coverage 12.5, :crap 9.0293}
+  {:name "AbilityServerAPI.GetAbility", :namespace "server.packages.ability_system.api", :complexity 3, :coverage 12.5, :crap 9.0293}
   {:name "Mgr:OnCarrierDied", :namespace "server.Mgr.MgrLoot", :complexity 9, :coverage 93.75, :crap 9.0198}
   {:name "Mgr:WallAhead", :namespace "server.Mgr.MgrFishUnit", :complexity 9, :coverage 94.1176, :crap 9.0165}
   {:name "Screen:FreeSlots", :namespace "client.ScreenHandlers.ScreenBlindbox", :complexity 9, :coverage 100.0, :crap 9.0}
@@ -356,16 +436,28 @@
   {:name "Mgr:ApplyRevive", :namespace "server.Mgr.MgrVitals", :complexity 9, :coverage 100.0, :crap 9.0}
   {:name "Mgr:Eat", :namespace "server.Mgr.MgrVitals", :complexity 9, :coverage 100.0, :crap 9.0}
   {:name "Mgr:SetHealth", :namespace "server.Mgr.MgrVitals", :complexity 9, :coverage 100.0, :crap 9.0}
+  {:name "ModifierHandler:_onDestroying", :namespace "server.packages.modifier_system.ModifierHandler", :complexity 8, :coverage 76.1905, :crap 8.8638}
   {:name "_isSelf", :namespace "server.AbilityBehaviors.melee_hit", :complexity 6, :coverage 57.1429, :crap 8.8338}
+  {:name "ModifierHandler:whenReobtain", :namespace "server.packages.modifier_system.ModifierHandler", :complexity 6, :coverage 57.1429, :crap 8.8338}
   {:name "Gesture:Move", :namespace "client.PressGesture", :complexity 4, :coverage 33.3333, :crap 8.7407}
+  {:name "ModifierHandler:_rollbackAttrChanges", :namespace "server.packages.modifier_system.ModifierHandler", :complexity 4, :coverage 33.3333, :crap 8.7407}
+  {:name "SModifierSystemManager:getDescOfEntity", :namespace "server.packages.modifier_system.modifier_system", :complexity 4, :coverage 33.3333, :crap 8.7407}
+  {:name "SModifierSystemManager:getIconOfEntity", :namespace "server.packages.modifier_system.modifier_system", :complexity 4, :coverage 33.3333, :crap 8.7407}
+  {:name "SModifierSystemManager:getMaxStackCountOfEntity", :namespace "server.packages.modifier_system.modifier_system", :complexity 4, :coverage 33.3333, :crap 8.7407}
+  {:name "SModifierSystemManager:getNameOfEntity", :namespace "server.packages.modifier_system.modifier_system", :complexity 4, :coverage 33.3333, :crap 8.7407}
+  {:name "SModifierSystemManager:getRemainTimeOfEntity", :namespace "server.packages.modifier_system.modifier_system", :complexity 4, :coverage 33.3333, :crap 8.7407}
+  {:name "SModifierSystemManager:getSourceOfEntity", :namespace "server.packages.modifier_system.modifier_system", :complexity 4, :coverage 33.3333, :crap 8.7407}
+  {:name "SModifierSystemManager:getStackCountOfEntity", :namespace "server.packages.modifier_system.modifier_system", :complexity 4, :coverage 33.3333, :crap 8.7407}
   {:name "Util:MarkPointPart", :namespace "common.Util", :complexity 3, :coverage 14.2857, :crap 8.6676}
   {:name "syncReceiver", :namespace "server.Mgr.MgrFishCarrier", :complexity 8, :coverage 78.5714, :crap 8.6297}
+  {:name "SModifierSystemManager:registerModifier", :namespace "server.packages.modifier_system.modifier_system", :complexity 8, :coverage 78.9474, :crap 8.5972}
   {:name "createAnchor", :namespace "server.Mgr.MgrAbility", :complexity 7, :coverage 68.75, :crap 8.4954}
   {:name "PlayerData:SelectWeapon", :namespace "server.Data.PlayerData", :complexity 7, :coverage 70.0, :crap 8.323}
   {:name "Mgr:Pause", :namespace "server.Mgr.MgrAi", :complexity 7, :coverage 70.0, :crap 8.323}
   {:name "Mgr:HandleAction", :namespace "server.Mgr.MgrPlatform", :complexity 8, :coverage 84.6154, :crap 8.233}
   {:name "FishCombatLabel:Drop", :namespace "client.FishCombatLabel", :complexity 3, :coverage 16.6667, :crap 8.2083}
   {:name "ScreenHandler:ThrowExplosive", :namespace "client.ScreenHandlers.ScreenMain", :complexity 3, :coverage 16.6667, :crap 8.2083}
+  {:name "ModifierHandler:_ensureEndTimeCovers", :namespace "server.packages.modifier_system.ModifierHandler", :complexity 3, :coverage 16.6667, :crap 8.2083}
   {:name "Mgr:FlightProfile", :namespace "server.Mgr.MgrFishUnit", :complexity 7, :coverage 71.4286, :crap 8.1429}
   {:name "_isHittable", :namespace "server.AbilityBehaviors.melee_hit", :complexity 5, :coverage 50.0, :crap 8.125}
   {:name "refreshSpeed", :namespace "server.Mgr.MgrSurvival", :complexity 5, :coverage 50.0, :crap 8.125}
@@ -374,6 +466,7 @@
   {:name "Util:WaitForChild", :namespace "common.Util", :complexity 6, :coverage 61.5385, :crap 8.0482}
   {:name "LotteryDraw.RollAxis", :namespace "common.LotteryDraw", :complexity 8, :coverage 90.9091, :crap 8.0481}
   {:name "ScreenHandler:BuildNodes", :namespace "client.ScreenHandlers.ScreenLottery", :complexity 8, :coverage 92.4528, :crap 8.0275}
+  {:name "AttrUnit.UpdateAttr", :namespace "common.packages.attr_rule.AttrUnit", :complexity 8, :coverage 96.1538, :crap 8.0036}
   {:name "Panel:Start", :namespace "client.ScreenHandlers.ScreenSurvival", :complexity 8, :coverage 96.3636, :crap 8.0031}
   {:name "DamageFloat:Project", :namespace "client.DamageFloat", :complexity 8, :coverage 100.0, :crap 8.0}
   {:name "LocalAttackButton:Tick", :namespace "client.LocalAttackButton", :complexity 8, :coverage 100.0, :crap 8.0}
@@ -414,11 +507,19 @@
   {:name "Mgr:BlastCandidates", :namespace "server.Mgr.MgrWeapon", :complexity 8, :coverage 100.0, :crap 8.0}
   {:name "Mgr:Detonate", :namespace "server.Mgr.MgrWeapon", :complexity 8, :coverage 100.0, :crap 8.0}
   {:name "LocalAttackButton:OnPressEnd", :namespace "client.LocalAttackButton", :complexity 7, :coverage 75.0, :crap 7.7656}
+  {:name "SModifierSystemManager:getRemainingTimeByKey", :namespace "server.packages.modifier_system.modifier_system", :complexity 7, :coverage 75.0, :crap 7.7656}
+  {:name "SModifierSystemManager:getSourceByKey", :namespace "server.packages.modifier_system.modifier_system", :complexity 7, :coverage 75.0, :crap 7.7656}
   {:name "Mgr:Start", :namespace "server.Mgr.MgrPlatform", :complexity 6, :coverage 64.2857, :crap 7.6399}
   {:name "ScreenFerry:CreateLeg", :namespace "client.ScreenHandlers.ScreenFerry", :complexity 7, :coverage 76.4706, :crap 7.6383}
   {:name "Visual:Stop", :namespace "client.LocalCastSource", :complexity 3, :coverage 20.0, :crap 7.608}
+  {:name "AbilityUtils.getFirstAvailableSlot", :namespace "common.packages.ability_system.util", :complexity 3, :coverage 20.0, :crap 7.608}
+  {:name "AttrRuleManager.getAttrIcon", :namespace "common.packages.attr_rule.AttrRuleManager", :complexity 3, :coverage 20.0, :crap 7.608}
   {:name "Mgr:Start", :namespace "server.Mgr.MgrFerry", :complexity 3, :coverage 20.0, :crap 7.608}
   {:name "Mgr:AddAttack", :namespace "server.Mgr.MgrGM", :complexity 3, :coverage 20.0, :crap 7.608}
+  {:name "SModifierSystemManager:getModifierTypeOfEntity", :namespace "server.packages.modifier_system.modifier_system", :complexity 3, :coverage 20.0, :crap 7.608}
+  {:name "SOfficialAiFeatureManager.lift", :namespace "server.packages.official_ai_feature.official_ai_feature", :complexity 3, :coverage 20.0, :crap 7.608}
+  {:name "SOfficialAiFeatureManager.roll", :namespace "server.packages.official_ai_feature.official_ai_feature", :complexity 3, :coverage 20.0, :crap 7.608}
+  {:name "SOfficialAiFeatureManager.rush", :namespace "server.packages.official_ai_feature.official_ai_feature", :complexity 3, :coverage 20.0, :crap 7.608}
   {:name "Mgr:OnAction", :namespace "server.Mgr.MgrSurvival", :complexity 7, :coverage 80.0, :crap 7.392}
   {:name "PlayerData:RestoreSlot", :namespace "server.Data.PlayerData", :complexity 6, :coverage 66.6667, :crap 7.3333}
   {:name "M.Attach", :namespace "server.AbilityBehaviors.eel_discharge", :complexity 7, :coverage 83.3333, :crap 7.2269}
@@ -427,6 +528,8 @@
   {:name "Mgr:MaxHealthOf", :namespace "server.Mgr.MgrVitals", :complexity 7, :coverage 83.3333, :crap 7.2269}
   {:name "Mgr:Teleport", :namespace "server.Mgr.MgrFerry", :complexity 7, :coverage 85.7143, :crap 7.1429}
   {:name "Mgr:RemoveFish", :namespace "server.Mgr.MgrAbility", :complexity 7, :coverage 87.5, :crap 7.0957}
+  {:name "SModifierSystemManager:getModifierHandlerByKey", :namespace "server.packages.modifier_system.modifier_system", :complexity 7, :coverage 87.5, :crap 7.0957}
+  {:name "SModifierSystemManager:getModifierHandlersByKey", :namespace "server.packages.modifier_system.modifier_system", :complexity 7, :coverage 88.8889, :crap 7.0672}
   {:name "LocalLottery:CreateBubble", :namespace "client.LocalLottery", :complexity 7, :coverage 89.6552, :crap 7.0542}
   {:name "Mgr:Despawn", :namespace "server.Mgr.MgrFishCarrier", :complexity 7, :coverage 93.3333, :crap 7.0145}
   {:name "LocalAttackButton:Start", :namespace "client.LocalAttackButton", :complexity 7, :coverage 100.0, :crap 7.0}
@@ -484,13 +587,23 @@
   {:name "Mgr:Reload", :namespace "server.Mgr.MgrWeapon", :complexity 7, :coverage 100.0, :crap 7.0}
   {:name "Screen:Init", :namespace "client.ScreenHandlers.ScreenCompendium", :complexity 3, :coverage 25.0, :crap 6.7969}
   {:name "Mgr:OnPlayerRemoving", :namespace "server.Mgr.MgrGrill", :complexity 3, :coverage 25.0, :crap 6.7969}
+  {:name "SModifierSystemManager:getModifierIdOfEntity", :namespace "server.packages.modifier_system.modifier_system", :complexity 3, :coverage 25.0, :crap 6.7969}
+  {:name "SOfficialAiFeatureManager.jump", :namespace "server.packages.official_ai_feature.official_ai_feature", :complexity 3, :coverage 25.0, :crap 6.7969}
   {:name "MgrGameUI:OpenScreen", :namespace "client.MgrGameUI", :complexity 5, :coverage 58.8235, :crap 6.7454}
   {:name "MgrGameUI:CloseScreen", :namespace "client.MgrGameUI", :complexity 5, :coverage 60.0, :crap 6.6}
+  {:name "SModifierSystemManager:getModifierByKey", :namespace "server.packages.modifier_system.modifier_system", :complexity 6, :coverage 75.0, :crap 6.5625}
+  {:name "AttrUnit.applyAttrConfig", :namespace "common.packages.attr_rule.AttrUnit", :complexity 5, :coverage 62.5, :crap 6.3184}
+  {:name "getManagerForUnit", :namespace "server.packages.ability_system.api", :complexity 5, :coverage 62.5, :crap 6.3184}
   {:name "ScreenHandler:ShowVitals", :namespace "client.ScreenHandlers.ScreenMain", :complexity 3, :coverage 28.5714, :crap 6.2799}
+  {:name "SAttrRuleManager.ensureAttrUnit", :namespace "server.packages.attr_rule.attr_rule", :complexity 6, :coverage 81.25, :crap 6.2373}
+  {:name "AttrUnit.InitAttrUnit", :namespace "common.packages.attr_rule.AttrUnit", :complexity 6, :coverage 81.8182, :crap 6.2164}
   {:name "ScreenFerry:ZoneName", :namespace "client.ScreenHandlers.ScreenFerry", :complexity 6, :coverage 85.7143, :crap 6.105}
   {:name "updateDive", :namespace "common.FlightPath", :complexity 6, :coverage 85.7143, :crap 6.105}
+  {:name "SModifierSystemManager:addStackCountOfEntity", :namespace "server.packages.modifier_system.modifier_system", :complexity 6, :coverage 85.7143, :crap 6.105}
   {:name "Mgr:CancelDrop", :namespace "server.Mgr.MgrLoot", :complexity 6, :coverage 88.8889, :crap 6.0494}
+  {:name "utils.findChildScriptByPrefabType", :namespace "common.packages.attr_rule.utils", :complexity 6, :coverage 90.0, :crap 6.036}
   {:name "PlayerData:ConsumeItemBarItem", :namespace "server.Data.PlayerData", :complexity 6, :coverage 90.9091, :crap 6.027}
+  {:name "SModifierSystemManager:addModifierToUnit", :namespace "server.packages.modifier_system.modifier_system", :complexity 6, :coverage 90.9091, :crap 6.027}
   {:name "Mgr:Start", :namespace "server.Mgr.MgrCast", :complexity 6, :coverage 91.6667, :crap 6.0208}
   {:name "LocalGarBite:Start", :namespace "client.LocalGarBite", :complexity 6, :coverage 92.8571, :crap 6.0131}
   {:name "Mgr:ApplyTemporary", :namespace "server.Mgr.MgrSave", :complexity 6, :coverage 92.8571, :crap 6.0131}
@@ -543,23 +656,35 @@
   {:name "characterHeight", :namespace "server.Mgr.MgrVitals", :complexity 6, :coverage 100.0, :crap 6.0}
   {:name "Mgr:Launch", :namespace "server.Mgr.MgrWeapon", :complexity 6, :coverage 100.0, :crap 6.0}
   {:name "HandlePlayerRemoving", :namespace "server.main", :complexity 6, :coverage 100.0, :crap 6.0}
+  {:name "ModifierHandler:_buildStackConfig", :namespace "server.packages.modifier_system.ModifierHandler", :complexity 6, :coverage 100.0, :crap 6.0}
+  {:name "AbilityRegistry.addTag", :namespace "common.packages.ability_system.registry", :complexity 5, :coverage 66.6667, :crap 5.9259}
+  {:name "ModifierHandler:canReobtain", :namespace "server.packages.modifier_system.ModifierHandler", :complexity 5, :coverage 66.6667, :crap 5.9259}
+  {:name "SModifierSystemManager:addTag", :namespace "server.packages.modifier_system.modifier_system", :complexity 5, :coverage 66.6667, :crap 5.9259}
   {:name "Mgr:Now", :namespace "server.Mgr.MgrAbility", :complexity 3, :coverage 33.3333, :crap 5.6667}
   {:name "Mgr:OnPlayerRemoving", :namespace "server.Mgr.MgrLoot", :complexity 3, :coverage 33.3333, :crap 5.6667}
   {:name "LocalLoot:Create", :namespace "client.LocalLoot", :complexity 5, :coverage 73.3333, :crap 5.4741}
   {:name "Mgr:PlayEat", :namespace "server.Mgr.MgrInteract", :complexity 5, :coverage 75.0, :crap 5.3906}
+  {:name "SModifierSystemManager:pause", :namespace "server.packages.modifier_system.modifier_system", :complexity 5, :coverage 75.0, :crap 5.3906}
+  {:name "SModifierSystemManager:resume", :namespace "server.packages.modifier_system.modifier_system", :complexity 5, :coverage 75.0, :crap 5.3906}
   {:name "PlayerData:CompleteLoad", :namespace "server.Data.PlayerData", :complexity 5, :coverage 77.7778, :crap 5.2743}
   {:name "advanceHeadMove", :namespace "server.Mgr.MgrFishUnit", :complexity 5, :coverage 77.7778, :crap 5.2743}
   {:name "Mgr:Finish", :namespace "server.Mgr.MgrSave", :complexity 5, :coverage 77.7778, :crap 5.2743}
   {:name "_safeScale", :namespace "server.AbilityBehaviors.melee_hit", :complexity 5, :coverage 80.0, :crap 5.2}
   {:name "Mgr:MeshOf", :namespace "server.Mgr.MgrLoot", :complexity 5, :coverage 80.0, :crap 5.2}
+  {:name "SModifierSystemManager:getModifierUnitsByKey", :namespace "server.packages.modifier_system.modifier_system", :complexity 5, :coverage 80.0, :crap 5.2}
+  {:name "SModifierSystemManager:setStackCountOfEntity", :namespace "server.packages.modifier_system.modifier_system", :complexity 5, :coverage 80.0, :crap 5.2}
+  {:name "ModifierStack:pauseTimers", :namespace "server.packages.modifier_system.ModifierStack", :complexity 3, :coverage 37.5, :crap 5.1973}
   {:name "DamageFloat:Clear", :namespace "client.DamageFloat", :complexity 5, :coverage 83.3333, :crap 5.1157}
+  {:name "AttrRuleManager.getAttrUnit", :namespace "common.packages.attr_rule.AttrRuleManager", :complexity 5, :coverage 83.3333, :crap 5.1157}
   {:name "createNode", :namespace "client.ScreenHandlers.ScreenLottery", :complexity 5, :coverage 85.7143, :crap 5.0729}
   {:name "ScreenHandler:OpenScreen", :namespace "client.ScreenHandlers.ScreenMain", :complexity 5, :coverage 85.7143, :crap 5.0729}
+  {:name "SModifierSystemManager:removeModifierWithLoss", :namespace "server.packages.modifier_system.modifier_system", :complexity 5, :coverage 85.7143, :crap 5.0729}
   {:name "Screen:Create", :namespace "client.ScreenHandlers.ScreenBlindbox", :complexity 5, :coverage 87.5, :crap 5.0488}
   {:name "Panel:Create", :namespace "client.ScreenHandlers.ScreenPlatform", :complexity 5, :coverage 87.5, :crap 5.0488}
   {:name "Mgr:Update", :namespace "server.Mgr.MgrWeapon", :complexity 5, :coverage 90.0, :crap 5.025}
   {:name "_getYaw", :namespace "server.AbilityBehaviors.melee_hit", :complexity 4, :coverage 60.0, :crap 5.024}
   {:name "Mgr:Spawn", :namespace "server.Mgr.MgrLoot", :complexity 5, :coverage 92.3077, :crap 5.0114}
+  {:name "ModifierHandler:onObtain", :namespace "server.packages.modifier_system.ModifierHandler", :complexity 5, :coverage 93.1034, :crap 5.0082}
   {:name "LocalAttackButton:Visible", :namespace "client.LocalAttackButton", :complexity 5, :coverage 100.0, :crap 5.0}
   {:name "LocalReelIn:SetSession", :namespace "client.LocalReelIn", :complexity 5, :coverage 100.0, :crap 5.0}
   {:name "Screen:Draw", :namespace "client.ScreenHandlers.ScreenBlindbox", :complexity 5, :coverage 100.0, :crap 5.0}
@@ -582,6 +707,8 @@
   {:name "Records.ValidUserId", :namespace "common.Records", :complexity 5, :coverage 100.0, :crap 5.0}
   {:name "Records.Wins", :namespace "common.Records", :complexity 5, :coverage 100.0, :crap 5.0}
   {:name "Vitals.Advance", :namespace "common.Vitals", :complexity 5, :coverage 100.0, :crap 5.0}
+  {:name "AttrUnit.applyControllerAttr", :namespace "common.packages.attr_rule.AttrUnit", :complexity 5, :coverage 100.0, :crap 5.0}
+  {:name "utils.computeFinalValue", :namespace "common.packages.attr_rule.utils", :complexity 5, :coverage 100.0, :crap 5.0}
   {:name "PlayerData:GrantItem", :namespace "server.Data.PlayerData", :complexity 5, :coverage 100.0, :crap 5.0}
   {:name "PlayerData:GrantWeapon", :namespace "server.Data.PlayerData", :complexity 5, :coverage 100.0, :crap 5.0}
   {:name "PlayerData:ItemBarItemCount", :namespace "server.Data.PlayerData", :complexity 5, :coverage 100.0, :crap 5.0}
@@ -629,37 +756,67 @@
   {:name "Mgr:OnPlayerAdded", :namespace "server.Mgr.MgrVitals", :complexity 5, :coverage 100.0, :crap 5.0}
   {:name "validAmount", :namespace "server.Mgr.MgrVitals", :complexity 5, :coverage 100.0, :crap 5.0}
   {:name "Mgr:CastGuard", :namespace "server.Mgr.MgrWeapon", :complexity 5, :coverage 100.0, :crap 5.0}
+  {:name "SModifierSystemManager:_clearAll", :namespace "server.packages.modifier_system.modifier_system", :complexity 5, :coverage 100.0, :crap 5.0}
   {:name "Screen:Start", :namespace "client.ScreenHandlers.ScreenCompendium", :complexity 2, :coverage 12.5, :crap 4.6797}
   {:name "ScreenHandler:ConsumeThrowClick", :namespace "client.ScreenHandlers.ScreenMain", :complexity 4, :coverage 66.6667, :crap 4.5926}
+  {:name "ModifierHandler:_rebuildTimerFromEndTime", :namespace "server.packages.modifier_system.ModifierHandler", :complexity 4, :coverage 66.6667, :crap 4.5926}
   {:name "GameUI:CreateSceneNode", :namespace "client.GameUI", :complexity 2, :coverage 14.2857, :crap 4.519}
+  {:name "AbilityEventDefs.createEventUnit", :namespace "common.packages.ability_system.event_defs", :complexity 2, :coverage 14.2857, :crap 4.519}
   {:name "Mgr:Query", :namespace "server.Mgr.MgrGrill", :complexity 2, :coverage 14.2857, :crap 4.519}
   {:name "Mgr:CancelFlow", :namespace "server.Mgr.MgrPlatform", :complexity 2, :coverage 14.2857, :crap 4.519}
+  {:name "BehaviorRuntime.moveTowards", :namespace "server.packages.official_ai_feature.behavior_runtime", :complexity 4, :coverage 69.2308, :crap 4.4661}
   {:name "LocalLoot:Start", :namespace "client.LocalLoot", :complexity 4, :coverage 71.4286, :crap 4.3732}
+  {:name "ModifierStack:_applyCountStrategy", :namespace "server.packages.modifier_system.ModifierStack", :complexity 4, :coverage 71.4286, :crap 4.3732}
+  {:name "SModifierSystemManager:hasModifier", :namespace "server.packages.modifier_system.modifier_system", :complexity 4, :coverage 71.4286, :crap 4.3732}
   {:name "MgrGameUI:SetControlUI", :namespace "client.MgrGameUI", :complexity 2, :coverage 16.6667, :crap 4.3148}
   {:name "Screen:Button", :namespace "client.ScreenHandlers.ScreenCompendium", :complexity 2, :coverage 16.6667, :crap 4.3148}
+  {:name "AbilityEventDefs.fireBefore", :namespace "common.packages.ability_system.event_defs", :complexity 2, :coverage 16.6667, :crap 4.3148}
   {:name "Mgr:Start", :namespace "server.Mgr.MgrLottery", :complexity 2, :coverage 16.6667, :crap 4.3148}
   {:name "engageOrChase", :namespace "server.Mgr.MgrFishUnit", :complexity 4, :coverage 75.0, :crap 4.25}
   {:name "Mgr:CastMelee", :namespace "server.Mgr.MgrWeapon", :complexity 4, :coverage 75.0, :crap 4.25}
   {:name "Mgr:MeleeIndex", :namespace "server.Mgr.MgrWeapon", :complexity 4, :coverage 75.0, :crap 4.25}
+  {:name "ModifierHandler:getRemainingTime", :namespace "server.packages.modifier_system.ModifierHandler", :complexity 4, :coverage 75.0, :crap 4.25}
+  {:name "SModifierSystemManager:removeModifierEntity", :namespace "server.packages.modifier_system.modifier_system", :complexity 4, :coverage 75.0, :crap 4.25}
   {:name "Mgr:OnPlayerRemoving", :namespace "server.Mgr.MgrAbility", :complexity 4, :coverage 77.7778, :crap 4.1756}
   {:name "readPosition", :namespace "server.Mgr.MgrFishCarrier", :complexity 4, :coverage 77.7778, :crap 4.1756}
   {:name "segmentDistanceSq", :namespace "server.Mgr.MgrFishUnit", :complexity 4, :coverage 77.7778, :crap 4.1756}
+  {:name "ModifierHandler:setRemainingTime", :namespace "server.packages.modifier_system.ModifierHandler", :complexity 4, :coverage 77.7778, :crap 4.1756}
   {:name "Aim:AttackPayload", :namespace "client.WeaponAim", :complexity 4, :coverage 80.0, :crap 4.128}
   {:name "Mgr:FindAnchor", :namespace "server.Mgr.MgrInteract", :complexity 4, :coverage 80.0, :crap 4.128}
   {:name "Mgr:Refund", :namespace "server.Mgr.MgrLoot", :complexity 4, :coverage 80.0, :crap 4.128}
+  {:name "ModifierHandler:_getListConf", :namespace "server.packages.modifier_system.ModifierHandler", :complexity 4, :coverage 80.0, :crap 4.128}
+  {:name "eventBridge.fireObtainBefore", :namespace "server.packages.modifier_system.event_bridge", :complexity 4, :coverage 80.0, :crap 4.128}
   {:name "zoneName", :namespace "common.NpcDialogue", :complexity 3, :coverage 50.0, :crap 4.125}
   {:name "Mgr:GetMeleeDamage", :namespace "server.Mgr.MgrGM", :complexity 3, :coverage 50.0, :crap 4.125}
   {:name "Mgr:Start", :namespace "server.Mgr.MgrQuest", :complexity 3, :coverage 50.0, :crap 4.125}
+  {:name "ModifierStack:destroy", :namespace "server.packages.modifier_system.ModifierStack", :complexity 3, :coverage 50.0, :crap 4.125}
+  {:name "SModifierSystemManager:addDurationOfEntity", :namespace "server.packages.modifier_system.modifier_system", :complexity 4, :coverage 83.3333, :crap 4.0741}
+  {:name "SModifierSystemManager:setRemainTimeOfEntity", :namespace "server.packages.modifier_system.modifier_system", :complexity 4, :coverage 83.3333, :crap 4.0741}
   {:name "Bubble.CreateButton", :namespace "client.InteractionBubble", :complexity 4, :coverage 85.1852, :crap 4.052}
   {:name "Util:GlobalMsgNotice", :namespace "common.Util", :complexity 2, :coverage 20.0, :crap 4.048}
   {:name "Util:PopNoticeConfirm", :namespace "common.Util", :complexity 2, :coverage 20.0, :crap 4.048}
+  {:name "AbilityEventDefs.createAbilitySignals", :namespace "common.packages.ability_system.event_defs", :complexity 2, :coverage 20.0, :crap 4.048}
+  {:name "AbilityEventDefs.createAnchorSignals", :namespace "common.packages.ability_system.event_defs", :complexity 2, :coverage 20.0, :crap 4.048}
+  {:name "AbilityEventDefs.createManagerSignals", :namespace "common.packages.ability_system.event_defs", :complexity 2, :coverage 20.0, :crap 4.048}
+  {:name "AbilityEventDefs.destroySignals", :namespace "common.packages.ability_system.event_defs", :complexity 2, :coverage 20.0, :crap 4.048}
+  {:name "AbilityRegistry.get", :namespace "common.packages.ability_system.registry", :complexity 2, :coverage 20.0, :crap 4.048}
+  {:name "AbilityUtils.getOccupiedCount", :namespace "common.packages.ability_system.util", :complexity 2, :coverage 20.0, :crap 4.048}
+  {:name "SOfficialAiFeatureManager.setSearchEnemyPriorityMode", :namespace "server.packages.official_ai_feature.official_ai_feature", :complexity 2, :coverage 20.0, :crap 4.048}
   {:name "rollGuaranteed", :namespace "common.BlindboxDraw", :complexity 4, :coverage 85.7143, :crap 4.0466}
   {:name "Mgr:SetHeading", :namespace "server.Mgr.MgrFishUnit", :complexity 4, :coverage 85.7143, :crap 4.0466}
+  {:name "ModifierHandler:extendDuration", :namespace "server.packages.modifier_system.ModifierHandler", :complexity 4, :coverage 85.7143, :crap 4.0466}
   {:name "rollWeighted", :namespace "common.BlindboxDraw", :complexity 4, :coverage 87.5, :crap 4.0312}
+  {:name "ModifierHandler:_syncAttrChangesToCount", :namespace "server.packages.modifier_system.ModifierHandler", :complexity 4, :coverage 87.5, :crap 4.0312}
+  {:name "BehaviorRuntime.isMoveBlocked", :namespace "server.packages.official_ai_feature.behavior_runtime", :complexity 4, :coverage 87.5, :crap 4.0312}
+  {:name "SOfficialAiFeatureManager.stopMove", :namespace "server.packages.official_ai_feature.official_ai_feature", :complexity 4, :coverage 87.5, :crap 4.0312}
   {:name "Mgr:GiveBait", :namespace "server.Mgr.MgrLoot", :complexity 4, :coverage 88.2353, :crap 4.0261}
   {:name "Mgr:SpawnBlastFish", :namespace "server.Mgr.MgrWeapon", :complexity 4, :coverage 88.2353, :crap 4.0261}
   {:name "Mgr:OnPlayerAdded", :namespace "server.Mgr.MgrModifier", :complexity 4, :coverage 88.8889, :crap 4.0219}
+  {:name "SModifierSystemManager:getModifierHandlers", :namespace "server.packages.modifier_system.modifier_system", :complexity 4, :coverage 88.8889, :crap 4.0219}
   {:name "Mgr:Start", :namespace "server.Mgr.MgrReelIn", :complexity 4, :coverage 90.9091, :crap 4.012}
+  {:name "AttrUnit.RemoveAttrBuff", :namespace "common.packages.attr_rule.AttrUnit", :complexity 4, :coverage 92.3077, :crap 4.0073}
+  {:name "SModifierSystemManager:removeModifierUnit", :namespace "server.packages.modifier_system.modifier_system", :complexity 4, :coverage 92.8571, :crap 4.0058}
+  {:name "ModifierHandler:resume", :namespace "server.packages.modifier_system.ModifierHandler", :complexity 4, :coverage 94.4444, :crap 4.0027}
   {:name "LocalAttackButton:SetOpen", :namespace "client.LocalAttackButton", :complexity 4, :coverage 100.0, :crap 4.0}
   {:name "M:Release", :namespace "client.LocalAttr", :complexity 4, :coverage 100.0, :crap 4.0}
   {:name "LocalGarBite:Stop", :namespace "client.LocalGarBite", :complexity 4, :coverage 100.0, :crap 4.0}
@@ -701,6 +858,8 @@
   {:name "Records.Unscale", :namespace "common.Records", :complexity 4, :coverage 100.0, :crap 4.0}
   {:name "M.CooldownRemaining", :namespace "common.SpecialItem", :complexity 4, :coverage 100.0, :crap 4.0}
   {:name "isBadNumber", :namespace "common.SpecialItem", :complexity 4, :coverage 100.0, :crap 4.0}
+  {:name "_unitKey", :namespace "common.packages.ability_system.registry", :complexity 4, :coverage 100.0, :crap 4.0}
+  {:name "AttrUnit.InitAttributes", :namespace "common.packages.attr_rule.AttrUnit", :complexity 4, :coverage 100.0, :crap 4.0}
   {:name "AbilityAPI.DetachFromSocket", :namespace "server.AbilityAPI", :complexity 4, :coverage 100.0, :crap 4.0}
   {:name "AbilityAPI.SetBodyScale", :namespace "server.AbilityAPI", :complexity 4, :coverage 100.0, :crap 4.0}
   {:name "swingClock", :namespace "server.AbilityAPI", :complexity 4, :coverage 100.0, :crap 4.0}
@@ -764,12 +923,23 @@
   {:name "healthOf", :namespace "server.Mgr.MgrVitals", :complexity 4, :coverage 100.0, :crap 4.0}
   {:name "isBadNumber", :namespace "server.Mgr.MgrVitals", :complexity 4, :coverage 100.0, :crap 4.0}
   {:name "isBadNumber", :namespace "server.Mgr.MgrWeapon", :complexity 4, :coverage 100.0, :crap 4.0}
+  {:name "SModifierSystemManager:_removeInstance", :namespace "server.packages.modifier_system.modifier_system", :complexity 4, :coverage 100.0, :crap 4.0}
+  {:name "SModifierSystemManager:getModifierOwnerOfEntity", :namespace "server.packages.modifier_system.modifier_system", :complexity 4, :coverage 100.0, :crap 4.0}
+  {:name "BehaviorRuntime.stopMode", :namespace "server.packages.official_ai_feature.behavior_runtime", :complexity 4, :coverage 100.0, :crap 4.0}
+  {:name "createState", :namespace "server.packages.official_ai_feature.behavior_runtime", :complexity 4, :coverage 100.0, :crap 4.0}
   {:name "LocalAttackButton:RequestReload", :namespace "client.LocalAttackButton", :complexity 2, :coverage 25.0, :crap 3.6875}
   {:name "LocalShop:Open", :namespace "client.LocalShop", :complexity 2, :coverage 25.0, :crap 3.6875}
   {:name "MgrGameUI:IsScreenOpen", :namespace "client.MgrGameUI", :complexity 2, :coverage 25.0, :crap 3.6875}
+  {:name "AbilityEventDefs.fireEvent", :namespace "common.packages.ability_system.event_defs", :complexity 2, :coverage 25.0, :crap 3.6875}
+  {:name "AbilityRegistry.register", :namespace "common.packages.ability_system.registry", :complexity 2, :coverage 25.0, :crap 3.6875}
+  {:name "AbilityUtils.isSlotValid", :namespace "common.packages.ability_system.util", :complexity 2, :coverage 25.0, :crap 3.6875}
+  {:name "AbilityUtils.nextSequential", :namespace "common.packages.ability_system.util", :complexity 2, :coverage 25.0, :crap 3.6875}
   {:name "Mgr:Start", :namespace "server.Mgr.MgrInteract", :complexity 2, :coverage 25.0, :crap 3.6875}
   {:name "Mgr:Start", :namespace "server.Mgr.MgrShop", :complexity 2, :coverage 25.0, :crap 3.6875}
   {:name "Mgr:StepVisual", :namespace "server.Mgr.MgrWeapon", :complexity 2, :coverage 25.0, :crap 3.6875}
+  {:name "eventBridge.setIntercept", :namespace "server.packages.modifier_system.event_bridge", :complexity 2, :coverage 25.0, :crap 3.6875}
+  {:name "SOfficialAiFeatureManager.castAbility", :namespace "server.packages.official_ai_feature.official_ai_feature", :complexity 2, :coverage 25.0, :crap 3.6875}
+  {:name "SOfficialAiFeatureManager.executeCareerSkill", :namespace "server.packages.official_ai_feature.official_ai_feature", :complexity 2, :coverage 25.0, :crap 3.6875}
   {:name "_getPosition", :namespace "server.AbilityBehaviors.melee_hit", :complexity 3, :coverage 60.0, :crap 3.576}
   {:name "GameStart", :namespace "server.main", :complexity 3, :coverage 60.0, :crap 3.576}
   {:name "FishCombatLabel:Clear", :namespace "client.FishCombatLabel", :complexity 3, :coverage 66.6667, :crap 3.3333}
@@ -779,12 +949,30 @@
   {:name "Mgr:Stop", :namespace "server.Mgr.MgrCompendium", :complexity 2, :coverage 33.3333, :crap 3.1852}
   {:name "Mgr:Now", :namespace "server.Mgr.MgrPlatform", :complexity 2, :coverage 33.3333, :crap 3.1852}
   {:name "phaseIndex", :namespace "common.BossPhase", :complexity 3, :coverage 75.0, :crap 3.1406}
+  {:name "AttrUnit.GetAttr", :namespace "common.packages.attr_rule.AttrUnit", :complexity 3, :coverage 75.0, :crap 3.1406}
+  {:name "AttrUnit.GetAttrComponent", :namespace "common.packages.attr_rule.AttrUnit", :complexity 3, :coverage 75.0, :crap 3.1406}
+  {:name "isValidAttrComponentType", :namespace "common.packages.attr_rule.enums", :complexity 3, :coverage 75.0, :crap 3.1406}
+  {:name "AbilityServerAPI.CastAbility", :namespace "server.packages.ability_system.api", :complexity 3, :coverage 75.0, :crap 3.1406}
+  {:name "SModifierSystemManager:getModifierHandlerByUnitId", :namespace "server.packages.modifier_system.modifier_system", :complexity 3, :coverage 75.0, :crap 3.1406}
   {:name "Panel:Start", :namespace "client.ScreenHandlers.ScreenPlatform", :complexity 3, :coverage 77.7778, :crap 3.0988}
+  {:name "_getTagsComp", :namespace "common.packages.ability_system.registry", :complexity 3, :coverage 80.0, :crap 3.072}
   {:name "Mgr:WriteHunger", :namespace "server.Mgr.MgrVitals", :complexity 3, :coverage 80.0, :crap 3.072}
   {:name "Mgr:CreateThrowVisual", :namespace "server.Mgr.MgrWeapon", :complexity 3, :coverage 80.0, :crap 3.072}
+  {:name "ModifierHandler:getModifierKey", :namespace "server.packages.modifier_system.ModifierHandler", :complexity 3, :coverage 80.0, :crap 3.072}
+  {:name "SModifierSystemManager:removeModifierByKey", :namespace "server.packages.modifier_system.modifier_system", :complexity 3, :coverage 80.0, :crap 3.072}
+  {:name "getTagsComponent", :namespace "server.packages.modifier_system.modifier_system", :complexity 3, :coverage 80.0, :crap 3.072}
   {:name "Screen:Start", :namespace "client.ScreenHandlers.ScreenBlindbox", :complexity 3, :coverage 81.8182, :crap 3.0541}
+  {:name "AttrBuffUnit.GetState", :namespace "common.packages.attr_rule.AttrBuffUnit", :complexity 3, :coverage 81.8182, :crap 3.0541}
+  {:name "SModifierSystemManager:_findHandler", :namespace "server.packages.modifier_system.modifier_system", :complexity 3, :coverage 83.3333, :crap 3.0417}
+  {:name "SOfficialAiFeatureManager.startAI", :namespace "server.packages.official_ai_feature.official_ai_feature", :complexity 3, :coverage 83.3333, :crap 3.0417}
   {:name "_getAreaTransform", :namespace "server.AbilityBehaviors.melee_hit", :complexity 3, :coverage 85.7143, :crap 3.0262}
+  {:name "SOfficialAiFeatureManager.stopAI", :namespace "server.packages.official_ai_feature.official_ai_feature", :complexity 3, :coverage 85.7143, :crap 3.0262}
+  {:name "ModifierHandler:_setupMaxDuration", :namespace "server.packages.modifier_system.ModifierHandler", :complexity 3, :coverage 87.5, :crap 3.0176}
+  {:name "SModifierSystemManager:getModifierUnits", :namespace "server.packages.modifier_system.modifier_system", :complexity 3, :coverage 87.5, :crap 3.0176}
   {:name "ScreenHandler:Start", :namespace "client.ScreenHandlers.ScreenLottery", :complexity 3, :coverage 90.0, :crap 3.009}
+  {:name "ModifierHandler:pause", :namespace "server.packages.modifier_system.ModifierHandler", :complexity 3, :coverage 90.9091, :crap 3.0068}
+  {:name "SModifierSystemManager:getOrCreateContainer", :namespace "server.packages.modifier_system.modifier_system", :complexity 3, :coverage 93.3333, :crap 3.0027}
+  {:name "ModifierHandler:onLoss", :namespace "server.packages.modifier_system.ModifierHandler", :complexity 3, :coverage 94.7368, :crap 3.0013}
   {:name "FishCombatLabel:Update", :namespace "client.FishCombatLabel", :complexity 3, :coverage 100.0, :crap 3.0}
   {:name "finite", :namespace "client.FishCombatLabel", :complexity 3, :coverage 100.0, :crap 3.0}
   {:name "LocalAttackButton:CanOperate", :namespace "client.LocalAttackButton", :complexity 3, :coverage 100.0, :crap 3.0}
@@ -842,6 +1030,8 @@
   {:name "Records.Holder", :namespace "common.Records", :complexity 3, :coverage 100.0, :crap 3.0}
   {:name "ReelDisplay:Value", :namespace "common.ReelDisplay", :complexity 3, :coverage 100.0, :crap 3.0}
   {:name "M.TickDamages", :namespace "common.SpecialItem", :complexity 3, :coverage 100.0, :crap 3.0}
+  {:name "AbilityRegistry.getManagerHandler", :namespace "common.packages.ability_system.registry", :complexity 3, :coverage 100.0, :crap 3.0}
+  {:name "eventDefs.getOrCreateEventUnit", :namespace "common.packages.modifier_system.event_defs", :complexity 3, :coverage 100.0, :crap 3.0}
   {:name "AbilityAPI.SetCastGuard", :namespace "server.AbilityAPI", :complexity 3, :coverage 100.0, :crap 3.0}
   {:name "AiAPI.HasActiveMove", :namespace "server.AiAPI", :complexity 3, :coverage 100.0, :crap 3.0}
   {:name "PlayerData:ApplyShopUpgrade", :namespace "server.Data.PlayerData", :complexity 3, :coverage 100.0, :crap 3.0}
@@ -913,12 +1103,41 @@
   {:name "Mgr:RefreshMag", :namespace "server.Mgr.MgrWeapon", :complexity 3, :coverage 100.0, :crap 3.0}
   {:name "Mgr:WaterZoneAt", :namespace "server.Mgr.MgrWeapon", :complexity 3, :coverage 100.0, :crap 3.0}
   {:name "invoke", :namespace "server.main", :complexity 3, :coverage 100.0, :crap 3.0}
+  {:name "ModifierHandler:_getScalarConf", :namespace "server.packages.modifier_system.ModifierHandler", :complexity 3, :coverage 100.0, :crap 3.0}
+  {:name "ModifierHandler:_notify", :namespace "server.packages.modifier_system.ModifierHandler", :complexity 3, :coverage 100.0, :crap 3.0}
+  {:name "ModifierHandler:_onDurationFinish", :namespace "server.packages.modifier_system.ModifierHandler", :complexity 3, :coverage 100.0, :crap 3.0}
+  {:name "ModifierStack:setStackCount", :namespace "server.packages.modifier_system.ModifierStack", :complexity 3, :coverage 100.0, :crap 3.0}
+  {:name "ClearUnitModifiers", :namespace "server.packages.modifier_system.api", :complexity 3, :coverage 100.0, :crap 3.0}
+  {:name "GetUnitModifiers", :namespace "server.packages.modifier_system.api", :complexity 3, :coverage 100.0, :crap 3.0}
+  {:name "BehaviorRuntime.startMode", :namespace "server.packages.official_ai_feature.behavior_runtime", :complexity 3, :coverage 100.0, :crap 3.0}
   {:name "Mgr:OpenAdrenalineShop", :namespace "server.Mgr.MgrPlatform", :complexity 2, :coverage 54.5455, :crap 2.3757}
+  {:name "getAttrBuffRecord", :namespace "common.packages.attr_rule.AttrUnit", :complexity 2, :coverage 66.6667, :crap 2.1481}
+  {:name "setControllerField", :namespace "common.packages.attr_rule.AttrUnit", :complexity 2, :coverage 66.6667, :crap 2.1481}
   {:name "_eulerDegToQuat", :namespace "server.AbilityBehaviors.melee_hit", :complexity 2, :coverage 66.6667, :crap 2.1481}
   {:name "Mgr:ApplyWeak", :namespace "server.Mgr.MgrSurvival", :complexity 2, :coverage 66.6667, :crap 2.1481}
+  {:name "AttrBuffUnit.GetTargetUnit", :namespace "common.packages.attr_rule.AttrBuffUnit", :complexity 2, :coverage 75.0, :crap 2.0625}
+  {:name "AttrUnit.GetTargetUnit", :namespace "common.packages.attr_rule.AttrUnit", :complexity 2, :coverage 75.0, :crap 2.0625}
+  {:name "AttrUnit.SetAttrComponent", :namespace "common.packages.attr_rule.AttrUnit", :complexity 2, :coverage 75.0, :crap 2.0625}
+  {:name "utils.isValidUnit", :namespace "common.packages.official_ai_feature.utils", :complexity 2, :coverage 75.0, :crap 2.0625}
   {:name "Mgr:Start", :namespace "server.Mgr.MgrBlindbox", :complexity 2, :coverage 75.0, :crap 2.0625}
+  {:name "SModifierSystemManager:getContainer", :namespace "server.packages.modifier_system.modifier_system", :complexity 2, :coverage 75.0, :crap 2.0625}
+  {:name "SModifierSystemManager:getModifierHandler", :namespace "server.packages.modifier_system.modifier_system", :complexity 2, :coverage 75.0, :crap 2.0625}
+  {:name "AbilityBridge.addAbilityToSlot", :namespace "server.packages.official_ai_feature.ability_bridge", :complexity 2, :coverage 75.0, :crap 2.0625}
+  {:name "SOfficialAiFeatureManager.addAbilityToSlot", :namespace "server.packages.official_ai_feature.official_ai_feature", :complexity 2, :coverage 75.0, :crap 2.0625}
+  {:name "SOfficialAiFeatureManager.castAbilityByKey", :namespace "server.packages.official_ai_feature.official_ai_feature", :complexity 2, :coverage 75.0, :crap 2.0625}
   {:name "ScreenHandler:EndAim", :namespace "client.ScreenHandlers.ScreenMain", :complexity 2, :coverage 80.0, :crap 2.032}
+  {:name "AttrRuleManager.getAttr", :namespace "common.packages.attr_rule.AttrRuleManager", :complexity 2, :coverage 80.0, :crap 2.032}
+  {:name "utils.getAttrComponentKey", :namespace "common.packages.attr_rule.utils", :complexity 2, :coverage 80.0, :crap 2.032}
   {:name "Mgr:SubscribeDied", :namespace "server.Mgr.MgrFishCarrier", :complexity 2, :coverage 80.0, :crap 2.032}
+  {:name "SAttrRuleManager.removeAttrBuff", :namespace "server.packages.attr_rule.attr_rule", :complexity 2, :coverage 80.0, :crap 2.032}
+  {:name "SModifierSystemManager:clearAllModifiers", :namespace "server.packages.modifier_system.modifier_system", :complexity 2, :coverage 80.0, :crap 2.032}
+  {:name "SOfficialAiFeatureManager.setMoveThreshold", :namespace "server.packages.official_ai_feature.official_ai_feature", :complexity 2, :coverage 80.0, :crap 2.032}
+  {:name "SOfficialAiFeatureManager.setSearchEnemyFocusTarget", :namespace "server.packages.official_ai_feature.official_ai_feature", :complexity 2, :coverage 80.0, :crap 2.032}
+  {:name "AbilityServerAPI.GetAbilities", :namespace "server.packages.ability_system.api", :complexity 2, :coverage 83.3333, :crap 2.0185}
+  {:name "SAttrRuleManager.addAttrBuff", :namespace "server.packages.attr_rule.attr_rule", :complexity 2, :coverage 83.3333, :crap 2.0185}
+  {:name "utils.horizontalDirection", :namespace "common.packages.official_ai_feature.utils", :complexity 2, :coverage 85.7143, :crap 2.0117}
+  {:name "AttrRuleManager.getAttrComponent", :namespace "common.packages.attr_rule.AttrRuleManager", :complexity 2, :coverage 87.5, :crap 2.0078}
+  {:name "SAttrRuleManager.setAttrComponent", :namespace "server.packages.attr_rule.attr_rule", :complexity 2, :coverage 90.0, :crap 2.004}
   {:name "DamageFloat:Bind", :namespace "client.DamageFloat", :complexity 2, :coverage 100.0, :crap 2.0}
   {:name "FishCombatLabel:Bind", :namespace "client.FishCombatLabel", :complexity 2, :coverage 100.0, :crap 2.0}
   {:name "GameUI:GetEuiManager", :namespace "client.GameUI", :complexity 2, :coverage 100.0, :crap 2.0}
@@ -979,6 +1198,14 @@
   {:name "ReelDisplay:Click", :namespace "common.ReelDisplay", :complexity 2, :coverage 100.0, :crap 2.0}
   {:name "ReelDisplay:PendingClicks", :namespace "common.ReelDisplay", :complexity 2, :coverage 100.0, :crap 2.0}
   {:name "M.Desired", :namespace "common.SpecialItem", :complexity 2, :coverage 100.0, :crap 2.0}
+  {:name "AbilityEventDefs.getRemote", :namespace "common.packages.ability_system.event_defs", :complexity 2, :coverage 100.0, :crap 2.0}
+  {:name "AbilityUtils._getServerTimeFn", :namespace "common.packages.ability_system.util", :complexity 1, :coverage 0.0, :crap 2.0}
+  {:name "allocAttrBuffId", :namespace "common.packages.attr_rule.AttrUnit", :complexity 2, :coverage 100.0, :crap 2.0}
+  {:name "ensureAttrBuffRecord", :namespace "common.packages.attr_rule.AttrUnit", :complexity 2, :coverage 100.0, :crap 2.0}
+  {:name "eventDefs.createManagerSignals", :namespace "common.packages.modifier_system.event_defs", :complexity 2, :coverage 100.0, :crap 2.0}
+  {:name "eventDefs.createModifierSignals", :namespace "common.packages.modifier_system.event_defs", :complexity 2, :coverage 100.0, :crap 2.0}
+  {:name "eventDefs.destroySignals", :namespace "common.packages.modifier_system.event_defs", :complexity 2, :coverage 100.0, :crap 2.0}
+  {:name "eventDefs.fireEvent", :namespace "common.packages.modifier_system.event_defs", :complexity 2, :coverage 100.0, :crap 2.0}
   {:name "AbilityAPI.AddCastGuard", :namespace "server.AbilityAPI", :complexity 2, :coverage 100.0, :crap 2.0}
   {:name "PlayerData:AddCoin", :namespace "server.Data.PlayerData", :complexity 2, :coverage 100.0, :crap 2.0}
   {:name "PlayerData:BackpackCapacity", :namespace "server.Data.PlayerData", :complexity 2, :coverage 100.0, :crap 2.0}
@@ -1053,18 +1280,57 @@
   {:name "Mgr:Start", :namespace "server.Mgr.MgrWeapon", :complexity 2, :coverage 100.0, :crap 2.0}
   {:name "Mgr:Vec3", :namespace "server.Mgr.MgrWeapon", :complexity 2, :coverage 100.0, :crap 2.0}
   {:name "HandlePlayerAdded", :namespace "server.main", :complexity 2, :coverage 100.0, :crap 2.0}
+  {:name "_nextSequential", :namespace "server.packages.ability_system.sub_ability", :complexity 1, :coverage 0.0, :crap 2.0}
+  {:name "GetAttrIcon", :namespace "server.packages.attr_rule.api", :complexity 1, :coverage 0.0, :crap 2.0}
+  {:name "InitAttrUnit", :namespace "server.packages.attr_rule.api", :complexity 1, :coverage 0.0, :crap 2.0}
+  {:name "ModifierHandler:_cancelRemoveTimer", :namespace "server.packages.modifier_system.ModifierHandler", :complexity 2, :coverage 100.0, :crap 2.0}
+  {:name "ModifierHandler:enableReobtain", :namespace "server.packages.modifier_system.ModifierHandler", :complexity 2, :coverage 100.0, :crap 2.0}
+  {:name "ModifierHandler:getMaxStackCount", :namespace "server.packages.modifier_system.ModifierHandler", :complexity 2, :coverage 100.0, :crap 2.0}
+  {:name "ModifierStack:whenReobtain", :namespace "server.packages.modifier_system.ModifierStack", :complexity 2, :coverage 100.0, :crap 2.0}
+  {:name "SetInterruptModifierObtain", :namespace "server.packages.modifier_system.api", :complexity 1, :coverage 0.0, :crap 2.0}
+  {:name "SModifierSystemManager:_ensureContainerEvents", :namespace "server.packages.modifier_system.modifier_system", :complexity 2, :coverage 100.0, :crap 2.0}
+  {:name "Alert", :namespace "server.packages.official_ai_feature.api", :complexity 1, :coverage 0.0, :crap 2.0}
+  {:name "CastAbility", :namespace "server.packages.official_ai_feature.api", :complexity 1, :coverage 0.0, :crap 2.0}
+  {:name "ExecuteCareerSkill", :namespace "server.packages.official_ai_feature.api", :complexity 1, :coverage 0.0, :crap 2.0}
+  {:name "Follow", :namespace "server.packages.official_ai_feature.api", :complexity 1, :coverage 0.0, :crap 2.0}
+  {:name "Imitate", :namespace "server.packages.official_ai_feature.api", :complexity 1, :coverage 0.0, :crap 2.0}
+  {:name "Jump", :namespace "server.packages.official_ai_feature.api", :complexity 1, :coverage 0.0, :crap 2.0}
+  {:name "Lift", :namespace "server.packages.official_ai_feature.api", :complexity 1, :coverage 0.0, :crap 2.0}
+  {:name "Nav", :namespace "server.packages.official_ai_feature.api", :complexity 1, :coverage 0.0, :crap 2.0}
+  {:name "Roll", :namespace "server.packages.official_ai_feature.api", :complexity 1, :coverage 0.0, :crap 2.0}
+  {:name "Rush", :namespace "server.packages.official_ai_feature.api", :complexity 1, :coverage 0.0, :crap 2.0}
+  {:name "SetSearchEnemyPriorityMode", :namespace "server.packages.official_ai_feature.api", :complexity 1, :coverage 0.0, :crap 2.0}
+  {:name "BehaviorRuntime.ensureState", :namespace "server.packages.official_ai_feature.behavior_runtime", :complexity 2, :coverage 100.0, :crap 2.0}
   {:name "Util:WeldTo", :namespace "common.Util", :complexity 1, :coverage 14.2857, :crap 1.6297}
   {:name "Screen:OpenScreen", :namespace "client.ScreenHandlers.ScreenCompendium", :complexity 1, :coverage 25.0, :crap 1.4219}
   {:name "ScreenHandler:OpenScreen", :namespace "client.ScreenHandlers.ScreenShop", :complexity 1, :coverage 25.0, :crap 1.4219}
+  {:name "AttrBuffUnit.InitState", :namespace "common.packages.attr_rule.AttrBuffUnit", :complexity 1, :coverage 25.0, :crap 1.4219}
   {:name "Mgr:Start", :namespace "server.Mgr.MgrAchievements", :complexity 1, :coverage 25.0, :crap 1.4219}
   {:name "Screen:CloseScreen", :namespace "client.ScreenHandlers.ScreenCompendium", :complexity 1, :coverage 33.3333, :crap 1.2963}
+  {:name "AbilityRegistry.clearTags", :namespace "common.packages.ability_system.registry", :complexity 1, :coverage 33.3333, :crap 1.2963}
   {:name "Mgr:Listen", :namespace "server.Mgr.MgrLoot", :complexity 1, :coverage 33.3333, :crap 1.2963}
+  {:name "SModifierSystemManager:setInterruptModifierObtain", :namespace "server.packages.modifier_system.modifier_system", :complexity 1, :coverage 33.3333, :crap 1.2963}
   {:name "MgrGameUI:HideLiftButton", :namespace "client.MgrGameUI", :complexity 1, :coverage 50.0, :crap 1.125}
   {:name "MgrGameUI:HideNativeHealth", :namespace "client.MgrGameUI", :complexity 1, :coverage 50.0, :crap 1.125}
   {:name "Screen:Label", :namespace "client.ScreenHandlers.ScreenCompendium", :complexity 1, :coverage 50.0, :crap 1.125}
   {:name "ScreenHandler:CloseScreen", :namespace "client.ScreenHandlers.ScreenShop", :complexity 1, :coverage 50.0, :crap 1.125}
   {:name "M.Winding", :namespace "common.BossPhase", :complexity 1, :coverage 50.0, :crap 1.125}
   {:name "QuestSteps.Done", :namespace "common.QuestSteps", :complexity 1, :coverage 50.0, :crap 1.125}
+  {:name "AbilityEventDefs.packServerPayload", :namespace "common.packages.ability_system.event_defs", :complexity 1, :coverage 50.0, :crap 1.125}
+  {:name "AbilityRegistry.findGroup", :namespace "common.packages.ability_system.registry", :complexity 1, :coverage 50.0, :crap 1.125}
+  {:name "AbilityRegistry.getAbilityHandler", :namespace "common.packages.ability_system.registry", :complexity 1, :coverage 50.0, :crap 1.125}
+  {:name "AbilityRegistry.registerAbility", :namespace "common.packages.ability_system.registry", :complexity 1, :coverage 50.0, :crap 1.125}
+  {:name "AbilityRegistry.registerDefinition", :namespace "common.packages.ability_system.registry", :complexity 1, :coverage 50.0, :crap 1.125}
+  {:name "AbilityRegistry.registerGroup", :namespace "common.packages.ability_system.registry", :complexity 1, :coverage 50.0, :crap 1.125}
+  {:name "AbilityRegistry.unitKeyOf", :namespace "common.packages.ability_system.registry", :complexity 1, :coverage 50.0, :crap 1.125}
+  {:name "AbilityRegistry.unregisterAbility", :namespace "common.packages.ability_system.registry", :complexity 1, :coverage 50.0, :crap 1.125}
+  {:name "AbilityRegistry.unregisterGroup", :namespace "common.packages.ability_system.registry", :complexity 1, :coverage 50.0, :crap 1.125}
+  {:name "AbilityRegistry.unregisterManager", :namespace "common.packages.ability_system.registry", :complexity 1, :coverage 50.0, :crap 1.125}
+  {:name "AbilityUtils.getServerTime", :namespace "common.packages.ability_system.util", :complexity 1, :coverage 50.0, :crap 1.125}
+  {:name "AbilityUtils.isSlotEmpty", :namespace "common.packages.ability_system.util", :complexity 1, :coverage 50.0, :crap 1.125}
+  {:name "AbilityUtils.setServerTimeFn", :namespace "common.packages.ability_system.util", :complexity 1, :coverage 50.0, :crap 1.125}
+  {:name "AttrRuleManager.getAttrBuffUnit", :namespace "common.packages.attr_rule.AttrRuleManager", :complexity 1, :coverage 50.0, :crap 1.125}
+  {:name "eventDefs.packClientPayload", :namespace "common.packages.modifier_system.event_defs", :complexity 1, :coverage 50.0, :crap 1.125}
   {:name "Mgr:ApplyBodyScale", :namespace "server.Mgr.MgrAbility", :complexity 1, :coverage 50.0, :crap 1.125}
   {:name "Mgr:OnlinePlayers", :namespace "server.Mgr.MgrFerry", :complexity 1, :coverage 50.0, :crap 1.125}
   {:name "Mgr:GetAttack", :namespace "server.Mgr.MgrGM", :complexity 1, :coverage 50.0, :crap 1.125}
@@ -1072,6 +1338,13 @@
   {:name "Mgr:Reply", :namespace "server.Mgr.MgrGM", :complexity 1, :coverage 50.0, :crap 1.125}
   {:name "Mgr:OnPlayerRemoving", :namespace "server.Mgr.MgrLottery", :complexity 1, :coverage 50.0, :crap 1.125}
   {:name "Mgr:OnPlayerRemoving", :namespace "server.Mgr.MgrWeapon", :complexity 1, :coverage 50.0, :crap 1.125}
+  {:name "AbilityServerAPI.GetAbilityByScript", :namespace "server.packages.ability_system.api", :complexity 1, :coverage 50.0, :crap 1.125}
+  {:name "ModifierHandler:getCharMtg", :namespace "server.packages.modifier_system.ModifierHandler", :complexity 1, :coverage 50.0, :crap 1.125}
+  {:name "ModifierHandler:isActive", :namespace "server.packages.modifier_system.ModifierHandler", :complexity 1, :coverage 50.0, :crap 1.125}
+  {:name "ModifierHandler:isPaused", :namespace "server.packages.modifier_system.ModifierHandler", :complexity 1, :coverage 50.0, :crap 1.125}
+  {:name "ModifierStack:getStackCount", :namespace "server.packages.modifier_system.ModifierStack", :complexity 1, :coverage 50.0, :crap 1.125}
+  {:name "ModifierStack:reduceStackCount", :namespace "server.packages.modifier_system.ModifierStack", :complexity 1, :coverage 50.0, :crap 1.125}
+  {:name "SModifierSystemManager:getMaxModifierCount", :namespace "server.packages.modifier_system.modifier_system", :complexity 1, :coverage 50.0, :crap 1.125}
   {:name "DamageFloat.DisplayAmount", :namespace "client.DamageFloat", :complexity 1, :coverage 100.0, :crap 1.0}
   {:name "cfg", :namespace "client.LocalGarBite", :complexity 1, :coverage 100.0, :crap 1.0}
   {:name "MgrGameUI:SetCustomControlUI", :namespace "client.MgrGameUI", :complexity 1, :coverage 100.0, :crap 1.0}
@@ -1141,6 +1414,14 @@
   {:name "M.NewBreathLedger", :namespace "common.SpecialItem", :complexity 1, :coverage 100.0, :crap 1.0}
   {:name "cfg", :namespace "common.SpecialItem", :complexity 1, :coverage 100.0, :crap 1.0}
   {:name "Vitals.Restore", :namespace "common.Vitals", :complexity 1, :coverage 100.0, :crap 1.0}
+  {:name "AbilityRegistry.getDefinition", :namespace "common.packages.ability_system.registry", :complexity 1, :coverage 100.0, :crap 1.0}
+  {:name "AbilityRegistry.registerManager", :namespace "common.packages.ability_system.registry", :complexity 1, :coverage 100.0, :crap 1.0}
+  {:name "AttrBuffUnit.FindAttrBuffUnitOf", :namespace "common.packages.attr_rule.AttrBuffUnit", :complexity 1, :coverage 100.0, :crap 1.0}
+  {:name "AttrRuleManager.getAllAttrConfigs", :namespace "common.packages.attr_rule.AttrRuleManager", :complexity 1, :coverage 100.0, :crap 1.0}
+  {:name "AttrRuleManager.getAttrConfig", :namespace "common.packages.attr_rule.AttrRuleManager", :complexity 1, :coverage 100.0, :crap 1.0}
+  {:name "AttrUnit.FindAttrUnitOf", :namespace "common.packages.attr_rule.AttrUnit", :complexity 1, :coverage 100.0, :crap 1.0}
+  {:name "eventDefs.packServerPayload", :namespace "common.packages.modifier_system.event_defs", :complexity 1, :coverage 100.0, :crap 1.0}
+  {:name "util.getServerTime", :namespace "common.packages.modifier_system.util", :complexity 1, :coverage 100.0, :crap 1.0}
   {:name "AbilityAPI.PeekSwing", :namespace "server.AbilityAPI", :complexity 1, :coverage 100.0, :crap 1.0}
   {:name "AbilityAPI.TakeSwing", :namespace "server.AbilityAPI", :complexity 1, :coverage 100.0, :crap 1.0}
   {:name "_rotateYaw", :namespace "server.AbilityBehaviors.melee_hit", :complexity 1, :coverage 100.0, :crap 1.0}
@@ -1247,24 +1528,232 @@
   {:name "MgrMap.MgrAttr.MoveMultiplierProvider", :namespace "server.main", :complexity 1, :coverage 100.0, :crap 1.0}
   {:name "MgrMap.MgrVitals.ActGuard", :namespace "server.main", :complexity 1, :coverage 100.0, :crap 1.0}
   {:name "MgrMap.MgrVitals.MaxHealthProvider", :namespace "server.main", :complexity 1, :coverage 100.0, :crap 1.0}
+  {:name "AddAttrBuff", :namespace "server.packages.attr_rule.api", :complexity 1, :coverage 100.0, :crap 1.0}
+  {:name "EnsureAttrUnit", :namespace "server.packages.attr_rule.api", :complexity 1, :coverage 100.0, :crap 1.0}
+  {:name "GetAllAttrConfigs", :namespace "server.packages.attr_rule.api", :complexity 1, :coverage 100.0, :crap 1.0}
+  {:name "GetAttr", :namespace "server.packages.attr_rule.api", :complexity 1, :coverage 100.0, :crap 1.0}
+  {:name "GetAttrBuffTargetUnit", :namespace "server.packages.attr_rule.api", :complexity 1, :coverage 100.0, :crap 1.0}
+  {:name "GetAttrBuffUnit", :namespace "server.packages.attr_rule.api", :complexity 1, :coverage 100.0, :crap 1.0}
+  {:name "GetAttrComponent", :namespace "server.packages.attr_rule.api", :complexity 1, :coverage 100.0, :crap 1.0}
+  {:name "GetAttrConfig", :namespace "server.packages.attr_rule.api", :complexity 1, :coverage 100.0, :crap 1.0}
+  {:name "GetAttrUnit", :namespace "server.packages.attr_rule.api", :complexity 1, :coverage 100.0, :crap 1.0}
+  {:name "InitAttrBuffUnit", :namespace "server.packages.attr_rule.api", :complexity 1, :coverage 100.0, :crap 1.0}
+  {:name "RemoveAttrBuff", :namespace "server.packages.attr_rule.api", :complexity 1, :coverage 100.0, :crap 1.0}
+  {:name "SetAttrBuffTargetUnit", :namespace "server.packages.attr_rule.api", :complexity 1, :coverage 100.0, :crap 1.0}
+  {:name "SetAttrComponent", :namespace "server.packages.attr_rule.api", :complexity 1, :coverage 100.0, :crap 1.0}
+  {:name "ModifierHandler.new", :namespace "server.packages.modifier_system.ModifierHandler", :complexity 1, :coverage 100.0, :crap 1.0}
+  {:name "ModifierHandler:_notifyRefresh", :namespace "server.packages.modifier_system.ModifierHandler", :complexity 1, :coverage 100.0, :crap 1.0}
+  {:name "ModifierHandler:_onStackCountChanged", :namespace "server.packages.modifier_system.ModifierHandler", :complexity 1, :coverage 100.0, :crap 1.0}
+  {:name "ModifierHandler:_setEndTime", :namespace "server.packages.modifier_system.ModifierHandler", :complexity 1, :coverage 100.0, :crap 1.0}
+  {:name "ModifierHandler:getDesc", :namespace "server.packages.modifier_system.ModifierHandler", :complexity 1, :coverage 100.0, :crap 1.0}
+  {:name "ModifierHandler:getEndTime", :namespace "server.packages.modifier_system.ModifierHandler", :complexity 1, :coverage 100.0, :crap 1.0}
+  {:name "ModifierHandler:getIcon", :namespace "server.packages.modifier_system.ModifierHandler", :complexity 1, :coverage 100.0, :crap 1.0}
+  {:name "ModifierHandler:getModifierType", :namespace "server.packages.modifier_system.ModifierHandler", :complexity 1, :coverage 100.0, :crap 1.0}
+  {:name "ModifierHandler:getName", :namespace "server.packages.modifier_system.ModifierHandler", :complexity 1, :coverage 100.0, :crap 1.0}
+  {:name "ModifierHandler:getOwner", :namespace "server.packages.modifier_system.ModifierHandler", :complexity 1, :coverage 100.0, :crap 1.0}
+  {:name "ModifierHandler:getSource", :namespace "server.packages.modifier_system.ModifierHandler", :complexity 1, :coverage 100.0, :crap 1.0}
+  {:name "ModifierHandler:getStackCount", :namespace "server.packages.modifier_system.ModifierHandler", :complexity 1, :coverage 100.0, :crap 1.0}
+  {:name "ModifierHandler:getUnit", :namespace "server.packages.modifier_system.ModifierHandler", :complexity 1, :coverage 100.0, :crap 1.0}
+  {:name "ModifierHandler:isSameSourceOnly", :namespace "server.packages.modifier_system.ModifierHandler", :complexity 1, :coverage 100.0, :crap 1.0}
+  {:name "ModifierHandler:isStackable", :namespace "server.packages.modifier_system.ModifierHandler", :complexity 1, :coverage 100.0, :crap 1.0}
+  {:name "ModifierHandler:setSource", :namespace "server.packages.modifier_system.ModifierHandler", :complexity 1, :coverage 100.0, :crap 1.0}
+  {:name "AddModifier", :namespace "server.packages.modifier_system.api", :complexity 1, :coverage 100.0, :crap 1.0}
+  {:name "AddModifierDurationByInstance", :namespace "server.packages.modifier_system.api", :complexity 1, :coverage 100.0, :crap 1.0}
+  {:name "AddModifierStackCount", :namespace "server.packages.modifier_system.api", :complexity 1, :coverage 100.0, :crap 1.0}
+  {:name "GetModifierOwner", :namespace "server.packages.modifier_system.api", :complexity 1, :coverage 100.0, :crap 1.0}
+  {:name "GetRemainingTimeByKey", :namespace "server.packages.modifier_system.api", :complexity 1, :coverage 100.0, :crap 1.0}
+  {:name "GetSourceByKey", :namespace "server.packages.modifier_system.api", :complexity 1, :coverage 100.0, :crap 1.0}
+  {:name "IsInModifier", :namespace "server.packages.modifier_system.api", :complexity 1, :coverage 100.0, :crap 1.0}
+  {:name "Pause", :namespace "server.packages.modifier_system.api", :complexity 1, :coverage 100.0, :crap 1.0}
+  {:name "RemoveModifier", :namespace "server.packages.modifier_system.api", :complexity 1, :coverage 100.0, :crap 1.0}
+  {:name "Resume", :namespace "server.packages.modifier_system.api", :complexity 1, :coverage 100.0, :crap 1.0}
+  {:name "SetModifierRemainTime", :namespace "server.packages.modifier_system.api", :complexity 1, :coverage 100.0, :crap 1.0}
+  {:name "SetModifierStackCount", :namespace "server.packages.modifier_system.api", :complexity 1, :coverage 100.0, :crap 1.0}
+  {:name "eventBridge.consumeIntercept", :namespace "server.packages.modifier_system.event_bridge", :complexity 1, :coverage 100.0, :crap 1.0}
+  {:name "SModifierSystemManager.new", :namespace "server.packages.modifier_system.modifier_system", :complexity 1, :coverage 100.0, :crap 1.0}
+  {:name "SModifierSystemManager:_addInstance", :namespace "server.packages.modifier_system.modifier_system", :complexity 1, :coverage 100.0, :crap 1.0}
+  {:name "SModifierSystemManager:clearPendingSourceOverride", :namespace "server.packages.modifier_system.modifier_system", :complexity 1, :coverage 100.0, :crap 1.0}
+  {:name "SModifierSystemManager:clearTags", :namespace "server.packages.modifier_system.modifier_system", :complexity 1, :coverage 100.0, :crap 1.0}
+  {:name "SModifierSystemManager:notifyClients", :namespace "server.packages.modifier_system.modifier_system", :complexity 1, :coverage 100.0, :crap 1.0}
+  {:name "SModifierSystemManager:registerModifierHandler", :namespace "server.packages.modifier_system.modifier_system", :complexity 1, :coverage 100.0, :crap 1.0}
+  {:name "SModifierSystemManager:unregisterModifierHandler", :namespace "server.packages.modifier_system.modifier_system", :complexity 1, :coverage 100.0, :crap 1.0}
+  {:name "AddAbilityToSlot", :namespace "server.packages.official_ai_feature.api", :complexity 1, :coverage 100.0, :crap 1.0}
+  {:name "BasicCommand", :namespace "server.packages.official_ai_feature.api", :complexity 1, :coverage 100.0, :crap 1.0}
+  {:name "CastAbilityByKey", :namespace "server.packages.official_ai_feature.api", :complexity 1, :coverage 100.0, :crap 1.0}
+  {:name "ChaseTarget", :namespace "server.packages.official_ai_feature.api", :complexity 1, :coverage 100.0, :crap 1.0}
+  {:name "MoveDirection", :namespace "server.packages.official_ai_feature.api", :complexity 1, :coverage 100.0, :crap 1.0}
+  {:name "MoveToPos", :namespace "server.packages.official_ai_feature.api", :complexity 1, :coverage 100.0, :crap 1.0}
+  {:name "SearchEnemy", :namespace "server.packages.official_ai_feature.api", :complexity 1, :coverage 100.0, :crap 1.0}
+  {:name "SetMoveThreshold", :namespace "server.packages.official_ai_feature.api", :complexity 1, :coverage 100.0, :crap 1.0}
+  {:name "SetSearchEnemyFocusTarget", :namespace "server.packages.official_ai_feature.api", :complexity 1, :coverage 100.0, :crap 1.0}
+  {:name "SetSearchEnemyPriorityValue", :namespace "server.packages.official_ai_feature.api", :complexity 1, :coverage 100.0, :crap 1.0}
+  {:name "StartAI", :namespace "server.packages.official_ai_feature.api", :complexity 1, :coverage 100.0, :crap 1.0}
+  {:name "StopAI", :namespace "server.packages.official_ai_feature.api", :complexity 1, :coverage 100.0, :crap 1.0}
+  {:name "StopMove", :namespace "server.packages.official_ai_feature.api", :complexity 1, :coverage 100.0, :crap 1.0}
+  {:name "BehaviorRuntime.getState", :namespace "server.packages.official_ai_feature.behavior_runtime", :complexity 1, :coverage 100.0, :crap 1.0}
+  {:name "SOfficialAiFeatureManager.setSearchEnemyPriorityValue", :namespace "server.packages.official_ai_feature.official_ai_feature", :complexity 1, :coverage 100.0, :crap 1.0}
+  {:name "AbilityItemLogic.Attach", :namespace "server.packages.ability_system.ability_logic", :complexity 146, :coverage nil, :crap nil}
+  {:name "ItemBoxLogic.Attach", :namespace "server.packages.ability_system.item_box.item_box_logic", :complexity 126, :coverage nil, :crap nil}
+  {:name "M.Attach", :namespace "server.packages.ability_system.anchors.bungee_cord", :complexity 74, :coverage nil, :crap nil}
+  {:name "M.attach", :namespace "client.packages.ability_system.ability_manager_local_script", :complexity 71, :coverage nil, :crap nil}
+  {:name "AbilityManagerLogic.Attach", :namespace "server.packages.ability_system.ability_manager_logic", :complexity 62, :coverage nil, :crap nil}
+  {:name "M.Attach", :namespace "server.packages.ability_system.anchors.melee_hit", :complexity 58, :coverage nil, :crap nil}
+  {:name "M.Attach", :namespace "server.packages.ability_system.anchors.create_bullet_to_castangle", :complexity 48, :coverage nil, :crap nil}
+  {:name "M.Attach", :namespace "server.packages.ability_system.anchors.create_landmine", :complexity 37, :coverage nil, :crap nil}
+  {:name "TargetFilter.getValidTargetsInRange", :namespace "common.packages.ability_system.target_filter", :complexity 31, :coverage nil, :crap nil}
+  {:name "TargetFilter.isValidTarget", :namespace "common.packages.ability_system.target_filter", :complexity 30, :coverage nil, :crap nil}
+  {:name "_create", :namespace "server.packages.ability_system.component_scripts.box_component_create", :complexity 30, :coverage nil, :crap nil}
+  {:name "CModifierSystemManager:_onServerPush", :namespace "client.packages.modifier_system.modifier_system", :complexity 29, :coverage nil, :crap nil}
+  {:name "UIManager.InjectHooks", :namespace "client.packages.ability_system.ui.UIManager", :complexity 27, :coverage nil, :crap nil}
+  {:name "UIManager:BindAbility", :namespace "client.packages.ability_system.ui.UIManager", :complexity 24, :coverage nil, :crap nil}
+  {:name "M.Attach", :namespace "server.packages.ability_system.anchors.create_teleportball", :complexity 24, :coverage nil, :crap nil}
+  {:name "AbilitySlot.UpdateChargeUI", :namespace "client.packages.ability_system.ui.nodes.AbilitySlot", :complexity 22, :coverage nil, :crap nil}
   {:name "LocalInteract:Start", :namespace "client.LocalInteract", :complexity 21, :coverage nil, :crap nil}
+  {:name "ReleaseStrategy:OnTouchEnd", :namespace "client.packages.ability_system.strategy.ReleaseStrategy", :complexity 21, :coverage nil, :crap nil}
+  {:name "M.Attach", :namespace "server.packages.ability_system.anchors.gravity_change", :complexity 21, :coverage nil, :crap nil}
+  {:name "M.Attach", :namespace "server.packages.ability_system.anchors.play_body_animation", :complexity 20, :coverage nil, :crap nil}
+  {:name "M.Attach", :namespace "server.packages.ability_system.anchors.add_bind_diy_model", :complexity 19, :coverage nil, :crap nil}
+  {:name "M.Attach", :namespace "server.packages.ability_system.anchors.play_sfx", :complexity 18, :coverage nil, :crap nil}
+  {:name "CirclePointer:Refresh", :namespace "client.packages.ability_system.pointer.CirclePointer", :complexity 17, :coverage nil, :crap nil}
+  {:name "CModifierSystemManager:_bindModifier", :namespace "client.packages.modifier_system.modifier_system", :complexity 17, :coverage nil, :crap nil}
+  {:name "AnchorLogic.Attach", :namespace "server.packages.ability_system.anchor_logic", :complexity 17, :coverage nil, :crap nil}
+  {:name "_boom", :namespace "server.packages.ability_system.anchors.create_bullet_to_castangle", :complexity 17, :coverage nil, :crap nil}
+  {:name "M.Attach", :namespace "server.packages.ability_system.anchors.speed_add", :complexity 17, :coverage nil, :crap nil}
+  {:name "resolveEntityRoute", :namespace "client.packages.modifier_system.api", :complexity 15, :coverage nil, :crap nil}
+  {:name "AbilityPointer:Create", :namespace "client.packages.ability_system.pointer.AbilityPointer", :complexity 14, :coverage nil, :crap nil}
+  {:name "EuiAdapter.FindFirstChild", :namespace "client.packages.ability_system.ui.eui_adapter", :complexity 14, :coverage nil, :crap nil}
+  {:name "playSound", :namespace "client.packages.modifier_system.performance", :complexity 14, :coverage nil, :crap nil}
   {:name "Panel:OnResult", :namespace "client.ScreenHandlers.ScreenGrill", :complexity 13, :coverage nil, :crap nil}
+  {:name "AbilityPointer:UpdateTransforms", :namespace "client.packages.ability_system.pointer.AbilityPointer", :complexity 13, :coverage nil, :crap nil}
+  {:name "ClientModifierHandler.new", :namespace "client.packages.modifier_system.ClientModifierHandler", :complexity 13, :coverage nil, :crap nil}
+  {:name "playEffect", :namespace "client.packages.modifier_system.performance", :complexity 13, :coverage nil, :crap nil}
+  {:name "AbilityPointer:GetReleasePoint", :namespace "client.packages.ability_system.pointer.AbilityPointer", :complexity 12, :coverage nil, :crap nil}
+  {:name "M.Attach", :namespace "server.packages.ability_system.anchors.create_obstacle", :complexity 12, :coverage nil, :crap nil}
   {:name "LocalInteract:Create", :namespace "client.LocalInteract", :complexity 11, :coverage nil, :crap nil}
+  {:name "AbilityClientAPI.StartClientLifecycle", :namespace "client.packages.ability_system.api", :complexity 11, :coverage nil, :crap nil}
+  {:name "TwoStageStrategy:OnSceneClick", :namespace "client.packages.ability_system.strategy.TwoStageStrategy", :complexity 11, :coverage nil, :crap nil}
+  {:name "SceneInput.Connect", :namespace "client.packages.ability_system.ui.scene_input", :complexity 11, :coverage nil, :crap nil}
+  {:name "Controller:Destroy", :namespace "client.packages.ability_system.ui.Controller", :complexity 10, :coverage nil, :crap nil}
+  {:name "M.Attach", :namespace "server.packages.ability_system.anchors.cast_face_target", :complexity 10, :coverage nil, :crap nil}
+  {:name "_applyHitPower", :namespace "server.packages.ability_system.anchors.melee_hit", :complexity 10, :coverage nil, :crap nil}
   {:name "Panel:Tick", :namespace "client.ScreenHandlers.ScreenGrill", :complexity 9, :coverage nil, :crap nil}
+  {:name "ClientModifierHandler:_resolveOwner", :namespace "client.packages.modifier_system.ClientModifierHandler", :complexity 9, :coverage nil, :crap nil}
+  {:name "CModifierSystemManager:getRemainingTimeByKey", :namespace "client.packages.modifier_system.modifier_system", :complexity 9, :coverage nil, :crap nil}
+  {:name "performance.play", :namespace "client.packages.modifier_system.performance", :complexity 9, :coverage nil, :crap nil}
+  {:name "M.Attach", :namespace "server.packages.ability_system.anchors.play_vfx", :complexity 9, :coverage nil, :crap nil}
+  {:name "_vec", :namespace "server.packages.ability_system.component_scripts.box_component_create", :complexity 9, :coverage nil, :crap nil}
+  {:name "tryConnect", :namespace "server.packages.ability_system.component_scripts.box_component_create", :complexity 9, :coverage nil, :crap nil}
+  {:name "AbilityPointer:Clear", :namespace "client.packages.ability_system.pointer.AbilityPointer", :complexity 8, :coverage nil, :crap nil}
+  {:name "Controller:_onTouchMoved", :namespace "client.packages.ability_system.ui.Controller", :complexity 8, :coverage nil, :crap nil}
+  {:name "UIManager:_RunRetryLoop", :namespace "client.packages.ability_system.ui.UIManager", :complexity 8, :coverage nil, :crap nil}
+  {:name "AbilitySlot.InitChargeUI", :namespace "client.packages.ability_system.ui.nodes.AbilitySlot", :complexity 8, :coverage nil, :crap nil}
+  {:name "CModifierSystemManager:getModifierUnitsByKey", :namespace "client.packages.modifier_system.modifier_system", :complexity 8, :coverage nil, :crap nil}
+  {:name "CModifierSystemManager:hasTag", :namespace "client.packages.modifier_system.modifier_system", :complexity 8, :coverage nil, :crap nil}
+  {:name "_rot", :namespace "server.packages.ability_system.component_scripts.box_component_create", :complexity 8, :coverage nil, :crap nil}
   {:name "LocalInteract:Update", :namespace "client.LocalInteract", :complexity 7, :coverage nil, :crap nil}
   {:name "Panel:BuildPanel", :namespace "client.ScreenHandlers.ScreenGrill", :complexity 7, :coverage nil, :crap nil}
   {:name "Panel:CreateBubble", :namespace "client.ScreenHandlers.ScreenGrill", :complexity 7, :coverage nil, :crap nil}
   {:name "Panel:UpdateBubbles", :namespace "client.ScreenHandlers.ScreenGrill", :complexity 7, :coverage nil, :crap nil}
+  {:name "M.attach", :namespace "client.packages.ability_system.ability_local_script", :complexity 7, :coverage nil, :crap nil}
+  {:name "AbilityPointer:UpdateEffect", :namespace "client.packages.ability_system.pointer.AbilityPointer", :complexity 7, :coverage nil, :crap nil}
+  {:name "CirclePointer:UpdateEffect", :namespace "client.packages.ability_system.pointer.CirclePointer", :complexity 7, :coverage nil, :crap nil}
+  {:name "ReleaseStrategy:OnTouchMove", :namespace "client.packages.ability_system.strategy.ReleaseStrategy", :complexity 7, :coverage nil, :crap nil}
+  {:name "Controller:OnInCDChange", :namespace "client.packages.ability_system.ui.Controller", :complexity 7, :coverage nil, :crap nil}
+  {:name "EuiAdapter.GetVisible", :namespace "client.packages.ability_system.ui.eui_adapter", :complexity 7, :coverage nil, :crap nil}
+  {:name "AbilitySlot.Attach", :namespace "client.packages.ability_system.ui.nodes.AbilitySlot", :complexity 7, :coverage nil, :crap nil}
+  {:name "AbilitySlot.InitChargeData", :namespace "client.packages.ability_system.ui.nodes.AbilitySlot", :complexity 7, :coverage nil, :crap nil}
+  {:name "AccumulateNode._Update", :namespace "client.packages.ability_system.ui.nodes.AccumulateNode", :complexity 7, :coverage nil, :crap nil}
+  {:name "ClientModifierHandler:_collectPlayingPerformance", :namespace "client.packages.modifier_system.ClientModifierHandler", :complexity 7, :coverage nil, :crap nil}
+  {:name "CModifierSystemManager:_isModifierChild", :namespace "client.packages.modifier_system.modifier_system", :complexity 7, :coverage nil, :crap nil}
+  {:name "M.Attach", :namespace "server.packages.ability_system.anchors.destroy_ability", :complexity 7, :coverage nil, :crap nil}
+  {:name "_createHitSfx", :namespace "server.packages.ability_system.anchors.melee_hit", :complexity 7, :coverage nil, :crap nil}
   {:name "LocalInteract:UpdatePulse", :namespace "client.LocalInteract", :complexity 6, :coverage nil, :crap nil}
   {:name "ctrl:TweenPosition", :namespace "client.LocalMotorUnitCtrl", :complexity 6, :coverage nil, :crap nil}
+  {:name "AbilityClientAPI.GetAbility", :namespace "client.packages.ability_system.api", :complexity 6, :coverage nil, :crap nil}
+  {:name "Controller:_onTouchEnded", :namespace "client.packages.ability_system.ui.Controller", :complexity 6, :coverage nil, :crap nil}
+  {:name "UIManager:_EnsureAccumulateNode", :namespace "client.packages.ability_system.ui.UIManager", :complexity 6, :coverage nil, :crap nil}
+  {:name "UIManager:_EnsureCancelNodes", :namespace "client.packages.ability_system.ui.UIManager", :complexity 6, :coverage nil, :crap nil}
+  {:name "UIManager:_FindSlotNode", :namespace "client.packages.ability_system.ui.UIManager", :complexity 6, :coverage nil, :crap nil}
+  {:name "AbilitySlot._UpdateCD", :namespace "client.packages.ability_system.ui.nodes.AbilitySlot", :complexity 6, :coverage nil, :crap nil}
+  {:name "_resolveTimer", :namespace "client.packages.ability_system.ui.nodes.AbilitySlot", :complexity 6, :coverage nil, :crap nil}
+  {:name "AccumulateNode.StartAccumulate", :namespace "client.packages.ability_system.ui.nodes.AccumulateNode", :complexity 6, :coverage nil, :crap nil}
+  {:name "isSceneClickType", :namespace "client.packages.ability_system.ui.scene_input", :complexity 6, :coverage nil, :crap nil}
+  {:name "ClientModifierHandler:_destroyPlayingPerformance", :namespace "client.packages.modifier_system.ClientModifierHandler", :complexity 6, :coverage nil, :crap nil}
+  {:name "ClientModifierHandler:getRemainingTime", :namespace "client.packages.modifier_system.ClientModifierHandler", :complexity 6, :coverage nil, :crap nil}
+  {:name "isValidOwner", :namespace "client.packages.modifier_system.ClientModifierHandler", :complexity 6, :coverage nil, :crap nil}
+  {:name "isValidOwner", :namespace "client.packages.modifier_system.api", :complexity 6, :coverage nil, :crap nil}
+  {:name "CModifierSystemManager:_findSlotByKey", :namespace "client.packages.modifier_system.modifier_system", :complexity 6, :coverage nil, :crap nil}
+  {:name "CModifierSystemManager:applyTopMaterial", :namespace "client.packages.modifier_system.modifier_system", :complexity 6, :coverage nil, :crap nil}
+  {:name "CModifierSystemManager:hasModifier", :namespace "client.packages.modifier_system.modifier_system", :complexity 6, :coverage nil, :crap nil}
+  {:name "AbilityUIHooks.setUIHooks", :namespace "common.packages.ability_system.ui_hooks", :complexity 6, :coverage nil, :crap nil}
+  {:name "_applyDamage", :namespace "server.packages.ability_system.anchors.melee_hit", :complexity 6, :coverage nil, :crap nil}
+  {:name "_isSelf", :namespace "server.packages.ability_system.anchors.melee_hit", :complexity 6, :coverage nil, :crap nil}
   {:name "LocalGM:Start", :namespace "client.LocalGM", :complexity 5, :coverage nil, :crap nil}
   {:name "ctrl:DoLocalMotor", :namespace "client.LocalMotorUnitCtrl", :complexity 5, :coverage nil, :crap nil}
   {:name "ctrl:TweenRotate", :namespace "client.LocalMotorUnitCtrl", :complexity 5, :coverage nil, :crap nil}
   {:name "Panel:ClickGrill", :namespace "client.ScreenHandlers.ScreenGrill", :complexity 5, :coverage nil, :crap nil}
   {:name "Panel:OnState", :namespace "client.ScreenHandlers.ScreenGrill", :complexity 5, :coverage nil, :crap nil}
   {:name "itemName", :namespace "client.ScreenHandlers.ScreenGrill", :complexity 5, :coverage nil, :crap nil}
+  {:name "getManagerForUnit", :namespace "client.packages.ability_system.api", :complexity 5, :coverage nil, :crap nil}
+  {:name "ParabolaPointer:Create", :namespace "client.packages.ability_system.pointer.ParabolaPointer", :complexity 5, :coverage nil, :crap nil}
+  {:name "ParabolaPointer:_calcVelocity", :namespace "client.packages.ability_system.pointer.ParabolaPointer", :complexity 5, :coverage nil, :crap nil}
+  {:name "HoldStrategy:TryCast", :namespace "client.packages.ability_system.strategy.HoldStrategy", :complexity 5, :coverage nil, :crap nil}
+  {:name "ReleaseStrategy:OnTouchBegin", :namespace "client.packages.ability_system.strategy.ReleaseStrategy", :complexity 5, :coverage nil, :crap nil}
+  {:name "TwoStageStrategy:OnTouchEnd", :namespace "client.packages.ability_system.strategy.TwoStageStrategy", :complexity 5, :coverage nil, :crap nil}
+  {:name "Controller.new", :namespace "client.packages.ability_system.ui.Controller", :complexity 5, :coverage nil, :crap nil}
+  {:name "Controller:_onTouchBegan", :namespace "client.packages.ability_system.ui.Controller", :complexity 5, :coverage nil, :crap nil}
+  {:name "Controller:_requestAccumulate", :namespace "client.packages.ability_system.ui.Controller", :complexity 5, :coverage nil, :crap nil}
+  {:name "UIManager:ResetBindings", :namespace "client.packages.ability_system.ui.UIManager", :complexity 5, :coverage nil, :crap nil}
+  {:name "UIManager:ShowAccumulate", :namespace "client.packages.ability_system.ui.UIManager", :complexity 5, :coverage nil, :crap nil}
+  {:name "EuiAdapter.ConvertToLocalPosition", :namespace "client.packages.ability_system.ui.eui_adapter", :complexity 5, :coverage nil, :crap nil}
+  {:name "EuiAdapter.GetDescendants", :namespace "client.packages.ability_system.ui.eui_adapter", :complexity 5, :coverage nil, :crap nil}
+  {:name "EuiAdapter.SetVisible", :namespace "client.packages.ability_system.ui.eui_adapter", :complexity 5, :coverage nil, :crap nil}
+  {:name "AbilitySlot._GetLeftCD", :namespace "client.packages.ability_system.ui.nodes.AbilitySlot", :complexity 5, :coverage nil, :crap nil}
+  {:name "ClientModifierHandler:_awaitOwner", :namespace "client.packages.modifier_system.ClientModifierHandler", :complexity 5, :coverage nil, :crap nil}
+  {:name "ClientModifierHandler:_getPerformanceFromAttr", :namespace "client.packages.modifier_system.ClientModifierHandler", :complexity 5, :coverage nil, :crap nil}
+  {:name "ClientModifierHandler:_getSlotMirror", :namespace "client.packages.modifier_system.ClientModifierHandler", :complexity 5, :coverage nil, :crap nil}
+  {:name "ClientModifierHandler:_onActiveChange", :namespace "client.packages.modifier_system.ClientModifierHandler", :complexity 5, :coverage nil, :crap nil}
+  {:name "ClientModifierHandler:_playPerformanceList", :namespace "client.packages.modifier_system.ClientModifierHandler", :complexity 5, :coverage nil, :crap nil}
+  {:name "CModifierSystemManager:_bindOwnerChildren", :namespace "client.packages.modifier_system.modifier_system", :complexity 5, :coverage nil, :crap nil}
+  {:name "CModifierSystemManager:_bindRemoteEvent", :namespace "client.packages.modifier_system.modifier_system", :complexity 5, :coverage nil, :crap nil}
+  {:name "CModifierSystemManager:addTag", :namespace "client.packages.modifier_system.modifier_system", :complexity 5, :coverage nil, :crap nil}
+  {:name "CModifierSystemManager:getContainer", :namespace "client.packages.modifier_system.modifier_system", :complexity 5, :coverage nil, :crap nil}
+  {:name "CModifierSystemManager:getModifierUnits", :namespace "client.packages.modifier_system.modifier_system", :complexity 5, :coverage nil, :crap nil}
+  {:name "M.Attach", :namespace "server.packages.ability_system.anchors.active_cd", :complexity 5, :coverage nil, :crap nil}
+  {:name "_isHittable", :namespace "server.packages.ability_system.anchors.melee_hit", :complexity 5, :coverage nil, :crap nil}
+  {:name "_safeScale", :namespace "server.packages.ability_system.anchors.melee_hit", :complexity 5, :coverage nil, :crap nil}
+  {:name "_setDynamic", :namespace "server.packages.ability_system.component_scripts.box_component_create", :complexity 5, :coverage nil, :crap nil}
   {:name "Panel:ShowPanel", :namespace "client.ScreenHandlers.ScreenGrill", :complexity 4, :coverage nil, :crap nil}
+  {:name "AbilityPointer:GetCameraRotation", :namespace "client.packages.ability_system.pointer.AbilityPointer", :complexity 4, :coverage nil, :crap nil}
+  {:name "CirclePointer:Create", :namespace "client.packages.ability_system.pointer.CirclePointer", :complexity 4, :coverage nil, :crap nil}
+  {:name "ParabolaPointer:Refresh", :namespace "client.packages.ability_system.pointer.ParabolaPointer", :complexity 4, :coverage nil, :crap nil}
+  {:name "ParabolaPointer:UpdateEffect", :namespace "client.packages.ability_system.pointer.ParabolaPointer", :complexity 4, :coverage nil, :crap nil}
+  {:name "TwoStageStrategy:CancelAiming", :namespace "client.packages.ability_system.strategy.TwoStageStrategy", :complexity 4, :coverage nil, :crap nil}
+  {:name "safeDisconnect", :namespace "client.packages.ability_system.strategy.TwoStageStrategy", :complexity 4, :coverage nil, :crap nil}
+  {:name "Controller:GetOwner", :namespace "client.packages.ability_system.ui.Controller", :complexity 4, :coverage nil, :crap nil}
+  {:name "Controller:_onClicked", :namespace "client.packages.ability_system.ui.Controller", :complexity 4, :coverage nil, :crap nil}
+  {:name "Controller:_rebuildStrategy", :namespace "client.packages.ability_system.ui.Controller", :complexity 4, :coverage nil, :crap nil}
+  {:name "Controller:_requestCast", :namespace "client.packages.ability_system.ui.Controller", :complexity 4, :coverage nil, :crap nil}
+  {:name "Controller:_requestStop", :namespace "client.packages.ability_system.ui.Controller", :complexity 4, :coverage nil, :crap nil}
+  {:name "UIManager:HideAccumulate", :namespace "client.packages.ability_system.ui.UIManager", :complexity 4, :coverage nil, :crap nil}
+  {:name "UIManager:IsInCancelArea", :namespace "client.packages.ability_system.ui.UIManager", :complexity 4, :coverage nil, :crap nil}
+  {:name "EuiAdapter.HitTest", :namespace "client.packages.ability_system.ui.eui_adapter", :complexity 4, :coverage nil, :crap nil}
+  {:name "EuiAdapter.SetColor", :namespace "client.packages.ability_system.ui.eui_adapter", :complexity 4, :coverage nil, :crap nil}
+  {:name "EuiAdapter.SetImage", :namespace "client.packages.ability_system.ui.eui_adapter", :complexity 4, :coverage nil, :crap nil}
+  {:name "AbilitySlot.InitCDUI", :namespace "client.packages.ability_system.ui.nodes.AbilitySlot", :complexity 4, :coverage nil, :crap nil}
+  {:name "AbilitySlot._StartCDTimer", :namespace "client.packages.ability_system.ui.nodes.AbilitySlot", :complexity 4, :coverage nil, :crap nil}
+  {:name "AccumulateNode._StartTimer", :namespace "client.packages.ability_system.ui.nodes.AccumulateNode", :complexity 4, :coverage nil, :crap nil}
+  {:name "_resolveTimer", :namespace "client.packages.ability_system.ui.nodes.AccumulateNode", :complexity 4, :coverage nil, :crap nil}
+  {:name "ClientModifierHandler:_popMaterial", :namespace "client.packages.modifier_system.ClientModifierHandler", :complexity 4, :coverage nil, :crap nil}
+  {:name "ClientModifierHandler:_pushMaterial", :namespace "client.packages.modifier_system.ClientModifierHandler", :complexity 4, :coverage nil, :crap nil}
+  {:name "ClientModifierHandler:getModifierType", :namespace "client.packages.modifier_system.ClientModifierHandler", :complexity 4, :coverage nil, :crap nil}
+  {:name "CModifierSystemManager:_findClientHandler", :namespace "client.packages.modifier_system.modifier_system", :complexity 4, :coverage nil, :crap nil}
+  {:name "CModifierSystemManager:_unbindSlot", :namespace "client.packages.modifier_system.modifier_system", :complexity 4, :coverage nil, :crap nil}
   {:name "FXUtil:PlayFX", :namespace "common.FXUtil", :complexity 4, :coverage nil, :crap nil}
+  {:name "Anchor.new", :namespace "common.packages.ability_system.Anchor", :complexity 4, :coverage nil, :crap nil}
+  {:name "Anchor:_fire", :namespace "common.packages.ability_system.Anchor", :complexity 4, :coverage nil, :crap nil}
+  {:name "M.Attach", :namespace "server.packages.ability_system.anchors.custom_event", :complexity 4, :coverage nil, :crap nil}
+  {:name "_getYaw", :namespace "server.packages.ability_system.anchors.melee_hit", :complexity 4, :coverage nil, :crap nil}
   {:name "ctrl:Start", :namespace "client.LocalMotorUnitCtrl", :complexity 3, :coverage nil, :crap nil}
   {:name "ScreenHandler:CloseScreen", :namespace "client.ScreenHandlers.DialogNoticeConfirm", :complexity 3, :coverage nil, :crap nil}
   {:name "ScreenHandler:OpenScreen", :namespace "client.ScreenHandlers.DialogNoticeConfirm", :complexity 3, :coverage nil, :crap nil}
@@ -1274,16 +1763,131 @@
   {:name "PopMsgNotice", :namespace "client.ScreenHandlers.ScreenMsg", :complexity 3, :coverage nil, :crap nil}
   {:name "ScreenHandler:CloseScreen", :namespace "client.ScreenHandlers.ScreenMsg", :complexity 3, :coverage nil, :crap nil}
   {:name "ScreenHandler:OpenScreen", :namespace "client.ScreenHandlers.ScreenMsg", :complexity 3, :coverage nil, :crap nil}
+  {:name "AbilityClientAPI.GetUIManager", :namespace "client.packages.ability_system.api", :complexity 3, :coverage nil, :crap nil}
+  {:name "AbilityClientAPI.RequestAccumulate", :namespace "client.packages.ability_system.api", :complexity 3, :coverage nil, :crap nil}
+  {:name "AbilityClientAPI.RequestCast", :namespace "client.packages.ability_system.api", :complexity 3, :coverage nil, :crap nil}
+  {:name "AbilityClientAPI.RequestStop", :namespace "client.packages.ability_system.api", :complexity 3, :coverage nil, :crap nil}
+  {:name "AbilityClientAPI.RequestSwitchNext", :namespace "client.packages.ability_system.api", :complexity 3, :coverage nil, :crap nil}
+  {:name "_waitFor", :namespace "client.packages.ability_system.component_scripts.box_component_fix", :complexity 3, :coverage nil, :crap nil}
+  {:name "AbilityPointer:Refresh", :namespace "client.packages.ability_system.pointer.AbilityPointer", :complexity 3, :coverage nil, :crap nil}
+  {:name "AbilityPointer:_GetOwner", :namespace "client.packages.ability_system.pointer.AbilityPointer", :complexity 3, :coverage nil, :crap nil}
+  {:name "ParabolaPointer:Clear", :namespace "client.packages.ability_system.pointer.ParabolaPointer", :complexity 3, :coverage nil, :crap nil}
+  {:name "RectanglePointer:Create", :namespace "client.packages.ability_system.pointer.RectanglePointer", :complexity 3, :coverage nil, :crap nil}
+  {:name "SectorPointer:Create", :namespace "client.packages.ability_system.pointer.SectorPointer", :complexity 3, :coverage nil, :crap nil}
+  {:name "HoldStrategy:OnTouchBegin", :namespace "client.packages.ability_system.strategy.HoldStrategy", :complexity 3, :coverage nil, :crap nil}
+  {:name "Controller:_createPointer", :namespace "client.packages.ability_system.ui.Controller", :complexity 3, :coverage nil, :crap nil}
+  {:name "Controller:_ensureManager", :namespace "client.packages.ability_system.ui.Controller", :complexity 3, :coverage nil, :crap nil}
+  {:name "UIManager:_FindControllerByAbility", :namespace "client.packages.ability_system.ui.UIManager", :complexity 3, :coverage nil, :crap nil}
+  {:name "EuiAdapter.GetCharacterUnitId", :namespace "client.packages.ability_system.ui.eui_adapter", :complexity 3, :coverage nil, :crap nil}
+  {:name "EuiAdapter.GetEuiManager", :namespace "client.packages.ability_system.ui.eui_adapter", :complexity 3, :coverage nil, :crap nil}
+  {:name "EuiAdapter.GetPosition", :namespace "client.packages.ability_system.ui.eui_adapter", :complexity 3, :coverage nil, :crap nil}
+  {:name "EuiAdapter.GetRootNode", :namespace "client.packages.ability_system.ui.eui_adapter", :complexity 3, :coverage nil, :crap nil}
+  {:name "EuiAdapter.SetPercent", :namespace "client.packages.ability_system.ui.eui_adapter", :complexity 3, :coverage nil, :crap nil}
+  {:name "EuiAdapter.SetPosition", :namespace "client.packages.ability_system.ui.eui_adapter", :complexity 3, :coverage nil, :crap nil}
+  {:name "EuiAdapter.SetText", :namespace "client.packages.ability_system.ui.eui_adapter", :complexity 3, :coverage nil, :crap nil}
+  {:name "EuiAdapter.SetTouchEnabled", :namespace "client.packages.ability_system.ui.eui_adapter", :complexity 3, :coverage nil, :crap nil}
+  {:name "AbilitySlot.Cleanup", :namespace "client.packages.ability_system.ui.nodes.AbilitySlot", :complexity 3, :coverage nil, :crap nil}
+  {:name "AbilitySlot.HideDragIndicator", :namespace "client.packages.ability_system.ui.nodes.AbilitySlot", :complexity 3, :coverage nil, :crap nil}
+  {:name "AbilitySlot.SetCancelState", :namespace "client.packages.ability_system.ui.nodes.AbilitySlot", :complexity 3, :coverage nil, :crap nil}
+  {:name "AbilitySlot.SetForbidden", :namespace "client.packages.ability_system.ui.nodes.AbilitySlot", :complexity 3, :coverage nil, :crap nil}
+  {:name "AbilitySlot.ShowDragIndicator", :namespace "client.packages.ability_system.ui.nodes.AbilitySlot", :complexity 3, :coverage nil, :crap nil}
+  {:name "AbilitySlot.UpdateDragIndicator", :namespace "client.packages.ability_system.ui.nodes.AbilitySlot", :complexity 3, :coverage nil, :crap nil}
+  {:name "AccumulateNode.Attach", :namespace "client.packages.ability_system.ui.nodes.AccumulateNode", :complexity 3, :coverage nil, :crap nil}
+  {:name "AccumulateNode.StopAccumulate", :namespace "client.packages.ability_system.ui.nodes.AccumulateNode", :complexity 3, :coverage nil, :crap nil}
+  {:name "CancelArea.Attach", :namespace "client.packages.ability_system.ui.nodes.CancelArea", :complexity 3, :coverage nil, :crap nil}
+  {:name "CancelArea.SetCancelState", :namespace "client.packages.ability_system.ui.nodes.CancelArea", :complexity 3, :coverage nil, :crap nil}
+  {:name "ClientModifierHandler:getDesc", :namespace "client.packages.modifier_system.ClientModifierHandler", :complexity 3, :coverage nil, :crap nil}
+  {:name "ClientModifierHandler:getMaxStackCount", :namespace "client.packages.modifier_system.ClientModifierHandler", :complexity 3, :coverage nil, :crap nil}
+  {:name "ClientModifierHandler:getModifierKey", :namespace "client.packages.modifier_system.ClientModifierHandler", :complexity 3, :coverage nil, :crap nil}
+  {:name "ClientModifierHandler:onRefreshClient", :namespace "client.packages.modifier_system.ClientModifierHandler", :complexity 3, :coverage nil, :crap nil}
+  {:name "ClientModifierHandler:onReobtainClient", :namespace "client.packages.modifier_system.ClientModifierHandler", :complexity 3, :coverage nil, :crap nil}
+  {:name "ClearUnitModifiers", :namespace "client.packages.modifier_system.api", :complexity 3, :coverage nil, :crap nil}
+  {:name "GetUnitModifiers", :namespace "client.packages.modifier_system.api", :complexity 3, :coverage nil, :crap nil}
+  {:name "CModifierSystemManager:_bindSlot", :namespace "client.packages.modifier_system.modifier_system", :complexity 3, :coverage nil, :crap nil}
+  {:name "CModifierSystemManager:_fireServer", :namespace "client.packages.modifier_system.modifier_system", :complexity 3, :coverage nil, :crap nil}
+  {:name "CModifierSystemManager:addDuration", :namespace "client.packages.modifier_system.modifier_system", :complexity 3, :coverage nil, :crap nil}
+  {:name "CModifierSystemManager:addStackCount", :namespace "client.packages.modifier_system.modifier_system", :complexity 3, :coverage nil, :crap nil}
+  {:name "CModifierSystemManager:pause", :namespace "client.packages.modifier_system.modifier_system", :complexity 3, :coverage nil, :crap nil}
+  {:name "CModifierSystemManager:registerModifier", :namespace "client.packages.modifier_system.modifier_system", :complexity 3, :coverage nil, :crap nil}
+  {:name "CModifierSystemManager:removeMaterial", :namespace "client.packages.modifier_system.modifier_system", :complexity 3, :coverage nil, :crap nil}
+  {:name "CModifierSystemManager:removeModifier", :namespace "client.packages.modifier_system.modifier_system", :complexity 3, :coverage nil, :crap nil}
+  {:name "CModifierSystemManager:removeModifierByKey", :namespace "client.packages.modifier_system.modifier_system", :complexity 3, :coverage nil, :crap nil}
+  {:name "CModifierSystemManager:resume", :namespace "client.packages.modifier_system.modifier_system", :complexity 3, :coverage nil, :crap nil}
+  {:name "CModifierSystemManager:setRemainTime", :namespace "client.packages.modifier_system.modifier_system", :complexity 3, :coverage nil, :crap nil}
+  {:name "CModifierSystemManager:setStackCount", :namespace "client.packages.modifier_system.modifier_system", :complexity 3, :coverage nil, :crap nil}
+  {:name "getTagsComponent", :namespace "client.packages.modifier_system.modifier_system", :complexity 3, :coverage nil, :crap nil}
   {:name "Util:SimpleTeleport", :namespace "common.TeleportUtil", :complexity 3, :coverage nil, :crap nil}
+  {:name "Anchor:_clearTimers", :namespace "common.packages.ability_system.Anchor", :complexity 3, :coverage nil, :crap nil}
+  {:name "Anchor:start", :namespace "common.packages.ability_system.Anchor", :complexity 3, :coverage nil, :crap nil}
+  {:name "isValidAffectCamp", :namespace "common.packages.modifier_system.enums", :complexity 3, :coverage nil, :crap nil}
+  {:name "isValidAttrKey", :namespace "common.packages.modifier_system.enums", :complexity 3, :coverage nil, :crap nil}
+  {:name "isValidAttrType", :namespace "common.packages.modifier_system.enums", :complexity 3, :coverage nil, :crap nil}
+  {:name "isValidEffectAttachPoint", :namespace "common.packages.modifier_system.enums", :complexity 3, :coverage nil, :crap nil}
+  {:name "isValidEffectInherit", :namespace "common.packages.modifier_system.enums", :complexity 3, :coverage nil, :crap nil}
+  {:name "isValidLostPerformanceType", :namespace "common.packages.modifier_system.enums", :complexity 3, :coverage nil, :crap nil}
+  {:name "isValidMaterialId", :namespace "common.packages.modifier_system.enums", :complexity 3, :coverage nil, :crap nil}
+  {:name "isValidPerformanceType", :namespace "common.packages.modifier_system.enums", :complexity 3, :coverage nil, :crap nil}
+  {:name "isValidSoundType", :namespace "common.packages.modifier_system.enums", :complexity 3, :coverage nil, :crap nil}
   {:name "GetPlayerControl", :namespace "server.Mgr.MgrPlayer", :complexity 3, :coverage nil, :crap nil}
   {:name "Mgr:GetPlayerUnit", :namespace "server.Mgr.MgrPlayer", :complexity 3, :coverage nil, :crap nil}
   {:name "Mgr:OnPlayerAdded", :namespace "server.Mgr.MgrPlayer", :complexity 3, :coverage nil, :crap nil}
   {:name "Mgr:OnPlayerRemoving", :namespace "server.Mgr.MgrPlayer", :complexity 3, :coverage nil, :crap nil}
+  {:name "_readUnitId", :namespace "server.packages.ability_system.anchor_logic", :complexity 3, :coverage nil, :crap nil}
+  {:name "_signalsReady", :namespace "server.packages.ability_system.anchor_logic", :complexity 3, :coverage nil, :crap nil}
+  {:name "_createEffect", :namespace "server.packages.ability_system.anchors.create_teleportball", :complexity 3, :coverage nil, :crap nil}
+  {:name "_getAreaTransform", :namespace "server.packages.ability_system.anchors.melee_hit", :complexity 3, :coverage nil, :crap nil}
+  {:name "_getPosition", :namespace "server.packages.ability_system.anchors.melee_hit", :complexity 3, :coverage nil, :crap nil}
   {:name "notice", :namespace "client.LocalGM", :complexity 2, :coverage nil, :crap nil}
   {:name "notice", :namespace "client.LocalInteract", :complexity 2, :coverage nil, :crap nil}
   {:name "Panel:HidePanel", :namespace "client.ScreenHandlers.ScreenGrill", :complexity 2, :coverage nil, :crap nil}
   {:name "Panel:Send", :namespace "client.ScreenHandlers.ScreenGrill", :complexity 2, :coverage nil, :crap nil}
   {:name "notice", :namespace "client.ScreenHandlers.ScreenGrill", :complexity 2, :coverage nil, :crap nil}
+  {:name "getOwnerId", :namespace "client.packages.ability_system.api", :complexity 2, :coverage nil, :crap nil}
+  {:name "AbilityPointer:GetAbilityProperty", :namespace "client.packages.ability_system.pointer.AbilityPointer", :complexity 2, :coverage nil, :crap nil}
+  {:name "ParabolaPointer:GetReleasePoint", :namespace "client.packages.ability_system.pointer.ParabolaPointer", :complexity 2, :coverage nil, :crap nil}
+  {:name "HoldStrategy:Destroy", :namespace "client.packages.ability_system.strategy.HoldStrategy", :complexity 2, :coverage nil, :crap nil}
+  {:name "HoldStrategy:OnTouchEnd", :namespace "client.packages.ability_system.strategy.HoldStrategy", :complexity 2, :coverage nil, :crap nil}
+  {:name "TwoStageStrategy:OnTouchBegin", :namespace "client.packages.ability_system.strategy.TwoStageStrategy", :complexity 2, :coverage nil, :crap nil}
+  {:name "Controller:OnChargeCountChange", :namespace "client.packages.ability_system.ui.Controller", :complexity 2, :coverage nil, :crap nil}
+  {:name "Controller:SetReleaseParam", :namespace "client.packages.ability_system.ui.Controller", :complexity 2, :coverage nil, :crap nil}
+  {:name "Controller:_createStrategy", :namespace "client.packages.ability_system.ui.Controller", :complexity 2, :coverage nil, :crap nil}
+  {:name "Controller:_rebuildPointer", :namespace "client.packages.ability_system.ui.Controller", :complexity 2, :coverage nil, :crap nil}
+  {:name "UIManager:SetCancelAreaVisible", :namespace "client.packages.ability_system.ui.UIManager", :complexity 2, :coverage nil, :crap nil}
+  {:name "UIManager:UnBindAbility", :namespace "client.packages.ability_system.ui.UIManager", :complexity 2, :coverage nil, :crap nil}
+  {:name "UIManager:_ScheduleRetry", :namespace "client.packages.ability_system.ui.UIManager", :complexity 2, :coverage nil, :crap nil}
+  {:name "EuiAdapter.GetLocalCharacter", :namespace "client.packages.ability_system.ui.eui_adapter", :complexity 2, :coverage nil, :crap nil}
+  {:name "EuiAdapter.makeColor", :namespace "client.packages.ability_system.ui.eui_adapter", :complexity 2, :coverage nil, :crap nil}
+  {:name "_hasMethod", :namespace "client.packages.ability_system.ui.eui_adapter", :complexity 2, :coverage nil, :crap nil}
+  {:name "AbilitySlot.BindChildren", :namespace "client.packages.ability_system.ui.nodes.AbilitySlot", :complexity 2, :coverage nil, :crap nil}
+  {:name "AbilitySlot.StartCD", :namespace "client.packages.ability_system.ui.nodes.AbilitySlot", :complexity 2, :coverage nil, :crap nil}
+  {:name "AbilitySlot._StopCDTimer", :namespace "client.packages.ability_system.ui.nodes.AbilitySlot", :complexity 2, :coverage nil, :crap nil}
+  {:name "getState", :namespace "client.packages.ability_system.ui.nodes.AbilitySlot", :complexity 2, :coverage nil, :crap nil}
+  {:name "AccumulateNode.BindChildren", :namespace "client.packages.ability_system.ui.nodes.AccumulateNode", :complexity 2, :coverage nil, :crap nil}
+  {:name "AccumulateNode.Cleanup", :namespace "client.packages.ability_system.ui.nodes.AccumulateNode", :complexity 2, :coverage nil, :crap nil}
+  {:name "AccumulateNode._StopTimer", :namespace "client.packages.ability_system.ui.nodes.AccumulateNode", :complexity 2, :coverage nil, :crap nil}
+  {:name "getState", :namespace "client.packages.ability_system.ui.nodes.AccumulateNode", :complexity 2, :coverage nil, :crap nil}
+  {:name "getState", :namespace "client.packages.ability_system.ui.nodes.CancelArea", :complexity 2, :coverage nil, :crap nil}
+  {:name "ClientModifierHandler:getCharMtg", :namespace "client.packages.modifier_system.ClientModifierHandler", :complexity 2, :coverage nil, :crap nil}
+  {:name "ClientModifierHandler:getStackCount", :namespace "client.packages.modifier_system.ClientModifierHandler", :complexity 2, :coverage nil, :crap nil}
+  {:name "ClientModifierHandler:onResumeClient", :namespace "client.packages.modifier_system.ClientModifierHandler", :complexity 2, :coverage nil, :crap nil}
+  {:name "ClientModifierHandler:onStackChangeClient", :namespace "client.packages.modifier_system.ClientModifierHandler", :complexity 2, :coverage nil, :crap nil}
+  {:name "onPosted", :namespace "client.packages.modifier_system.ModifierItem_LocalScript", :complexity 2, :coverage nil, :crap nil}
+  {:name "AddModifierDurationByInstance", :namespace "client.packages.modifier_system.api", :complexity 2, :coverage nil, :crap nil}
+  {:name "AddModifierStackCount", :namespace "client.packages.modifier_system.api", :complexity 2, :coverage nil, :crap nil}
+  {:name "RemoveModifier", :namespace "client.packages.modifier_system.api", :complexity 2, :coverage nil, :crap nil}
+  {:name "SetModifierRemainTime", :namespace "client.packages.modifier_system.api", :complexity 2, :coverage nil, :crap nil}
+  {:name "SetModifierStackCount", :namespace "client.packages.modifier_system.api", :complexity 2, :coverage nil, :crap nil}
+  {:name "CModifierSystemManager:clearAllModifiers", :namespace "client.packages.modifier_system.modifier_system", :complexity 2, :coverage nil, :crap nil}
+  {:name "CModifierSystemManager:getModifierHandler", :namespace "client.packages.modifier_system.modifier_system", :complexity 2, :coverage nil, :crap nil}
+  {:name "Anchor:Destroy", :namespace "common.packages.ability_system.Anchor", :complexity 2, :coverage nil, :crap nil}
+  {:name "Anchor:_connect", :namespace "common.packages.ability_system.Anchor", :complexity 2, :coverage nil, :crap nil}
+  {:name "Anchor:_registerEvents", :namespace "common.packages.ability_system.Anchor", :complexity 2, :coverage nil, :crap nil}
+  {:name "Anchor:beginProcess", :namespace "common.packages.ability_system.Anchor", :complexity 2, :coverage nil, :crap nil}
+  {:name "Anchor:finish", :namespace "common.packages.ability_system.Anchor", :complexity 2, :coverage nil, :crap nil}
+  {:name "Anchor:finishCast", :namespace "common.packages.ability_system.Anchor", :complexity 2, :coverage nil, :crap nil}
+  {:name "Anchor:onBreak", :namespace "common.packages.ability_system.Anchor", :complexity 2, :coverage nil, :crap nil}
+  {:name "Anchor:stop", :namespace "common.packages.ability_system.Anchor", :complexity 2, :coverage nil, :crap nil}
+  {:name "_eulerDegToQuat", :namespace "server.packages.ability_system.anchors.melee_hit", :complexity 2, :coverage nil, :crap nil}
   {:name "LocalGM:Send", :namespace "client.LocalGM", :complexity 1, :coverage nil, :crap nil}
   {:name "LocalInteract:Button", :namespace "client.LocalInteract", :complexity 1, :coverage nil, :crap nil}
   {:name "LocalInteract:Feed", :namespace "client.LocalInteract", :complexity 1, :coverage nil, :crap nil}
@@ -1294,11 +1898,81 @@
   {:name "cfg", :namespace "client.ScreenHandlers.ScreenGrill", :complexity 1, :coverage nil, :crap nil}
   {:name "ScreenHandler:Destroy", :namespace "client.ScreenHandlers.ScreenMsg", :complexity 1, :coverage nil, :crap nil}
   {:name "ScreenHandler:Init", :namespace "client.ScreenHandlers.ScreenMsg", :complexity 1, :coverage nil, :crap nil}
+  {:name "AbilityClientAPI.GetManagerForUnit", :namespace "client.packages.ability_system.api", :complexity 1, :coverage nil, :crap nil}
+  {:name "AbilityClientAPI.Register", :namespace "client.packages.ability_system.api", :complexity 1, :coverage nil, :crap nil}
+  {:name "AbilityPointer.new", :namespace "client.packages.ability_system.pointer.AbilityPointer", :complexity 1, :coverage nil, :crap nil}
+  {:name "AbilityPointer:Destroy", :namespace "client.packages.ability_system.pointer.AbilityPointer", :complexity 1, :coverage nil, :crap nil}
+  {:name "CirclePointer.new", :namespace "client.packages.ability_system.pointer.CirclePointer", :complexity 1, :coverage nil, :crap nil}
+  {:name "ParabolaPointer.new", :namespace "client.packages.ability_system.pointer.ParabolaPointer", :complexity 1, :coverage nil, :crap nil}
+  {:name "ParabolaPointer:Destroy", :namespace "client.packages.ability_system.pointer.ParabolaPointer", :complexity 1, :coverage nil, :crap nil}
+  {:name "RectanglePointer.new", :namespace "client.packages.ability_system.pointer.RectanglePointer", :complexity 1, :coverage nil, :crap nil}
+  {:name "SectorPointer.new", :namespace "client.packages.ability_system.pointer.SectorPointer", :complexity 1, :coverage nil, :crap nil}
+  {:name "BaseStrategy.new", :namespace "client.packages.ability_system.strategy.BaseStrategy", :complexity 1, :coverage nil, :crap nil}
+  {:name "BaseStrategy:Destroy", :namespace "client.packages.ability_system.strategy.BaseStrategy", :complexity 1, :coverage nil, :crap nil}
+  {:name "BaseStrategy:OnTouchBegin", :namespace "client.packages.ability_system.strategy.BaseStrategy", :complexity 1, :coverage nil, :crap nil}
+  {:name "BaseStrategy:OnTouchEnd", :namespace "client.packages.ability_system.strategy.BaseStrategy", :complexity 1, :coverage nil, :crap nil}
+  {:name "BaseStrategy:OnTouchMove", :namespace "client.packages.ability_system.strategy.BaseStrategy", :complexity 1, :coverage nil, :crap nil}
+  {:name "PressStrategy:Destroy", :namespace "client.packages.ability_system.strategy.PressStrategy", :complexity 1, :coverage nil, :crap nil}
+  {:name "PressStrategy:OnTouchBegin", :namespace "client.packages.ability_system.strategy.PressStrategy", :complexity 1, :coverage nil, :crap nil}
+  {:name "PressStrategy:OnTouchEnd", :namespace "client.packages.ability_system.strategy.PressStrategy", :complexity 1, :coverage nil, :crap nil}
+  {:name "PressStrategy:OnTouchMove", :namespace "client.packages.ability_system.strategy.PressStrategy", :complexity 1, :coverage nil, :crap nil}
+  {:name "TwoStageStrategy:Destroy", :namespace "client.packages.ability_system.strategy.TwoStageStrategy", :complexity 1, :coverage nil, :crap nil}
+  {:name "Controller.GetUIManager", :namespace "client.packages.ability_system.ui.Controller", :complexity 1, :coverage nil, :crap nil}
+  {:name "Controller.SetUIManager", :namespace "client.packages.ability_system.ui.Controller", :complexity 1, :coverage nil, :crap nil}
+  {:name "Controller:GetReleaseParam", :namespace "client.packages.ability_system.ui.Controller", :complexity 1, :coverage nil, :crap nil}
+  {:name "Controller:OnPointerTypeChange", :namespace "client.packages.ability_system.ui.Controller", :complexity 1, :coverage nil, :crap nil}
+  {:name "Controller:OnReleaseTypeChange", :namespace "client.packages.ability_system.ui.Controller", :complexity 1, :coverage nil, :crap nil}
+  {:name "Controller:_requestStopAccumulate", :namespace "client.packages.ability_system.ui.Controller", :complexity 1, :coverage nil, :crap nil}
+  {:name "_getUIManager", :namespace "client.packages.ability_system.ui.Controller", :complexity 1, :coverage nil, :crap nil}
+  {:name "_setUIManager", :namespace "client.packages.ability_system.ui.Controller", :complexity 1, :coverage nil, :crap nil}
+  {:name "UIManager.GetInstance", :namespace "client.packages.ability_system.ui.UIManager", :complexity 1, :coverage nil, :crap nil}
+  {:name "UIManager.new", :namespace "client.packages.ability_system.ui.UIManager", :complexity 1, :coverage nil, :crap nil}
+  {:name "UIManager:SetManager", :namespace "client.packages.ability_system.ui.UIManager", :complexity 1, :coverage nil, :crap nil}
+  {:name "UIManager:_CancelRetry", :namespace "client.packages.ability_system.ui.UIManager", :complexity 1, :coverage nil, :crap nil}
+  {:name "AbilitySlot.GetState", :namespace "client.packages.ability_system.ui.nodes.AbilitySlot", :complexity 1, :coverage nil, :crap nil}
+  {:name "AbilitySlot.Refresh", :namespace "client.packages.ability_system.ui.nodes.AbilitySlot", :complexity 1, :coverage nil, :crap nil}
+  {:name "AbilitySlot.StopCD", :namespace "client.packages.ability_system.ui.nodes.AbilitySlot", :complexity 1, :coverage nil, :crap nil}
+  {:name "AccumulateNode.GetState", :namespace "client.packages.ability_system.ui.nodes.AccumulateNode", :complexity 1, :coverage nil, :crap nil}
+  {:name "CancelArea.GetState", :namespace "client.packages.ability_system.ui.nodes.CancelArea", :complexity 1, :coverage nil, :crap nil}
+  {:name "GetAllAttrConfigs", :namespace "client.packages.attr_rule.api", :complexity 1, :coverage nil, :crap nil}
+  {:name "GetAttr", :namespace "client.packages.attr_rule.api", :complexity 1, :coverage nil, :crap nil}
+  {:name "GetAttrComponent", :namespace "client.packages.attr_rule.api", :complexity 1, :coverage nil, :crap nil}
+  {:name "GetAttrConfig", :namespace "client.packages.attr_rule.api", :complexity 1, :coverage nil, :crap nil}
+  {:name "GetAttrIcon", :namespace "client.packages.attr_rule.api", :complexity 1, :coverage nil, :crap nil}
+  {:name "GetAttrUnit", :namespace "client.packages.attr_rule.api", :complexity 1, :coverage nil, :crap nil}
+  {:name "ClientModifierHandler:getUnit", :namespace "client.packages.modifier_system.ClientModifierHandler", :complexity 1, :coverage nil, :crap nil}
+  {:name "ClientModifierHandler:isActive", :namespace "client.packages.modifier_system.ClientModifierHandler", :complexity 1, :coverage nil, :crap nil}
+  {:name "ClientModifierHandler:isPaused", :namespace "client.packages.modifier_system.ClientModifierHandler", :complexity 1, :coverage nil, :crap nil}
+  {:name "ClientModifierHandler:onPauseClient", :namespace "client.packages.modifier_system.ClientModifierHandler", :complexity 1, :coverage nil, :crap nil}
+  {:name "GetRemainingTimeByKey", :namespace "client.packages.modifier_system.api", :complexity 1, :coverage nil, :crap nil}
+  {:name "IsInModifier", :namespace "client.packages.modifier_system.api", :complexity 1, :coverage nil, :crap nil}
+  {:name "Pause", :namespace "client.packages.modifier_system.api", :complexity 1, :coverage nil, :crap nil}
+  {:name "Resume", :namespace "client.packages.modifier_system.api", :complexity 1, :coverage nil, :crap nil}
+  {:name "CModifierSystemManager.new", :namespace "client.packages.modifier_system.modifier_system", :complexity 1, :coverage nil, :crap nil}
+  {:name "CModifierSystemManager:clearTags", :namespace "client.packages.modifier_system.modifier_system", :complexity 1, :coverage nil, :crap nil}
+  {:name "CModifierSystemManager:popMaterial", :namespace "client.packages.modifier_system.modifier_system", :complexity 1, :coverage nil, :crap nil}
+  {:name "CModifierSystemManager:pushMaterial", :namespace "client.packages.modifier_system.modifier_system", :complexity 1, :coverage nil, :crap nil}
+  {:name "CModifierSystemManager:registerModifierHandler", :namespace "client.packages.modifier_system.modifier_system", :complexity 1, :coverage nil, :crap nil}
+  {:name "CModifierSystemManager:unregisterModifierHandler", :namespace "client.packages.modifier_system.modifier_system", :complexity 1, :coverage nil, :crap nil}
   {:name "Util:Teleport", :namespace "common.TeleportUtil", :complexity 1, :coverage nil, :crap nil}
+  {:name "AbilityUIHooks.onAbilityAdded", :namespace "common.packages.ability_system.ui_hooks", :complexity 1, :coverage nil, :crap nil}
+  {:name "AbilityUIHooks.onAbilityRemoved", :namespace "common.packages.ability_system.ui_hooks", :complexity 1, :coverage nil, :crap nil}
+  {:name "AbilityUIHooks.onAccumulateChange", :namespace "common.packages.ability_system.ui_hooks", :complexity 1, :coverage nil, :crap nil}
+  {:name "AbilityUIHooks.onChargeCountChange", :namespace "common.packages.ability_system.ui_hooks", :complexity 1, :coverage nil, :crap nil}
+  {:name "AbilityUIHooks.onInCDChange", :namespace "common.packages.ability_system.ui_hooks", :complexity 1, :coverage nil, :crap nil}
+  {:name "AbilityUIHooks.onInCastChange", :namespace "common.packages.ability_system.ui_hooks", :complexity 1, :coverage nil, :crap nil}
+  {:name "AbilityUIHooks.onIndexChange", :namespace "common.packages.ability_system.ui_hooks", :complexity 1, :coverage nil, :crap nil}
+  {:name "AbilityUIHooks.onOwnerIdChange", :namespace "common.packages.ability_system.ui_hooks", :complexity 1, :coverage nil, :crap nil}
+  {:name "AbilityUIHooks.onPointerTypeChange", :namespace "common.packages.ability_system.ui_hooks", :complexity 1, :coverage nil, :crap nil}
+  {:name "AbilityUIHooks.onReleaseTypeChange", :namespace "common.packages.ability_system.ui_hooks", :complexity 1, :coverage nil, :crap nil}
+  {:name "AbilityUIHooks.onSwitchNext", :namespace "common.packages.ability_system.ui_hooks", :complexity 1, :coverage nil, :crap nil}
   {:name "Mgr:Start", :namespace "server.Mgr.MgrPlayer", :complexity 1, :coverage nil, :crap nil}
   {:name "Mgr:Update", :namespace "server.Mgr.MgrPlayer", :complexity 1, :coverage nil, :crap nil}
   {:name "MgrUtil:Start", :namespace "server.MgrUtil", :complexity 1, :coverage nil, :crap nil}
   {:name "TableMgr:GetTable", :namespace "server.TableMgr", :complexity 1, :coverage nil, :crap nil}
   {:name "TableMgr:GetTableRowColData", :namespace "server.TableMgr", :complexity 1, :coverage nil, :crap nil}
   {:name "TableMgr:GetTableRowType", :namespace "server.TableMgr", :complexity 1, :coverage nil, :crap nil}
+  {:name "_buildSignalView", :namespace "server.packages.ability_system.anchor_logic", :complexity 1, :coverage nil, :crap nil}
+  {:name "_rotateYaw", :namespace "server.packages.ability_system.anchors.melee_hit", :complexity 1, :coverage nil, :crap nil}
+  {:name "onPosted", :namespace "server.packages.modifier_system.ModifierItem_Script", :complexity 1, :coverage nil, :crap nil}
 ]}

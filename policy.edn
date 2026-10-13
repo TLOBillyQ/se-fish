@@ -2,8 +2,19 @@
  :prefix ""
  :lang :lua
  :hierarchical true
- :exclude ["packages" "_trigger"]
- :foreign [client.packages common.packages server.packages]
+ :exclude ["_trigger"]
+ ;; 无函数定义的配置与转发模块：不产生 CRAP 与 mutation 快照，图上恒判 1.0 分红，
+ ;; 不代表可测业务逻辑，故按项目约定（docs/agents/workflow.md）从视图隐藏。
+ :omit [common.cfg.Blindbox
+        common.cfg.Fish
+        common.cfg.Items
+        common.cfg.Lottery
+        common.cfg.Shop
+        client.AbilityAPI
+        client.AttrAPI
+        client.ModifierAPI
+        server.AttrAPI
+        server.ModifierAPI]
  :sources [{:lang :lua :root "client" :prefix "client"}
            {:lang :lua :root "common" :prefix "common"}
            {:lang :lua :root "server" :prefix "server"}]

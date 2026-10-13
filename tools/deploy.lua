@@ -7,7 +7,8 @@
 -- tools/editor_finalize。
 --
 -- 部署树：<端>/<child>/... → 宿主目录 <端>/<child>/...（端 = 白名单 client/common/server，
--- 官方强制的 SE 工作区根，仓库根直接对齐；重置粒度是每端下的一级子树）。
+-- 官方强制的 SE 工作区根，仓库根直接对齐；重置粒度是每端下的一级子树，三端 packages/
+-- 官方包与业务子目录同级，一并镜像）。
 -- 仓库根白名单之外的内容（docs/、tools/、tests/ 等）不部署；宿主目录其余内容
 -- （eggy.json、两份 API 存根、data/、unit_scripts/、编辑器生成物）不碰。
 
@@ -37,18 +38,19 @@ function M.usage()
     "",
     "把仓库根 <端>/<child> 字节镜像进编辑器宿主目录 <端>/<child>（先重置目标子树）。",
     "端为白名单 " .. table.concat(plan.REALMS, "/") .. "（官方强制的工作区根，仓库根直接对齐）；",
-    "三端 packages/ 整棵子树不部署；仓库根其他内容不部署，宿主目录其余内容不碰。",
-    "传输一律 robocopy /MIR 增量镜像；每个目标镜像完都拿源/目标的文件集合对一遍，",
+    "三端 packages/（官方包）与业务子目录同级一起镜像；仓库根其他内容不部署，宿主目录其余内容不碰。",
+    "传输一律 robocopy /MIR 增量镜像；镜像前打印 /MIR 将删掉的宿主多余文件，镜像完拿源/目标的",
+    "文件集合对一遍，",
     "命令没执行成、退出码 >= 8、或目标侧文件集合与源不一致，都算整条命令失败（退出码 1）；",
-    "镜像完自动做编辑器收尾：code validate → 只读 code diff，不执行 code push；",
-    "有本地新增或不同文件时报告尚未同步到编辑器，并以退出码 1 结束。",
+    "镜像完自动做编辑器收尾：code validate → 有落后文件时 code push → code diff 复核；",
+    "push 后仍与编辑器不一致时报告尚未同步，并以退出码 1 结束。",
     "editor-cli 不在或编辑器没开该地图时打印跳过并以退出码 0 结束（磁盘已是最新）。",
     "地图侧多出的文件只提示，不删。",
     "宿主目录默认 " .. workspace.DEFAULT .. "，环境变量 EGGY_WORKSPACE 可覆盖。",
     "",
     "选项：",
-    "  --clean   只清不装：删掉宿主目录里本仓库拥有的全部子树，不拷贝、不做收尾。",
-    "            三端 packages/ 及宿主目录其余内容（eggy.json、data/ 等）不碰。",
+    "  --clean   只清不装：删掉宿主目录里本仓库拥有的全部子树（含三端 packages/），不拷贝、不做收尾。",
+    "            宿主目录其余内容（eggy.json、data/ 等）不碰。",
     "            宿主目录的删除不保证会反映进编辑器内存，地图侧已有内容保留。",
     "",
   }, "\n") .. "\n"
@@ -86,6 +88,18 @@ local function failure_text(t, cmd, code, notes, output)
   for _, note in ipairs(notes) do lines[#lines + 1] = " " .. note end
   if output and output ~= "" then lines[#lines + 1] = " 输出:\n" .. output end
   return table.concat(lines, "\n")
+end
+
+-- 镜像前报出 /MIR 会删掉的宿主文件：宿主侧多出的文件在镜像后不存在，
+-- 先列出来再删，避免静默丢掉宿主上仓库没有的内容。
+local function report_stale(t)
+  if not t.dir then return end
+  local src, dst = shell.list_files(t.src), shell.list_files(t.dst)
+  if not src or not dst then return end
+  local _, extra = M.file_set_diff(src, dst)
+  if #extra > 0 then
+    print("将删除宿主多余文件: " .. t.rel .. " " .. #extra .. " 个: " .. brief(extra))
+  end
 end
 
 -- 镜像一个目标并核验搬运结果。两层护栏：
@@ -142,6 +156,7 @@ local function run_deploy(clean_only)
   end
 
   for _, t in ipairs(targets) do
+    report_stale(t)
     local n, err = mirror_and_verify(t)
     if not n then fail(err) end
     print(t.rel .. ": " .. n .. " 个文件 (robocopy)")

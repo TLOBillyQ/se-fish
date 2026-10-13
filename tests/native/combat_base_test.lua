@@ -7,7 +7,7 @@
 --   TestAbilityCastGuard 往 package.preload['server.packages.ability_system.api'] 装桩，旧文件从不摘除。
 --   LuaUnit 各文件同进程时这条泄漏被后来的 require 撞上（本批 damage_float 的 Color 泄漏是同一类问题）；
 --   Busted 也是单进程，所以这里逐案例快照并在 after_each 原样写回 preload 与 package.loaded 的旧值
---   （含 nil→nil），保证「vendor 包只读、桩不跨案例」。这不改业务行为，只把夹具的恢复补全。
+--   （含 nil→nil），保证桩不跨案例。这不改业务行为，只把夹具的恢复补全。
 
 local function signal()
     local s = { handlers = {} }

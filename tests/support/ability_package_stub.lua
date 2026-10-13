@@ -7,7 +7,7 @@
 -- 另一份文件先把真包模块灌进 package.loaded 让 preload 永不被调用（跨文件的隐性耦合，
 -- 与 damage_float 的 Color 全局泄漏同类）。Busted 逐 spec 独立加载后这条残留不可依赖，
 -- 所以按名单建齐桩：除调用方指定的函数外，其余接口一律返回 false（未被业务用到的接口不该被调到）。
--- 不碰 vendor 源码：server/packages/ 是官方包只读子树。
+-- 桩只走 package.preload，不改包内源码。
 local AbilityAPIBase = require('common.AbilityAPIBase')
 
 local M = {}

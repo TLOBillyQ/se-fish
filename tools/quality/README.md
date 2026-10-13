@@ -1,6 +1,6 @@
 # 质量工具
 
-项目使用原生 Windows、PowerShell 7、Lua 5.4 与原生 Busted。终端与 viewer 刷新共用 `project.json`：分析 `client/`、`common/`、`server/` 的业务 Lua，排除官方 `packages/` 与 `server/_trigger/`；CRAP 与 DRY 都使用这一范围。
+项目使用原生 Windows、PowerShell 7、Lua 5.4 与原生 Busted。终端与 viewer 刷新共用 `project.json`：分析 `client/`、`common/`、`server/` 的 Lua，排除 `server/_trigger/`；CRAP 与 DRY 都使用这一范围。
 
 ## 解释器与测试命令契约
 

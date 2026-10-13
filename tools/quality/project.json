@@ -1,5 +1,5 @@
 {
-  "sources": {"roots": ["client", "common", "server"], "exclude": ["packages", "server/_trigger"]},
+  "sources": {"roots": ["client", "common", "server"], "exclude": ["server/_trigger"]},
   "lua": {"executable": "lua", "version": "Lua 5.4."},
   "commands": {
     "coverage": ["busted.bat", "--run=full", "--coverage"],

@@ -21,9 +21,9 @@ describe("TestQuality", function()
     -- 样本一律取现存路径：owned() 是纯路径模式判断，死路径不影响判别力，
     -- 但会让读者以为这条样例已失效（旧 tests/run.lua 已随 #93 删除）。
     assert.is_false(sources.owned("tests/native/helper.lua"))
-    assert.is_false(sources.owned("server/packages/ability_system/api.lua"))
-    assert.is_false(sources.owned("client/packages/ability_system/api.lua"))
-    assert.is_false(sources.owned("common/packages/attr_rule/utils.lua"))
+    assert.is_true(sources.owned("server/packages/ability_system/api.lua"))
+    assert.is_true(sources.owned("client/packages/ability_system/api.lua"))
+    assert.is_true(sources.owned("common/packages/attr_rule/utils.lua"))
     assert.is_false(sources.owned("server/_trigger/function_0.lua"))
     assert.is_false(sources.owned("data/Prefab.lua"))
     assert.is_false(sources.owned("build/generated.lua"))

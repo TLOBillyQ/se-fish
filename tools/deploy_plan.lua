@@ -8,22 +8,20 @@ local M = {}
 M.REALMS = { "client", "common", "server" }
 
 -- 本仓库拥有的子树清单：<端>/<child>，仓库路径与宿主目录路径同名。
+-- 三端 packages/ 与业务子目录同样归本仓库，镜像与 clean 一视同仁。
 -- list_entries(realm) 返回 { {name=, dir=}, ... }（调用方保证按名排序）。
 -- 返回 { {rel=, dir=, src=, dst=}, ... }；dir 在这里定一次，后续不再问文件系统。
 function M.targets(workspace, list_entries, realms)
   local targets = {}
   for _, realm in ipairs(realms or M.REALMS) do
     for _, child in ipairs(list_entries(realm)) do
-      -- 官方包由宿主管理；镜像和 clean 共用此清单，均保留整棵 packages 子树。
-      if child.name:lower() ~= "packages" then
-        local rel = realm .. "/" .. child.name
-        targets[#targets + 1] = {
-          rel = rel,
-          dir = child.dir,
-          src = rel,
-          dst = workspace .. "/" .. rel,
-        }
-      end
+      local rel = realm .. "/" .. child.name
+      targets[#targets + 1] = {
+        rel = rel,
+        dir = child.dir,
+        src = rel,
+        dst = workspace .. "/" .. rel,
+      }
     end
   end
   return targets

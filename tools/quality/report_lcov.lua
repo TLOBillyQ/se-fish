@@ -5,7 +5,7 @@ local runner = require("luacov.runner")
 runner.load_config({
     statsfile = statsfile,
     reportfile = reportfile,
-    exclude = {"/packages/", "server/_trigger/"},
+    exclude = {"server/_trigger/"},
 })
 local reporter = require("luacov.reporter")
 local R = setmetatable({}, reporter.ReporterBase)

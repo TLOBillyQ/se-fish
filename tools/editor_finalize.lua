@@ -1,6 +1,5 @@
--- 部署收尾：镜像落盘后只执行 code validate → code diff，核对编辑器内代码。
--- CLI 的 excludePatterns 对 code push 不生效；为保留宿主 packages，收尾不执行全工作区 push。
--- 有本地新增或不同文件时报告尚未同步；地图侧独有文件只提示，保留已有内容。
+-- 部署收尾：镜像落盘后执行 code validate → （与编辑器有差异时）code push → code diff 复核。
+-- push 之后仍与编辑器不一致才报告尚未同步；地图侧独有文件只提示，保留已有内容。
 --
 -- 本模块依赖正在运行的编辑器与 editor-cli.exe；CLI 缺失、宿主未绑定或地图未打开时
 -- 打印跳过，磁盘镜像仍算完成，但不宣称编辑器内代码已同步。
@@ -77,9 +76,29 @@ function M.run(ws)
 
   local dirty = M.behind_count(cl)
   if dirty > 0 then
-    return nil, "尚未同步到编辑器：有 " .. dirty .. " 个本地新增或不同文件；"
-      .. "为保留 packages，deploy 不执行全工作区 code push。"
-      .. "请使用只读 code diff 核对差异，并另行处理业务代码同步。\n" .. out
+    local pcode, pout = editor_cli(exe, ws, "code push")
+    if pcode ~= 0 then
+      return nil, "code push 失败（退出码 " .. tostring(pcode) .. "）:\n" .. pout
+    end
+    print("push: 已推送 " .. dirty .. " 个本地新增或不同文件")
+
+    local dcode, dout = editor_cli(exe, ws, "code diff")
+    if dcode ~= 0 then
+      return nil, "code push 后 code diff 复核失败（退出码 " .. tostring(dcode) .. "）:\n" .. dout
+    end
+    if dout:find("channel=offline", 1, true) then
+      return nil, "code push 后 code diff 走离线地图目录，无法确认编辑器内代码:\n" .. dout
+    end
+    local after = M.parse_changelist(dout)
+    if not after then
+      return nil, "code push 后读不到 changelist，无法确认编辑器内代码（退出码 "
+        .. tostring(dcode) .. "）:\n" .. dout
+    end
+    local left = M.behind_count(after)
+    if left > 0 then
+      return nil, "code push 后编辑器内仍有 " .. left .. " 个本地新增或不同文件:\n" .. dout
+    end
+    cl = after
   end
 
   print("编辑器: 已同步（unchanged=" .. (cl["unchanged"] or 0) .. "）")

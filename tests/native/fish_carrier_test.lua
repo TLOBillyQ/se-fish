@@ -511,7 +511,7 @@ describe('TestFishCarrierSeam', function()
   end)
 
   it('test_module_does_not_require_the_vendor_package', function()
-    -- 业务层不直接 require 包内模块：接缝是双端根聚合入口（AGENTS.md「packages/」一节）
+    -- 业务层不直接 require 包内模块：接缝是双端根聚合入口
     local src = readSource(CARRIER_PATH)
     assert.is_false(contains(src, 'require("server.packages'), '不得 require 包内模块')
     assert.is_false(contains(src, 'require("client.packages'), '不得 require 包内模块')
@@ -525,7 +525,7 @@ describe('TestFishCarrierSeam', function()
   end)
 
   it('test_vendor_contract_is_still_controller_take_damage', function()
-    -- 包整包 vendor 不改：这里校对包内 _applyDamage 的两条分支没变。
+    -- 包内 _applyDamage 的两条分支是业务实现的前提：这里校对它们仍在。
     -- 一旦官方改成别的接缝，本模块的实现前提就废了，必须在这里暴露。
     local src = readSource(MELEE_HIT_PATH)
     assert.is_true(contains(src, 'target.TakeDamage'), '_applyDamage 的第一条分支：target:TakeDamage')
