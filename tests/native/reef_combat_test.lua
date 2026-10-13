@@ -14,10 +14,10 @@ local Islet = require('tests.support.isle_combat')
 describe('TestReefCombat', function()
     local env
     before_each(function()
-        env = Islet.open(6)
+        env = Islet.new(6)
     end)
     after_each(function()
-        Islet.close(env)
+        env:tearDown()
     end)
 
     -- 失败方式：空中普通鱼与企鹅朝最近水区逃脱，且不因「一秒时限」被提前移除。

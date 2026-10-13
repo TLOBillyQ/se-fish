@@ -164,11 +164,11 @@ end)
 describe('TestMgrWeapon', function()
     local ctx
     before_each(function()
-        ctx = {}
-        Weapon.open(ctx)
+        ctx = Weapon.new()
+        ctx:setUp()
     end)
     after_each(function()
-        Weapon.close(ctx)
+        ctx:tearDown()
     end)
 
     -- #37 失败方式：客户端俯仰丢失；方向尺度扩大射程；NaN/inf/零向量消耗弹药；
@@ -594,11 +594,11 @@ describe('TestMgrWeaponUpgrade', function()
     -- 直接复用武器世界夹具；Busted 下改为各案例自己 open/close 同一份 support 模块。
     local ctx
     before_each(function()
-        ctx = {}
-        Weapon.open(ctx)
+        ctx = Weapon.new()
+        ctx:setUp()
     end)
     after_each(function()
-        Weapon.close(ctx)
+        ctx:tearDown()
     end)
 
     it('test_explosive_max_level_scales_detonation', function()

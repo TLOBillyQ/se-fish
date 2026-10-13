@@ -27,7 +27,7 @@ describe("盲盒服务端结算（MgrBlindbox × MgrSave × MgrPlatform）", fun
     -- 但 MgrSave / MgrLoot 读全局 math.random()，故逐案例还原，杜绝泄漏到后续案例。
     RandomGuard.restore()
     if world then
-      world:cleanup()
+      world:tearDown()
       world = nil
     end
   end)

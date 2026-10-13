@@ -76,7 +76,7 @@ describe('TestLootRecycle', function()
     local env
 
     before_each(function()
-        env = setmetatable({}, { __index = FishLoot })
+        env = FishLoot.new()
         setUp(env)
     end)
     after_each(function()

@@ -26,7 +26,7 @@ end
 local World = {}
 World.__index = World
 
---- 搭建一次结算世界；调用方负责在案例结束时 cleanup()。
+--- 搭建一次结算世界；调用方负责在案例结束时 tearDown()。
 function M.new()
   return setmetatable({}, World)
 end
@@ -156,7 +156,7 @@ function World:setUp()
 end
 
 --- 恢复全局与配置；setUp 半途失败时按已记录的改动项恢复，未改的跳过。
-function World:cleanup()
+function World:tearDown()
   if self.changed then
     if self.changed.globals then
       _G.game, _G.REUtil = self.oldGame, self.oldRE
@@ -172,9 +172,6 @@ function World:cleanup()
     self.changed = nil
   end
 end
-
--- 兼容旧调用名（验收步骤沿用 setUp/tearDown 成对写法）。
-World.tearDown = World.cleanup
 
 function World:drain()
   while #self.queue > 0 do

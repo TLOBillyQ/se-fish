@@ -12,6 +12,8 @@ Lua 命令使用 **Lua 5.4**，执行前用 `lua -v` 核对；验收脚本可用
 - 技能包预设命令见 `lua tools/cli.lua ability-presets --help`；验收脚本说明见 `tools/acceptance/README.md`。
 - 质量入口为 `.\tools\quality\project.ps1`，安装、覆盖率、CRAP、DRY、差分 mutation 与复验步骤见 [tools/quality/README.md](../../tools/quality/README.md)；只出报告，不设指标门槛。
 - 单测放 `tests/native/`（slow 车道放 `tests/native/slow/`），共享夹具放 `tests/support/`，探针放 `tests/probes/`（手工探针，不入任何车道）。日常运行 `busted --run=fast`（等价 `default`），收尾运行 `busted --run=full`；车道由根目录 `.busted` 定义，共享初始化在 `tests/native/helper.lua`。Windows 专用案例在案例内判平台，非 Windows 时 `return pending(...)`，`--list` 行数因此跨平台不变。
+  - 与「完成判据」表里 `0 pending` 的关系：那张表的 `0 pending` 是在 **Windows**（本轮目标平台）上取的数；非 Windows 下这些案例会以 pending 出现，判据相应放松为「除已知平台案例外 0 pending」。本轮 macOS **仅设计未实机**，没有实机数据。
+  - `busted` 与 `busted.bat`：人手 shell 里敲、以及 `shutil.which`（会按 `PATHEXT` 找到 `.bat` 垫片）用裸 `busted` 即可；只有 Python `CreateProcess`/`shell=False` 起子进程时必须写 `busted.bat`（`CreateProcess` 只补 `.exe`，裸名会 `[WinError 2]`），`tools/quality/project.json` 的 `commands.*` 因此写 `busted.bat`，而 `busted.command` 仍写裸 `busted` 供 `shutil.which` 用。
 
 **架构图（uml-viewer）。** 根目录 `policy.edn` 描述三端模块树，`docs/uml/se-fish.edn` 是生成的依赖图（不要手编）。
 

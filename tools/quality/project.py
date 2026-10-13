@@ -14,6 +14,9 @@ os.environ.setdefault("PYTHONDONTWRITEBYTECODE", "1")
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 MANIFEST = "uml-quality.json"
 # 标准 quality 分发（#95）：图上右键与终端共用同一公开入口的声明式映射。
+# 这里是「声明与实现的显式重复」：字段值与仓库根 uml-quality.json 的 operations 逐字段相同
+# （声明侧由 standard_quality_dispatch_test.py 重抄一份作回归），doctor 负责比对两侧，
+# 因此不需要抽公共常量。改 uml-quality.json 时必须同步改此处，否则 doctor 报「分发配置」失败。
 DISPATCH = {
     "crap": {"argv": ["./tools/quality/project.ps1", "refresh-crap"], "forwardArgs": "none",
              "scope": "whole-tree", "validResultExitCodes": [0]},

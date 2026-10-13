@@ -33,7 +33,7 @@ describe('TestFishLoot', function()
     local env
 
     before_each(function()
-        env = setmetatable({}, { __index = FishLoot })
+        env = FishLoot.new()
         env:setUp()
     end)
     after_each(function()

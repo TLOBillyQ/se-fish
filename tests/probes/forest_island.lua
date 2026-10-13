@@ -33,8 +33,11 @@ local FishCatch = require('common.FishCatch')
 
 -- ===== 假引擎战斗世界（tests/support/combat_world，复用 fish_escape 测试夹具）=====
 local CombatWorld = require('tests.support.combat_world')
-local combat, close, at, pinRandom, drop =
-    CombatWorld.new, CombatWorld.close, CombatWorld.at, CombatWorld.pinRandom, CombatWorld.drop
+local combat, at, pinRandom, drop =
+    CombatWorld.new, CombatWorld.at, CombatWorld.pinRandom, CombatWorld.drop
+
+-- 拆除统一走实例方法（与 blindbox_world / revive_world 同一入口名）
+local function close(env) env:tearDown() end
 
 -- ===== 1. 水区 / 抽鱼池 =====
 local waterId = GameCfg.Zones[4].WaterId

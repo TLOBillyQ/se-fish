@@ -117,9 +117,9 @@ end
 -- ===== 战斗世界：真实 MgrFishUnit（复用 tests/support 的举鱼 / 逃脱共享夹具）=====
 local function combatWorld(world)
     local FishEscape = require('tests.support.fish_escape')
-    local env = setmetatable({}, { __index = FishEscape })
-    FishEscape.setUp(env)
-    FishEscape.prepare(env)
+    local env = FishEscape.new()
+    env:setUp()
+    env:prepare()
     env.casts, env.hits, env.notices = {}, {}, {}
     for _, p in ipairs({ env.player, env.other }) do
         p.Character.Controller.Health = 300
