@@ -96,14 +96,20 @@ mutation 发布先校验完整暂存树，准备新文件，再将受影响旧�
 
 ## 可重跑验收
 
-空缓存安装回归使用公开入口；准备独立检出、登记兄弟工具来源后，首次执行 `install.ps1`，再从开发检出运行 `python -I tests/tooling/slow/quality_install_test.py <独立检出绝对路径>`。用例依次检查缺失/错误来源/污染诊断、真实完整 quality 和重复安装；只临时修改独立缓存，并恢复故障注入。完整 quality 日志保留在独立检出的 `build/quality/install-acceptance-quality.log`。该 suite 被 unittest discover 导入时只跳过，不解析发现参数、不设置主检出为目标；只有显式脚本入口接受另一个独立检出的绝对路径。
+空缓存安装回归使用公开入口；准备独立检出、登记兄弟工具来源后，首次执行 `install.ps1`，再从开发检出运行 `python -I tests/tooling/slow/quality_install_test.py <独立检出绝对路径>`。用例依次检查缺失/错误来源/污染诊断、真实完整 quality 和重复安装；只临时修改独立缓存，并恢复故障注入。完整 quality 日志保留在独立检出的 `build/quality/install-acceptance-quality.log`。该 suite 被 unittest discover 导入时只跳过，不解析发现参数、不设置主检出为目标；只有显式脚本入口接受另一个独立检出的绝对路径，因此上面这条命令是它的手工入口，`verify.ps1 -QualityInstallRoot <绝对路径>` 是同一入口的自动执行形态。
 
 代表文件必须显式指定；该命令包含一次选定文件的全量 mutation：
 ```powershell
 .\tools\quality\verify.ps1 -File common/RateLimit.lua
 ```
 
-入口串行执行环境校验、完整质量流程、两次差分、选定文件显式全量、公开命令失败路径测试与 IR 生成，并核对代表源码哈希。核对第二次差分输出中的 `Mutation function:` 与 `Mutation run:`：`executed` 是本轮实际执行数，`reused` 是函数 digest 与 mutation ID 均一致而继承的历史 killed 数，`uncovered` 是覆盖率缺口，`excluded` 是行筛选排除数。加 `--verbose` 可查看每个 mutation 的 `action`、`reason`、`previous` 与 `result`；历史 survived 会重新执行，源码 digest 或 mutation ID 改变以及显式 `--mutate-all` 都不会复用。不能只依据快照修改时间判断复用。自动命令验收与真实 GUI 验收分别记录。
+安装 suite 在 discover 下恒被跳过（它只吃独立检出），因此复验入口另有一条显式执行路径：
+```powershell
+.\tools\quality\verify.ps1 -File common/RateLimit.lua -QualityInstallRoot <独立检出绝对路径>
+```
+缺省 `-QualityInstallRoot` 时该步骤降级为警告，不阻塞本次复验；给了绝对路径则执行上面的安装 suite 入口，非零退出并入本次复验。
+
+入口串行执行环境校验、完整质量流程、两次差分、选定文件显式全量、公开命令失败路径测试、安装 suite 显式执行与 IR 生成，并核对代表源码哈希。核对第二次差分输出中的 `Mutation function:` 与 `Mutation run:`：`executed` 是本轮实际执行数，`reused` 是函数 digest 与 mutation ID 均一致而继承的历史 killed 数，`uncovered` 是覆盖率缺口，`excluded` 是行筛选排除数。加 `--verbose` 可查看每个 mutation 的 `action`、`reason`、`previous` 与 `result`；历史 survived 会重新执行，源码 digest 或 mutation ID 改变以及显式 `--mutate-all` 都不会复用。不能只依据快照修改时间判断复用。自动命令验收与真实 GUI 验收分别记录。
 
 真实 viewer 验收步骤：
 
