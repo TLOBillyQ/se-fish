@@ -23,6 +23,9 @@ function Invoke-Quality([string[]]$Arguments, [int[]]$Allowed = @(0)) {
 }
 Invoke-Quality @('doctor')
 Invoke-Quality @('quality')
+# 复验明确选定 1 个代表文件，本机逻辑核心充裕，故显式放开到 12 个 worker（#98 AC3 的扩充依据）；
+# 墙钟预算不扩充，沿用 mutation 的 60 分钟默认值。超过预算会以退出码 4 失败关闭，
+# 部分范围不作为验收证据。
 Invoke-Quality @('mutation', $File, '--max-workers', '12') @(0, 3)
 Invoke-Quality @('mutation', $File, '--max-workers', '12') @(0, 3)
 Invoke-Quality @('mutation', '--mutate-all', $File, '--max-workers', '12') @(0, 3)

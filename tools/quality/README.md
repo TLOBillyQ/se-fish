@@ -59,11 +59,11 @@ acceptance4lua 的 Gherkin 解析、生成与验收仍使用 `tools/acceptance/`
 # 仅生成完整测试的覆盖率
 .\tools\quality\project.ps1 coverage
 
-# 对选定业务文件执行差分 mutation
-.\tools\quality\project.ps1 mutation common/RateLimit.lua --max-workers 12
+# 对选定业务文件执行差分 mutation（默认单 worker、60 分钟墙钟预算）
+.\tools\quality\project.ps1 mutation common/RateLimit.lua
 
 # 仅显式全量操作重新测试该文件的全部变异
-.\tools\quality\project.ps1 mutation --mutate-all common/RateLimit.lua --max-workers 12
+.\tools\quality\project.ps1 mutation --mutate-all common/RateLimit.lua
 
 # viewer / companion 使用同一公开入口：完整 Busted → 本轮 LCOV → 全树 CRAP
 .\uml.ps1 crap
@@ -74,13 +74,23 @@ acceptance4lua 的 Gherkin 解析、生成与验收仍使用 `tools/acceptance/`
 
 完整测试失败时停止覆盖率发布，旧 LCOV 失效；转换失败同样停止后续指标。任何 CRAP 刷新都替换完整业务树快照，选中单模块也保持其他模块的指标。DRY 保留重复代码候选报告，不设质量门槛。
 
-标准分发映射声明在仓库根 `uml-quality.json`（`version: 1`，`operations.crap` / `operations.mutate`），固定版本的 viewer 与 companion 每次执行命令时读取，无需 viewer 私有补丁（crapper/mutator 仍有各自未上游化的保护，补丁照常登记）。图上入口因此落到项目公开命令：`uml.ps1 crap` → `project.ps1 refresh-crap`（`forwardArgs: none`、`scope: whole-tree`，有效结果退出码 0），`uml.ps1 mutate <文件> [参数]` → `project.ps1 mutation`（`forwardArgs: append`，保留参数与退出码，0 与 3 视为有效结果）。`project.ps1 doctor` 会先核对这份声明与项目公开入口是否一致，缺失、无效 JSON 或错映射都在环境核对之前明确失败；校验不通过时图上操作失败关闭，不回退到通用 crapper/mutator 或 `deps.edn` 别名。
+标准分发映射声明在仓库根 `uml-quality.json`（`version: 1`，`operations.crap` / `operations.mutate`），固定版本的 viewer 与 companion 每次执行命令时读取，无需 viewer 私有补丁（crapper/mutator 仍有各自未上游化的保护，补丁照常登记）。图上入口因此落到项目公开命令：`uml.ps1 crap` → `project.ps1 refresh-crap`（`forwardArgs: none`、`scope: whole-tree`，有效结果退出码 0），`uml.ps1 mutate <文件> [参数]` → `project.ps1 mutation`（`forwardArgs: append`，保留参数与退出码，0 与 3 视为有效结果）。超预算的 4 与失败码一样**不是**有效结果，图上操作失败关闭，不把部分结果当成全范围证明。`project.ps1 doctor` 会先核对这份声明与项目公开入口是否一致，缺失、无效 JSON 或错映射都在环境核对之前明确失败；校验不通过时图上操作失败关闭，不回退到通用 crapper/mutator 或 `deps.edn` 别名。
 
 `uml.ps1 crap` 完整执行 `coverage` → `crap`，忽略单类或组件目标并完整替换快照；成功率/覆盖率失败立即停止。`uml.ps1 mutate <文件> [参数]` 转交项目 mutation 接缝并保留参数及退出码。手工复验可以运行 `.\uml.ps1 crap && .\uml.ps1 ir`。分发后的结果记录在 `.uml-viewer/quality-result.json`，companion 只消费刚等到的那条记录，`validResult` 为真才使用 IR 与显示。
 
 运行中的 companion 使用启动时取得的规则；新规则需通过 `:quit-for-restart` → 等待旧 JVM 自然退出 → `.\uml.ps1 --restart` 协议重启后载入。分发脚本每次命令执行时读取，因此旧 companion 执行 `.\uml.ps1 crap` 也立即使用修复后的质量入口。GUI 复验代表模块为 `client.LocalReelIn`。
 
 项目命令 `mutation` 是正式名称，`mutate` 保留为兼容别名；UML 命令仍使用 `uml.ps1 mutate`。CRAP 与 mutation 刷新均先运行完整覆盖率，耗时包含完整测试，不应按秒完成来判断成功。
+
+## 墙钟预算、启动前记录与退出码
+
+正式 mutation 默认**单 worker**、**60 分钟墙钟预算**（`mutation.DEFAULT_MAX_WORKERS` / `mutation.DEFAULT_BUDGET_SECONDS`）。默认不占满逻辑核心；要扩充 worker 数或预算，用 `--max-workers N` / `--budget-seconds S` 显式给出，并把范围与可用资源依据记进本次运行记录，不要靠默认值放大资源占用。
+
+预算在开始计时时覆盖整条命令（覆盖率与基线属前置步骤，先跑完），边界检查发生在**目标之间**——只有工具内部知道断点，所以提前退出落在 `mutation.py` 的目标循环里，而不是在外层杀进程：这样才拿得到「哪些目标没跑」。正在执行的那个目标会跑完再停。
+
+每次 mutation 在动工前打印一条**启动前记录**，可整段复制到日志头，字段为基准、范围、worker、时间预算、超预算策略、日志位置与恢复方式。记录里的「采集」行给出把本次 stdout/stderr 重定向到该日志的完整命令；工具本身不写日志文件。
+
+退出码：`0` 全部完成且无存活，`3` 全部完成但有存活，`4` 超预算提前退出，`2` 基线或覆盖率失败，`1` 基础设施失败或范围非法。**`4` 表示范围未跑完，不是通过**：超预算时已完成目标的快照照常发布（未变化的输入下次按 `.metrics/mutate` 历史复用），同时打印已完成/未运行的目标清单，`uml-quality.json` 的 `validResultExitCodes` 只认 `[0, 3]`，图上入口因此失败关闭。
 
 mutation 从覆盖率开始核对目标源码；worker 仅修改副本。运行期间原始文件被保存或删除时停止发布，保留外部编辑和上一份有效 mutation 快照；失败清理不会写回旧源码。下游入口同样在写快照前检查源码。旧版 `target/mutator-backup/` 没有工具最后写入字节的所有权记录，发现备份时停止运行并保留源码与备份，需人工核对后处理。
 
