@@ -20,12 +20,27 @@ Lua 命令使用 **Lua 5.4**，执行前用 `lua -v` 核对；验收脚本可用
 
 **架构图（uml-viewer）。** 根目录 `policy.edn` 描述三端模块树，`docs/uml/se-fish.edn` 是生成的依赖图（不要手编）。
 
-- `.\uml.ps1 ir`：修改三端代码后重新生成图；viewer 检测文件变化自动重载。
-- `.\uml.ps1`：启动 viewer 与 companion 看图、向 agent 发起图上操作。重启 viewer 由 companion 处理，不要直接杀进程。
+- `.\uml.ps1`：首次启动 viewer 与 companion 看图、向 agent 发起图上操作；`.\uml.ps1 ir` 在修改三端代码后重新生成图，viewer 检测文件变化自动重载。
+- **companion 后端是 Herdr（0.9.3，且只有它）**：旧 tmux/psmux 路径已退役，Linux/WSL 不提供 companion。companion ownership 记录在 `.uml-viewer/companion.edn`，必须显式记为 Herdr；旧记录或缺 backend 的记录会保留并拒绝接管，不要猜着重连。能力契约与验收边界见 uml-viewer 的 `docs/herdr-backend-contract.md`。
+- **重启 viewer 必须走协议**：往 `.uml-viewer/to-viewer.edn` 写 `:quit-for-restart` → 等旧 JVM 自然退出 → `.\uml.ps1 --restart`；新 JVM 按持久化记录重新 bind 原 pane，不新建 companion。**绝不 SIGKILL**，也不要绕开公开 wrapper 直接传 `--restart`。
+- 图上 `crap` / `mutate`：companion 消费邮箱命令后执行项目公开入口（即 `uml-quality.json` 声明的 `project.ps1 refresh-crap` / `project.ps1 mutation`）。每次调用前删掉上一条 `.uml-viewer/quality-result.json`，运行后核对刚等到的记录里 `version`、`operation`、`projectRoot`、实际退出码与 `validResult`；只有 `validResult` 为真才继续 IR 与显示。
 - 图上 `client|common|server` 为三棵树；`**/packages/**` 与 `server/_trigger/` 被 `:exclude` 排除，vendor 依赖显示为 `*.packages` 椭圆。viewer 从 `.metrics/crap.edn` 与 `.metrics/mutate/*.edn` 加载指标；缺少任一指标的类卡片为红色。Lua 指标安装、原生 Windows 适配与命令见 [tools/quality/README.md](../../tools/quality/README.md)。
 - **标准 quality 分发**：根目录 `uml-quality.json`（版本管理）声明图上 `crap` / `mutate` 转交哪个项目公开命令，终端与右键走同一实现；参数、退出码、锁与失败报告一致。改项目质量入口时同步核对这份声明，`project.ps1 doctor` 会先校验它。
 - `target/` 放覆盖率与 mutation worker，属于忽略的临时产物；`.metrics/` 保留质量快照并纳入版本管理。无函数定义的配置或转发模块不生成 mutation 快照；当前工具不测试模块顶层语句。
 - 根目录 `uml`、`uml.ps1` 由安装器拷贝，不要编辑；固定工具组合的安装与校验使用 [tools/quality/README.md](../../tools/quality/README.md) 的项目入口。
+- **本轮只在 Windows 实机验收**：安装、doctor、full／fast、coverage、CRAP、独立 Python 回归与 Herdr 恢复都只有 Windows 的实机数据。**macOS 仅设计、未实机验证，没有实机数据**；Herdr 的 macOS 端到端验收已取消，不等于通过。
+
+**Windows worktree 起手式。** `tools/quality/project.json` 的 `tools.*.source` 写成 `../uml-viewer` 这类相对路径，从检出根的**父目录**解析；worktree 里没有主检出旁的真实工具检出，必须在 worktree 的父目录建 junction：
+
+```powershell
+foreach ($t in 'uml-viewer','crapper','mutator') {
+  New-Item -ItemType Junction -Path "<worktree 父目录>\$t" -Target "C:\Users\<用户名>\Desktop\dev\github\$t"
+}
+```
+
+- 目标必须是这些**真实检出**。指向 `.uml-viewer\<tool>`（安装产物而非上游检出）会让 install／doctor 预检与标准分发回归大面积报错。
+- `.toolcache` 也 junction 到主检出的同名目录，否则要自己备齐 `project.json` 的 `lua_tools` 全套：`luacov`、`dry4lua`、`luacheck`、`acceptance4lua`，以及它们的 Lua 依赖 `argparse`、`datafile`、`luafilesystem`。缺 `luacheck` 时 `tests/native/slow/quality_report_test.lua` 会经 `dry4lua/ast.lua` 抛 `luacheck required`，断言先撞在 `broken.lua` 那一行——报错点离根因三层。
+- `.uml-viewer` 也 junction 到主检出的同名目录，才能复用已安装的 venv 与 viewer checkout；代价是会话、邮箱与 `quality-result.json` 一并共享，不要在两处同时起 viewer。
 
 **宿主目录专用于镜像。** 默认 `C:\Users\<用户名>\Desktop\dev\eggy\LuaSource_钓鱼怎么这么危险啊喂！`，可用 `EGGY_WORKSPACE` 覆盖。
 
