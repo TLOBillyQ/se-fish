@@ -62,7 +62,7 @@ describe('TestBaitSpot', function()
     local env
 
     before_each(function()
-        env = setmetatable({}, { __index = FishLoot })
+        env = FishLoot.new()
         setUp(env)
     end)
     -- 夹具 setUp 失败也要按已保存状态回滚，after_each 与旧 tearDown 一样照常执行。

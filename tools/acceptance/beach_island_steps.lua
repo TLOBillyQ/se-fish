@@ -16,7 +16,7 @@ end
 local function closeCombat(world)
     local env = world.combat
     if not env then return end
-    CombatWorld.close(env)
+    env:tearDown()
     world.combat, world.fish = nil, nil
 end
 

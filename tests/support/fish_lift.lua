@@ -1,6 +1,12 @@
 -- 举鱼共享夹具：仅提供环境方法，不注册测试案例。
 local M = {}
 
+--- 建一个空世界壳；调用方随后 :setUp() 搭世界、:tearDown() 拆除
+--- （与 blindbox_world / revive_world 同一构造/拆除入口名）。
+function M.new()
+    return setmetatable({}, { __index = M })
+end
+
 local function signal()
     local slots = {}
     return {

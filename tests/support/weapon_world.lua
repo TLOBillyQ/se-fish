@@ -9,13 +9,21 @@
 local PlayerData = require('server.Data.PlayerData')
 
 local M = {}
+M.__index = M
 
 local function weaponPlayer(id)
     return { UserId = id, Character = { Position = { x = 0, y = 2, z = 0 },
         Rotation = { GetForward = function() return { x = 0, y = 0, z = 1 } end } } }
 end
 
-function M.open(ctx)
+--- 建一个空世界壳；调用方随后 :setUp() 搭世界、:tearDown() 拆除
+--- （与 blindbox_world / revive_world 同一构造/拆除入口名）。
+function M.new()
+    return setmetatable({}, M)
+end
+
+function M:setUp()
+    local ctx = self
     ctx.saved = { game = rawget(_G, 'game'), re = rawget(_G, 'REUtil'),
         api = package.loaded['server.AbilityAPI'] }
     ctx.now = 1000
@@ -84,7 +92,8 @@ function M.open(ctx)
     ctx.mgr.FishCarrier = { ResolveCarrier = function(_, unit) return nil end }
 end
 
-function M.close(ctx)
+function M:tearDown()
+    local ctx = self
     _G.game = ctx.saved.game
     _G.REUtil = ctx.saved.re
     package.loaded['server.AbilityAPI'] = ctx.saved.api

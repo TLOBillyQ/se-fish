@@ -70,8 +70,7 @@ class CoveragePublicationTest(unittest.TestCase):
 
     def _quality(self, root, config):
         environment = os.environ.copy()
-        # 测试命令里的 `lua` 用仓库当前 PATH 的真解释器跑桩聚合入口；报告脚本走 fake-lua.bat。
-        environment["PATH"] = os.environ.get("PATH", "")
+        # 测试命令里的 `lua` 用继承的 PATH 找真解释器跑桩聚合入口；报告脚本走 fake-lua.bat。
         environment.pop("LUA_PATH", None)
         environment.pop("LUA_CPATH", None)
         return subprocess.run([sys.executable, "-B", str(ROOT / "tools/quality/project.py"),

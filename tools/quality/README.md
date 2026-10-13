@@ -8,7 +8,7 @@ Lua 解释器与测试命令是两条独立契约（#81）。`project.json` 的 
 
 ## Busted 固定依赖与原生入口
 
-`project.json` 的 `busted` 段登记固定依赖（#81）：Busted 2.3.0（rock `2.3.0-1`）、Luassert `1.9.0-1`、LuaCov `0.17.0-1`，并记录 Busted/Luassert 上游来源 commit 供核验。安装器经 LuaRocks 按 `busted.rocks` 清单安装固定版本（已安装则跳过，可重跑）；`doctor` 核对 busted 命令版本与 rocks 安装状态，失败信息区分解释器缺失、Busted 命令缺失、版本不符与 rock 未安装。LuaCov 的运行时来源仍是 `lua_tools.luacov` 的固定 checkout（与 rock 同一上游 commit），质量覆盖率流程不消费全局 rock。
+`project.json` 的 `busted` 段登记固定依赖（#81）：Busted 2.3.0（rock `2.3.0-1`）、Luassert `1.9.0-1`、LuaCov `0.17.0-1`，并记录 Busted/Luassert 上游来源 commit 供核验。其中 `busted.sources` 是**声明性登记**（`busted`/`luassert` 的上游 URL 与 commit），当前没有运行代码消费它——安装走 LuaRocks 的 `busted.rocks` 清单、`doctor` 只核对命令版本与 rock 安装状态；保留它是为了把「这些依赖固定在哪次上游提交」写进版本管理，供将来改用源码 checkout 安装或加校验时直接取用。安装器经 LuaRocks 按 `busted.rocks` 清单安装固定版本（已安装则跳过，可重跑）；`doctor` 核对 busted 命令版本与 rocks 安装状态，失败信息区分解释器缺失、Busted 命令缺失、版本不符与 rock 未安装。LuaCov 的运行时来源仍是 `lua_tools.luacov` 的固定 checkout（与 rock 同一上游 commit），质量覆盖率流程不消费全局 rock。
 
 LCOV reporter 的固定实现是 `tools/quality/report_lcov.lua`：基于 `luacov.runner` / `ReporterBase` 写出 `SF:`（反斜杠归一为正斜杠）、`DA:`、`LF:`、`LH:`、`end_of_record`。若未来替换为共享 reporter，只能替换内部生成器，必须保持 `paths.lcov` 输出路径、LCOV 字段、路径归一化与 `report_lcov.lua <stats> <output>` 参数契约；CRAP/mutation 只消费该文件，不感知 reporter 实现。
 

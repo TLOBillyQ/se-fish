@@ -163,7 +163,7 @@ describe('TestFishAiLifecycle', function()
     local env
 
     before_each(function()
-        env = setmetatable({}, { __index = FishLift })
+        env = FishLift.new()
         env:setUp()
     end)
     after_each(function()

@@ -36,7 +36,7 @@ describe('TestEelCombat', function()
     local env
 
     before_each(function()
-        env = setmetatable({}, { __index = FishEscape })
+        env = FishEscape.new()
         env:setUp()
     end)
     after_each(function()

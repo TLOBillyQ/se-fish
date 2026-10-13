@@ -28,9 +28,9 @@ local function vec(x, y, z)
         return vec(a.x + b.x, a.y + b.y, a.z + b.z) end })
 end
 
--- 建世界并接线三个真实管理器；返回的 env 供 spec 逐案例持有，close 负责拆除。
+-- 建世界并接线三个真实管理器；返回的 env 供 spec 逐案例持有，env:tearDown() 负责拆除。
 -- env 字段：now / notices / players / castStates / units / heartbeat / world / carrier / mgr / vitals / player。
-function M.open(zoneIndex)
+function M.new(zoneIndex)
     local env = setmetatable({}, { __index = M })
     env.saved = {}
     for _, name in ipairs(GLOBALS) do env.saved[name] = rawget(_G, name) end
@@ -95,7 +95,8 @@ function M.open(zoneIndex)
 end
 
 -- 拆除顺序与旧 tearDown 一致：先清鱼、停管理器，再回灌模块缓存与全局（含 nil 也写回 nil）。
-function M.close(env)
+function M:tearDown()
+    local env = self
     for _, fish in pairs(env.mgr.Fish) do env.mgr:Remove(fish) end
     env.mgr:Stop()
     env.vitals:OnPlayerRemoving(env.player)

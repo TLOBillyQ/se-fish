@@ -16,7 +16,7 @@ function M.snapshot()
   return { Debug = GameCfg.Debug, AcceptanceSlot = GameCfg.Save.AcceptanceSlot }
 end
 
--- 部分 setup 失败时也要能恢复：调用方（helper 的 after_each、旧入口的 tearDown 链）
+-- 部分 setup 失败时也要能恢复：调用方（tests/native/helper.lua 的 after_each）
 -- 不依赖测试体是否跑过。
 function M.restore(snapshot)
   if not snapshot then

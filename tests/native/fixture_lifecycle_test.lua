@@ -37,7 +37,7 @@ describe("共享夹具生命周期", function()
 
   it("FishLift 拆卸把 stop 失败抛出并还原状态", function()
     local original = snapshot()
-    local env = setmetatable({}, { __index = FishLift })
+    local env = FishLift.new()
     FishLift.setUp(env)
     env.mgr.Stop = function() error("stop-failed", 0) end
     local ok, err = pcall(function() FishLift.tearDown(env) end)
@@ -50,7 +50,7 @@ describe("共享夹具生命周期", function()
 
   it("FishLoot 在 MgrLoot 装载处注入的 setup 失败可复现且不留残留", function()
     local original = snapshot()
-    local env = setmetatable({}, { __index = FishLoot })
+    local env = FishLoot.new()
     local originalLoadFile = _G.loadfile
     local attempted = false
     _G.loadfile = function(path)
@@ -75,7 +75,7 @@ describe("共享夹具生命周期", function()
 
   it("FishCombat 拆卸还原被替换的 random 与 Quaternion", function()
     local original = snapshot()
-    local env = setmetatable({}, { __index = FishCombat })
+    local env = FishCombat.new()
     FishCombat.setUp(env)
     math.random = function() return 0 end
     _G.Quaternion = { Marker = true }
@@ -90,7 +90,7 @@ describe("共享夹具生命周期", function()
     local original = snapshot()
     local env = CombatWorld.new()
     CombatWorld.pinRandom(env)
-    CombatWorld.close(env)
+    env:tearDown()
 
     assert.are.equal(math.random, original.random, "random 未还原")
     assert_fixture_globals_restored(original)

@@ -101,6 +101,11 @@ def result_record(root):
     return json.loads(path.read_text(encoding='utf-8-sig')) if path.exists() else None
 
 
+def declared():
+    """仓库根声明式分发配置；DeclaredMappingTest 与 DoctorDispatchCheckTest 共用同一读取口径。"""
+    return json.loads((ROOT / 'uml-quality.json').read_text(encoding='utf-8'))
+
+
 class StandardDispatchTest(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory(prefix='se-fish-dispatch-')
@@ -222,8 +227,7 @@ class StandardDispatchTest(unittest.TestCase):
 class DeclaredMappingTest(unittest.TestCase):
     """声明式配置本身：仓库根 uml-quality.json 映射到项目公开入口，并被固定校验器接受。"""
 
-    def declared(self):
-        return json.loads((ROOT / 'uml-quality.json').read_text(encoding='utf-8'))
+    declared = staticmethod(declared)
 
     def test_manifest_maps_to_public_project_entry(self):
         config = self.declared()
@@ -353,8 +357,7 @@ class DoctorDispatchCheckTest(unittest.TestCase):
     因此隔离项目只需 uml-quality.json 与 project.json 就能观察失败信息。
     """
 
-    def declared(self):
-        return json.loads((ROOT / 'uml-quality.json').read_text(encoding='utf-8'))
+    declared = staticmethod(declared)
 
     def isolated_root(self, directory):
         root = Path(directory)

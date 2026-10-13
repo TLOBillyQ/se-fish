@@ -17,7 +17,7 @@ describe('TestVolcanoCombat', function()
     local savedExtra
     before_each(function()
         savedExtra = { remote = rawget(_G, 'RemoteEvent'), ability = package.loaded['server.AbilityAPI'] }
-        env = Islet.open(7)
+        env = Islet.new(7)
         _G.RemoteEvent = { New = function() return { OnServerEvent = {
             Connect = function() return { Disconnect = function() end } end } } end }
         package.loaded['server.AbilityAPI'] = nil
@@ -25,7 +25,7 @@ describe('TestVolcanoCombat', function()
         env.player.Character.Position = env.vec(p.x, p.y, p.z)
     end)
     after_each(function()
-        Islet.close(env)
+        env:tearDown()
         _G.RemoteEvent = savedExtra.remote
         package.loaded['server.AbilityAPI'] = savedExtra.ability
     end)

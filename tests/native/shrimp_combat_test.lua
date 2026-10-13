@@ -21,7 +21,7 @@ describe('TestShrimpCombat', function()
     local env
 
     before_each(function()
-        env = setmetatable({}, { __index = FishCombat })
+        env = FishCombat.new()
         env:setUp()
     end)
     after_each(function()
