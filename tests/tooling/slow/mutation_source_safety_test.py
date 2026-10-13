@@ -29,6 +29,9 @@ class MutationSourceSafetyTest(unittest.TestCase):
         scripts.mkdir(parents=True)
         shutil.copy(ROOT / 'uml.ps1', root)
         shutil.copy(ROOT / '.uml-viewer/uml-viewer/scripts/uml-command.ps1', scripts)
+        shutil.copy(ROOT / '.uml-viewer/uml-viewer/scripts/uml-quality-config.ps1', scripts)
+        # uml.ps1 的 mutate 走仓库根 uml-quality.json 的标准分发，临时项目也要有这份声明。
+        shutil.copy(ROOT / 'uml-quality.json', root)
         # 使用隔离 checkout 的实际包，临时项目自身也拥有公开分发入口。
         for name in ('mutator', 'crapper'):
             shutil.copytree(ROOT / f'.uml-viewer/{name}/src', root / f'.uml-viewer/{name}/src')

@@ -11,40 +11,7 @@ try {
     [IO.Directory]::CreateDirectory((Split-Path $lockPath -Parent)) | Out-Null
     $lockStream = [IO.File]::Open($lockPath, [IO.FileMode]::OpenOrCreate, [IO.FileAccess]::ReadWrite, [IO.FileShare]::ReadWrite)
     try { $lockStream.Lock(0, 1) } catch { throw '同仓库质量任务正在运行，请稍后重试。' }
-    if ($UpgradeFrom) {
-        if ($UpgradeFrom -cne '4cc471417c6f54f0b24b031d8e3a86300322905b') { throw '只支持显式迁移固定基点 4cc471417c6f54f0b24b031d8e3a86300322905b' }
-        $oldJson = (& git -C $projectRoot show "${UpgradeFrom}:tools/quality/project.json") -join "`n"
-        if ($LASTEXITCODE -ne 0) { throw '无法读取固定迁移登记' }
-        $oldConfig = $oldJson | ConvertFrom-Json
-        $migration = @()
-        # 所有工具先精确预检，全部通过后才撤销已知补丁；未知状态保持原样。
-        foreach ($name in @('viewer', 'crapper', 'mutator')) {
-            $tool = $oldConfig.tools.$name
-            $directory = Join-Path $root ".uml-viewer/$($tool.directory)"
-            $head = & git -C $directory rev-parse HEAD
-            if ($LASTEXITCODE -ne 0 -or $head -cne $tool.commit) { throw "$name 迁移 HEAD 不符，保留现场" }
-            $index = @(& git -C $directory diff --cached --name-only)
-            $untracked = @(& git -C $directory ls-files --others --exclude-standard)
-            if ($index -or $untracked) { throw "$name 有未登记暂存或未跟踪内容，保留现场" }
-            $patches = @()
-            foreach ($patch in @($tool.patches | Where-Object { $_ })) {
-                $text = (& git -C $projectRoot show "${UpgradeFrom}:$patch") -join "`n"
-                if ($LASTEXITCODE -ne 0) { throw "$name 无法读取迁移补丁 $patch" }
-                $patches += $text.TrimEnd()
-            }
-            $expected = (($patches -join "`n").Trim() -replace '(?m)^ $', '')
-            $actual = (((& git -C $directory diff --no-ext-diff) -join "`n").Trim() -replace '(?m)^ $', '')
-            if ($actual -cne $expected) { throw "$name 有未登记差异，不匹配固定旧补丁，保留现场" }
-            $migration += @{ Directory = $directory; Patches = $patches }
-        }
-        foreach ($item in $migration) {
-            # 精确匹配已证明这些文件只有登记差异；仅恢复清单内 tracked 文件。
-            $files = [regex]::Matches(($item.Patches -join "`n"), '(?m)^\+\+\+ b/(.+)$') |
-                ForEach-Object { $_.Groups[1].Value.TrimEnd("`r") } | Select-Object -Unique
-            & git -C $item.Directory restore --worktree -- $files
-            if ($LASTEXITCODE -ne 0) { throw '固定旧补丁撤销失败，保留现场' }
-        }
-    }
+    if ($UpgradeFrom) { throw '-UpgradeFrom 已停用；dirty 工具 checkout 采用明确失败迁移，保留现场' }
     foreach ($name in @('viewer', 'crapper', 'mutator')) {
         $tool = $config.tools.$name
         $source = (Resolve-Path -LiteralPath (Join-Path $projectRoot $tool.source)).Path
@@ -52,15 +19,17 @@ try {
         if ($LASTEXITCODE -ne 0) { throw "$name 本地来源缺少固定提交 $($tool.commit)" }
         $directory = Join-Path $root ".uml-viewer/$($tool.directory)"
         if (Test-Path -LiteralPath "$directory/.git") {
-            # 未提交差异只允许来自已登记的 tracked 补丁；其余内容不得被覆盖。
-            $allowed = @()
-            foreach ($patch in @($tool.patches | Where-Object { $_ })) {
-                $text = Get-Content -LiteralPath (Join-Path $projectRoot $patch) -Raw
-                $allowed += [regex]::Matches($text, '(?m)^\+\+\+ b/(.+)$') | ForEach-Object { $_.Groups[1].Value.TrimEnd("`r") }
+            # 全部工具先精确预检；dirty 只能等于当前仍需保留的登记补丁。
+            $index = @(& git -C $directory diff --cached --name-only)
+            $untracked = @(& git -C $directory ls-files --others --exclude-standard)
+            if ($index -or $untracked) { throw "$name 有未登记暂存或未跟踪内容，保留现场" }
+            $actual = (((& git -C $directory diff --no-ext-diff) -join "`n").Trim() -replace '(?m)^ $', '')
+            $expected = (@($tool.patches | Where-Object { $_ } | ForEach-Object {
+                ((Get-Content -LiteralPath (Join-Path $projectRoot $_) -Raw) -replace "`r`n", "`n" -replace '(?m)^ $', '').TrimEnd()
+            }) -join "`n").Trim() -replace '(?m)^ $', ''
+            if ($actual -and $actual -cne $expected) {
+                throw "$name 有未登记差异（含历史私有补丁），保留现场；请将 checkout 移到备份目录后重跑安装"
             }
-            $dirty = @(& git -C $directory status --porcelain)
-            $unexpected = $dirty | Where-Object { $path = $_.Substring(3).Trim(); -not ($allowed | Where-Object { $path -eq $_ }) }
-            if ($unexpected) { throw "$name 有未登记差异，停止更新：$($unexpected -join '; ')" }
         }
         $prefix = if ($name -eq 'viewer') { 'UML_VIEWER' } else { $name.ToUpperInvariant() }
         [Environment]::SetEnvironmentVariable("${prefix}_REPO_URL", $source, 'Process')
@@ -70,19 +39,6 @@ try {
     $viewerSource = Join-Path $projectRoot $config.tools.viewer.source
     $installerSource = (& git -C $viewerSource show "$($config.tools.viewer.commit):scripts/get-uml-viewer.ps1") -join "`n"
     if ($LASTEXITCODE -ne 0) { throw '无法读取固定基准安装器' }
-    $fetchLine = 'fetch --depth 1 origin $Ref'
-    $cloneLine = '& git clone --depth 1 --branch $Ref $Url $Directory'
-    if (-not $installerSource.Contains($fetchLine) -or -not $installerSource.Contains($cloneLine)) {
-        throw '固定基准安装器已变化；请改用 tools/quality/patches/ 的补丁流程'
-    }
-    $installerSource = $installerSource.Replace($fetchLine, 'fetch --depth 1 $Url $Ref')
-    $installerSource = $installerSource.Replace($cloneLine, @'
-& git clone --no-checkout $Url $Directory
-        if ($LASTEXITCODE -ne 0) { throw "git clone failed: $Directory" }
-        & git -C $Directory fetch --depth 1 $Url $Ref
-        if ($LASTEXITCODE -ne 0) { throw "git fetch failed: $Directory" }
-        & git -C $Directory checkout -q FETCH_HEAD
-'@)
     $installer = Join-Path ([IO.Path]::GetTempPath()) ("se-fish-installer-" + [guid]::NewGuid().ToString('N') + '.ps1')
     [IO.File]::WriteAllText($installer, $installerSource)
     try {
@@ -104,7 +60,7 @@ try {
         }
         # 精确复核：checkout 现有 diff 必须与登记补丁内容完全一致，不接受任意 dirty。
         $expected = (@($tool.patches | Where-Object { $_ } | ForEach-Object {
-            ((Get-Content -LiteralPath (Join-Path $projectRoot $_) -Raw) -replace "`r`n", "`n").TrimEnd()
+            ((Get-Content -LiteralPath (Join-Path $projectRoot $_) -Raw) -replace "`r`n", "`n" -replace '(?m)^ $', '').TrimEnd()
         }) -join "`n").Trim()
         $actual = ((& git -C $directory diff) -join "`n").Trim()
         # Git 空白上下文行可写为空行；比较前仅归一化该补丁格式差异。
@@ -142,6 +98,19 @@ try {
         }
         $actual = & git -C $directory rev-parse HEAD
         if ($LASTEXITCODE -ne 0 -or $actual -ne $tool.commit) { throw "$name 缓存提交不符：$actual，预期 $($tool.commit)；请移走缓存后重跑 tools/quality/install.ps1" }
+    }
+    # Busted 固定依赖（#81）：按 project.json 的 busted.rocks 清单经 LuaRocks 安装固定版本；可重跑，已安装则跳过。
+    $luarocks = Get-Command luarocks -ErrorAction SilentlyContinue
+    if (-not $luarocks) { throw '缺少 LuaRocks 命令；无法安装 Busted 固定依赖，请先安装 LuaRocks 3.x' }
+    foreach ($rock in $config.busted.rocks) {
+        $found = $false
+        foreach ($line in @(& luarocks list $rock.name --porcelain 2>$null)) {
+            $fields = $line -split "`t"
+            if ($fields.Count -ge 3 -and $fields[0] -eq $rock.name -and $fields[1] -eq $rock.version -and $fields[2] -eq 'installed') { $found = $true; break }
+        }
+        if ($found) { continue }
+        & luarocks install $rock.name $rock.version
+        if ($LASTEXITCODE -ne 0) { throw "$($rock.name) $($rock.version) 安装失败" }
     }
     # 所有工具替换已完成；公开 doctor 自行获取同一锁，避免父子自锁。
     $lockStream.Dispose()

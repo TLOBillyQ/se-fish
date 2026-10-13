@@ -2,9 +2,6 @@
 -- 业务用真实模块：common/GameCfg（抽鱼池 / 战斗数值 / 商店 / 兑换 / 摆渡）、
 -- server/Mgr/MgrFishUnit（剑鱼 / 三头鲨状态机）。引擎边界是假的（载体、Vitals、RE）。
 -- world 由 acceptance4lua 的 harness 提供，步骤间用它传状态；每个场景结束的「那么」步骤恢复全局。
-if not package.path:find('./tests/lib/?.lua', 1, true) then
-    package.path = './tests/lib/?.lua;' .. package.path
-end
 local GameCfg = require('common.GameCfg')
 local FishCatch = require('common.FishCatch')
 
@@ -18,7 +15,7 @@ end
 local function closeCombat(world)
     local env = world.combat
     if not env then return end
-    CombatWorld.close(env)
+    env:tearDown()
     world.combat, world.fish = nil, nil
 end
 

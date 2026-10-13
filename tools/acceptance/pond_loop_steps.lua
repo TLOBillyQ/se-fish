@@ -3,9 +3,6 @@
 -- MgrLoot:Give / OnCarrierDied（拾取发放、掉落结算），MgrFishUnit（电鳗 / 鳄雀鳝状态机）。
 -- 引擎边界是假的（锚点、射线、技能施放只计数、玩家命中），逻辑通过不等于真机验收。
 -- world 由 acceptance4lua 的 harness 提供，步骤间用它传状态；每个场景结束的「那么」步骤恢复全局。
-if not package.path:find('./tests/lib/?.lua', 1, true) then
-    package.path = './tests/lib/?.lua;' .. package.path
-end
 local GameCfg = require('common.GameCfg')
 
 local ITEM_BAR = GameCfg.Items.ContainerId.ItemBar
@@ -15,7 +12,7 @@ local function signal()
     return { Connect = function() return { Disconnect = function() end } end }
 end
 
--- ===== 经济世界（照 tests/gameplay/economy_persistence_test.lua 的引擎边界）=====
+-- ===== 经济世界（照 tests/native/economy_persistence_test.lua 的引擎边界）=====
 local function economyWorld(world)
     world.saved = { game = rawget(_G, 'game'), REUtil = rawget(_G, 'REUtil'),
         MgrPlayerData = rawget(_G, 'MgrPlayerData'), Debug = GameCfg.Debug }
@@ -117,12 +114,12 @@ local function ensureBar(data, itemId)
     end
 end
 
--- ===== 战斗世界：真实 MgrFishUnit（复用 fish_lift / fish_escape 测试的假引擎）=====
+-- ===== 战斗世界：真实 MgrFishUnit（复用 tests/support 的举鱼 / 逃脱共享夹具）=====
 local function combatWorld(world)
-    require('tests.gameplay.fish_escape_test')
-    local env = setmetatable({}, { __index = TestFishEscape })
-    TestFishEscape.setUp(env)
-    TestFishEscape.prepare(env)
+    local FishEscape = require('tests.support.fish_escape')
+    local env = FishEscape.new()
+    env:setUp()
+    env:prepare()
     env.casts, env.hits, env.notices = {}, {}, {}
     for _, p in ipairs({ env.player, env.other }) do
         p.Character.Controller.Health = 300
@@ -145,7 +142,7 @@ local function combatWorld(world)
 end
 
 local function closeCombat(world)
-    if world.combat then TestFishEscape.tearDown(world.combat) end
+    if world.combat then world.combat:tearDown() end
     world.combat = nil
 end
 

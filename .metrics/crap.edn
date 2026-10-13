@@ -916,7 +916,6 @@
   {:name "Mgr:OpenAdrenalineShop", :namespace "server.Mgr.MgrPlatform", :complexity 2, :coverage 54.5455, :crap 2.3757}
   {:name "_eulerDegToQuat", :namespace "server.AbilityBehaviors.melee_hit", :complexity 2, :coverage 66.6667, :crap 2.1481}
   {:name "Mgr:ApplyWeak", :namespace "server.Mgr.MgrSurvival", :complexity 2, :coverage 66.6667, :crap 2.1481}
-  {:name "Mgr:Vec3", :namespace "server.Mgr.MgrWeapon", :complexity 2, :coverage 66.6667, :crap 2.1481}
   {:name "Mgr:Start", :namespace "server.Mgr.MgrBlindbox", :complexity 2, :coverage 75.0, :crap 2.0625}
   {:name "ScreenHandler:EndAim", :namespace "client.ScreenHandlers.ScreenMain", :complexity 2, :coverage 80.0, :crap 2.032}
   {:name "Mgr:SubscribeDied", :namespace "server.Mgr.MgrFishCarrier", :complexity 2, :coverage 80.0, :crap 2.032}
@@ -1052,6 +1051,7 @@
   {:name "Mgr:MagState", :namespace "server.Mgr.MgrWeapon", :complexity 2, :coverage 100.0, :crap 2.0}
   {:name "Mgr:Now", :namespace "server.Mgr.MgrWeapon", :complexity 2, :coverage 100.0, :crap 2.0}
   {:name "Mgr:Start", :namespace "server.Mgr.MgrWeapon", :complexity 2, :coverage 100.0, :crap 2.0}
+  {:name "Mgr:Vec3", :namespace "server.Mgr.MgrWeapon", :complexity 2, :coverage 100.0, :crap 2.0}
   {:name "HandlePlayerAdded", :namespace "server.main", :complexity 2, :coverage 100.0, :crap 2.0}
   {:name "Util:WeldTo", :namespace "common.Util", :complexity 1, :coverage 14.2857, :crap 1.6297}
   {:name "Screen:OpenScreen", :namespace "client.ScreenHandlers.ScreenCompendium", :complexity 1, :coverage 25.0, :crap 1.4219}

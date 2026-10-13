@@ -1,0 +1,24 @@
+-- Busted 车道配置（#81 建立；#93 全量切换后是唯一的 Lua 测试入口，ADR 0002）。
+-- fast 为日常车道（default 等价 fast）；full 追加 tests/native/slow。
+-- ROOT 的白名单是「谁会被发现」的唯一机制：只列 tests/native 与 tests/native/slow，
+-- 别的目录一律不交给 Busted。recursive 必须显式为 false——否则 ROOT = tests/native
+-- 会递归吞掉 tests/native/slow，fast 就跑了 slow。
+-- pattern 只匹配 *_test.lua：探针（tests/probes）、共享夹具（tests/support）不在任何 ROOT 内。
+-- Python 回归（tests/tooling/slow/*_test.py）由 tools/quality/verify.ps1 独立 discover，
+-- 且 busted 只 glob *.lua，天然不进发现范围。
+-- sort-files 保留文件名字典序；不开启 sort-tests，案例保持注册顺序。
+-- 本文件必须保持纯 Lua 可求值：tests/tooling/slow/busted_lanes_test.py 用裸
+-- `lua -e 'dofile(".busted")'` 读真实配置，改写时不得引用 Busted 运行期全局。
+
+return {
+  _all = {
+    pattern = "_test",
+    recursive = false,
+    helper = "tests/native/helper.lua",
+    ["sort-files"] = true,
+    output = "plainTerminal",
+  },
+  default = { ROOT = { "tests/native" } },
+  fast = { ROOT = { "tests/native" } },
+  full = { ROOT = { "tests/native", "tests/native/slow" } },
+}

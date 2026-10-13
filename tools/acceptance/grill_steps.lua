@@ -23,7 +23,7 @@ local function grillAnchor()
     end
 end
 
--- 烧烤世界：照 tests/gameplay/grill_test.lua 的引擎边界
+-- 烧烤世界：照 tests/native/grill_test.lua 的引擎边界
 local function grillWorld(world)
     world.saved = { game = rawget(_G, 'game'), REUtil = rawget(_G, 'REUtil'), Debug = GameCfg.Debug }
     GameCfg.Debug = { Enabled = false }

@@ -17,7 +17,7 @@
 --   * 业务模块用真实代码：MgrPlayerData / MgrLottery / LotteryDraw / LotteryEligibility / GameCfg。
 --   * 引擎边界是假的：DataStore、RE、锚点；不进编辑器、不开局，真机另行试玩。
 --   * 随机源是固定种子 LCG（确定性复现），不是引擎随机；分布结论只对配置表负责。
-package.path = table.concat({ './?.lua', './?/init.lua', './tests/lib/?.lua', package.path }, ';')
+package.path = table.concat({ './?.lua', './?/init.lua', package.path }, ';')
 
 local Pass, Fail = 0, 0
 local function check(name, ok, detail)
@@ -34,7 +34,7 @@ local function quantity(label, value) print(string.format('K %s = %s', label, to
 local GameCfg = require('common.GameCfg')
 local ITEM_BAR = GameCfg.Items.ContainerId.ItemBar
 
--- ===== 引擎边界（照 tests/gameplay/lottery_settle_test.lua）=====
+-- ===== 引擎边界（照 tests/native/lottery_settle_test.lua）=====
 local env = { values = {}, queue = {}, events = {} }
 local store = {
     GetAsync = function(_, key) return env.values[key] end,

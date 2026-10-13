@@ -18,4 +18,4 @@
 [18:39:27.344] [server] PROBE112 HOOK hooked catfish
 ```
 
-`editor-cli log trace --play-session 0afa7e3 --json`：0 错误、0 警告。`evidence/issue112-empty.png` 与 `evidence/issue112-prompt.png` 是该地图空抽过程取得的有效游戏帧；CLI 返回截图尺寸与有效性，但未提供截图内文字识别或逐帧状态，不能以此独立认定提示和浮漂清理画面均可见。提示文字由客户端日志确认，浮漂与等待文字的生命周期由 `tests/gameplay/reel_ui_test.lua` 验证；视觉验收尚需人工核对截图及前后画面。第二轮会话 `00c227b` 中 18:43:13.279 再次出现 noFish 客户端日志，18:43:15.805 再次重抛成功，18:43:19.328 上钩 bass。
+`editor-cli log trace --play-session 0afa7e3 --json`：0 错误、0 警告。`evidence/issue112-empty.png` 与 `evidence/issue112-prompt.png` 是该地图空抽过程取得的有效游戏帧；CLI 返回截图尺寸与有效性，但未提供截图内文字识别或逐帧状态，不能以此独立认定提示和浮漂清理画面均可见。提示文字由客户端日志确认，浮漂与等待文字的生命周期由 `tests/native/reel_ui_test.lua` 验证（原 `tests/gameplay/reel_ui_test.lua`，#85 迁移）；视觉验收尚需人工核对截图及前后画面。第二轮会话 `00c227b` 中 18:43:13.279 再次出现 noFish 客户端日志，18:43:15.805 再次重抛成功，18:43:19.328 上钩 bass。

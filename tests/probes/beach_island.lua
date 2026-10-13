@@ -24,7 +24,7 @@
 --   * 鲸跃落点方向由替换的 math.random（固定 0）钉死为 +x，只验距离与范围。
 --   * 虎啸伤害 30 是 #121 未给伤的独立基础披露细化；预警 / 前摇参数是配置细化 [未查证]。
 --   * 攻击 / 躲避窗口与真机手感未验证 [未查证]：本探针只证明招式按契约结算，不证明“正常单杀可行”。
-package.path = table.concat({ './?.lua', './?/init.lua', './tests/lib/?.lua', package.path }, ';')
+package.path = table.concat({ './?.lua', './?/init.lua', package.path }, ';')
 
 local Pass, Fail = 0, 0
 local function check(name, ok, detail)
@@ -38,8 +38,11 @@ local FishCatch = require('common.FishCatch')
 
 -- ===== 假引擎战斗世界（tests/support/combat_world，复用 fish_escape 测试夹具）=====
 local CombatWorld = require('tests.support.combat_world')
-local combat, close, at, pinRandom, drop =
-    CombatWorld.new, CombatWorld.close, CombatWorld.at, CombatWorld.pinRandom, CombatWorld.drop
+local combat, at, pinRandom, drop =
+    CombatWorld.new, CombatWorld.at, CombatWorld.pinRandom, CombatWorld.drop
+
+-- 拆除统一走实例方法（与 blindbox_world / revive_world 同一入口名）
+local function close(env) env:tearDown() end
 
 -- 推进到 40 秒突击节拍并等预警起手（40 秒帧可能压着上一记甩头的预警，做有界等待）
 local function startCharge(env, fish)

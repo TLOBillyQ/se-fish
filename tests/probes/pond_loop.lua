@@ -27,7 +27,7 @@
 --   * 走位 / 收线 / 上岸动作的耗时是估算常数（见 SIM），不是实测；卖鱼往返不单独计时。
 --   * 安全失败时电鳗的逃脱位移由探针按 LinearVelocity × dt 积分（假引擎无物理），回水判定走真实 MgrFishUnit。
 --   * 第 10 节多种子经济估算只用配置 + FishCatch（不走管理器），与主链同一套规则，结果标 [估算]。
-package.path = table.concat({ './?.lua', './?/init.lua', './tests/lib/?.lua', package.path }, ';')
+package.path = table.concat({ './?.lua', './?/init.lua', package.path }, ';')
 
 local Pass, Fail = 0, 0
 local function check(name, ok, detail)
@@ -235,11 +235,11 @@ check('买竿扣 ' .. tostring(rodPrice) .. ' 金并入库', spent == rodPrice a
     string.format('spent=%d rod=%d', spent, data:ItemCount('starterRod')))
 
 -- ===== 战斗环境：真实 MgrFishUnit（复用 fish_lift / fish_escape 测试的假引擎）=====
-require('tests.gameplay.fish_escape_test')
+local FishEscape = require('tests.support.fish_escape')
 local function combatEnv()
-    local env = setmetatable({}, { __index = TestFishEscape })
-    TestFishEscape.setUp(env)
-    TestFishEscape.prepare(env)
+    local env = FishEscape.new()
+    env:setUp()
+    env:prepare()
     env.notices, env.casts, env.hits, env.published = {}, {}, {}, {}
     local maxHealth = GameCfg.Vitals.MaxHealth or 300
     for _, p in ipairs({ env.player, env.other }) do
@@ -275,7 +275,7 @@ local function combatEnv()
     return env
 end
 local function closeEnv(env)
-    TestFishEscape.tearDown(env)
+    env:tearDown()
     _G.game = economyGame
 end
 local function weapon()

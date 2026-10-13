@@ -1,9 +1,10 @@
-"""项目公开质量接缝：LuaUnit、完整覆盖率与固定工具配置。"""
+"""项目公开质量接缝：Busted、完整覆盖率与固定工具配置。"""
 from __future__ import annotations
 
 import argparse
 import json
 import os
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -11,6 +12,21 @@ from pathlib import Path
 os.environ.setdefault("PYTHONDONTWRITEBYTECODE", "1")
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
+MANIFEST = "uml-quality.json"
+# 标准 quality 分发（#95）：图上右键与终端共用同一公开入口的声明式映射。
+# 这里是「声明与实现的显式重复」：字段值与仓库根 uml-quality.json 的 operations 逐字段相同
+# （声明侧由 standard_quality_dispatch_test.py 重抄一份作回归），doctor 负责比对两侧，
+# 因此不需要抽公共常量。改 uml-quality.json 时必须同步改此处，否则 doctor 报「分发配置」失败。
+DISPATCH = {
+    "crap": {"argv": ["./tools/quality/project.ps1", "refresh-crap"], "forwardArgs": "none",
+             "scope": "whole-tree", "validResultExitCodes": [0]},
+    "mutate": {"argv": ["./tools/quality/project.ps1", "mutation"], "forwardArgs": "append",
+               "validResultExitCodes": [0, 3]},
+}
+# 声明与实现的显式重复（同 DISPATCH 的既有做法）：值必须等于 mutation.DEFAULT_MAX_WORKERS，
+# 由 tests/tooling/slow/mutation_budget_test.py 钉住。这里不导入 mutation，避免 coverage/doctor
+# 等无关命令也被 mutation 的 sys.path 注入影响。
+MUTATION_MAX_WORKERS = 1
 
 
 def load_config(root=None, config=None):
@@ -40,35 +56,52 @@ def lua_environment(root, config):
     return env
 
 
-def verify_lua(command):
-    result = subprocess.run([command[0], "-v"], capture_output=True, text=True)
+def lua_executable(config):
+    """Lua 解释器只来自 lua.executable；测试命令 argv 整体不透明，首项不做解释器。"""
+    return config.get("lua", {}).get("executable", "lua")
+
+
+def verify_lua(config):
+    executable = lua_executable(config)
+    expected = config.get("lua", {}).get("version", "Lua 5.4.")
+    if shutil.which(executable) is None:
+        raise RuntimeError(f"缺少 Lua 解释器：{executable} 不在 PATH；质量入口要求 {expected}x")
+    result = subprocess.run([executable, "-v"], capture_output=True, text=True)
     version = result.stdout + result.stderr
-    if result.returncode or "Lua 5.4." not in version:
-        raise RuntimeError(f"质量入口要求 Lua 5.4，实际为：{version.strip()}")
+    if result.returncode or expected not in version:
+        raise RuntimeError(f"质量入口要求 {expected}x，实际为：{version.strip()}")
 
 
 def run_coverage(root, config):
-    """仅将通过完整测试的新统计发布为可发现 LCOV。"""
+    """仅将通过完整测试的新统计发布为可发现 LCOV。
+
+    测试命令是 Busted 完整套件（`commands.coverage`）：单进程跑完并写出仓库根
+    `luacov.stats.out`。时序是「先删旧 LCOV 再跑」：开跑前先删掉已发布的 LCOV 及其
+    临时文件，以及仓库根的 `luacov.stats.out` / `luacov.report.out`；测试通过才把新
+    统计发布为 LCOV，失败则不发布、LCOV 保持缺失让下游失效。上一份统计快照
+    `paths.stats` 不参与删除，供失败诊断。
+    """
     root = Path(root).resolve()
     command = config["commands"]["coverage"]
     lcov = root / config["paths"]["lcov"]
     stats = root / config["paths"]["stats"]
     temporary = lcov.with_suffix(".pending")
-    for path in (lcov, temporary, stats, root / "luacov.stats.out", root / "luacov.report.out"):
+    for path in (lcov, temporary, root / "luacov.stats.out", root / "luacov.report.out"):
         path.unlink(missing_ok=True)
-    verify_lua(command)
+    verify_lua(config)
     lcov.parent.mkdir(parents=True, exist_ok=True)
     stats.parent.mkdir(parents=True, exist_ok=True)
     env = lua_environment(root, config)
     result = subprocess.run(command, cwd=root, env=env)
     if result.returncode:
-        print(f"完整测试失败（退出码 {result.returncode}）；未生成本轮 LCOV。", file=sys.stderr)
+        print(f"完整测试失败（退出码 {result.returncode}）；未生成本轮 LCOV，保留上一份统计快照 {stats}。",
+              file=sys.stderr)
         return result.returncode
     generated = root / "luacov.stats.out"
     if not generated.is_file() or generated.stat().st_size == 0:
         raise RuntimeError("完整测试未生成 LuaCov 统计，停止指标刷新。")
     generated.replace(stats)
-    result = subprocess.run([command[0], str(PROJECT_ROOT / "tools/quality/report_lcov.lua"),
+    result = subprocess.run([lua_executable(config), str(PROJECT_ROOT / "tools/quality/report_lcov.lua"),
                              str(stats), str(temporary)], cwd=root, env=env)
     if result.returncode:
         temporary.unlink(missing_ok=True)
@@ -82,12 +115,49 @@ def run_coverage(root, config):
     return 0
 
 
+def doctor_dispatch(root, config):
+    """核对仓库根声明式分发映射：图上右键与终端必须落到同一项目公开入口。
+
+    在环境核对之前执行：分发前提缺失或错映射时先报配置，不让解释器噪音掩盖。
+    """
+    path = Path(root) / MANIFEST
+    if not path.is_file():
+        raise RuntimeError(f"缺少标准分发配置 {MANIFEST}；图上质量入口无法转交项目命令")
+    try:
+        declared = json.loads(path.read_text(encoding="utf-8-sig"))
+    except ValueError as error:
+        raise RuntimeError(f"{MANIFEST} 不是有效 JSON：{error}") from None
+    if declared.get("version") != 1:
+        raise RuntimeError(f"{MANIFEST} version 必须为 1：{declared.get('version')!r}")
+    operations = declared.get("operations")
+    if not isinstance(operations, dict):
+        raise RuntimeError(f"{MANIFEST} 缺少 operations：标准分发需要声明 crap 与 mutate")
+    problems = []
+    for name, expected in DISPATCH.items():
+        actual = operations.get(name)
+        if not isinstance(actual, dict):
+            problems.append(f"{name} 未声明")
+            continue
+        for field, want in expected.items():
+            got = actual.get(field)
+            if got != want:
+                problems.append(f"{name}.{field} 为 {got!r}，应为 {want!r}")
+    if problems:
+        raise RuntimeError(f"{MANIFEST} 与项目公开入口不一致：{'；'.join(problems)}")
+    extra = sorted(set(operations) - set(DISPATCH))
+    if extra:
+        raise RuntimeError(f"{MANIFEST} 声明了未知操作：{'、'.join(extra)}")
+    print(f"{MANIFEST} 标准分发映射相符（crap → refresh-crap，mutate → mutation）")
+
+
 def doctor(root, config):
     root = Path(root).resolve()
-    verify_lua(config["commands"]["coverage"])
+    doctor_dispatch(root, config)
+    verify_lua(config)
+    executable = lua_executable(config)
     # 读取 bootstrap 的公开 pins，不触发 ensure/install，保留 acceptance 独立入口。
     pins = subprocess.run([
-        config["commands"]["coverage"][0], "-e",
+        executable, "-e",
         'local b=require("tools.acceptance.bootstrap"); '
         'for _,n in ipairs({"dry4lua","acceptance4lua"}) do print(n.."="..b.pins[n]) end',
     ], cwd=root, capture_output=True, text=True)
@@ -121,11 +191,12 @@ def doctor(root, config):
         for module in tool["modules"]:
             snippet = (f"local p=assert(package.searchpath({module!r}, package.path)); "
                        f"print(p); assert(require({module!r}))")
-            result = subprocess.run([config["commands"]["coverage"][0], "-e", snippet],
+            result = subprocess.run([executable, "-e", snippet],
                                     cwd=root, env=env, capture_output=True, text=True)
             if result.returncode:
                 raise RuntimeError(f"{name} 无法加载运行模块 {module}：{result.stderr.strip()}；{repair}")
             print(f"{name} {actual} {result.stdout.strip()}")
+    doctor_busted(root, config)
     for name, tool in config["tools"].items():
         directory = root / ".uml-viewer" / tool["directory"]
         if not (directory / ".git").exists():
@@ -151,6 +222,43 @@ def doctor(root, config):
     return 0
 
 
+def doctor_busted(root, config):
+    """核对 Busted 固定依赖：命令可用、版本相符、pinned rocks 已安装；可重跑。
+
+    失败信息区分解释器缺失（verify_lua）、Busted 命令缺失、版本不符与 rock 未安装。
+    LuaCov 的运行时来源仍是 lua_tools.luacov 的固定 checkout（上面的 lua_tools 检查），
+    这里的 luacov rock 只为 busted --coverage 等直接用法保持同一固定版本。
+    """
+    spec = config.get("busted")
+    if not spec:
+        raise RuntimeError("project.json 缺少 busted 固定依赖配置")
+    repair = "请运行 tools/quality/install.ps1 安装固定依赖"
+    command = spec["command"]
+    path = shutil.which(command)
+    if path is None:
+        raise RuntimeError(f"缺少 Busted 命令：{command} 不在 PATH；{repair}")
+    result = subprocess.run([path, "--version"], capture_output=True, text=True)
+    if result.returncode:
+        raise RuntimeError(f"Busted 无法运行：{result.stderr.strip() or result.stdout.strip()}；{repair}")
+    actual = result.stdout.strip()
+    if actual != spec["version"]:
+        raise RuntimeError(f"Busted 版本不符：{actual}，预期 {spec['version']}；{repair}")
+    luarocks = shutil.which("luarocks")
+    if luarocks is None:
+        raise RuntimeError(f"缺少 LuaRocks 命令，无法核对 Busted 固定依赖；{repair}")
+    for rock in spec["rocks"]:
+        name, version = rock["name"], rock["version"]
+        result = subprocess.run([luarocks, "list", name, "--porcelain"], capture_output=True, text=True)
+        if result.returncode:
+            raise RuntimeError(f"无法查询 {name} 安装状态：{result.stderr.strip()}；{repair}")
+        rows = [line.split("\t") for line in result.stdout.splitlines() if line.strip()]
+        if not any(len(fields) >= 3 and fields[0] == name and fields[1] == version and fields[2] == "installed"
+                   for fields in rows):
+            raise RuntimeError(f"{name} 固定版本 {version} 未安装；{repair}")
+        print(f"{name} {version}（rock）")
+    print(f"busted {actual}（{path}）")
+
+
 def run_quality(root, config):
     """完整质量流程：本轮覆盖率 → DRY → 全树 CRAP。"""
     import crap
@@ -167,9 +275,12 @@ def run_mutation(root, config, args):
     import mutation
     try:
         config_path = Path(args.config) if args.config else root / "tools/quality/project.json"
+        budget = (mutation.DEFAULT_BUDGET_SECONDS if args.budget_seconds is None
+                  else args.budget_seconds)
         return mutation.run(root, config, config_path, args.files, mutate_all=args.mutate_all,
                             changed=args.changed, max_workers=args.max_workers,
-                            lines=set(args.lines) if args.lines else None, verbose=args.verbose)
+                            lines=set(args.lines) if args.lines else None, verbose=args.verbose,
+                            budget_seconds=budget, invocation=args.invocation)
     except ValueError as error:
         print(f"quality: {error}", file=sys.stderr)
         return 1
@@ -184,10 +295,15 @@ def main(argv=None):
     parser.add_argument("files", nargs="*", help="mutation 目标业务 Lua（相对路径）")
     parser.add_argument("--mutate-all", action="store_true", help="显式全量 mutation（必须给文件）")
     parser.add_argument("--changed", action="store_true", help="对 git 变更的业务 Lua 差分")
-    parser.add_argument("--max-workers", type=int)
+    parser.add_argument("--max-workers", type=int, default=MUTATION_MAX_WORKERS,
+                        help="mutation 并发 worker 数；默认单 worker，扩充前必须记录依据")
+    parser.add_argument("--budget-seconds", type=float,
+                        help="mutation 墙钟预算秒数；缺省为 mutation 模块的 60 分钟默认值")
     parser.add_argument("--lines", type=int, nargs="*")
     parser.add_argument("--verbose", action="store_true")
     args = parser.parse_args(argv)
+    # 启动前记录要给出可复制的日志采集命令，这里保留调用方原始 argv。
+    args.invocation = list(sys.argv[1:] if argv is None else argv)
     root = args.root.resolve()
     from locking import repository_lock
     with repository_lock(root):
@@ -208,7 +324,7 @@ def dispatch(root, args):
         return doctor(root, config)
     if args.command == "test":
         command = config["commands"]["mutation_test"]
-        verify_lua(command)
+        verify_lua(config)
         return subprocess.run(command, cwd=root).returncode
     if args.command in ("run", "quality"):
         return run_quality(root, config)
