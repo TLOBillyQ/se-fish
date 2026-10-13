@@ -39,8 +39,9 @@ foreach ($t in 'uml-viewer','crapper','mutator') {
 ```
 
 - 目标必须是这些**真实检出**。指向 `.uml-viewer\<tool>`（安装产物而非上游检出）会让 install／doctor 预检与标准分发回归大面积报错。
-- `.toolcache` 也 junction 到主检出的同名目录，否则要自己备齐 `project.json` 的 `lua_tools` 全套：`luacov`、`dry4lua`、`luacheck`、`acceptance4lua`，以及它们的 Lua 依赖 `argparse`、`datafile`、`luafilesystem`。缺 `luacheck` 时 `tests/native/slow/quality_report_test.lua` 会经 `dry4lua/ast.lua` 抛 `luacheck required`，断言先撞在 `broken.lua` 那一行——报错点离根因三层。
-- `.uml-viewer` 也 junction 到主检出的同名目录，才能复用已安装的 venv 与 viewer checkout；代价是会话、邮箱与 `quality-result.json` 一并共享，不要在两处同时起 viewer。
+- `.toolcache` 也 junction 到主检出的同名目录，否则要自己备齐 `project.json` 的 `lua_tools` 全套：`luacov`、`dry4lua`、`luacheck`、`acceptance4lua`，以及它们的 Lua 依赖 `argparse`、`datafile`、`luafilesystem`。**后三个不在 `project.json` 里**（`lua_tools` 只有前四项），它们的 pin 在 `tools/quality/deps.sh:18-20`，而 [tools/quality/README.md](../../tools/quality/README.md) 声明 `deps.sh` 不在安装或 quality 调用链中——即它们没有声明式来源。实际能靠本机 LuaRocks 兜底的是 `datafile` 与 `luafilesystem`，**`argparse` 没有 rock 兜底**，只能来自 `.toolcache/argparse`，所以「必须备齐」的要害是它。缺 `luacheck` 时 `tests/native/slow/quality_report_test.lua` 会经 `dry4lua/ast.lua` 抛 `luacheck required`，断言先撞在 `broken.lua` 那一行——报错点离根因三层。
+- `.uml-viewer` 也 junction 到主检出的同名目录，才能复用已安装的 venv 与 viewer checkout；代价是会话、邮箱与 `quality-result.json` 一并共享，不要在两处同时起 viewer。共用 venv 还有一个必然后果：`doctor` 里针对 `crapper.__file__` 的断言会失败（editable 安装写下的 `.pth` 硬编码主检出路径，而断言按 `PROJECT_ROOT` 派生 worktree 拼写）。该断言只在主检出发言，**不要为迁就 worktree 放宽 `doctor`**。
+- **不要在 worktree 根内建这三个 junction**：`install.ps1` 只按 `../<tool>` 从**父目录**解析来源，根内的同名目录无人引用；它们又不在 `.gitignore`（只忽略 `.toolcache/` 与 `.uml-viewer/`），会以 `?? crapper/` 出现在 `git status`，一次 `git add -A` 就提交进去。worktree 根内只建 `.toolcache` 与 `.uml-viewer` 两个。
 
 **宿主目录专用于镜像。** 默认 `C:\Users\<用户名>\Desktop\dev\eggy\LuaSource_钓鱼怎么这么危险啊喂！`，可用 `EGGY_WORKSPACE` 覆盖。
 

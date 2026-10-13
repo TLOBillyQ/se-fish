@@ -41,15 +41,19 @@ class MutationBudgetTest(unittest.TestCase):
         ], cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace",
             timeout=timeout)
 
+    def head_record(self, result):
+        """取启动前记录整段：记录承诺落在日志头，即「完整 Busted 基线通过」之前。"""
+        output = result.stdout + result.stderr
+        self.assertIn(result.returncode, (0, 3), output)
+        return output[:output.index("完整 Busted 基线通过")]
+
     def test_launch_record_precedes_work_with_scope_workers_and_budget(self):
         with tempfile.TemporaryDirectory(prefix="se-fish-budget-") as directory:
             root = Path(directory)
             self.fixture(root, ("common/Alpha.lua",))
             result = self.invoke(root, "common/Alpha.lua", "--max-workers", "1",
                                  "--budget-seconds", "300")
-            output = result.stdout + result.stderr
-            self.assertIn(result.returncode, (0, 3), output)
-            record = output[:output.index("完整 Busted 基线通过")]
+            record = self.head_record(result)
             self.assertIn("mutation 启动前记录", record)
             self.assertIn("common/Alpha.lua", record)
             self.assertIn("时间预算: 300 秒", record)
@@ -61,9 +65,7 @@ class MutationBudgetTest(unittest.TestCase):
             root = Path(directory)
             self.fixture(root, ("common/Alpha.lua",))
             result = self.invoke(root, "common/Alpha.lua", "--max-workers", "1")
-            output = result.stdout + result.stderr
-            self.assertIn(result.returncode, (0, 3), output)
-            record = output[:output.index("完整 Busted 基线通过")]
+            record = self.head_record(result)
             self.assertRegex(record, r"日志: target/mutation-logs/mutation-\d{8}-\d{6}\.log")
             self.assertIn("tools/quality/project.ps1", record)
             self.assertIn("恢复: ", record)
@@ -74,11 +76,11 @@ class MutationBudgetTest(unittest.TestCase):
             root = Path(directory)
             self.fixture(root, ("common/Alpha.lua",))
             result = self.invoke(root, "common/Alpha.lua", "--max-workers", "1")
-            output = result.stdout + result.stderr
-            self.assertIn(result.returncode, (0, 3), output)
+            record = self.head_record(result)
             # 重定向到日志时子进程绕过 Python 缓冲直写；记录整段仍须在它之前。
-            self.assertLess(output.index("mutation 启动前记录结束"),
-                            output.index(COVERAGE_STDOUT), output)
+            self.assertLess(record.index("mutation 启动前记录结束"),
+                            (result.stdout + result.stderr).index(COVERAGE_STDOUT),
+                            result.stdout + result.stderr)
 
     def test_exhausted_budget_skips_every_target_and_reports_the_unrun_scope(self):
         with tempfile.TemporaryDirectory(prefix="se-fish-budget-") as directory:
@@ -113,9 +115,7 @@ class MutationBudgetTest(unittest.TestCase):
             root = Path(directory)
             self.fixture(root, ("common/Alpha.lua",))
             result = self.invoke(root, "common/Alpha.lua")
-            output = result.stdout + result.stderr
-            self.assertIn(result.returncode, (0, 3), output)
-            record = output[:output.index("完整 Busted 基线通过")]
+            record = self.head_record(result)
             self.assertIn("worker: 1", record)
             self.assertIn("时间预算: 3600 秒", record)
 
@@ -124,9 +124,7 @@ class MutationBudgetTest(unittest.TestCase):
             root = Path(directory)
             self.fixture(root, ("common/Alpha.lua",))
             result = self.invoke(root, "common/Alpha.lua", "--max-workers", "3")
-            output = result.stdout + result.stderr
-            self.assertIn(result.returncode, (0, 3), output)
-            record = output[:output.index("完整 Busted 基线通过")]
+            record = self.head_record(result)
             self.assertIn("worker: 3", record)
 
     def test_cli_defaults_match_the_mutation_module(self):

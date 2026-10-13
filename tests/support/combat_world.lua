@@ -6,7 +6,12 @@ local FishEscape = require('tests.support.fish_escape')
 -- 复用 fish_escape 的方式：以它为 __index 原型（同族统一手法），不再逐方法拷贝。
 local M = setmetatable({}, { __index = FishEscape })
 
---- 建世界；调用方负责在案例结束时 tearDown()（与 blindbox_world / revive_world 同一入口名）。
+--- 建世界：内部已 setUp + prepare，返回的 env 直接可用；调用方负责在案例结束时 :tearDown()。
+--- 拆除入口名与 blindbox_world / revive_world 相同，但**构造入口语义不同**：那三个的 new()
+--- 只返回空壳、要调用方再 :setUp()，本夹具的既有调用方（探针、acceptance 步骤、生命周期回归）
+--- 都按「拿起来就用」写，故这里 new() 直接搭好世界。
+--- 本文件的两个约定：生命周期走实例方法（:setUp / :tearDown），世界操作是不收 self 的普通函数，
+--- 由调用方以 `CombatWorld.at(env, now)` 这类形态调用；继承自 fish_escape 的方法仍走实例。
 function M.new()
     local env = setmetatable({}, { __index = M })
     env:setUp()

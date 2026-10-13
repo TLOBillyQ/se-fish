@@ -8,18 +8,13 @@
 --   3. 新增起子进程的回归绕开 tests.support.interpreter、自己读 arg。
 local interpreter = require("tests.support.interpreter")
 
--- 从当前进程的 arg 里找一个真实存在的解释器路径：不是启动选项（不以 - 开头）且读得到。
--- 不写死 ".exe"，否则非 Windows 上这条会伪失败；判据与模块内的 looks_like_exe 同义。
+-- 从当前进程的 arg 里找一个真实存在的解释器路径：判据与搜索上界都取自接缝模块，
+-- 这里只负责自己扫一遍 arg（不写死下标范围，模块改 MAX_BACK 时自动跟随）。
 -- 回归的真正强度在三段 shape 上：取错下标时 path() 会返回语句原文而不是这个路径。
 local function exe_from_arg()
-  for index = -1, -8, -1 do
-    local value = arg[index]
-    if type(value) == "string" and not value:match("^%-") and value ~= "" then
-      local file = io.open(value, "rb")
-      if file then
-        file:close()
-        return value
-      end
+  for index = -1, -interpreter.MAX_BACK, -1 do
+    if interpreter.looks_like_exe(arg[index]) then
+      return arg[index]
     end
   end
   return nil

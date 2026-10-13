@@ -36,6 +36,14 @@ def coverage_argv(body):
     return ['lua', '-e', body]
 
 
+def set_coverage_command(root, body):
+    """只换隔离项目的 coverage 内联脚本，其余配置保持 build_fixture 的产物。"""
+    config_path = root / 'tools/quality/project.json'
+    config = json.loads(config_path.read_text(encoding='utf-8'))
+    config['commands']['coverage'] = coverage_argv(body)
+    config_path.write_text(json.dumps(config), encoding='utf-8')
+
+
 def build_fixture(root, command):
     """隔离项目：固定标准 viewer + 真实项目质量实现 + 声明式分发配置。"""
     viewer = json.loads((ROOT / 'tools/quality/project.json').read_text(encoding='utf-8'))['tools']['viewer']
@@ -131,10 +139,7 @@ class StandardDispatchTest(unittest.TestCase):
                          '图上调用必须来自声明式分发，而不是通用工具路由')
 
     def test_graph_crap_failure_preserves_snapshot_and_invalidates_lcov(self):
-        build_config = self.root / 'tools/quality/project.json'
-        config = json.loads(build_config.read_text(encoding='utf-8'))
-        config['commands']['coverage'] = coverage_argv(FAILING)
-        build_config.write_text(json.dumps(config), encoding='utf-8')
+        set_coverage_command(self.root, FAILING)
         result = invoke_graph(self.root, 'crap')
         self.assertNotEqual(result.returncode, 0)
         self.assertIn(FAILING_MESSAGE, result.stdout + result.stderr)
@@ -151,14 +156,8 @@ class StandardDispatchTest(unittest.TestCase):
         self.assertEqual(['mutation', 'common/First.lua', '--mutate-all'], calls)
         self.assertTrue(result_record(self.root)['validResult'], '存活结果按声明契约视为有效')
 
-    def set_coverage_command(self, body):
-        config_path = self.root / 'tools/quality/project.json'
-        config = json.loads(config_path.read_text(encoding='utf-8'))
-        config['commands']['coverage'] = coverage_argv(body)
-        config_path.write_text(json.dumps(config), encoding='utf-8')
-
     def test_missing_stats_stops_before_crap(self):
-        self.set_coverage_command('print("没有覆盖率统计")')
+        set_coverage_command(self.root, 'print("没有覆盖率统计")')
         result = invoke_graph(self.root, 'crap')
         self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertEqual(self.snapshot.read_text(encoding='utf-8'), '旧快照')
@@ -166,7 +165,7 @@ class StandardDispatchTest(unittest.TestCase):
         self.assertIn('LuaCov 统计', result.stdout + result.stderr)
 
     def test_corrupt_stats_conversion_stops_before_crap(self):
-        self.set_coverage_command('local f=assert(io.open("luacov.stats.out","w")); f:write("损坏统计"); f:close()')
+        set_coverage_command(self.root, 'local f=assert(io.open("luacov.stats.out","w")); f:write("损坏统计"); f:close()')
         result = invoke_graph(self.root, 'crap')
         self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertEqual(self.snapshot.read_text(encoding='utf-8'), '旧快照')
@@ -175,7 +174,7 @@ class StandardDispatchTest(unittest.TestCase):
     def test_declared_configuration_precedes_generic_tool_route(self):
         """声明式分发优先：即使仓库有 deps.edn，也不会落到通用 crapper。"""
         (self.root / 'deps.edn').write_text('{:aliases {:crap {:main-opts ["通用别名"]}}}', encoding='utf-8')
-        self.set_coverage_command(FAILING)
+        set_coverage_command(self.root, FAILING)
         result = invoke_graph(self.root, 'crap')
         self.assertNotEqual(result.returncode, 0)
         self.assertIn(FAILING_MESSAGE, result.stdout + result.stderr,
@@ -277,10 +276,7 @@ class TerminalGraphParityTest(unittest.TestCase):
         self.tmp.cleanup()
 
     def test_graph_and_terminal_return_the_same_code_for_the_same_failure(self):
-        config_path = self.root / 'tools/quality/project.json'
-        config = json.loads(config_path.read_text(encoding='utf-8'))
-        config['commands']['coverage'] = coverage_argv(FAILING)
-        config_path.write_text(json.dumps(config), encoding='utf-8')
+        set_coverage_command(self.root, FAILING)
         terminal = invoke_terminal(self.root, 'coverage')
         self.assertNotEqual(terminal.returncode, 0)
         self.assertIn(FAILING_MESSAGE, terminal.stdout + terminal.stderr)

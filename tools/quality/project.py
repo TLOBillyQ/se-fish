@@ -76,8 +76,10 @@ def run_coverage(root, config):
     """仅将通过完整测试的新统计发布为可发现 LCOV。
 
     测试命令是 Busted 完整套件（`commands.coverage`）：单进程跑完并写出仓库根
-    `luacov.stats.out`。这里保持「成功后一次发布」：
-    失败时删除 LCOV 让下游失效，但保留上一份统计快照供诊断；不预先删除已发布快照。
+    `luacov.stats.out`。时序是「先删旧 LCOV 再跑」：开跑前先删掉已发布的 LCOV 及其
+    临时文件，以及仓库根的 `luacov.stats.out` / `luacov.report.out`；测试通过才把新
+    统计发布为 LCOV，失败则不发布、LCOV 保持缺失让下游失效。上一份统计快照
+    `paths.stats` 不参与删除，供失败诊断。
     """
     root = Path(root).resolve()
     command = config["commands"]["coverage"]
