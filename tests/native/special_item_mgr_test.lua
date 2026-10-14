@@ -404,10 +404,10 @@ describe('TestSpecialItemMgr', function()
         -- 外部力量（客户端预测 / 击退）把角色推出围栏：下一帧必须钳回
         player.Character.Position = vec(999, player.Character.Position.y, 40)
         step(1, 0.05)
-        assert.message('x ' .. tostring(player.Character.Position.x)).is_true(player.Character.Position.x <= 60)
+        assert.message('x ' .. tostring(player.Character.Position.x)).is_true(player.Character.Position.x <= 69)
         player.Character.Position = vec(6, player.Character.Position.y, -500)
         step(1, 0.05)
-        assert.message('z ' .. tostring(player.Character.Position.z)).is_true(player.Character.Position.z >= -50)
+        assert.message('z ' .. tostring(player.Character.Position.z)).is_true(player.Character.Position.z >= -59)
     end)
 
     -- 失败方式 1 补充：飞行到顶钳住、松开缓降落地后重力交还

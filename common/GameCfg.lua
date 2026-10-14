@@ -1036,7 +1036,7 @@ GameCfg.Ability = {
             fish55Elite = { Mode = 'leap', CruiseHeight = 0, DiveIntervalSec = 15, DiveDamage = 100 },
         },
         -- 场景合同缺失时的兜底边界（以鱼塘的中心为原点，见 GameCfg.Zones[1].Scene.Boundary）
-        FallbackBounds = { MinX = -60, MaxX = 60, MinZ = -50, MaxZ = 70, BottomY = -30, TopY = 40,
+        FallbackBounds = { MinX = -69, MaxX = 69, MinZ = -59, MaxZ = 79, BottomY = -30, TopY = 40,
             MaxFlightHeight = 20 },
     },
     Carry = {
@@ -1259,8 +1259,8 @@ for index, zone in ipairs(GameCfg.Zones) do
         SafePoint = old and old.SafePoint or { x = center.x, y = 6, z = center.z },
         Land = old and old.Land or { MinX = center.x - 40, MaxX = center.x + 40,
             MinZ = center.z - 30, MaxZ = center.z + 30 },
-        Boundary = { MinX = center.x - (index == 2 and 25 or 60), MaxX = center.x + (index == 2 and 25 or 60),
-            MinZ = center.z - 50, MaxZ = center.z + 70, BottomY = -30, TopY = 40,
+        Boundary = { MinX = center.x - (index == 2 and 25 or index == 1 and 69 or 60), MaxX = center.x + (index == 2 and 25 or index == 1 and 69 or 60),
+            MinZ = center.z - (index == 1 and 59 or 50), MaxZ = center.z + (index == 1 and 79 or 70), BottomY = -30, TopY = 40,
             MaxFlightHeight = 20, CanClimb = false },
         BaitSpots = { ItemId = zone.BaitItemId, RespawnSec = 15, Count = 1, Positions = {} },
     }

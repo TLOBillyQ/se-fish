@@ -16,8 +16,8 @@ describe("TestZoneScene125", function()
       local scene, center = zone.Scene, centers[index]
       local b = scene.Boundary
       assert.are.equal((b.MinX + b.MaxX) / 2, center[1])
-      assert.are.equal(b.MinZ, center[2] - (index >= 2 and index <= 4 and 70 or 50))
-      assert.are.equal(b.MaxZ, center[2] + (index >= 2 and index <= 4 and 50 or 70))
+      assert.are.equal(b.MinZ, center[2] - (index == 1 and 59 or index >= 2 and index <= 4 and 70 or 50))
+      assert.are.equal(b.MaxZ, center[2] + (index == 1 and 79 or index >= 2 and index <= 4 and 50 or 70))
       assert.is_true(b.MinX < b.MaxX and b.MinZ < b.MaxZ)
       assert.is_true(scene.Land.MinX < scene.Land.MaxX and scene.Land.MinZ < scene.Land.MaxZ)
       if index > 1 then
