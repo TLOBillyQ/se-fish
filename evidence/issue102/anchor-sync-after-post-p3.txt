@@ -1,0 +1,11 @@
+锚点坐标同步 dry-run（基线 evidence/issue65/zone-baseline-rows-post-p3.csv）
+口径：现场实测 x/z 取中心，y 取底面 minY（位置类单位 pivot）；Safe 角色取顶面 maxY（那是可站立面高度，不是 pivot）。只报差值，不判定合格。
+本工具不修改 GameCfg；下列 SYNC 行是重开核验通过后要套用的位移。
+  ZONE|01 鱼塘|entries=6|needsSync=0|missing=10|Z1_Bait1(planned), Z1_Bait2(planned), Z1_Bait3(planned), Z1_Bait4(planned), Z1_Bait5(planned), Z1_BoundaryEast(planned), Z1_BoundaryNorth(planned), Z1_BoundarySouth(planned), Z1_BoundaryWest(planned), Z1_Safe(planned)
+  ZONE|02 虾池|entries=10|needsSync=0|missing=4|Z2_Bait1(planned), Z2_Bait2(planned), Z2_Safe(planned), Z2_Water(planned)
+  ZONE|03 蟹湖|entries=15|needsSync=0|missing=0|
+  ZONE|04 树林岛|entries=15|needsSync=0|missing=0|
+  ZONE|05 沙滩岛|entries=15|needsSync=0|missing=0|
+  ZONE|06 礁石岛|entries=15|needsSync=0|missing=0|
+  ZONE|07 火山岛|entries=14|needsSync=0|missing=0|
+  TOTAL|entries=90|needsSync=0

@@ -2,8 +2,9 @@
 -- 覆盖两件事：
 --   1. 解析语义：现场实测位置取 (x=centerX, y=minY, z=centerZ)、位移方向、pivot 疑点标记、
 --      运行时真源标记 —— 这些决定了「配置要改成什么」，错了会把同步带到错坐标；
---   2. 提交的施工后基线 + 当前 GameCfg 重算出的分布（03–05 区 10/15、06 区 10/15、07 区 9/14，
---      合计 49）必须与 #65 施工交接评论一致：场景快照更新后忘了重算，就会在这里红。
+--   2. 提交的施工后基线 + 当前 GameCfg 重算出的分布：同步完成后 **x/z 全为 0**，只剩 Safe 的
+--      Δy=−0.20（配置 6.00 是地面基准 GroundY、现场 5.80 是安全垫片的底面）—— 场景快照或
+--      GameCfg 变了就会在这里红，重算再更新期望。
 local sync = require('tools.anchor_coord_sync_dry_run')
 local contract = require('tools.zone_space_contract')
 
@@ -78,7 +79,7 @@ describe('#102 锚点坐标同步 dry-run', function()
         assert.is_truthy(text:find('3', 1, true))
     end)
 
-    it('施工后基线 + 当前 GameCfg：03–06 区各 10/15、07 区 9/14，合计 49', function()
+    it('施工后基线 + 当前 GameCfg：90 条锚点全部与现场一致', function()
         local text = assert(contract.readFile(sync.CSV), '读不到施工后基线 ' .. sync.CSV)
         local zones = sync.audit(require('common.GameCfg'), contract.parseCsv(text))
         local counts, total = {}, 0
@@ -90,13 +91,30 @@ describe('#102 锚点坐标同步 dry-run', function()
             counts[zone.label] = string.format('%d/%d', syncCount, #zone.entries)
             total = total + syncCount
         end
-        assert.are.equal('10/15', counts['03 蟹湖'])
-        assert.are.equal('10/15', counts['04 树林岛'])
-        assert.are.equal('10/15', counts['05 沙滩岛'])
-        assert.are.equal('10/15', counts['06 礁石岛'])
-        assert.are.equal('9/14', counts['07 火山岛'])
+        assert.are.equal('0/15', counts['03 蟹湖'])
+        assert.are.equal('0/15', counts['04 树林岛'])
+        assert.are.equal('0/15', counts['05 沙滩岛'])
+        assert.are.equal('0/15', counts['06 礁石岛'])
+        assert.are.equal('0/14', counts['07 火山岛'])
         assert.are.equal('0/6', counts['01 鱼塘'])
         assert.are.equal('0/10', counts['02 虾池'])
-        assert.are.equal(49, total, '合计与 #65 施工交接评论不一致：场景快照或 GameCfg 变了，重算再更新期望')
+        assert.are.equal(0, total, '配置与施工后现场不一致：跑 lua tools/anchor_coord_sync_dry_run.lua 看具体是哪几条')
+    end)
+
+    it('y 口径：Safe 取现场顶面（地面高度），位置类单位取底面（pivot）', function()
+        local rows = rowsOf({ csvLine('03 蟹湖', 2, '03 蟹湖/摆渡/Z3_Safe', 'Z3_Safe', '480.000,5.800,30.500', '10.000,0.200,10.000') })
+        local zone = { Scene = { Entities = {
+            { Name = 'Z3_Safe', Role = 'Safe', Position = { x = 480, y = 6, z = 30.5 }, State = 'planned' },
+        } } }
+        local entry = sync.resolveZone(zone, '03 蟹湖', rows).entries[1]
+        assert.are.equal('top', entry.yReference)
+        assert.are.equal(6, entry.target.y, 'Safe 的 y 目标是可站立面顶面 6.00，不是垫片底面 5.80')
+        assert.is_false(entry.needsSync, '配置写地面高度时不该报需要同步')
+        assert.are.equal('bottom', sync.yReference('Lottery'), '设施锚点是位置类单位，仍取底面')
+        local facility = sync.resolveZone({ Scene = { Entities = {
+            { Name = 'Z3_Lottery', Role = 'Lottery', Position = { x = 509, y = 5, z = -5 }, State = 'planned' },
+        } } }, '03 蟹湖', rowsOf({ FACILITY })).entries[1]
+        assert.are.equal('bottom', facility.yReference)
+        assert.are.equal(5, facility.target.y, '设施取底面 minY')
     end)
 end)

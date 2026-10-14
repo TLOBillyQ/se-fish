@@ -20,7 +20,12 @@ describe("TestZoneScene125", function()
       assert.are.equal(b.MaxZ, center[2] + (index == 1 and 79 or index >= 2 and index <= 4 and 50 or 70))
       assert.is_true(b.MinX < b.MaxX and b.MinZ < b.MaxZ)
       assert.is_true(scene.Land.MinX < scene.Land.MaxX and scene.Land.MinZ < scene.Land.MaxZ)
-      if index > 1 then
+      if index > 2 then
+        -- #102 现场同步：03–07 区的安全点取 #65 P3 施工后的现场值「内侧墙内面内 18 米」，
+        -- 折返后落在区中心靠内侧（远离水岸）那一边，不再等于区中心。
+        assert.same({ x = center[1], y = 6,
+          z = center[2] + (index <= 4 and 30.5 or -30.5) }, scene.SafePoint)
+      elseif index == 2 then
         assert.same({ x = center[1], y = 6, z = center[2] }, scene.SafePoint)
       else
         assert.near(-0.71, scene.SafePoint.z, 1e-9)

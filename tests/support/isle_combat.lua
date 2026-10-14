@@ -28,6 +28,18 @@ local function vec(x, y, z)
         return vec(a.x + b.x, a.y + b.y, a.z + b.z) end })
 end
 
+--- 「岸边干地」起点：本区中线上、水岸线向内 32 米处（干地）。
+--- #102 现场同步后合同安全点挪到了区内侧（离本区水岸线 62.5 米），而入水/逃脱类用例的时序是按
+--- 「起点在水岸线外 32 米」调的 —— 这些用例要的只是「岸边」这个位置，所以按水岸线自己取，不借 SafePoint。
+function M.shoreDryPoint(zoneIndex)
+    local scene = Cfg.Zones[zoneIndex].Scene
+    local water = scene.Waters[1]
+    local boundary = scene.Boundary
+    local halfZ = water.HalfZ or water.HalfXZ or 0
+    local inland = water.Center.z >= (boundary.MinZ + boundary.MaxZ) / 2 and -1 or 1
+    return vec(water.Center.x, scene.SafePoint.y, water.Center.z + inland * (halfZ + 32))
+end
+
 -- 建世界并接线三个真实管理器；返回的 env 供 spec 逐案例持有，env:tearDown() 负责拆除。
 -- env 字段：now / notices / players / castStates / units / heartbeat / world / carrier / mgr / vitals / player。
 function M.new(zoneIndex)
@@ -82,7 +94,7 @@ function M.new(zoneIndex)
     env.vitals:Start()
     env.mgr.Vitals = env.vitals
     env.mgr:Start()
-    local safe = Cfg.Zones[zoneIndex or 6].Scene.SafePoint
+    local safe = M.shoreDryPoint(zoneIndex or 6)
     local c = { Health = 300, HealthChanged = signal(), Died = signal(), Lift = function() end }
     function c:TakeDamage(d) self.Health = math.max(0, self.Health - d); self.HealthChanged:Fire(self.Health) end
     env.player = { UserId = 3701, Character = { Controller = c, Position = vec(safe.x, safe.y, safe.z),

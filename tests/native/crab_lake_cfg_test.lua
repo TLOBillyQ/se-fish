@@ -186,6 +186,7 @@ describe("TestCrabLakeCfg", function()
     end
     assert.is_not_nil(grill)
     assert.are.equal('Z3_Grill', grill.Name)
-    assert.same({ x = 490, y = 5, z = 10 }, grill.Position)
+    -- #102 现场同步：烧烤锚点改成施工后的现场值（原计划值 490,5,10）。
+    assert.same({ x = 502, y = 6, z = 11 }, grill.Position)
   end)
 end)

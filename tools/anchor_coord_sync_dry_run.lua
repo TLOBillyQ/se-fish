@@ -13,16 +13,24 @@
 -- 输出：stdout 文本报告；`--json <path>` 另写机器可读结果（证据要能逐字节复现，统一 LF）。
 --
 -- 口径：
---   1. **pivot** 沿用 `tools/zone_space_contract.lua` 的声明（Y 底面 / XZ 中心），只有 preset 1101635
---      是实测，其余是假设 —— 所以本工具把 `minY` 与 `centerY` 都算出来，差异非零时报告里显式标注，
---      不把假设当实测。
---   2. **运行时真源**：`Scene.SafePoint`（摆渡目的地、`GroundY`）、`BaitSpots.Positions`、数学水域。
+--   1. **x/z**：现场实测取 `centerX` / `centerZ`（pivot 口径同 `tools/zone_space_contract.lua`，
+--      preset 1101635 已实测、其余为假设）。
+--   2. **y**：位置是**底面**单位取现场 `minY`（那是它的 pivot）；代表「可站立面高度」的锚点取现场
+--      `maxY`（顶面）—— 配置里的 `SafePoint.y` 语义是**地面高度**（`common/FlightPath.lua` 用它当
+--      `GroundY`），不是垫片 pivot，两者相差一块垫片厚度（现场 0.20）。逐角色口径见 `M.Y_RULE`。
+--   3. **运行时真源**：`Scene.SafePoint`（摆渡目的地、`GroundY`）、`BaitSpots.Positions`、数学水域。
 --      其余锚点是核对对象而非运行时输入；本工具把它们标出来，避免「改了没用」或「改了有副作用」被混为一谈。
---   3. **只报差值与建议位移，不判定合格**；y 是否允许变动由使用者决定（本轮结论：y 不动，只动 x/z）。
+--   4. **只报差值与建议位移，不判定合格**；y 是否允许变动由使用者决定（本轮结论：y 不动，只动 x/z）。
 local M = {}
 
 M.CSV = 'evidence/issue65/zone-baseline-rows-post-p3.csv'
 M.EPSILON = 0.001
+
+-- 逐角色的 y 口径：'top' = 目标取现场顶面 maxY（可站立面高度），默认 'bottom' = 取底面 minY（单位 pivot）。
+M.Y_RULE = {
+    Safe = { reference = 'top',
+        reason = 'SafePoint.y 是地面高度（FlightPath 的 GroundY、摆渡目的地），不是垫片 pivot' },
+}
 
 -- 运行时真源：改了会直接影响玩法，改前必须确认。
 M.RUNTIME_CONSUMERS = {
@@ -33,6 +41,17 @@ M.RUNTIME_CONSUMERS = {
 }
 
 local contract = require('tools.zone_space_contract')
+
+--- y 口径：位置类单位取底面；代表可站立面高度的锚点（见 M.Y_RULE）取顶面。
+function M.yReference(role)
+    local rule = M.Y_RULE[role]
+    return rule and rule.reference or 'bottom'
+end
+
+function M.yTarget(node, role)
+    if M.yReference(role) == 'top' then return node.maxY end
+    return node.minY
+end
 
 local function trim(text) return (tostring(text):gsub('^%s+', ''):gsub('%s+$', '')) end
 
@@ -52,16 +71,20 @@ function M.resolveZone(cfgZone, zoneLabel, rows)
     for _, entity in ipairs(cfgZone.Scene.Entities or {}) do
         local node = byName[entity.Name]
         if node then
+            local yTarget = M.yTarget(node, entity.Role)
             local dx = node.centerX - entity.Position.x
-            local dy = node.minY - entity.Position.y
+            local dy = yTarget - entity.Position.y
             local dz = node.centerZ - entity.Position.z
             local centerY = (node.minY + node.maxY) / 2
             local pivotSuspect = math.abs(centerY - node.minY) > M.EPSILON
+            local rule = M.Y_RULE[entity.Role]
             entries[#entries + 1] = {
                 name = entity.Name, role = entity.Role, state = entity.State,
                 current = { x = entity.Position.x, y = entity.Position.y, z = entity.Position.z },
-                target = { x = node.centerX, y = node.minY, z = node.centerZ },
-                centerY = centerY,
+                target = { x = node.centerX, y = yTarget, z = node.centerZ },
+                yReference = M.yReference(entity.Role),
+                yReason = rule and rule.reason or nil,
+                minY = node.minY, maxY = node.maxY, centerY = centerY,
                 delta = { x = dx, y = dy, z = dz },
                 needsSync = math.abs(dx) > M.EPSILON or math.abs(dy) > M.EPSILON or math.abs(dz) > M.EPSILON,
                 pivotSuspect = pivotSuspect,
@@ -101,6 +124,7 @@ function M.report(zones)
                 local flags = {}
                 if entry.pivotSuspect then flags[#flags + 1] = 'centerY≠minY' end
                 if entry.runtimeConsumer then flags[#flags + 1] = '运行时真源' end
+                if entry.yReference == 'top' then flags[#flags + 1] = 'y 取顶面' end
                 lines[#lines + 1] = string.format(
                     '  SYNC|%s|%s|%s|配置 (%s, %s, %s) → 现场 (%s, %s, %s)|Δ (%s, %s, %s)%s',
                     zone.label, entry.name, entry.role,
@@ -117,12 +141,17 @@ function M.report(zones)
         lines[#lines + 1] = string.format('  ZONE|%s|entries=%d|needsSync=%d|missing=%d|%s',
             zone.label, #zone.entries, sync, #zone.missing, table.concat(missingNames, ', '))
     end
+    lines[#lines + 1] = string.format('  TOTAL|entries=%d|needsSync=%d', totalEntries, totalSync)
+    -- 报告头可以引用 M.CSV / M.Y_RULE 的当前值：只有在调用方先改字段再重算时，证据才与代码不一致。
+    local yTopRoles = {}
+    for role in pairs(M.Y_RULE) do yTopRoles[#yTopRoles + 1] = role end
+    table.sort(yTopRoles)
     local header = {
         '锚点坐标同步 dry-run（基线 ' .. M.CSV .. '）',
-        '口径：现场实测取 (x=centerX, y=minY, z=centerZ)，与 zone_space_contract 的 pivot 声明一致；只报差值，不判定合格。',
+        '口径：现场实测 x/z 取中心，y 取底面 minY（位置类单位 pivot）；'
+            .. table.concat(yTopRoles, '/') .. ' 角色取顶面 maxY（那是可站立面高度，不是 pivot）。只报差值，不判定合格。',
         '本工具不修改 GameCfg；下列 SYNC 行是重开核验通过后要套用的位移。',
     }
-    lines[#lines + 1] = string.format('  TOTAL|entries=%d|needsSync=%d', totalEntries, totalSync)
     return table.concat(header, '\n') .. '\n' .. table.concat(lines, '\n')
 end
 

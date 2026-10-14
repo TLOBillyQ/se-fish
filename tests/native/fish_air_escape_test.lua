@@ -76,9 +76,12 @@ function FishAirEscape:setUp()
     _G.Quaternion = { FromEulerAngles = function()
         return { GetForward = function() return vec(0, 0, 1) end }
     end }
-    local safe = Cfg.Zones[6].Scene.SafePoint
+    -- #102 现场同步：合同安全点移到区内侧（离本区水岸线 62.5 米），而本文件的时序是按「起点在水岸线外
+    -- 32 米」调的（1.05 秒仍在岸上、5 秒后飞进水面被回收），所以起点按本区水岸线自己取，不借 SafePoint。
+    local water = Cfg.Zones[6].Scene.Waters[1]
+    local startZ = water.Center.z - (water.HalfZ + 32)
     self.player = { UserId = 5701, Character = {
-        Position = vec(safe.x, safe.y, safe.z), Rotation = _G.Quaternion.FromEulerAngles(0, 0, 0),
+        Position = vec(water.Center.x, Cfg.Zones[6].Scene.SafePoint.y, startZ), Rotation = _G.Quaternion.FromEulerAngles(0, 0, 0),
         Controller = { Lift = function() end },
     } }
     _G.game = { GetService = function(_, name)

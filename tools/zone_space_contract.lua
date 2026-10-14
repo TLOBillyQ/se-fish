@@ -1,9 +1,13 @@
 -- #65 P3 空间合同核对（离线工具，只读）。
 --
 -- 输入：
---   * evidence/issue65/zone-baseline-rows.csv —— P2 现场基线（探针 tests/probes/zone_baseline_inventory.lua 生成）
---   * common/GameCfg.lua                      —— #125 七区场景合同（加载时已做「折返双排」刚体变换）
+--   * evidence/issue65/zone-baseline-rows-post-p3.csv —— P3 施工后的现场快照（探针 tests/probes/zone_baseline_inventory.lua 生成）
+--   * common/GameCfg.lua                                —— #125 七区场景合同（加载时已做「折返双排」刚体变换）
 -- 输出：stdout 文本报告；`--json <path>` 另写机器可读结果。
+--
+-- 默认基线在 #102 从 P2 快照（`zone-baseline-rows.csv`，配置还是计划值的那一版）换成 P3 施工后快照：
+-- 配置已同步到施工后现场，继续拿 P2 基线核对的 ANCHOR 行记的是「P2 → 现场」的累计差，
+-- 会把「同步成功」读成「差 10 条」。要复核历史口径就显式带 `--csv evidence/issue65/zone-baseline-rows.csv`。
 --
 -- 口径（逐条显式声明，避免把推断当实测）：
 --   1. **pivot**：沿用 P1 在 preset `1101635`（30 面空气墙）上的运行时射线结论 —— Y 轴 `Position.y`
@@ -21,8 +25,8 @@
 --   5. **只报事实与差值，不下合格/不合格结论**：施工未做时这些数字是现状快照，不是验收。
 local M = {}
 
-M.CSV = 'evidence/issue65/zone-baseline-rows.csv'
-M.EVIDENCE_JSON = 'evidence/issue65/zone-space-contract.json'
+M.CSV = 'evidence/issue65/zone-baseline-rows-post-p3.csv'
+M.EVIDENCE_JSON = 'evidence/issue102/zone-space-contract-post-sync.json'
 M.CORRIDOR_MIN = 8 -- #62 岸边连续通道净宽下限（米）
 M.HEADROOM = 3     -- 判定高度带：地面 → 地面 + 3（三倍体型线性净空）
 M.SAMPLE_STEP = 0.5 -- 水岸线采样步长（米）：设施最小 1.5 宽，步长必须小于它才不会漏掉挡路件

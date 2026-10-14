@@ -1237,6 +1237,12 @@ local sceneCenters = {
     { x = 460, z = 100 }, { x = 660, z = 100 }, { x = 880, z = 100 },
     { x = 1160, z = 100 },
 }
+-- #102：03–07 区动线锚点的退让量按 #62 决议的「连续战斗净空间 X×Z」（按区序 1..7）算。
+-- 这张表与 tools/zone_space_contract.lua、tools/plan_zone_layout.lua 的 M.COMBAT 同源：
+-- 现场那批设施就是规划器按它摆的（见 evidence/issue65/zone-layout-p3.md §1/§3），改一处要三处一起改。
+local zoneCombat = {
+    { 24, 20 }, { 24, 20 }, { 32, 28 }, { 40, 36 }, { 40, 36 }, { 48, 40 }, { 48, 40 },
+}
 local existingScene = {
     { LandName = '大地板', FishermanName = 'TGUnitFish', ShopName = 'TGUnitShop',
       Land = { MinX = 0, MaxX = 18, MinZ = 25, MaxZ = 55 },
@@ -1254,13 +1260,30 @@ local existingScene = {
 for index, zone in ipairs(GameCfg.Zones) do
     local center, old = sceneCenters[index], existingScene[index]
     local prefix = 'Z' .. index .. '_'
+    -- #102 现场同步：03–07 区的 Scene 坐标改成 #65 P3 施工后的现场值（01/02 区走 existingScene，不用下面几式）。
+    -- 现场值出自规划器 tools/plan_zone_layout.lua 的同一套式子 —— 区中心 / 水岸线 / 内侧墙内面 + 退让量，
+    -- 所以在「折返前」的坐标系里照抄即可（本坐标系里水面在 +Z 侧、朝区内是 −Z）；文件末尾的折返变换再把它
+    -- 翻成现场坐标，两排区因此仍是同一套模板的 180° 副本。退让量（15 / 12 / 25 / 14 / 8 / 18 / 6 米）
+    -- 与规划器 §3 逐条一致，改配方时两边要一起改。
+    local combat = zoneCombat[index]
+    local halfX, depth = combat[1] / 2, combat[2]   -- #62 战斗净空间 X×Z（半宽 / 进深）
+    local boundaryHalfX = index == 2 and 25 or index == 1 and 69 or 60
+    local boundaryMinZ = center.z - (index == 1 and 59 or 50)
+    local waterCenterZ, waterHalfX, waterHalfZ = center.z + 44, 40, 12 -- 数学水域（与下面 Waters[1] 同源）
+    local shoreZ = waterCenterZ - waterHalfZ        -- 水岸线：水域朝区内那一侧
+    local innerWallZ = boundaryMinZ + 1.5           -- 内侧墙内面：数学边界 + 半个墙厚（墙厚 3 压中线）
+    -- 鱼饵贴水面两侧外沿：现场 Zx_Bait1 在 −X 一侧。折返区（02–04）的 +X 在现场就是 −X，
+    -- 所以名字对应的边在这里要翻过来写，否则 03/04 区的两个鱼饵会与现场对调。
+    local baitSide = (index >= 2 and index <= 4) and 1 or -1
     local scene = {
         State = 'planned', Entities = {}, Waters = {},
-        SafePoint = old and old.SafePoint or { x = center.x, y = 6, z = center.z },
-        Land = old and old.Land or { MinX = center.x - 40, MaxX = center.x + 40,
-            MinZ = center.z - 30, MaxZ = center.z + 30 },
-        Boundary = { MinX = center.x - (index == 2 and 25 or index == 1 and 69 or 60), MaxX = center.x + (index == 2 and 25 or index == 1 and 69 or 60),
-            MinZ = center.z - (index == 1 and 59 or 50), MaxZ = center.z + (index == 1 and 79 or 70), BottomY = -30, TopY = 40,
+        SafePoint = old and old.SafePoint or { x = center.x, y = 6, z = innerWallZ + 18 },
+        -- 活动岛地面：现场同步后取现场的 `Zx_Land` 地块板范围（区内全宽 × 水岸线到内侧墙内面）。
+        -- 折返变换会把它整块翻过去，rectangle() 里按 min/max 摆正。
+        Land = old and old.Land or { MinX = center.x - boundaryHalfX, MaxX = center.x + boundaryHalfX,
+            MinZ = innerWallZ, MaxZ = shoreZ },
+        Boundary = { MinX = center.x - boundaryHalfX, MaxX = center.x + boundaryHalfX,
+            MinZ = boundaryMinZ, MaxZ = center.z + (index == 1 and 79 or 70), BottomY = -30, TopY = 40,
             MaxFlightHeight = 20, CanClimb = false },
         BaitSpots = { ItemId = zone.BaitItemId, RespawnSec = 15, Count = 1, Positions = {} },
     }
@@ -1273,16 +1296,17 @@ for index, zone in ipairs(GameCfg.Zones) do
         }
         return name
     end
-    scene.LandName = entity('Land', old and old.LandPosition or { x = center.x, y = 0, z = center.z },
-        old and old.LandName, old ~= nil)
+    scene.LandName = entity('Land', old and old.LandPosition
+        or { x = center.x, y = 0, z = (shoreZ + innerWallZ) / 2 }, old and old.LandName, old ~= nil)
     scene.SafePointName = entity('Safe', scene.SafePoint)
     scene.FishermanName = entity('Fisherman', old and old.FishermanPosition
-        or { x = center.x - 20, y = 5, z = center.z }, old and old.FishermanName, old ~= nil)
+        or { x = center.x + halfX + 15, y = 6, z = shoreZ - 15 }, old and old.FishermanName, old ~= nil)
     scene.ShopName = entity('Shop', old and old.ShopPosition
-        or { x = center.x + 20, y = 5, z = center.z }, old and old.ShopName, old ~= nil)
-    scene.LotteryName = entity('Lottery', { x = center.x + 5, y = 5, z = center.z + 5 })
+        or { x = center.x + halfX + 12, y = 6, z = shoreZ - (depth + 25) }, old and old.ShopName, old ~= nil)
+    scene.LotteryName = entity('Lottery', index <= 2 and { x = center.x + 5, y = 5, z = center.z + 5 }
+        or { x = center.x - halfX - 6, y = 6, z = shoreZ - 14 })
     if index >= 3 then
-        scene.GrillName = entity('Grill', { x = center.x - 10, y = 5, z = center.z - 10 })
+        scene.GrillName = entity('Grill', { x = center.x - halfX - 6, y = 6, z = shoreZ - (depth + 15) })
     end
     if index <= 2 then
         for _, water in ipairs(GameCfg.Water.Zones) do
@@ -1296,8 +1320,8 @@ for index, zone in ipairs(GameCfg.Zones) do
         end
     else
         local water = { Id = zone.WaterId, ZoneId = zone.Id,
-            Center = { x = center.x, y = 2, z = center.z + 44 },
-            HalfX = 40, HalfZ = 12, SurfaceY = 3 }
+            Center = { x = center.x, y = 2, z = waterCenterZ },
+            HalfX = waterHalfX, HalfZ = waterHalfZ, SurfaceY = 3 }
         scene.Waters[1] = water
         water.EntityName = entity('Water', water.Center)
     end
@@ -1313,9 +1337,13 @@ for index, zone in ipairs(GameCfg.Zones) do
             scene.BaitSpots.Positions[#scene.BaitSpots.Positions + 1] = spot.Position
         end
     else
-        scene.BaitSpots.Positions = {
+        -- #102 现场同步：03–07 区的鱼饵贴水面两侧外沿（现场值）；02 区沿用既有计划值。
+        scene.BaitSpots.Positions = index == 2 and {
             { x = center.x - 3, y = 6, z = center.z - 3 },
             { x = center.x + 3, y = 6, z = center.z - 3 },
+        } or {
+            { x = center.x + baitSide * (waterHalfX + 12), y = 6, z = shoreZ - 8 },
+            { x = center.x - baitSide * (waterHalfX + 12), y = 6, z = shoreZ - 8 },
         }
     end
     for n, point in ipairs(scene.BaitSpots.Positions) do entity('Bait' .. n, point) end
@@ -1328,6 +1356,20 @@ for index, zone in ipairs(GameCfg.Zones) do
 end
 GameCfg.Ferry.PlannedRoutes = {}
 local plannedReturnPrices = { 10, 30, 90, 270, 810, 2430 }
+-- #102 现场同步：03 区起的摆渡锚点改成 #65 P3 施工后的现场值（内侧墙内面内 8 米、左右 ±25，
+-- 与上面设施动线同一套退让量）。数组下标是**锚点所在区**：去程锚点在出发区、返程锚点在到达区。
+-- 01 区的两个锚点与 02 区去程沿用既有值；02 区返程是它自己的落点字面量（既有现场）。
+local function ferryOutPosition(zoneIndex)
+    local center = sceneCenters[zoneIndex]
+    if zoneIndex == 1 then return { x = -8, y = 1.5, z = 25 } end
+    if zoneIndex == 2 then return { x = center.x + 15, y = 5, z = center.z - 10 } end
+    return { x = center.x + 25, y = 6, z = center.z - 40.5 }
+end
+local function ferryReturnPosition(zoneIndex)
+    local center = sceneCenters[zoneIndex]
+    if zoneIndex == 2 then return { x = 100, y = 5, z = 103 } end
+    return { x = center.x - 25, y = 6, z = center.z - 40.5 }
+end
 for index = 1, 6 do
     local from, to = GameCfg.Zones[index], GameCfg.Zones[index + 1]
     local outName = index == 1 and 'FerryBoat' or ('Z' .. index .. '_FerryOut')
@@ -1338,10 +1380,8 @@ for index = 1, 6 do
             State = observed and 'observed' or 'planned',
         }
     end
-    ferryEntity(from, outName, index == 1 and { x = -8, y = 1.5, z = 25 }
-        or { x = sceneCenters[index].x + 15, y = 5, z = sceneCenters[index].z - 10 }, index == 1)
-    ferryEntity(to, returnName, index == 1 and { x = 100, y = 5, z = 103 }
-        or { x = sceneCenters[index + 1].x - 15, y = 5, z = sceneCenters[index + 1].z - 10 }, index == 1)
+    ferryEntity(from, outName, ferryOutPosition(index), index == 1)
+    ferryEntity(to, returnName, ferryReturnPosition(index + 1), index == 1)
     GameCfg.Ferry.PlannedRoutes[index] = {
         State = 'planned', FromZoneId = from.Id, ToZoneId = to.Id,
         Outbound = { AnchorName = outName, Ticket = GameCfg.Content.Exchanges[index].Result,

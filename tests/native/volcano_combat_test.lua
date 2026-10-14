@@ -7,7 +7,7 @@
 --
 -- 旧文件靠 `TestVolcanoCombat.setUp = TestReefCombat.setUp` 继承礁石岛夹具（LuaUnit 的全局类名互访）。
 -- Busted 下两个 spec 各自 require 同一份 tests/support/isle_combat.lua，逐案例 open/close；
--- 本岛的差异只有：出生点换 7 号区安全点、补 RemoteEvent 全局、摘掉 server.AbilityAPI 的模块缓存，
+-- 本岛的差异只有：出生点换 7 号区岸边干地（Islet.shoreDryPoint）、补 RemoteEvent 全局、摘掉 server.AbilityAPI 的模块缓存，
 -- 因此 close 之后再恢复这三样，顺序与旧 tearDown（先礁石后本岛补充）保持一致。
 local Cfg = require('common.GameCfg')
 local Islet = require('tests.support.isle_combat')
@@ -21,7 +21,9 @@ describe('TestVolcanoCombat', function()
         _G.RemoteEvent = { New = function() return { OnServerEvent = {
             Connect = function() return { Disconnect = function() end } end } } end }
         package.loaded['server.AbilityAPI'] = nil
-        local p = Cfg.Zones[7].Scene.SafePoint
+        -- #102 现场同步：出生点用「岸边干地」（水岸线向内 32 米），不跟随移到区内侧的合同安全点 ——
+        -- 本文件的入水/携带用例时序是按这个距离调的（见 tests/support/isle_combat.lua 的 shoreDryPoint）。
+        local p = Islet.shoreDryPoint(7)
         env.player.Character.Position = env.vec(p.x, p.y, p.z)
     end)
     after_each(function()

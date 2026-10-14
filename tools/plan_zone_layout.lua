@@ -467,7 +467,9 @@ local function main(argv)
             :format(#layouts, M.CORRIDOR_MIN))
     end
     if check then
-        local want = M.renderOps(layouts)
+        -- 必须带 rows：回滚块靠它区分「原地改形」与「本批新建」，漏传会渲染出空回滚块，
+        -- 于是 --check 永远报「不同步」（#66 修）。
+        local want = M.renderOps(layouts, rows)
         local got = M.readProbeBlock()
         if want ~= got then
             print('探针数据块**不同步**：请运行 lua tools/gen_zone_layout_probe.lua')
