@@ -1,0 +1,406 @@
+{
+  "schema_version": "1.0",
+  "command": "log grep",
+  "success": true,
+  "schemaVersion": "1.0",
+  "tool": "eggy-logtail",
+  "logPath": "C:\\FeverApps\\party_pc\\logs\\editor_34320.log",
+  "logPathSource": "status",
+  "offsetBefore": 0,
+  "effectiveOffset": 84260,
+  "offsetAfter": 107875,
+  "bytesRead": 23615,
+  "truncatedOrRotated": false,
+  "truncated": false,
+  "totalMatchesKnown": true,
+  "windowComplete": true,
+  "runWindowComplete": true,
+  "windowBoundaryAdjusted": false,
+  "partialLine": false,
+  "cursor": {
+    "fileIdentity": "win:ac6d2653:00430000000039bd",
+    "offset": 107875
+  },
+  "omittedCount": 0,
+  "playSession": "52c1674",
+  "window": {
+    "offsetStart": 84260,
+    "offsetEnd": 107875
+  },
+  "freshness": {
+    "status": "FRESH_INCOMPLETE",
+    "playSession": "52c1674",
+    "hasRunBegin": true,
+    "hasRunEnd": false,
+    "runBeginOffset": 84260
+  },
+  "summary": {
+    "matchCount": 39,
+    "errorCount": 0,
+    "warningCount": 0,
+    "uniqueErrorCount": 0,
+    "rawErrorCount": 0,
+    "uniqueRuleErrorCount": 0,
+    "rawWarningCount": 0,
+    "uniqueRuleWarningCount": 0,
+    "noiseCount": 0,
+    "topErrorTypes": []
+  },
+  "errors": [],
+  "matches": [
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 135,
+      "byteOffset": 97939,
+      "text": "[15:12:26.221] [info/server] \"AIRWALLBOUNDS65V2|ENV|world=true|physics=true|enums=true|includeType=1\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 136,
+      "byteOffset": 98041,
+      "text": "[15:12:26.223] [info/server] \"AIRWALLBOUNDS65V2|ZONE|01 鱼塘|01 鱼塘|空气墙=空气墙|walls=6\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 137,
+      "byteOffset": 98143,
+      "text": "[15:12:26.223] [info/server] \"AIRWALLBOUNDS65V2|BOX|01 鱼塘|无形方块|pos=Vector3(-67.500000,-39.000000, 10.000000)|size=Vector3(3.000000,88.000000, 138.000000)|Y=[-39.0,49.0]|Yspan=88.000|X=[-69.0,-66.0]|Xspan=3.000|Z=[-59.0,79.0]|Zspan=138.000|pivotY=bottom/X=center|hits=6/6|otherHits=0\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 138,
+      "byteOffset": 98439,
+      "text": "[15:12:26.224] [info/server] \"AIRWALLBOUNDS65V2|BOX|01 鱼塘|无形方块|pos=Vector3(0.000000,46.000000, 10.000000)|size=Vector3(138.000000,3.000000, 138.000000)|Y=[46.0,49.0]|Yspan=3.000|X=[-69.0,69.0]|Xspan=138.000|Z=[-59.0,79.0]|Zspan=138.000|pivotY=bottom/X=center|hits=6/6|otherHits=0\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 139,
+      "byteOffset": 98732,
+      "text": "[15:12:26.226] [info/server] \"AIRWALLBOUNDS65V2|BOX|01 鱼塘|无形方块|pos=Vector3(0.000000,-39.000000, 10.000000)|size=Vector3(138.000000,3.000000, 138.000000)|Y=[-39.0,-36.0]|Yspan=3.000|X=[-69.0,69.0]|Xspan=138.000|Z=[-59.0,79.0]|Zspan=138.000|pivotY=bottom/X=center|hits=6/6|otherHits=0\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 140,
+      "byteOffset": 99028,
+      "text": "[15:12:26.226] [info/server] \"AIRWALLBOUNDS65V2|BOX|01 鱼塘|无形方块|pos=Vector3(67.500000,-39.000000, 10.000000)|size=Vector3(3.000000,88.000000, 138.000000)|Y=[-39.0,49.0]|Yspan=88.000|X=[66.0,69.0]|Xspan=3.000|Z=[-59.0,79.0]|Zspan=138.000|pivotY=bottom/X=center|hits=6/6|otherHits=0\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 141,
+      "byteOffset": 99321,
+      "text": "[15:12:26.227] [info/server] \"AIRWALLBOUNDS65V2|BOX|01 鱼塘|无形方块|pos=Vector3(0.000000,-39.000000, -57.500000)|size=Vector3(138.000000,88.000000, 3.000000)|Y=[-39.0,49.0]|Yspan=88.000|X=[-69.0,69.0]|Xspan=138.000|Z=[-59.0,-56.0]|Zspan=3.000|pivotY=bottom/X=center|hits=6/6|otherHits=0\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 142,
+      "byteOffset": 99616,
+      "text": "[15:12:26.229] [info/server] \"AIRWALLBOUNDS65V2|BOX|01 鱼塘|无形方块|pos=Vector3(0.000000,-39.000000, 77.500000)|size=Vector3(138.000000,88.000000, 3.000000)|Y=[-39.0,49.0]|Yspan=88.000|X=[-69.0,69.0]|Xspan=138.000|Z=[76.0,79.0]|Zspan=3.000|pivotY=bottom/X=center|hits=6/6|otherHits=0\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 143,
+      "byteOffset": 99908,
+      "text": "[15:12:26.230] [info/server] \"AIRWALLBOUNDS65V2|ZONE|02 虾池|02 虾池|空气墙=空气墙|walls=4\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 144,
+      "byteOffset": 100010,
+      "text": "[15:12:26.232] [info/server] \"AIRWALLBOUNDS65V2|BOX|02 虾池|Z2_BoundaryWest|pos=Vector3(265.000000,-30.000000, -10.000000)|size=Vector3(3.000000,70.000000, 120.000000)|Y=[-30.0,40.0]|Yspan=70.000|X=[263.5,266.5]|Xspan=3.000|Z=[-70.0,50.0]|Zspan=120.000|pivotY=bottom/X=center|hits=6/6|otherHits=0\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 145,
+      "byteOffset": 100310,
+      "text": "[15:12:26.234] [info/server] \"AIRWALLBOUNDS65V2|BOX|02 虾池|Z2_BoundarySouth|pos=Vector3(240.000000,-30.000000, 50.000000)|size=Vector3(50.000000,70.000000, 3.000000)|Y=[-30.0,40.0]|Yspan=70.000|X=[215.0,265.0]|Xspan=50.000|Z=[48.5,51.5]|Zspan=3.000|pivotY=bottom/X=center|hits=6/6|otherHits=0\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 146,
+      "byteOffset": 100607,
+      "text": "[15:12:26.236] [info/server] \"AIRWALLBOUNDS65V2|BOX|02 虾池|Z2_BoundaryNorth|pos=Vector3(240.000000,-30.000000, -70.000000)|size=Vector3(50.000000,70.000000, 3.000000)|Y=[-30.0,40.0]|Yspan=70.000|X=[215.0,265.0]|Xspan=50.000|Z=[-71.5,-68.5]|Zspan=3.000|pivotY=bottom/X=center|hits=6/6|otherHits=0\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 147,
+      "byteOffset": 100907,
+      "text": "[15:12:26.236] [info/server] \"AIRWALLBOUNDS65V2|BOX|02 虾池|Z2_BoundaryEast|pos=Vector3(215.000000,-30.000000, -10.000000)|size=Vector3(3.000000,70.000000, 120.000000)|Y=[-30.0,40.0]|Yspan=70.000|X=[213.5,216.5]|Xspan=3.000|Z=[-70.0,50.0]|Zspan=120.000|pivotY=bottom/X=center|hits=6/6|otherHits=0\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 148,
+      "byteOffset": 101207,
+      "text": "[15:12:26.237] [info/server] \"AIRWALLBOUNDS65V2|ZONE|03 蟹湖|03 蟹湖|空气墙=空气墙|walls=4\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 149,
+      "byteOffset": 101309,
+      "text": "[15:12:26.240] [info/server] \"AIRWALLBOUNDS65V2|BOX|03 蟹湖|Z3_BoundaryNorth|pos=Vector3(480.000000,-30.000000, -70.000000)|size=Vector3(120.000000,70.000000, 3.000000)|Y=[-30.0,40.0]|Yspan=70.000|X=[420.0,540.0]|Xspan=120.000|Z=[-71.5,-68.5]|Zspan=3.000|pivotY=bottom/X=center|hits=6/6|otherHits=0\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 150,
+      "byteOffset": 101611,
+      "text": "[15:12:26.240] [info/server] \"AIRWALLBOUNDS65V2|BOX|03 蟹湖|Z3_BoundarySouth|pos=Vector3(480.000000,-30.000000, 50.000000)|size=Vector3(120.000000,70.000000, 3.000000)|Y=[-30.0,40.0]|Yspan=70.000|X=[420.0,540.0]|Xspan=120.000|Z=[48.5,51.5]|Zspan=3.000|pivotY=bottom/X=center|hits=6/6|otherHits=0\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 151,
+      "byteOffset": 101910,
+      "text": "[15:12:26.242] [info/server] \"AIRWALLBOUNDS65V2|BOX|03 蟹湖|Z3_BoundaryWest|pos=Vector3(540.000000,-30.000000, -10.000000)|size=Vector3(3.000000,70.000000, 120.000000)|Y=[-30.0,40.0]|Yspan=70.000|X=[538.5,541.5]|Xspan=3.000|Z=[-70.0,50.0]|Zspan=120.000|pivotY=bottom/X=center|hits=6/6|otherHits=0\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 152,
+      "byteOffset": 102210,
+      "text": "[15:12:26.243] [info/server] \"AIRWALLBOUNDS65V2|BOX|03 蟹湖|Z3_BoundaryEast|pos=Vector3(420.000000,-30.000000, -10.000000)|size=Vector3(3.000000,70.000000, 120.000000)|Y=[-30.0,40.0]|Yspan=70.000|X=[418.5,421.5]|Xspan=3.000|Z=[-70.0,50.0]|Zspan=120.000|pivotY=bottom/X=center|hits=6/6|otherHits=0\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 153,
+      "byteOffset": 102510,
+      "text": "[15:12:26.244] [info/server] \"AIRWALLBOUNDS65V2|ZONE|04 树林岛|04 树林岛|空气墙=空气墙|walls=4\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 154,
+      "byteOffset": 102618,
+      "text": "[15:12:26.246] [info/server] \"AIRWALLBOUNDS65V2|BOX|04 树林岛|Z4_BoundaryNorth|pos=Vector3(720.000000,-30.000000, -70.000000)|size=Vector3(120.000000,70.000000, 3.000000)|Y=[-30.0,40.0]|Yspan=70.000|X=[660.0,780.0]|Xspan=120.000|Z=[-71.5,-68.5]|Zspan=3.000|pivotY=bottom/X=center|hits=6/6|otherHits=0\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 155,
+      "byteOffset": 102923,
+      "text": "[15:12:26.247] [info/server] \"AIRWALLBOUNDS65V2|BOX|04 树林岛|Z4_BoundaryWest|pos=Vector3(780.000000,-30.000000, -10.000000)|size=Vector3(3.000000,70.000000, 120.000000)|Y=[-30.0,40.0]|Yspan=70.000|X=[778.5,781.5]|Xspan=3.000|Z=[-70.0,50.0]|Zspan=120.000|pivotY=bottom/X=center|hits=6/6|otherHits=0\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 156,
+      "byteOffset": 103226,
+      "text": "[15:12:26.249] [info/server] \"AIRWALLBOUNDS65V2|BOX|04 树林岛|Z4_BoundarySouth|pos=Vector3(720.000000,-30.000000, 50.000000)|size=Vector3(120.000000,70.000000, 3.000000)|Y=[-30.0,40.0]|Yspan=70.000|X=[660.0,780.0]|Xspan=120.000|Z=[48.5,51.5]|Zspan=3.000|pivotY=bottom/X=center|hits=6/6|otherHits=0\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 157,
+      "byteOffset": 103528,
+      "text": "[15:12:26.250] [info/server] \"AIRWALLBOUNDS65V2|BOX|04 树林岛|Z4_BoundaryEast|pos=Vector3(660.000000,-30.000000, -10.000000)|size=Vector3(3.000000,70.000000, 120.000000)|Y=[-30.0,40.0]|Yspan=70.000|X=[658.5,661.5]|Xspan=3.000|Z=[-70.0,50.0]|Zspan=120.000|pivotY=bottom/X=center|hits=6/6|otherHits=0\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 158,
+      "byteOffset": 103831,
+      "text": "[15:12:26.252] [info/server] \"AIRWALLBOUNDS65V2|ZONE|05 沙滩岛|05 沙滩岛|空气墙=空气墙|walls=4\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 159,
+      "byteOffset": 103939,
+      "text": "[15:12:26.253] [info/server] \"AIRWALLBOUNDS65V2|BOX|05 沙滩岛|Z5_BoundaryEast|pos=Vector3(780.000000,-30.000000, 330.000000)|size=Vector3(3.000000,70.000000, 120.000000)|Y=[-30.0,40.0]|Yspan=70.000|X=[778.5,781.5]|Xspan=3.000|Z=[270.0,390.0]|Zspan=120.000|pivotY=bottom/X=center|hits=6/6|otherHits=0\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 160,
+      "byteOffset": 104243,
+      "text": "[15:12:26.255] [info/server] \"AIRWALLBOUNDS65V2|BOX|05 沙滩岛|Z5_BoundaryWest|pos=Vector3(660.000000,-30.000000, 330.000000)|size=Vector3(3.000000,70.000000, 120.000000)|Y=[-30.0,40.0]|Yspan=70.000|X=[658.5,661.5]|Xspan=3.000|Z=[270.0,390.0]|Zspan=120.000|pivotY=bottom/X=center|hits=6/6|otherHits=0\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 161,
+      "byteOffset": 104547,
+      "text": "[15:12:26.256] [info/server] \"AIRWALLBOUNDS65V2|BOX|05 沙滩岛|Z5_BoundarySouth|pos=Vector3(720.000000,-30.000000, 270.000000)|size=Vector3(120.000000,70.000000, 3.000000)|Y=[-30.0,40.0]|Yspan=70.000|X=[660.0,780.0]|Xspan=120.000|Z=[268.5,271.5]|Zspan=3.000|pivotY=bottom/X=center|hits=6/6|otherHits=0\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 162,
+      "byteOffset": 104852,
+      "text": "[15:12:26.259] [info/server] \"AIRWALLBOUNDS65V2|BOX|05 沙滩岛|Z5_BoundaryNorth|pos=Vector3(720.000000,-30.000000, 390.000000)|size=Vector3(120.000000,70.000000, 3.000000)|Y=[-30.0,40.0]|Yspan=70.000|X=[660.0,780.0]|Xspan=120.000|Z=[388.5,391.5]|Zspan=3.000|pivotY=bottom/X=center|hits=6/6|otherHits=0\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 163,
+      "byteOffset": 105157,
+      "text": "[15:12:26.259] [info/server] \"AIRWALLBOUNDS65V2|ZONE|06 礁石岛|06 礁石岛|空气墙=空气墙|walls=4\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 164,
+      "byteOffset": 105265,
+      "text": "[15:12:26.260] [info/server] \"AIRWALLBOUNDS65V2|BOX|06 礁石岛|Z6_BoundaryNorth|pos=Vector3(480.000000,-30.000000, 390.000000)|size=Vector3(120.000000,70.000000, 3.000000)|Y=[-30.0,40.0]|Yspan=70.000|X=[420.0,540.0]|Xspan=120.000|Z=[388.5,391.5]|Zspan=3.000|pivotY=bottom/X=center|hits=6/6|otherHits=0\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 165,
+      "byteOffset": 105570,
+      "text": "[15:12:26.262] [info/server] \"AIRWALLBOUNDS65V2|BOX|06 礁石岛|Z6_BoundarySouth|pos=Vector3(480.000000,-30.000000, 270.000000)|size=Vector3(120.000000,70.000000, 3.000000)|Y=[-30.0,40.0]|Yspan=70.000|X=[420.0,540.0]|Xspan=120.000|Z=[268.5,271.5]|Zspan=3.000|pivotY=bottom/X=center|hits=6/6|otherHits=0\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 166,
+      "byteOffset": 105875,
+      "text": "[15:12:26.263] [info/server] \"AIRWALLBOUNDS65V2|BOX|06 礁石岛|Z6_BoundaryEast|pos=Vector3(540.000000,-30.000000, 330.000000)|size=Vector3(3.000000,70.000000, 120.000000)|Y=[-30.0,40.0]|Yspan=70.000|X=[538.5,541.5]|Xspan=3.000|Z=[270.0,390.0]|Zspan=120.000|pivotY=bottom/X=center|hits=6/6|otherHits=0\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 167,
+      "byteOffset": 106179,
+      "text": "[15:12:26.263] [info/server] \"AIRWALLBOUNDS65V2|BOX|06 礁石岛|Z6_BoundaryWest|pos=Vector3(420.000000,-30.000000, 330.000000)|size=Vector3(3.000000,70.000000, 120.000000)|Y=[-30.0,40.0]|Yspan=70.000|X=[418.5,421.5]|Xspan=3.000|Z=[270.0,390.0]|Zspan=120.000|pivotY=bottom/X=center|hits=6/6|otherHits=0\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 168,
+      "byteOffset": 106483,
+      "text": "[15:12:26.265] [info/server] \"AIRWALLBOUNDS65V2|ZONE|07 火山岛|07 火山岛|空气墙=空气墙|walls=4\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 169,
+      "byteOffset": 106591,
+      "text": "[15:12:26.266] [info/server] \"AIRWALLBOUNDS65V2|BOX|07 火山岛|Z7_BoundarySouth|pos=Vector3(240.000000,-30.000000, 270.000000)|size=Vector3(120.000000,70.000000, 3.000000)|Y=[-30.0,40.0]|Yspan=70.000|X=[180.0,300.0]|Xspan=120.000|Z=[268.5,271.5]|Zspan=3.000|pivotY=bottom/X=center|hits=6/6|otherHits=0\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 170,
+      "byteOffset": 106896,
+      "text": "[15:12:26.266] [info/server] \"AIRWALLBOUNDS65V2|BOX|07 火山岛|Z7_BoundaryWest|pos=Vector3(180.000000,-30.000000, 330.000000)|size=Vector3(3.000000,70.000000, 120.000000)|Y=[-30.0,40.0]|Yspan=70.000|X=[178.5,181.5]|Xspan=3.000|Z=[270.0,390.0]|Zspan=120.000|pivotY=bottom/X=center|hits=6/6|otherHits=0\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 171,
+      "byteOffset": 107200,
+      "text": "[15:12:26.267] [info/server] \"AIRWALLBOUNDS65V2|BOX|07 火山岛|Z7_BoundaryEast|pos=Vector3(300.000000,-30.000000, 330.000000)|size=Vector3(3.000000,70.000000, 120.000000)|Y=[-30.0,40.0]|Yspan=70.000|X=[298.5,301.5]|Xspan=3.000|Z=[270.0,390.0]|Zspan=120.000|pivotY=bottom/X=center|hits=6/6|otherHits=0\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 172,
+      "byteOffset": 107504,
+      "text": "[15:12:26.269] [info/server] \"AIRWALLBOUNDS65V2|BOX|07 火山岛|Z7_BoundaryNorth|pos=Vector3(240.000000,-30.000000, 390.000000)|size=Vector3(120.000000,70.000000, 3.000000)|Y=[-30.0,40.0]|Yspan=70.000|X=[180.0,300.0]|Xspan=120.000|Z=[388.5,391.5]|Zspan=3.000|pivotY=bottom/X=center|hits=6/6|otherHits=0\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 173,
+      "byteOffset": 107809,
+      "text": "[15:12:26.269] [info/server] \"AIRWALLBOUNDS65V2|SUMMARY|walls=30\"",
+      "before": [],
+      "after": []
+    }
+  ],
+  "contextLines": [],
+  "warnings": [],
+  "noiseSummary": []
+}

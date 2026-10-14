@@ -1,0 +1,9 @@
+{
+  "success": true,
+  "message": "lua command submitted",
+  "execution_mode": "async_submit",
+  "runtime": "server",
+  "input_mode": "file",
+  "script_sha256": "0796d8956140657771824128b759b55eeaf964849d757891eda88763516a80bc",
+  "script_bytes": 7451
+}

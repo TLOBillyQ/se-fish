@@ -1,0 +1,394 @@
+{
+  "schema_version": "1.0",
+  "command": "log grep",
+  "success": true,
+  "schemaVersion": "1.0",
+  "tool": "eggy-logtail",
+  "logPath": "C:\\FeverApps\\party_pc\\logs\\editor_34320.log",
+  "logPathSource": "status",
+  "offsetBefore": 0,
+  "effectiveOffset": 0,
+  "offsetAfter": 84260,
+  "bytesRead": 84260,
+  "truncatedOrRotated": false,
+  "truncated": false,
+  "totalMatchesKnown": true,
+  "windowComplete": true,
+  "runWindowComplete": false,
+  "windowBoundaryAdjusted": false,
+  "partialLine": false,
+  "cursor": {
+    "fileIdentity": "win:ac6d2653:00430000000039bd",
+    "offset": 84260
+  },
+  "omittedCount": 0,
+  "window": {
+    "offsetStart": 0,
+    "offsetEnd": 84260
+  },
+  "freshness": {
+    "status": "NO_PLAY_SESSION_PROVIDED",
+    "hasRunBegin": false,
+    "hasRunEnd": false
+  },
+  "summary": {
+    "matchCount": 38,
+    "errorCount": 0,
+    "warningCount": 0,
+    "uniqueErrorCount": 0,
+    "rawErrorCount": 0,
+    "uniqueRuleErrorCount": 0,
+    "rawWarningCount": 0,
+    "uniqueRuleWarningCount": 0,
+    "noiseCount": 0,
+    "topErrorTypes": []
+  },
+  "errors": [],
+  "matches": [
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 1375,
+      "byteOffset": 76594,
+      "text": "[15:11:35.375] [info/editor] \"AIRWALLPROP65|ZONE|01 鱼塘|01 鱼塘|空气墙=空气墙|walls=6\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 1376,
+      "byteOffset": 76692,
+      "text": "[15:11:35.378] [info/editor] \"AIRWALLPROP65|WALL|01 鱼塘|无形方块|pos=0.000,46.000,10.000|size=138.000,3.000,138.000|canCollide=true|canQuery=true|physicsActive=true|climbable=false|assetId=official://preset/1101635\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 1377,
+      "byteOffset": 76915,
+      "text": "[15:11:35.378] [info/editor] \"AIRWALLPROP65|WALL|01 鱼塘|无形方块|pos=0.000,-39.000,10.000|size=138.000,3.000,138.000|canCollide=true|canQuery=true|physicsActive=true|climbable=false|assetId=official://preset/1101635\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 1378,
+      "byteOffset": 77139,
+      "text": "[15:11:35.381] [info/editor] \"AIRWALLPROP65|WALL|01 鱼塘|无形方块|pos=-67.500,-39.000,10.000|size=3.000,88.000,138.000|canCollide=true|canQuery=true|physicsActive=true|climbable=false|assetId=official://preset/1101635\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 1379,
+      "byteOffset": 77364,
+      "text": "[15:11:35.381] [info/editor] \"AIRWALLPROP65|WALL|01 鱼塘|无形方块|pos=67.500,-39.000,10.000|size=3.000,88.000,138.000|canCollide=true|canQuery=true|physicsActive=true|climbable=false|assetId=official://preset/1101635\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 1380,
+      "byteOffset": 77588,
+      "text": "[15:11:35.384] [info/editor] \"AIRWALLPROP65|WALL|01 鱼塘|无形方块|pos=0.000,-39.000,77.500|size=138.000,88.000,3.000|canCollide=true|canQuery=true|physicsActive=true|climbable=false|assetId=official://preset/1101635\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 1381,
+      "byteOffset": 77811,
+      "text": "[15:11:35.384] [info/editor] \"AIRWALLPROP65|WALL|01 鱼塘|无形方块|pos=0.000,-39.000,-57.500|size=138.000,88.000,3.000|canCollide=true|canQuery=true|physicsActive=true|climbable=false|assetId=official://preset/1101635\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 1382,
+      "byteOffset": 78035,
+      "text": "[15:11:35.387] [info/editor] \"AIRWALLPROP65|ZONE|02 虾池|02 虾池|空气墙=空气墙|walls=4\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 1383,
+      "byteOffset": 78133,
+      "text": "[15:11:35.388] [info/editor] \"AIRWALLPROP65|WALL|02 虾池|Z2_BoundaryWest|pos=265.000,-30.000,-10.000|size=3.000,70.000,120.000|canCollide=true|canQuery=true|physicsActive=true|climbable=false|assetId=official://preset/1101635\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 1384,
+      "byteOffset": 78362,
+      "text": "[15:11:35.390] [info/editor] \"AIRWALLPROP65|WALL|02 虾池|Z2_BoundaryEast|pos=215.000,-30.000,-10.000|size=3.000,70.000,120.000|canCollide=true|canQuery=true|physicsActive=true|climbable=false|assetId=official://preset/1101635\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 1385,
+      "byteOffset": 78591,
+      "text": "[15:11:35.391] [info/editor] \"AIRWALLPROP65|WALL|02 虾池|Z2_BoundarySouth|pos=240.000,-30.000,50.000|size=50.000,70.000,3.000|canCollide=true|canQuery=true|physicsActive=true|climbable=false|assetId=official://preset/1101635\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 1386,
+      "byteOffset": 78819,
+      "text": "[15:11:35.392] [info/editor] \"AIRWALLPROP65|WALL|02 虾池|Z2_BoundaryNorth|pos=240.000,-30.000,-70.000|size=50.000,70.000,3.000|canCollide=true|canQuery=true|physicsActive=true|climbable=false|assetId=official://preset/1101635\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 1387,
+      "byteOffset": 79048,
+      "text": "[15:11:35.394] [info/editor] \"AIRWALLPROP65|ZONE|03 蟹湖|03 蟹湖|空气墙=空气墙|walls=4\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 1388,
+      "byteOffset": 79146,
+      "text": "[15:11:35.395] [info/editor] \"AIRWALLPROP65|WALL|03 蟹湖|Z3_BoundaryWest|pos=540.000,-30.000,-10.000|size=3.000,70.000,120.000|canCollide=true|canQuery=true|physicsActive=true|climbable=false|assetId=official://preset/1101635\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 1389,
+      "byteOffset": 79375,
+      "text": "[15:11:35.398] [info/editor] \"AIRWALLPROP65|WALL|03 蟹湖|Z3_BoundaryEast|pos=420.000,-30.000,-10.000|size=3.000,70.000,120.000|canCollide=true|canQuery=true|physicsActive=true|climbable=false|assetId=official://preset/1101635\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 1390,
+      "byteOffset": 79604,
+      "text": "[15:11:35.401] [info/editor] \"AIRWALLPROP65|WALL|03 蟹湖|Z3_BoundarySouth|pos=480.000,-30.000,50.000|size=120.000,70.000,3.000|canCollide=true|canQuery=true|physicsActive=true|climbable=false|assetId=official://preset/1101635\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 1391,
+      "byteOffset": 79833,
+      "text": "[15:11:35.403] [info/editor] \"AIRWALLPROP65|WALL|03 蟹湖|Z3_BoundaryNorth|pos=480.000,-30.000,-70.000|size=120.000,70.000,3.000|canCollide=true|canQuery=true|physicsActive=true|climbable=false|assetId=official://preset/1101635\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 1392,
+      "byteOffset": 80063,
+      "text": "[15:11:35.404] [info/editor] \"AIRWALLPROP65|ZONE|04 树林岛|04 树林岛|空气墙=空气墙|walls=4\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 1393,
+      "byteOffset": 80167,
+      "text": "[15:11:35.405] [info/editor] \"AIRWALLPROP65|WALL|04 树林岛|Z4_BoundaryWest|pos=780.000,-30.000,-10.000|size=3.000,70.000,120.000|canCollide=true|canQuery=true|physicsActive=true|climbable=false|assetId=official://preset/1101635\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 1394,
+      "byteOffset": 80399,
+      "text": "[15:11:35.407] [info/editor] \"AIRWALLPROP65|WALL|04 树林岛|Z4_BoundaryEast|pos=660.000,-30.000,-10.000|size=3.000,70.000,120.000|canCollide=true|canQuery=true|physicsActive=true|climbable=false|assetId=official://preset/1101635\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 1395,
+      "byteOffset": 80631,
+      "text": "[15:11:35.408] [info/editor] \"AIRWALLPROP65|WALL|04 树林岛|Z4_BoundarySouth|pos=720.000,-30.000,50.000|size=120.000,70.000,3.000|canCollide=true|canQuery=true|physicsActive=true|climbable=false|assetId=official://preset/1101635\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 1396,
+      "byteOffset": 80863,
+      "text": "[15:11:35.410] [info/editor] \"AIRWALLPROP65|WALL|04 树林岛|Z4_BoundaryNorth|pos=720.000,-30.000,-70.000|size=120.000,70.000,3.000|canCollide=true|canQuery=true|physicsActive=true|climbable=false|assetId=official://preset/1101635\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 1397,
+      "byteOffset": 81096,
+      "text": "[15:11:35.411] [info/editor] \"AIRWALLPROP65|ZONE|05 沙滩岛|05 沙滩岛|空气墙=空气墙|walls=4\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 1398,
+      "byteOffset": 81200,
+      "text": "[15:11:35.413] [info/editor] \"AIRWALLPROP65|WALL|05 沙滩岛|Z5_BoundaryWest|pos=660.000,-30.000,330.000|size=3.000,70.000,120.000|canCollide=true|canQuery=true|physicsActive=true|climbable=false|assetId=official://preset/1101635\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 1399,
+      "byteOffset": 81432,
+      "text": "[15:11:35.414] [info/editor] \"AIRWALLPROP65|WALL|05 沙滩岛|Z5_BoundaryEast|pos=780.000,-30.000,330.000|size=3.000,70.000,120.000|canCollide=true|canQuery=true|physicsActive=true|climbable=false|assetId=official://preset/1101635\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 1400,
+      "byteOffset": 81664,
+      "text": "[15:11:35.417] [info/editor] \"AIRWALLPROP65|WALL|05 沙滩岛|Z5_BoundarySouth|pos=720.000,-30.000,270.000|size=120.000,70.000,3.000|canCollide=true|canQuery=true|physicsActive=true|climbable=false|assetId=official://preset/1101635\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 1401,
+      "byteOffset": 81897,
+      "text": "[15:11:35.417] [info/editor] \"AIRWALLPROP65|WALL|05 沙滩岛|Z5_BoundaryNorth|pos=720.000,-30.000,390.000|size=120.000,70.000,3.000|canCollide=true|canQuery=true|physicsActive=true|climbable=false|assetId=official://preset/1101635\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 1402,
+      "byteOffset": 82130,
+      "text": "[15:11:35.418] [info/editor] \"AIRWALLPROP65|ZONE|06 礁石岛|06 礁石岛|空气墙=空气墙|walls=4\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 1403,
+      "byteOffset": 82234,
+      "text": "[15:11:35.421] [info/editor] \"AIRWALLPROP65|WALL|06 礁石岛|Z6_BoundaryWest|pos=420.000,-30.000,330.000|size=3.000,70.000,120.000|canCollide=true|canQuery=true|physicsActive=true|climbable=false|assetId=official://preset/1101635\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 1404,
+      "byteOffset": 82466,
+      "text": "[15:11:35.421] [info/editor] \"AIRWALLPROP65|WALL|06 礁石岛|Z6_BoundaryEast|pos=540.000,-30.000,330.000|size=3.000,70.000,120.000|canCollide=true|canQuery=true|physicsActive=true|climbable=false|assetId=official://preset/1101635\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 1405,
+      "byteOffset": 82698,
+      "text": "[15:11:35.423] [info/editor] \"AIRWALLPROP65|WALL|06 礁石岛|Z6_BoundarySouth|pos=480.000,-30.000,270.000|size=120.000,70.000,3.000|canCollide=true|canQuery=true|physicsActive=true|climbable=false|assetId=official://preset/1101635\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 1406,
+      "byteOffset": 82931,
+      "text": "[15:11:35.424] [info/editor] \"AIRWALLPROP65|WALL|06 礁石岛|Z6_BoundaryNorth|pos=480.000,-30.000,390.000|size=120.000,70.000,3.000|canCollide=true|canQuery=true|physicsActive=true|climbable=false|assetId=official://preset/1101635\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 1407,
+      "byteOffset": 83164,
+      "text": "[15:11:35.426] [info/editor] \"AIRWALLPROP65|ZONE|07 火山岛|07 火山岛|空气墙=空气墙|walls=4\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 1408,
+      "byteOffset": 83268,
+      "text": "[15:11:35.428] [info/editor] \"AIRWALLPROP65|WALL|07 火山岛|Z7_BoundaryWest|pos=180.000,-30.000,330.000|size=3.000,70.000,120.000|canCollide=true|canQuery=true|physicsActive=true|climbable=false|assetId=official://preset/1101635\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 1409,
+      "byteOffset": 83500,
+      "text": "[15:11:35.430] [info/editor] \"AIRWALLPROP65|WALL|07 火山岛|Z7_BoundaryEast|pos=300.000,-30.000,330.000|size=3.000,70.000,120.000|canCollide=true|canQuery=true|physicsActive=true|climbable=false|assetId=official://preset/1101635\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 1410,
+      "byteOffset": 83732,
+      "text": "[15:11:35.431] [info/editor] \"AIRWALLPROP65|WALL|07 火山岛|Z7_BoundarySouth|pos=240.000,-30.000,270.000|size=120.000,70.000,3.000|canCollide=true|canQuery=true|physicsActive=true|climbable=false|assetId=official://preset/1101635\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 1411,
+      "byteOffset": 83965,
+      "text": "[15:11:35.434] [info/editor] \"AIRWALLPROP65|WALL|07 火山岛|Z7_BoundaryNorth|pos=240.000,-30.000,390.000|size=120.000,70.000,3.000|canCollide=true|canQuery=true|physicsActive=true|climbable=false|assetId=official://preset/1101635\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 1412,
+      "byteOffset": 84198,
+      "text": "[15:11:35.434] [info/editor] \"AIRWALLPROP65|SUMMARY|walls=30\"",
+      "before": [],
+      "after": []
+    }
+  ],
+  "contextLines": [],
+  "warnings": [],
+  "noiseSummary": []
+}

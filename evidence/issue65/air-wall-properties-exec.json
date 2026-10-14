@@ -1,0 +1,10 @@
+{
+  "success": true,
+  "execution_mode": "sync_eval",
+  "result": "AIRWALLPROP65 emitted walls=30",
+  "result_serialization": "legacy_json_text",
+  "runtime": "editor",
+  "input_mode": "file",
+  "script_sha256": "d07fb634cc8f3ba9fbf7eb3dd254cc1f67d8860541ae70ef68515a4b6f6e0ce7",
+  "script_bytes": 3510
+}
