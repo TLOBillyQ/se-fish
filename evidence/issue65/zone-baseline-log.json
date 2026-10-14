@@ -1,0 +1,2635 @@
+{
+  "schema_version": "1.0",
+  "command": "log grep",
+  "success": true,
+  "schemaVersion": "1.0",
+  "tool": "eggy-logtail",
+  "logPath": "C:\\FeverApps\\party_pc\\logs\\editor_34320.log",
+  "logPathSource": "status",
+  "offsetBefore": 0,
+  "effectiveOffset": 0,
+  "offsetAfter": 280232,
+  "bytesRead": 280232,
+  "truncatedOrRotated": false,
+  "truncated": false,
+  "totalMatchesKnown": true,
+  "windowComplete": true,
+  "runWindowComplete": false,
+  "windowBoundaryAdjusted": false,
+  "partialLine": false,
+  "cursor": {
+    "fileIdentity": "win:ac6d2653:00430000000039bd",
+    "offset": 280232
+  },
+  "omittedCount": 0,
+  "window": {
+    "offsetStart": 0,
+    "offsetEnd": 280232
+  },
+  "freshness": {
+    "status": "NO_PLAY_SESSION_PROVIDED",
+    "hasRunBegin": false,
+    "hasRunEnd": false
+  },
+  "summary": {
+    "matchCount": 287,
+    "errorCount": 0,
+    "warningCount": 0,
+    "uniqueErrorCount": 0,
+    "rawErrorCount": 0,
+    "uniqueRuleErrorCount": 0,
+    "rawWarningCount": 0,
+    "uniqueRuleWarningCount": 0,
+    "noiseCount": 0,
+    "topErrorTypes": []
+  },
+  "errors": [],
+  "matches": [
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2270,
+      "byteOffset": 225473,
+      "text": "[15:22:59.459] [info/editor] \"P2BASE65V2|ZONE|01 鱼塘|nodes=40\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2271,
+      "byteOffset": 225539,
+      "text": "[15:22:59.460] [info/editor] \"P2BASE65V2|N|01 鱼塘|1|01 鱼塘/地块|Folder|spatial=0\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2272,
+      "byteOffset": 225629,
+      "text": "[15:22:59.460] [info/editor] \"P2BASE65V2|N|01 鱼塘|1|01 鱼塘/摆渡|Folder|spatial=0\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2273,
+      "byteOffset": 225719,
+      "text": "[15:22:59.463] [info/editor] \"P2BASE65V2|N|01 鱼塘|1|01 鱼塘/空气墙|Folder|spatial=0\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2274,
+      "byteOffset": 225812,
+      "text": "[15:22:59.463] [info/editor] \"P2BASE65V2|N|01 鱼塘|1|01 鱼塘/设施|Folder|spatial=0\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2275,
+      "byteOffset": 225902,
+      "text": "[15:22:59.464] [info/editor] \"P2BASE65V2|N|01 鱼塘|2|01 鱼塘/地块/大地板|WorldUnit|spatial=1|pos=-13.750,0.000,0.750|rot=Quaternion(0,0,0,1)|scale=6.000,1.000,6.000|size=90.000,2.000,60.000|cc=true|cq=true|pa=true|bt=1|asset=map://preset/u54263b69f25482dae18f9dbcfe6dc5b\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2276,
+      "byteOffset": 226183,
+      "text": "[15:22:59.466] [info/editor] \"P2BASE65V2|N|01 鱼塘|2|01 鱼塘/摆渡/FerryBoat|WorldUnit|spatial=1|pos=-8.000,1.500,-15.000|rot=Quaternion(0,0,0,1)|scale=0.200,0.200,0.200|size=3.300,1.800,2.200|cc=true|cq=true|pa=true|bt=2|asset=official://preset/101700\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2277,
+      "byteOffset": 226442,
+      "text": "[15:22:59.467] [info/editor] \"P2BASE65V2|N|01 鱼塘|2|01 鱼塘/摆渡/出生点|SpawnLocationUnit|spatial=1|pos=6.260,5.010,-0.710|rot=Quaternion(0,0,0,1)|scale=1.000,1.000,1.000|size=1.000,1.000,1.000|cc=false|cq=true|pa=false|bt=1|asset=official://preset/600005\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2278,
+      "byteOffset": 226709,
+      "text": "[15:22:59.469] [info/editor] \"P2BASE65V2|N|01 鱼塘|2|01 鱼塘/空气墙/无形方块|WorldUnit|spatial=1|pos=-67.500,-39.000,10.000|rot=Quaternion(0,0,0,1)|scale=1.000,29.333,46.000|size=3.000,88.000,138.000|cc=true|cq=true|pa=true|bt=1|asset=official://preset/1101635\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2279,
+      "byteOffset": 226982,
+      "text": "[15:22:59.470] [info/editor] \"P2BASE65V2|N|01 鱼塘|2|01 鱼塘/空气墙/无形方块|WorldUnit|spatial=1|pos=0.000,-39.000,-57.500|rot=Quaternion(0,0,0,1)|scale=46.000,29.333,1.000|size=138.000,88.000,3.000|cc=true|cq=true|pa=true|bt=1|asset=official://preset/1101635\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2280,
+      "byteOffset": 227254,
+      "text": "[15:22:59.470] [info/editor] \"P2BASE65V2|N|01 鱼塘|2|01 鱼塘/空气墙/无形方块|WorldUnit|spatial=1|pos=0.000,-39.000,10.000|rot=Quaternion(0,0,0,1)|scale=46.000,1.000,46.000|size=138.000,3.000,138.000|cc=true|cq=true|pa=true|bt=1|asset=official://preset/1101635\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2281,
+      "byteOffset": 227526,
+      "text": "[15:22:59.471] [info/editor] \"P2BASE65V2|N|01 鱼塘|2|01 鱼塘/空气墙/无形方块|WorldUnit|spatial=1|pos=0.000,-39.000,77.500|rot=Quaternion(0,0,0,1)|scale=46.000,29.333,1.000|size=138.000,88.000,3.000|cc=true|cq=true|pa=true|bt=1|asset=official://preset/1101635\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2282,
+      "byteOffset": 227797,
+      "text": "[15:22:59.473] [info/editor] \"P2BASE65V2|N|01 鱼塘|2|01 鱼塘/空气墙/无形方块|WorldUnit|spatial=1|pos=0.000,46.000,10.000|rot=Quaternion(0,0,0,1)|scale=46.000,1.000,46.000|size=138.000,3.000,138.000|cc=true|cq=true|pa=true|bt=1|asset=official://preset/1101635\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2283,
+      "byteOffset": 228068,
+      "text": "[15:22:59.473] [info/editor] \"P2BASE65V2|N|01 鱼塘|2|01 鱼塘/空气墙/无形方块|WorldUnit|spatial=1|pos=67.500,-39.000,10.000|rot=Quaternion(0,0,0,1)|scale=1.000,29.333,46.000|size=3.000,88.000,138.000|cc=true|cq=true|pa=true|bt=1|asset=official://preset/1101635\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2284,
+      "byteOffset": 228340,
+      "text": "[15:22:59.474] [info/editor] \"P2BASE65V2|N|01 鱼塘|2|01 鱼塘/设施/FX_Shop|EffectUnit|spatial=1|pos=-|rot=-|scale=-|size=-|cc=nil|cq=nil|pa=nil|bt=nil|asset=map://preset/u46466002b9a47c588001c2e65ef4c3a\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2285,
+      "byteOffset": 228549,
+      "text": "[15:22:59.476] [info/editor] \"P2BASE65V2|N|01 鱼塘|2|01 鱼塘/设施/FishermanModel|WorldUnit|spatial=1|pos=-6.250,8.600,-9.250|rot=Quaternion(0,0.7071067799,0,0.7071067799)|scale=0.750,0.750,0.750|size=2.250,1.125,1.095|cc=true|cq=true|pa=true|bt=2|asset=official://preset/102179\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2286,
+      "byteOffset": 228834,
+      "text": "[15:22:59.476] [info/editor] \"P2BASE65V2|N|01 鱼塘|2|01 鱼塘/设施/TGUnitFish|TriggerUnit|spatial=1|pos=-6.250,-1.000,-9.250|rot=Quaternion(0,0,0,1)|scale=3.000,3.000,3.000|size=9.000,9.000,9.000|cc=nil|cq=nil|pa=true|bt=nil|asset=map://preset/u0aabb64658e4dd19f5aace68d114778\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2287,
+      "byteOffset": 229117,
+      "text": "[15:22:59.477] [info/editor] \"P2BASE65V2|N|01 鱼塘|2|01 鱼塘/设施/TGUnitShop|TriggerUnit|spatial=1|pos=-8.750,2.500,15.250|rot=Quaternion(0,0,0,1)|scale=2.000,2.000,2.000|size=6.000,6.000,6.000|cc=nil|cq=nil|pa=true|bt=nil|asset=map://preset/u46466002b9a47c588001c2e65ef4c3a\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2288,
+      "byteOffset": 229399,
+      "text": "[15:22:59.480] [info/editor] \"P2BASE65V2|N|01 鱼塘|2|01 鱼塘/设施/Z1_Lottery|WorldUnit|spatial=1|pos=5.000,5.000,5.000|rot=Quaternion(0,0,0,1)|scale=1.500,1.500,1.500|size=1.500,1.500,1.500|cc=true|cq=true|pa=true|bt=1|asset=map://preset/ub5a5003efa34f5c8f756b725b5e5a99\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2289,
+      "byteOffset": 229677,
+      "text": "[15:22:59.482] [info/editor] \"P2BASE65V2|N|01 鱼塘|3|01 鱼塘/地块/大地板/FishCenter|WorldUnit|spatial=1|pos=-11.750,2.000,-12.250|rot=Quaternion(0,0.707106769,0,0.7071067095)|scale=1.000,1.000,1.000|size=1.000,1.000,1.000|cc=false|cq=false|pa=true|bt=2|asset=map://preset/u54263b69f25482dae18f9dbcfe6dc5b\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2290,
+      "byteOffset": 229992,
+      "text": "[15:22:59.483] [info/editor] \"P2BASE65V2|N|01 鱼塘|3|01 鱼塘/地块/大地板/Link|PresetLink|spatial=0\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2291,
+      "byteOffset": 230101,
+      "text": "[15:22:59.483] [info/editor] \"P2BASE65V2|N|01 鱼塘|3|01 鱼塘/地块/大地板/WaterCircle1|WorldUnit|spatial=1|pos=-11.750,1.050,-12.250|rot=Quaternion(0,0,0,1)|scale=2.000,1.000,2.000|size=6.000,1.000,6.000|cc=false|cq=true|pa=true|bt=2|asset=map://preset/u54263b69f25482dae18f9dbcfe6dc5b\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2292,
+      "byteOffset": 230396,
+      "text": "[15:22:59.486] [info/editor] \"P2BASE65V2|N|01 鱼塘|3|01 鱼塘/地块/大地板/WaterCircle2|WorldUnit|spatial=1|pos=-11.750,1.050,-12.250|rot=Quaternion(0,0,0,1)|scale=4.000,1.000,4.000|size=12.000,1.000,12.000|cc=false|cq=true|pa=true|bt=2|asset=map://preset/u54263b69f25482dae18f9dbcfe6dc5b\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2293,
+      "byteOffset": 230693,
+      "text": "[15:22:59.487] [info/editor] \"P2BASE65V2|N|01 鱼塘|3|01 鱼塘/地块/大地板/海岛山体3|WorldUnit|spatial=1|pos=-1.750,-5.000,-1.250|rot=Quaternion(0,0,0,1)|scale=2.000,1.000,2.000|size=40.000,10.000,40.000|cc=true|cq=true|pa=true|bt=1|asset=map://preset/u54263b69f25482dae18f9dbcfe6dc5b\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2294,
+      "byteOffset": 230990,
+      "text": "[15:22:59.489] [info/editor] \"P2BASE65V2|N|01 鱼塘|3|01 鱼塘/摆渡/FerryBoat/Link|PresetLink|spatial=0\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2295,
+      "byteOffset": 231099,
+      "text": "[15:22:59.490] [info/editor] \"P2BASE65V2|N|01 鱼塘|3|01 鱼塘/摆渡/出生点/Link|PresetLink|spatial=0\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2296,
+      "byteOffset": 231208,
+      "text": "[15:22:59.492] [info/editor] \"P2BASE65V2|N|01 鱼塘|3|01 鱼塘/空气墙/无形方块/Link|PresetLink|spatial=0\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2297,
+      "byteOffset": 231323,
+      "text": "[15:22:59.493] [info/editor] \"P2BASE65V2|N|01 鱼塘|3|01 鱼塘/空气墙/无形方块/Link|PresetLink|spatial=0\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2298,
+      "byteOffset": 231438,
+      "text": "[15:22:59.494] [info/editor] \"P2BASE65V2|N|01 鱼塘|3|01 鱼塘/空气墙/无形方块/Link|PresetLink|spatial=0\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2299,
+      "byteOffset": 231553,
+      "text": "[15:22:59.496] [info/editor] \"P2BASE65V2|N|01 鱼塘|3|01 鱼塘/空气墙/无形方块/Link|PresetLink|spatial=0\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2300,
+      "byteOffset": 231668,
+      "text": "[15:22:59.497] [info/editor] \"P2BASE65V2|N|01 鱼塘|3|01 鱼塘/空气墙/无形方块/Link|PresetLink|spatial=0\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2301,
+      "byteOffset": 231783,
+      "text": "[15:22:59.500] [info/editor] \"P2BASE65V2|N|01 鱼塘|3|01 鱼塘/空气墙/无形方块/Link|PresetLink|spatial=0\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2302,
+      "byteOffset": 231898,
+      "text": "[15:22:59.500] [info/editor] \"P2BASE65V2|N|01 鱼塘|3|01 鱼塘/设施/FishermanModel/Link|PresetLink|spatial=0\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2303,
+      "byteOffset": 232012,
+      "text": "[15:22:59.503] [info/editor] \"P2BASE65V2|N|01 鱼塘|3|01 鱼塘/设施/TGUnitFish/Link|PresetLink|spatial=0\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2304,
+      "byteOffset": 232122,
+      "text": "[15:22:59.503] [info/editor] \"P2BASE65V2|N|01 鱼塘|3|01 鱼塘/设施/TGUnitShop/FishFood|WorldUnit|spatial=1|pos=-8.750,5.500,15.500|rot=Quaternion(0,0,0,1)|scale=1.000,1.000,1.000|size=2.000,1.500,2.000|cc=true|cq=true|pa=true|bt=1|asset=map://preset/u46466002b9a47c588001c2e65ef4c3a\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2305,
+      "byteOffset": 232411,
+      "text": "[15:22:59.506] [info/editor] \"P2BASE65V2|N|01 鱼塘|3|01 鱼塘/设施/TGUnitShop/Link|PresetLink|spatial=0\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2306,
+      "byteOffset": 232521,
+      "text": "[15:22:59.506] [info/editor] \"P2BASE65V2|N|01 鱼塘|3|01 鱼塘/设施/Z1_Lottery/Link|PresetLink|spatial=0\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2307,
+      "byteOffset": 232631,
+      "text": "[15:22:59.509] [info/editor] \"P2BASE65V2|N|01 鱼塘|4|01 鱼塘/地块/大地板/FishCenter/咸鱼|WorldUnit|spatial=1|pos=-13.500,1.600,-12.250|rot=Quaternion(0,-1,0,0.0000000597)|scale=0.500,0.500,0.500|size=1.500,0.750,0.730|cc=false|cq=false|pa=true|bt=2|asset=map://preset/u54263b69f25482dae18f9dbcfe6dc5b\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2308,
+      "byteOffset": 232944,
+      "text": "[15:22:59.510] [info/editor] \"P2BASE65V2|N|01 鱼塘|4|01 鱼塘/设施/TGUnitShop/FishFood/中式杆|WorldUnit|spatial=1|pos=-9.750,5.500,14.469|rot=Quaternion(0.2164396197,0,0,0.9762960077)|scale=0.200,1.000,0.200|size=0.200,8.000,0.200|cc=false|cq=false|pa=true|bt=1|asset=map://preset/u46466002b9a47c588001c2e65ef4c3a\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2309,
+      "byteOffset": 233267,
+      "text": "[15:22:59.513] [info/editor] \"P2BASE65V2|N|01 鱼塘|5|01 鱼塘/设施/TGUnitShop/FishFood/中式杆/直线绳索|WorldUnit|spatial=1|pos=-9.750,10.000,17.688|rot=Quaternion(0.7071067095,0,0,0.707106769)|scale=0.100,0.100,1.000|size=0.050,0.050,5.000|cc=false|cq=false|pa=true|bt=1|asset=map://preset/u46466002b9a47c588001c2e65ef4c3a\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2310,
+      "byteOffset": 233603,
+      "text": "[15:22:59.515] [info/editor] \"P2BASE65V2|N|01 鱼塘|5|01 鱼塘/设施/TGUnitShop/FishFood/中式杆/铁艺弯钩|WorldUnit|spatial=1|pos=-9.750,7.600,17.788|rot=Quaternion(0,0,-1,0.0000000597)|scale=0.100,0.400,0.100|size=0.015,0.600,0.150|cc=false|cq=false|pa=true|bt=1|asset=map://preset/u46466002b9a47c588001c2e65ef4c3a\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2311,
+      "byteOffset": 233929,
+      "text": "[15:22:59.535] [info/editor] \"P2BASE65V2|ZONE|02 虾池|nodes=36\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2312,
+      "byteOffset": 233995,
+      "text": "[15:22:59.536] [info/editor] \"P2BASE65V2|N|02 虾池|1|02 虾池/地块|Folder|spatial=0\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2313,
+      "byteOffset": 234085,
+      "text": "[15:22:59.538] [info/editor] \"P2BASE65V2|N|02 虾池|1|02 虾池/摆渡|Folder|spatial=0\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2314,
+      "byteOffset": 234175,
+      "text": "[15:22:59.539] [info/editor] \"P2BASE65V2|N|02 虾池|1|02 虾池/空气墙|Folder|spatial=0\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2315,
+      "byteOffset": 234268,
+      "text": "[15:22:59.540] [info/editor] \"P2BASE65V2|N|02 虾池|1|02 虾池/设施|Folder|spatial=0\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2316,
+      "byteOffset": 234358,
+      "text": "[15:22:59.542] [info/editor] \"P2BASE65V2|N|02 虾池|2|02 虾池/地块/星光地板|WorldUnit|spatial=1|pos=240.000,-3.000,0.000|rot=Quaternion(0,1,0,0)|scale=0.400,0.200,0.600|size=4.000,0.200,6.000|cc=true|cq=true|pa=true|bt=2|asset=official://preset/1101661\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2317,
+      "byteOffset": 234621,
+      "text": "[15:22:59.543] [info/editor] \"P2BASE65V2|N|02 虾池|2|02 虾池/地块/海岛山体3|WorldUnit|spatial=1|pos=230.000,-5.000,-6.000|rot=Quaternion(0,1,0,0)|scale=1.000,1.000,1.000|size=20.000,10.000,20.000|cc=true|cq=true|pa=true|bt=2|asset=official://preset/1204002\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2318,
+      "byteOffset": 234889,
+      "text": "[15:22:59.546] [info/editor] \"P2BASE65V2|N|02 虾池|2|02 虾池/地块/海岛山体3|WorldUnit|spatial=1|pos=235.000,-6.000,-6.000|rot=Quaternion(0,1,0,0)|scale=1.000,1.000,1.000|size=20.000,10.000,20.000|cc=true|cq=true|pa=true|bt=2|asset=official://preset/1204002\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2319,
+      "byteOffset": 235157,
+      "text": "[15:22:59.546] [info/editor] \"P2BASE65V2|N|02 虾池|2|02 虾池/地块/海岛山体3|WorldUnit|spatial=1|pos=242.000,-5.000,1.000|rot=Quaternion(0,1,0,0)|scale=1.000,1.000,1.000|size=20.000,10.000,20.000|cc=true|cq=true|pa=true|bt=2|asset=official://preset/1204002\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2320,
+      "byteOffset": 235424,
+      "text": "[15:22:59.549] [info/editor] \"P2BASE65V2|N|02 虾池|2|02 虾池/摆渡/FerryReturn|WorldUnit|spatial=1|pos=240.000,5.000,-3.000|rot=Quaternion(0,1,0,0)|scale=0.200,0.200,0.200|size=3.300,1.800,2.200|cc=true|cq=true|pa=true|bt=2|asset=official://preset/101700\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2321,
+      "byteOffset": 235685,
+      "text": "[15:22:59.549] [info/editor] \"P2BASE65V2|N|02 虾池|2|02 虾池/摆渡/Z2_FerryOut|WorldUnit|spatial=1|pos=225.000,5.000,10.000|rot=Quaternion(0,1,0,0)|scale=0.500,0.500,0.500|size=1.500,1.500,1.500|cc=true|cq=true|pa=true|bt=2|asset=official://preset/1101635\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2322,
+      "byteOffset": 235947,
+      "text": "[15:22:59.552] [info/editor] \"P2BASE65V2|N|02 虾池|2|02 虾池/空气墙/Z2_BoundaryEast|WorldUnit|spatial=1|pos=215.000,-30.000,-10.000|rot=Quaternion(0,0,0,1)|scale=1.000,23.333,40.000|size=3.000,70.000,120.000|cc=true|cq=true|pa=true|bt=2|asset=official://preset/1101635\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2323,
+      "byteOffset": 236224,
+      "text": "[15:22:59.553] [info/editor] \"P2BASE65V2|N|02 虾池|2|02 虾池/空气墙/Z2_BoundaryNorth|WorldUnit|spatial=1|pos=240.000,-30.000,-70.000|rot=Quaternion(0,0,0,1)|scale=16.667,23.333,1.000|size=50.000,70.000,3.000|cc=true|cq=true|pa=true|bt=2|asset=official://preset/1101635\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2324,
+      "byteOffset": 236501,
+      "text": "[15:22:59.555] [info/editor] \"P2BASE65V2|N|02 虾池|2|02 虾池/空气墙/Z2_BoundarySouth|WorldUnit|spatial=1|pos=240.000,-30.000,50.000|rot=Quaternion(0,0,0,1)|scale=16.667,23.333,1.000|size=50.000,70.000,3.000|cc=true|cq=true|pa=true|bt=2|asset=official://preset/1101635\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2325,
+      "byteOffset": 236777,
+      "text": "[15:22:59.555] [info/editor] \"P2BASE65V2|N|02 虾池|2|02 虾池/空气墙/Z2_BoundaryWest|WorldUnit|spatial=1|pos=265.000,-30.000,-10.000|rot=Quaternion(0,0,0,1)|scale=1.000,23.333,40.000|size=3.000,70.000,120.000|cc=true|cq=true|pa=true|bt=2|asset=official://preset/1101635\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2326,
+      "byteOffset": 237054,
+      "text": "[15:22:59.558] [info/editor] \"P2BASE65V2|N|02 虾池|2|02 虾池/设施/TGUnitFishShrimp|TriggerUnit|spatial=1|pos=246.000,-4.000,0.000|rot=Quaternion(0,1,0,0)|scale=3.000,3.000,3.000|size=9.000,9.000,9.000|cc=nil|cq=nil|pa=true|bt=nil|asset=map://preset/u0aabb64658e4dd19f5aace68d114778\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2327,
+      "byteOffset": 237343,
+      "text": "[15:22:59.559] [info/editor] \"P2BASE65V2|N|02 虾池|2|02 虾池/设施/TGUnitShopShrimp|TriggerUnit|spatial=1|pos=234.000,-0.500,3.000|rot=Quaternion(0,1,0,0)|scale=2.000,2.000,2.000|size=6.000,6.000,6.000|cc=nil|cq=nil|pa=true|bt=nil|asset=map://preset/u46466002b9a47c588001c2e65ef4c3a\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2328,
+      "byteOffset": 237632,
+      "text": "[15:22:59.559] [info/editor] \"P2BASE65V2|N|02 虾池|2|02 虾池/设施/Z2_Lottery|WorldUnit|spatial=1|pos=235.000,5.000,-5.000|rot=Quaternion(0,1,0,0)|scale=1.500,1.500,1.500|size=1.500,1.500,1.500|cc=true|cq=true|pa=true|bt=1|asset=map://preset/ub5a5003efa34f5c8f756b725b5e5a99\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2329,
+      "byteOffset": 237913,
+      "text": "[15:22:59.561] [info/editor] \"P2BASE65V2|N|02 虾池|3|02 虾池/地块/星光地板/Link|PresetLink|spatial=0\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2330,
+      "byteOffset": 238025,
+      "text": "[15:22:59.562] [info/editor] \"P2BASE65V2|N|02 虾池|3|02 虾池/地块/海岛山体3/Link|PresetLink|spatial=0\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2331,
+      "byteOffset": 238138,
+      "text": "[15:22:59.562] [info/editor] \"P2BASE65V2|N|02 虾池|3|02 虾池/地块/海岛山体3/Link|PresetLink|spatial=0\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2332,
+      "byteOffset": 238251,
+      "text": "[15:22:59.563] [info/editor] \"P2BASE65V2|N|02 虾池|3|02 虾池/地块/海岛山体3/Link|PresetLink|spatial=0\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2333,
+      "byteOffset": 238364,
+      "text": "[15:22:59.565] [info/editor] \"P2BASE65V2|N|02 虾池|3|02 虾池/摆渡/FerryReturn/Link|PresetLink|spatial=0\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2334,
+      "byteOffset": 238475,
+      "text": "[15:22:59.565] [info/editor] \"P2BASE65V2|N|02 虾池|3|02 虾池/摆渡/Z2_FerryOut/Link|PresetLink|spatial=0\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2335,
+      "byteOffset": 238586,
+      "text": "[15:22:59.566] [info/editor] \"P2BASE65V2|N|02 虾池|3|02 虾池/空气墙/Z2_BoundaryEast/Link|PresetLink|spatial=0\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2336,
+      "byteOffset": 238704,
+      "text": "[15:22:59.568] [info/editor] \"P2BASE65V2|N|02 虾池|3|02 虾池/空气墙/Z2_BoundaryNorth/Link|PresetLink|spatial=0\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2337,
+      "byteOffset": 238823,
+      "text": "[15:22:59.569] [info/editor] \"P2BASE65V2|N|02 虾池|3|02 虾池/空气墙/Z2_BoundarySouth/Link|PresetLink|spatial=0\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2338,
+      "byteOffset": 238942,
+      "text": "[15:22:59.572] [info/editor] \"P2BASE65V2|N|02 虾池|3|02 虾池/空气墙/Z2_BoundaryWest/Link|PresetLink|spatial=0\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2339,
+      "byteOffset": 239060,
+      "text": "[15:22:59.573] [info/editor] \"P2BASE65V2|N|02 虾池|3|02 虾池/设施/TGUnitFishShrimp/Link|PresetLink|spatial=0\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2340,
+      "byteOffset": 239176,
+      "text": "[15:22:59.575] [info/editor] \"P2BASE65V2|N|02 虾池|3|02 虾池/设施/TGUnitFishShrimp/渐变光-箭头|EffectUnit|spatial=1|pos=-|rot=-|scale=-|size=-|cc=nil|cq=nil|pa=nil|bt=nil|asset=map://preset/u0aabb64658e4dd19f5aace68d114778\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2341,
+      "byteOffset": 239411,
+      "text": "[15:22:59.575] [info/editor] \"P2BASE65V2|N|02 虾池|3|02 虾池/设施/TGUnitShopShrimp/FX_Shop|EffectUnit|spatial=1|pos=-|rot=-|scale=-|size=-|cc=nil|cq=nil|pa=nil|bt=nil|asset=map://preset/u46466002b9a47c588001c2e65ef4c3a\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2342,
+      "byteOffset": 239637,
+      "text": "[15:22:59.578] [info/editor] \"P2BASE65V2|N|02 虾池|3|02 虾池/设施/TGUnitShopShrimp/FishFood|WorldUnit|spatial=1|pos=234.000,2.500,2.750|rot=Quaternion(0,1,0,0)|scale=1.000,1.000,1.000|size=2.000,1.500,2.000|cc=true|cq=true|pa=true|bt=1|asset=map://preset/u46466002b9a47c588001c2e65ef4c3a\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2343,
+      "byteOffset": 239932,
+      "text": "[15:22:59.578] [info/editor] \"P2BASE65V2|N|02 虾池|3|02 虾池/设施/TGUnitShopShrimp/Link|PresetLink|spatial=0\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2344,
+      "byteOffset": 240048,
+      "text": "[15:22:59.579] [info/editor] \"P2BASE65V2|N|02 虾池|3|02 虾池/设施/Z2_Lottery/Link|PresetLink|spatial=0\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2345,
+      "byteOffset": 240158,
+      "text": "[15:22:59.581] [info/editor] \"P2BASE65V2|N|02 虾池|4|02 虾池/设施/TGUnitShopShrimp/FishFood/中式杆|WorldUnit|spatial=1|pos=235.000,2.500,3.781|rot=Quaternion(0,0.9762960077,-0.2164396197,0)|scale=0.200,1.000,0.200|size=0.200,8.000,0.200|cc=false|cq=false|pa=true|bt=1|asset=map://preset/u46466002b9a47c588001c2e65ef4c3a\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2346,
+      "byteOffset": 240488,
+      "text": "[15:22:59.582] [info/editor] \"P2BASE65V2|N|02 虾池|5|02 虾池/设施/TGUnitShopShrimp/FishFood/中式杆/直线绳索|WorldUnit|spatial=1|pos=235.000,7.000,0.562|rot=Quaternion(-0.0000000364,0.537299335,-0.8433912993,0.0000000364)|scale=0.100,0.100,1.000|size=0.050,0.050,5.000|cc=false|cq=false|pa=true|bt=1|asset=map://preset/u46466002b9a47c588001c2e65ef4c3a\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2347,
+      "byteOffset": 240853,
+      "text": "[15:22:59.582] [info/editor] \"P2BASE65V2|N|02 虾池|5|02 虾池/设施/TGUnitShopShrimp/FishFood/中式杆/铁艺弯钩|WorldUnit|spatial=1|pos=235.000,4.600,0.462|rot=Quaternion(-0.9762960077,0.000000058,-0.0000000129,-0.2164395005)|scale=0.100,0.400,0.100|size=0.015,0.600,0.150|cc=false|cq=false|pa=true|bt=1|asset=map://preset/u46466002b9a47c588001c2e65ef4c3a\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2348,
+      "byteOffset": 241219,
+      "text": "[15:22:59.601] [info/editor] \"P2BASE65V2|ZONE|03 蟹湖|nodes=38\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2349,
+      "byteOffset": 241285,
+      "text": "[15:22:59.602] [info/editor] \"P2BASE65V2|N|03 蟹湖|1|03 蟹湖/地块|Folder|spatial=0\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2350,
+      "byteOffset": 241375,
+      "text": "[15:22:59.605] [info/editor] \"P2BASE65V2|N|03 蟹湖|1|03 蟹湖/摆渡|Folder|spatial=0\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2351,
+      "byteOffset": 241465,
+      "text": "[15:22:59.605] [info/editor] \"P2BASE65V2|N|03 蟹湖|1|03 蟹湖/水域|Folder|spatial=0\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2352,
+      "byteOffset": 241555,
+      "text": "[15:22:59.608] [info/editor] \"P2BASE65V2|N|03 蟹湖|1|03 蟹湖/空气墙|Folder|spatial=0\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2353,
+      "byteOffset": 241648,
+      "text": "[15:22:59.608] [info/editor] \"P2BASE65V2|N|03 蟹湖|1|03 蟹湖/设施|Folder|spatial=0\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2354,
+      "byteOffset": 241738,
+      "text": "[15:22:59.609] [info/editor] \"P2BASE65V2|N|03 蟹湖|2|03 蟹湖/地块/Z3_Land|WorldUnit|spatial=1|pos=480.000,0.000,0.000|rot=Quaternion(0,1,0,0)|scale=12.000,2.000,14.000|size=120.000,2.000,140.000|cc=true|cq=true|pa=true|bt=2|asset=official://preset/1101661\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2355,
+      "byteOffset": 242001,
+      "text": "[15:22:59.611] [info/editor] \"P2BASE65V2|N|03 蟹湖|2|03 蟹湖/摆渡/Z3_FerryOut|WorldUnit|spatial=1|pos=465.000,5.000,10.000|rot=Quaternion(0,1,0,0)|scale=0.500,0.500,0.500|size=1.500,1.500,1.500|cc=true|cq=true|pa=true|bt=2|asset=official://preset/1101635\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2356,
+      "byteOffset": 242263,
+      "text": "[15:22:59.611] [info/editor] \"P2BASE65V2|N|03 蟹湖|2|03 蟹湖/摆渡/Z3_FerryReturn|WorldUnit|spatial=1|pos=495.000,5.000,10.000|rot=Quaternion(0,1,0,0)|scale=0.500,0.500,0.500|size=1.500,1.500,1.500|cc=true|cq=true|pa=true|bt=2|asset=official://preset/1101635\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2357,
+      "byteOffset": 242528,
+      "text": "[15:22:59.612] [info/editor] \"P2BASE65V2|N|03 蟹湖|2|03 蟹湖/摆渡/Z3_Safe|WorldUnit|spatial=1|pos=480.000,6.000,0.000|rot=Quaternion(0,1,0,0)|scale=1.000,0.200,1.000|size=10.000,0.200,10.000|cc=true|cq=true|pa=true|bt=2|asset=official://preset/1101661\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2358,
+      "byteOffset": 242787,
+      "text": "[15:22:59.614] [info/editor] \"P2BASE65V2|N|03 蟹湖|2|03 蟹湖/水域/Z3_Water|WorldUnit|spatial=1|pos=480.000,2.000,-44.000|rot=Quaternion(0,1,0,0.0000000082)|scale=26.667,1.000,8.000|size=80.000,1.000,24.000|cc=false|cq=true|pa=true|bt=2|asset=map://preset/u54263b69f25482dae18f9dbcfe6dc5b\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2359,
+      "byteOffset": 243082,
+      "text": "[15:22:59.615] [info/editor] \"P2BASE65V2|N|03 蟹湖|2|03 蟹湖/空气墙/Z3_BoundaryEast|WorldUnit|spatial=1|pos=420.000,-30.000,-10.000|rot=Quaternion(0,1,0,0)|scale=1.000,23.333,40.000|size=3.000,70.000,120.000|cc=true|cq=true|pa=true|bt=2|asset=official://preset/1101635\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2360,
+      "byteOffset": 243359,
+      "text": "[15:22:59.615] [info/editor] \"P2BASE65V2|N|03 蟹湖|2|03 蟹湖/空气墙/Z3_BoundaryNorth|WorldUnit|spatial=1|pos=480.000,-30.000,-70.000|rot=Quaternion(0,1,0,0)|scale=40.000,23.333,1.000|size=120.000,70.000,3.000|cc=true|cq=true|pa=true|bt=2|asset=official://preset/1101635\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2361,
+      "byteOffset": 243637,
+      "text": "[15:22:59.617] [info/editor] \"P2BASE65V2|N|03 蟹湖|2|03 蟹湖/空气墙/Z3_BoundarySouth|WorldUnit|spatial=1|pos=480.000,-30.000,50.000|rot=Quaternion(0,1,0,0)|scale=40.000,23.333,1.000|size=120.000,70.000,3.000|cc=true|cq=true|pa=true|bt=2|asset=official://preset/1101635\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2362,
+      "byteOffset": 243914,
+      "text": "[15:22:59.618] [info/editor] \"P2BASE65V2|N|03 蟹湖|2|03 蟹湖/空气墙/Z3_BoundaryWest|WorldUnit|spatial=1|pos=540.000,-30.000,-10.000|rot=Quaternion(0,1,0,0)|scale=1.000,23.333,40.000|size=3.000,70.000,120.000|cc=true|cq=true|pa=true|bt=2|asset=official://preset/1101635\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2363,
+      "byteOffset": 244191,
+      "text": "[15:22:59.619] [info/editor] \"P2BASE65V2|N|03 蟹湖|2|03 蟹湖/设施/Z3_Bait1|WorldUnit|spatial=1|pos=483.000,6.000,3.000|rot=Quaternion(0,1,0,0)|scale=0.500,0.500,0.500|size=1.500,1.500,1.500|cc=true|cq=true|pa=true|bt=2|asset=official://preset/1101635\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2364,
+      "byteOffset": 244449,
+      "text": "[15:22:59.621] [info/editor] \"P2BASE65V2|N|03 蟹湖|2|03 蟹湖/设施/Z3_Bait2|WorldUnit|spatial=1|pos=477.000,6.000,3.000|rot=Quaternion(0,1,0,0)|scale=0.500,0.500,0.500|size=1.500,1.500,1.500|cc=true|cq=true|pa=true|bt=2|asset=official://preset/1101635\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2365,
+      "byteOffset": 244707,
+      "text": "[15:22:59.621] [info/editor] \"P2BASE65V2|N|03 蟹湖|2|03 蟹湖/设施/Z3_Fisherman|TriggerUnit|spatial=1|pos=500.000,5.000,0.000|rot=Quaternion(0,1,0,0.0000000082)|scale=3.000,3.000,3.000|size=9.000,9.000,9.000|cc=nil|cq=nil|pa=true|bt=nil|asset=map://preset/u0aabb64658e4dd19f5aace68d114778\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2366,
+      "byteOffset": 245002,
+      "text": "[15:22:59.622] [info/editor] \"P2BASE65V2|N|03 蟹湖|2|03 蟹湖/设施/Z3_Grill|WorldUnit|spatial=1|pos=490.000,5.000,10.000|rot=Quaternion(0,1,0,0)|scale=0.500,0.500,0.500|size=1.500,1.500,1.500|cc=true|cq=true|pa=true|bt=2|asset=official://preset/1101635\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2367,
+      "byteOffset": 245261,
+      "text": "[15:22:59.624] [info/editor] \"P2BASE65V2|N|03 蟹湖|2|03 蟹湖/设施/Z3_Lottery|WorldUnit|spatial=1|pos=475.000,5.000,-5.000|rot=Quaternion(0,1,0,0)|scale=1.500,1.500,1.500|size=1.500,1.500,1.500|cc=true|cq=true|pa=true|bt=2|asset=official://preset/1101635\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2368,
+      "byteOffset": 245522,
+      "text": "[15:22:59.625] [info/editor] \"P2BASE65V2|N|03 蟹湖|2|03 蟹湖/设施/Z3_Shop|TriggerUnit|spatial=1|pos=460.000,5.000,0.000|rot=Quaternion(0,1,0,0.0000000082)|scale=2.000,2.000,2.000|size=6.000,6.000,6.000|cc=nil|cq=nil|pa=true|bt=nil|asset=map://preset/u46466002b9a47c588001c2e65ef4c3a\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2369,
+      "byteOffset": 245812,
+      "text": "[15:22:59.625] [info/editor] \"P2BASE65V2|N|03 蟹湖|3|03 蟹湖/地块/Z3_Land/Link|PresetLink|spatial=0\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2370,
+      "byteOffset": 245919,
+      "text": "[15:22:59.627] [info/editor] \"P2BASE65V2|N|03 蟹湖|3|03 蟹湖/摆渡/Z3_FerryOut/Link|PresetLink|spatial=0\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2371,
+      "byteOffset": 246030,
+      "text": "[15:22:59.627] [info/editor] \"P2BASE65V2|N|03 蟹湖|3|03 蟹湖/摆渡/Z3_FerryReturn/Link|PresetLink|spatial=0\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2372,
+      "byteOffset": 246144,
+      "text": "[15:22:59.628] [info/editor] \"P2BASE65V2|N|03 蟹湖|3|03 蟹湖/摆渡/Z3_Safe/Link|PresetLink|spatial=0\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2373,
+      "byteOffset": 246251,
+      "text": "[15:22:59.628] [info/editor] \"P2BASE65V2|N|03 蟹湖|3|03 蟹湖/空气墙/Z3_BoundaryEast/Link|PresetLink|spatial=0\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2374,
+      "byteOffset": 246369,
+      "text": "[15:22:59.630] [info/editor] \"P2BASE65V2|N|03 蟹湖|3|03 蟹湖/空气墙/Z3_BoundaryNorth/Link|PresetLink|spatial=0\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2375,
+      "byteOffset": 246488,
+      "text": "[15:22:59.631] [info/editor] \"P2BASE65V2|N|03 蟹湖|3|03 蟹湖/空气墙/Z3_BoundarySouth/Link|PresetLink|spatial=0\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2376,
+      "byteOffset": 246607,
+      "text": "[15:22:59.634] [info/editor] \"P2BASE65V2|N|03 蟹湖|3|03 蟹湖/空气墙/Z3_BoundaryWest/Link|PresetLink|spatial=0\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2377,
+      "byteOffset": 246725,
+      "text": "[15:22:59.635] [info/editor] \"P2BASE65V2|N|03 蟹湖|3|03 蟹湖/设施/Z3_Bait1/Link|PresetLink|spatial=0\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2378,
+      "byteOffset": 246833,
+      "text": "[15:22:59.637] [info/editor] \"P2BASE65V2|N|03 蟹湖|3|03 蟹湖/设施/Z3_Bait2/Link|PresetLink|spatial=0\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2379,
+      "byteOffset": 246941,
+      "text": "[15:22:59.638] [info/editor] \"P2BASE65V2|N|03 蟹湖|3|03 蟹湖/设施/Z3_Fisherman/Link|PresetLink|spatial=0\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2380,
+      "byteOffset": 247053,
+      "text": "[15:22:59.640] [info/editor] \"P2BASE65V2|N|03 蟹湖|3|03 蟹湖/设施/Z3_Grill/Link|PresetLink|spatial=0\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2381,
+      "byteOffset": 247161,
+      "text": "[15:22:59.641] [info/editor] \"P2BASE65V2|N|03 蟹湖|3|03 蟹湖/设施/Z3_Lottery/Link|PresetLink|spatial=0\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2382,
+      "byteOffset": 247271,
+      "text": "[15:22:59.641] [info/editor] \"P2BASE65V2|N|03 蟹湖|3|03 蟹湖/设施/Z3_Shop/FishFood|WorldUnit|spatial=1|pos=460.000,8.000,-0.250|rot=Quaternion(0,1,0,0)|scale=1.000,1.000,1.000|size=2.000,1.500,2.000|cc=true|cq=true|pa=true|bt=1|asset=map://preset/u46466002b9a47c588001c2e65ef4c3a\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2383,
+      "byteOffset": 247558,
+      "text": "[15:22:59.642] [info/editor] \"P2BASE65V2|N|03 蟹湖|3|03 蟹湖/设施/Z3_Shop/Link|PresetLink|spatial=0\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2384,
+      "byteOffset": 247665,
+      "text": "[15:22:59.644] [info/editor] \"P2BASE65V2|N|03 蟹湖|4|03 蟹湖/设施/Z3_Shop/FishFood/中式杆|WorldUnit|spatial=1|pos=461.000,8.000,0.781|rot=Quaternion(0,0.9762960077,-0.2164396197,0)|scale=0.200,1.000,0.200|size=0.200,8.000,0.200|cc=false|cq=false|pa=true|bt=1|asset=map://preset/u46466002b9a47c588001c2e65ef4c3a\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2385,
+      "byteOffset": 247986,
+      "text": "[15:22:59.644] [info/editor] \"P2BASE65V2|N|03 蟹湖|5|03 蟹湖/设施/Z3_Shop/FishFood/中式杆/直线绳索|WorldUnit|spatial=1|pos=461.000,12.500,-2.438|rot=Quaternion(0,0.707106769,-0.7071067095,0)|scale=0.100,0.100,1.000|size=0.050,0.050,5.000|cc=false|cq=false|pa=true|bt=1|asset=map://preset/u46466002b9a47c588001c2e65ef4c3a\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2386,
+      "byteOffset": 248321,
+      "text": "[15:22:59.645] [info/editor] \"P2BASE65V2|N|03 蟹湖|5|03 蟹湖/设施/Z3_Shop/FishFood/中式杆/铁艺弯钩|WorldUnit|spatial=1|pos=461.000,10.100,-2.538|rot=Quaternion(-1,0.0000000597,0,0)|scale=0.100,0.400,0.100|size=0.015,0.600,0.150|cc=false|cq=false|pa=true|bt=1|asset=map://preset/u46466002b9a47c588001c2e65ef4c3a\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2387,
+      "byteOffset": 248646,
+      "text": "[15:22:59.664] [info/editor] \"P2BASE65V2|ZONE|04 树林岛|nodes=38\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2388,
+      "byteOffset": 248715,
+      "text": "[15:22:59.665] [info/editor] \"P2BASE65V2|N|04 树林岛|1|04 树林岛/地块|Folder|spatial=0\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2389,
+      "byteOffset": 248811,
+      "text": "[15:22:59.667] [info/editor] \"P2BASE65V2|N|04 树林岛|1|04 树林岛/摆渡|Folder|spatial=0\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2390,
+      "byteOffset": 248907,
+      "text": "[15:22:59.668] [info/editor] \"P2BASE65V2|N|04 树林岛|1|04 树林岛/水域|Folder|spatial=0\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2391,
+      "byteOffset": 249003,
+      "text": "[15:22:59.670] [info/editor] \"P2BASE65V2|N|04 树林岛|1|04 树林岛/空气墙|Folder|spatial=0\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2392,
+      "byteOffset": 249102,
+      "text": "[15:22:59.671] [info/editor] \"P2BASE65V2|N|04 树林岛|1|04 树林岛/设施|Folder|spatial=0\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2393,
+      "byteOffset": 249198,
+      "text": "[15:22:59.671] [info/editor] \"P2BASE65V2|N|04 树林岛|2|04 树林岛/地块/Z4_Land|WorldUnit|spatial=1|pos=720.000,0.000,0.000|rot=Quaternion(0,1,0,0)|scale=12.000,2.000,14.000|size=120.000,2.000,140.000|cc=true|cq=true|pa=true|bt=2|asset=official://preset/1101661\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2394,
+      "byteOffset": 249467,
+      "text": "[15:22:59.674] [info/editor] \"P2BASE65V2|N|04 树林岛|2|04 树林岛/摆渡/Z4_FerryOut|WorldUnit|spatial=1|pos=705.000,5.000,10.000|rot=Quaternion(0,1,0,0)|scale=0.500,0.500,0.500|size=1.500,1.500,1.500|cc=true|cq=true|pa=true|bt=2|asset=official://preset/1101635\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2395,
+      "byteOffset": 249735,
+      "text": "[15:22:59.674] [info/editor] \"P2BASE65V2|N|04 树林岛|2|04 树林岛/摆渡/Z4_FerryReturn|WorldUnit|spatial=1|pos=735.000,5.000,10.000|rot=Quaternion(0,1,0,0)|scale=0.500,0.500,0.500|size=1.500,1.500,1.500|cc=true|cq=true|pa=true|bt=2|asset=official://preset/1101635\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2396,
+      "byteOffset": 250006,
+      "text": "[15:22:59.676] [info/editor] \"P2BASE65V2|N|04 树林岛|2|04 树林岛/摆渡/Z4_Safe|WorldUnit|spatial=1|pos=720.000,6.000,0.000|rot=Quaternion(0,1,0,0)|scale=1.000,0.200,1.000|size=10.000,0.200,10.000|cc=true|cq=true|pa=true|bt=2|asset=official://preset/1101661\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2397,
+      "byteOffset": 250271,
+      "text": "[15:22:59.677] [info/editor] \"P2BASE65V2|N|04 树林岛|2|04 树林岛/水域/Z4_Water|WorldUnit|spatial=1|pos=720.000,2.000,-44.000|rot=Quaternion(0,1,0,0.0000000082)|scale=26.667,1.000,8.000|size=80.000,1.000,24.000|cc=false|cq=true|pa=true|bt=2|asset=map://preset/u54263b69f25482dae18f9dbcfe6dc5b\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2398,
+      "byteOffset": 250572,
+      "text": "[15:22:59.677] [info/editor] \"P2BASE65V2|N|04 树林岛|2|04 树林岛/空气墙/Z4_BoundaryEast|WorldUnit|spatial=1|pos=660.000,-30.000,-10.000|rot=Quaternion(0,1,0,0)|scale=1.000,23.333,40.000|size=3.000,70.000,120.000|cc=true|cq=true|pa=true|bt=2|asset=official://preset/1101635\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2399,
+      "byteOffset": 250855,
+      "text": "[15:22:59.678] [info/editor] \"P2BASE65V2|N|04 树林岛|2|04 树林岛/空气墙/Z4_BoundaryNorth|WorldUnit|spatial=1|pos=720.000,-30.000,-70.000|rot=Quaternion(0,1,0,0)|scale=40.000,23.333,1.000|size=120.000,70.000,3.000|cc=true|cq=true|pa=true|bt=2|asset=official://preset/1101635\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2400,
+      "byteOffset": 251139,
+      "text": "[15:22:59.680] [info/editor] \"P2BASE65V2|N|04 树林岛|2|04 树林岛/空气墙/Z4_BoundarySouth|WorldUnit|spatial=1|pos=720.000,-30.000,50.000|rot=Quaternion(0,1,0,0)|scale=40.000,23.333,1.000|size=120.000,70.000,3.000|cc=true|cq=true|pa=true|bt=2|asset=official://preset/1101635\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2401,
+      "byteOffset": 251422,
+      "text": "[15:22:59.680] [info/editor] \"P2BASE65V2|N|04 树林岛|2|04 树林岛/空气墙/Z4_BoundaryWest|WorldUnit|spatial=1|pos=780.000,-30.000,-10.000|rot=Quaternion(0,1,0,0)|scale=1.000,23.333,40.000|size=3.000,70.000,120.000|cc=true|cq=true|pa=true|bt=2|asset=official://preset/1101635\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2402,
+      "byteOffset": 251705,
+      "text": "[15:22:59.681] [info/editor] \"P2BASE65V2|N|04 树林岛|2|04 树林岛/设施/Z4_Bait1|WorldUnit|spatial=1|pos=723.000,6.000,3.000|rot=Quaternion(0,1,0,0)|scale=0.500,0.500,0.500|size=1.500,1.500,1.500|cc=true|cq=true|pa=true|bt=2|asset=official://preset/1101635\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2403,
+      "byteOffset": 251969,
+      "text": "[15:22:59.684] [info/editor] \"P2BASE65V2|N|04 树林岛|2|04 树林岛/设施/Z4_Bait2|WorldUnit|spatial=1|pos=717.000,6.000,3.000|rot=Quaternion(0,1,0,0)|scale=0.500,0.500,0.500|size=1.500,1.500,1.500|cc=true|cq=true|pa=true|bt=2|asset=official://preset/1101635\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2404,
+      "byteOffset": 252233,
+      "text": "[15:22:59.684] [info/editor] \"P2BASE65V2|N|04 树林岛|2|04 树林岛/设施/Z4_Fisherman|TriggerUnit|spatial=1|pos=740.000,5.000,0.000|rot=Quaternion(0,1,0,0.0000000082)|scale=3.000,3.000,3.000|size=9.000,9.000,9.000|cc=nil|cq=nil|pa=true|bt=nil|asset=map://preset/u0aabb64658e4dd19f5aace68d114778\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2405,
+      "byteOffset": 252534,
+      "text": "[15:22:59.686] [info/editor] \"P2BASE65V2|N|04 树林岛|2|04 树林岛/设施/Z4_Grill|WorldUnit|spatial=1|pos=730.000,5.000,10.000|rot=Quaternion(0,1,0,0)|scale=0.500,0.500,0.500|size=1.500,1.500,1.500|cc=true|cq=true|pa=true|bt=2|asset=official://preset/1101635\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2406,
+      "byteOffset": 252799,
+      "text": "[15:22:59.687] [info/editor] \"P2BASE65V2|N|04 树林岛|2|04 树林岛/设施/Z4_Lottery|WorldUnit|spatial=1|pos=715.000,5.000,-5.000|rot=Quaternion(0,1,0,0)|scale=1.500,1.500,1.500|size=1.500,1.500,1.500|cc=true|cq=true|pa=true|bt=2|asset=official://preset/1101635\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2407,
+      "byteOffset": 253066,
+      "text": "[15:22:59.687] [info/editor] \"P2BASE65V2|N|04 树林岛|2|04 树林岛/设施/Z4_Shop|TriggerUnit|spatial=1|pos=700.000,5.000,0.000|rot=Quaternion(0,1,0,0.0000000082)|scale=2.000,2.000,2.000|size=6.000,6.000,6.000|cc=nil|cq=nil|pa=true|bt=nil|asset=map://preset/u46466002b9a47c588001c2e65ef4c3a\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2408,
+      "byteOffset": 253362,
+      "text": "[15:22:59.688] [info/editor] \"P2BASE65V2|N|04 树林岛|3|04 树林岛/地块/Z4_Land/Link|PresetLink|spatial=0\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2409,
+      "byteOffset": 253475,
+      "text": "[15:22:59.690] [info/editor] \"P2BASE65V2|N|04 树林岛|3|04 树林岛/摆渡/Z4_FerryOut/Link|PresetLink|spatial=0\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2410,
+      "byteOffset": 253592,
+      "text": "[15:22:59.691] [info/editor] \"P2BASE65V2|N|04 树林岛|3|04 树林岛/摆渡/Z4_FerryReturn/Link|PresetLink|spatial=0\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2411,
+      "byteOffset": 253712,
+      "text": "[15:22:59.694] [info/editor] \"P2BASE65V2|N|04 树林岛|3|04 树林岛/摆渡/Z4_Safe/Link|PresetLink|spatial=0\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2412,
+      "byteOffset": 253825,
+      "text": "[15:22:59.696] [info/editor] \"P2BASE65V2|N|04 树林岛|3|04 树林岛/空气墙/Z4_BoundaryEast/Link|PresetLink|spatial=0\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2413,
+      "byteOffset": 253949,
+      "text": "[15:22:59.697] [info/editor] \"P2BASE65V2|N|04 树林岛|3|04 树林岛/空气墙/Z4_BoundaryNorth/Link|PresetLink|spatial=0\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2414,
+      "byteOffset": 254074,
+      "text": "[15:22:59.698] [info/editor] \"P2BASE65V2|N|04 树林岛|3|04 树林岛/空气墙/Z4_BoundarySouth/Link|PresetLink|spatial=0\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2415,
+      "byteOffset": 254199,
+      "text": "[15:22:59.700] [info/editor] \"P2BASE65V2|N|04 树林岛|3|04 树林岛/空气墙/Z4_BoundaryWest/Link|PresetLink|spatial=0\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2416,
+      "byteOffset": 254323,
+      "text": "[15:22:59.701] [info/editor] \"P2BASE65V2|N|04 树林岛|3|04 树林岛/设施/Z4_Bait1/Link|PresetLink|spatial=0\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2417,
+      "byteOffset": 254437,
+      "text": "[15:22:59.703] [info/editor] \"P2BASE65V2|N|04 树林岛|3|04 树林岛/设施/Z4_Bait2/Link|PresetLink|spatial=0\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2418,
+      "byteOffset": 254551,
+      "text": "[15:22:59.704] [info/editor] \"P2BASE65V2|N|04 树林岛|3|04 树林岛/设施/Z4_Fisherman/Link|PresetLink|spatial=0\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2419,
+      "byteOffset": 254669,
+      "text": "[15:22:59.707] [info/editor] \"P2BASE65V2|N|04 树林岛|3|04 树林岛/设施/Z4_Grill/Link|PresetLink|spatial=0\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2420,
+      "byteOffset": 254783,
+      "text": "[15:22:59.707] [info/editor] \"P2BASE65V2|N|04 树林岛|3|04 树林岛/设施/Z4_Lottery/Link|PresetLink|spatial=0\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2421,
+      "byteOffset": 254899,
+      "text": "[15:22:59.709] [info/editor] \"P2BASE65V2|N|04 树林岛|3|04 树林岛/设施/Z4_Shop/FishFood|WorldUnit|spatial=1|pos=700.000,8.000,-0.250|rot=Quaternion(0,1,0,0)|scale=1.000,1.000,1.000|size=2.000,1.500,2.000|cc=true|cq=true|pa=true|bt=1|asset=map://preset/u46466002b9a47c588001c2e65ef4c3a\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2422,
+      "byteOffset": 255192,
+      "text": "[15:22:59.710] [info/editor] \"P2BASE65V2|N|04 树林岛|3|04 树林岛/设施/Z4_Shop/Link|PresetLink|spatial=0\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2423,
+      "byteOffset": 255305,
+      "text": "[15:22:59.713] [info/editor] \"P2BASE65V2|N|04 树林岛|4|04 树林岛/设施/Z4_Shop/FishFood/中式杆|WorldUnit|spatial=1|pos=701.000,8.000,0.781|rot=Quaternion(0,0.9762960077,-0.2164396197,0)|scale=0.200,1.000,0.200|size=0.200,8.000,0.200|cc=false|cq=false|pa=true|bt=1|asset=map://preset/u46466002b9a47c588001c2e65ef4c3a\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2424,
+      "byteOffset": 255632,
+      "text": "[15:22:59.713] [info/editor] \"P2BASE65V2|N|04 树林岛|5|04 树林岛/设施/Z4_Shop/FishFood/中式杆/直线绳索|WorldUnit|spatial=1|pos=701.000,12.500,-2.438|rot=Quaternion(0,0.707106769,-0.7071067095,0)|scale=0.100,0.100,1.000|size=0.050,0.050,5.000|cc=false|cq=false|pa=true|bt=1|asset=map://preset/u46466002b9a47c588001c2e65ef4c3a\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2425,
+      "byteOffset": 255973,
+      "text": "[15:22:59.716] [info/editor] \"P2BASE65V2|N|04 树林岛|5|04 树林岛/设施/Z4_Shop/FishFood/中式杆/铁艺弯钩|WorldUnit|spatial=1|pos=701.000,10.100,-2.538|rot=Quaternion(-1,0.0000000597,0,0)|scale=0.100,0.400,0.100|size=0.015,0.600,0.150|cc=false|cq=false|pa=true|bt=1|asset=map://preset/u46466002b9a47c588001c2e65ef4c3a\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2426,
+      "byteOffset": 256304,
+      "text": "[15:22:59.740] [info/editor] \"P2BASE65V2|ZONE|05 沙滩岛|nodes=38\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2427,
+      "byteOffset": 256373,
+      "text": "[15:22:59.742] [info/editor] \"P2BASE65V2|N|05 沙滩岛|1|05 沙滩岛/地块|Folder|spatial=0\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2428,
+      "byteOffset": 256469,
+      "text": "[15:22:59.743] [info/editor] \"P2BASE65V2|N|05 沙滩岛|1|05 沙滩岛/摆渡|Folder|spatial=0\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2429,
+      "byteOffset": 256565,
+      "text": "[15:22:59.744] [info/editor] \"P2BASE65V2|N|05 沙滩岛|1|05 沙滩岛/水域|Folder|spatial=0\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2430,
+      "byteOffset": 256661,
+      "text": "[15:22:59.746] [info/editor] \"P2BASE65V2|N|05 沙滩岛|1|05 沙滩岛/空气墙|Folder|spatial=0\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2431,
+      "byteOffset": 256760,
+      "text": "[15:22:59.746] [info/editor] \"P2BASE65V2|N|05 沙滩岛|1|05 沙滩岛/设施|Folder|spatial=0\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2432,
+      "byteOffset": 256856,
+      "text": "[15:22:59.747] [info/editor] \"P2BASE65V2|N|05 沙滩岛|2|05 沙滩岛/地块/Z5_Land|WorldUnit|spatial=1|pos=720.000,0.000,320.000|rot=Quaternion(0,0,0,1)|scale=12.000,2.000,14.000|size=120.000,2.000,140.000|cc=true|cq=true|pa=true|bt=2|asset=official://preset/1101661\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2433,
+      "byteOffset": 257127,
+      "text": "[15:22:59.749] [info/editor] \"P2BASE65V2|N|05 沙滩岛|2|05 沙滩岛/摆渡/Z5_FerryOut|WorldUnit|spatial=1|pos=735.000,5.000,310.000|rot=Quaternion(0,0,0,1)|scale=0.500,0.500,0.500|size=1.500,1.500,1.500|cc=true|cq=true|pa=true|bt=2|asset=official://preset/1101635\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2434,
+      "byteOffset": 257396,
+      "text": "[15:22:59.750] [info/editor] \"P2BASE65V2|N|05 沙滩岛|2|05 沙滩岛/摆渡/Z5_FerryReturn|WorldUnit|spatial=1|pos=705.000,5.000,310.000|rot=Quaternion(0,0,0,1)|scale=0.500,0.500,0.500|size=1.500,1.500,1.500|cc=true|cq=true|pa=true|bt=2|asset=official://preset/1101635\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2435,
+      "byteOffset": 257668,
+      "text": "[15:22:59.750] [info/editor] \"P2BASE65V2|N|05 沙滩岛|2|05 沙滩岛/摆渡/Z5_Safe|WorldUnit|spatial=1|pos=720.000,6.000,320.000|rot=Quaternion(0,0,0,1)|scale=1.000,0.200,1.000|size=10.000,0.200,10.000|cc=true|cq=true|pa=true|bt=2|asset=official://preset/1101661\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2436,
+      "byteOffset": 257935,
+      "text": "[15:22:59.753] [info/editor] \"P2BASE65V2|N|05 沙滩岛|2|05 沙滩岛/水域/Z5_Water|WorldUnit|spatial=1|pos=720.000,2.000,364.000|rot=Quaternion(0,-0.0000000082,0,1)|scale=26.667,1.000,8.000|size=80.000,1.000,24.000|cc=false|cq=true|pa=true|bt=2|asset=map://preset/u54263b69f25482dae18f9dbcfe6dc5b\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2437,
+      "byteOffset": 258237,
+      "text": "[15:22:59.753] [info/editor] \"P2BASE65V2|N|05 沙滩岛|2|05 沙滩岛/空气墙/Z5_BoundaryEast|WorldUnit|spatial=1|pos=780.000,-30.000,330.000|rot=Quaternion(0,0,0,1)|scale=1.000,23.333,40.000|size=3.000,70.000,120.000|cc=true|cq=true|pa=true|bt=2|asset=official://preset/1101635\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2438,
+      "byteOffset": 258520,
+      "text": "[15:22:59.756] [info/editor] \"P2BASE65V2|N|05 沙滩岛|2|05 沙滩岛/空气墙/Z5_BoundaryNorth|WorldUnit|spatial=1|pos=720.000,-30.000,390.000|rot=Quaternion(0,0,0,1)|scale=40.000,23.333,1.000|size=120.000,70.000,3.000|cc=true|cq=true|pa=true|bt=2|asset=official://preset/1101635\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2439,
+      "byteOffset": 258804,
+      "text": "[15:22:59.757] [info/editor] \"P2BASE65V2|N|05 沙滩岛|2|05 沙滩岛/空气墙/Z5_BoundarySouth|WorldUnit|spatial=1|pos=720.000,-30.000,270.000|rot=Quaternion(0,0,0,1)|scale=40.000,23.333,1.000|size=120.000,70.000,3.000|cc=true|cq=true|pa=true|bt=2|asset=official://preset/1101635\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2440,
+      "byteOffset": 259088,
+      "text": "[15:22:59.759] [info/editor] \"P2BASE65V2|N|05 沙滩岛|2|05 沙滩岛/空气墙/Z5_BoundaryWest|WorldUnit|spatial=1|pos=660.000,-30.000,330.000|rot=Quaternion(0,0,0,1)|scale=1.000,23.333,40.000|size=3.000,70.000,120.000|cc=true|cq=true|pa=true|bt=2|asset=official://preset/1101635\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2441,
+      "byteOffset": 259371,
+      "text": "[15:22:59.760] [info/editor] \"P2BASE65V2|N|05 沙滩岛|2|05 沙滩岛/设施/Z5_Bait1|WorldUnit|spatial=1|pos=717.000,6.000,317.000|rot=Quaternion(0,0,0,1)|scale=0.500,0.500,0.500|size=1.500,1.500,1.500|cc=true|cq=true|pa=true|bt=2|asset=official://preset/1101635\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2442,
+      "byteOffset": 259637,
+      "text": "[15:22:59.762] [info/editor] \"P2BASE65V2|N|05 沙滩岛|2|05 沙滩岛/设施/Z5_Bait2|WorldUnit|spatial=1|pos=723.000,6.000,317.000|rot=Quaternion(0,0,0,1)|scale=0.500,0.500,0.500|size=1.500,1.500,1.500|cc=true|cq=true|pa=true|bt=2|asset=official://preset/1101635\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2443,
+      "byteOffset": 259903,
+      "text": "[15:22:59.763] [info/editor] \"P2BASE65V2|N|05 沙滩岛|2|05 沙滩岛/设施/Z5_Fisherman|TriggerUnit|spatial=1|pos=700.000,5.000,320.000|rot=Quaternion(0,-0.0000000082,0,1)|scale=3.000,3.000,3.000|size=9.000,9.000,9.000|cc=nil|cq=nil|pa=true|bt=nil|asset=map://preset/u0aabb64658e4dd19f5aace68d114778\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2444,
+      "byteOffset": 260207,
+      "text": "[15:22:59.763] [info/editor] \"P2BASE65V2|N|05 沙滩岛|2|05 沙滩岛/设施/Z5_Grill|WorldUnit|spatial=1|pos=710.000,5.000,310.000|rot=Quaternion(0,0,0,1)|scale=0.500,0.500,0.500|size=1.500,1.500,1.500|cc=true|cq=true|pa=true|bt=2|asset=official://preset/1101635\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2445,
+      "byteOffset": 260473,
+      "text": "[15:22:59.765] [info/editor] \"P2BASE65V2|N|05 沙滩岛|2|05 沙滩岛/设施/Z5_Lottery|WorldUnit|spatial=1|pos=725.000,5.000,325.000|rot=Quaternion(0,0,0,1)|scale=1.500,1.500,1.500|size=1.500,1.500,1.500|cc=true|cq=true|pa=true|bt=2|asset=official://preset/1101635\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2446,
+      "byteOffset": 260741,
+      "text": "[15:22:59.766] [info/editor] \"P2BASE65V2|N|05 沙滩岛|2|05 沙滩岛/设施/Z5_Shop|TriggerUnit|spatial=1|pos=740.000,5.000,320.000|rot=Quaternion(0,-0.0000000082,0,1)|scale=2.000,2.000,2.000|size=6.000,6.000,6.000|cc=nil|cq=nil|pa=true|bt=nil|asset=map://preset/u46466002b9a47c588001c2e65ef4c3a\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2447,
+      "byteOffset": 261040,
+      "text": "[15:22:59.767] [info/editor] \"P2BASE65V2|N|05 沙滩岛|3|05 沙滩岛/地块/Z5_Land/Link|PresetLink|spatial=0\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2448,
+      "byteOffset": 261153,
+      "text": "[15:22:59.769] [info/editor] \"P2BASE65V2|N|05 沙滩岛|3|05 沙滩岛/摆渡/Z5_FerryOut/Link|PresetLink|spatial=0\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2449,
+      "byteOffset": 261270,
+      "text": "[15:22:59.770] [info/editor] \"P2BASE65V2|N|05 沙滩岛|3|05 沙滩岛/摆渡/Z5_FerryReturn/Link|PresetLink|spatial=0\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2450,
+      "byteOffset": 261390,
+      "text": "[15:22:59.773] [info/editor] \"P2BASE65V2|N|05 沙滩岛|3|05 沙滩岛/摆渡/Z5_Safe/Link|PresetLink|spatial=0\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2451,
+      "byteOffset": 261503,
+      "text": "[15:22:59.773] [info/editor] \"P2BASE65V2|N|05 沙滩岛|3|05 沙滩岛/空气墙/Z5_BoundaryEast/Link|PresetLink|spatial=0\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2452,
+      "byteOffset": 261627,
+      "text": "[15:22:59.775] [info/editor] \"P2BASE65V2|N|05 沙滩岛|3|05 沙滩岛/空气墙/Z5_BoundaryNorth/Link|PresetLink|spatial=0\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2453,
+      "byteOffset": 261752,
+      "text": "[15:22:59.776] [info/editor] \"P2BASE65V2|N|05 沙滩岛|3|05 沙滩岛/空气墙/Z5_BoundarySouth/Link|PresetLink|spatial=0\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2454,
+      "byteOffset": 261877,
+      "text": "[15:22:59.778] [info/editor] \"P2BASE65V2|N|05 沙滩岛|3|05 沙滩岛/空气墙/Z5_BoundaryWest/Link|PresetLink|spatial=0\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2455,
+      "byteOffset": 262001,
+      "text": "[15:22:59.779] [info/editor] \"P2BASE65V2|N|05 沙滩岛|3|05 沙滩岛/设施/Z5_Bait1/Link|PresetLink|spatial=0\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2456,
+      "byteOffset": 262115,
+      "text": "[15:22:59.779] [info/editor] \"P2BASE65V2|N|05 沙滩岛|3|05 沙滩岛/设施/Z5_Bait2/Link|PresetLink|spatial=0\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2457,
+      "byteOffset": 262229,
+      "text": "[15:22:59.780] [info/editor] \"P2BASE65V2|N|05 沙滩岛|3|05 沙滩岛/设施/Z5_Fisherman/Link|PresetLink|spatial=0\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2458,
+      "byteOffset": 262347,
+      "text": "[15:22:59.782] [info/editor] \"P2BASE65V2|N|05 沙滩岛|3|05 沙滩岛/设施/Z5_Grill/Link|PresetLink|spatial=0\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2459,
+      "byteOffset": 262461,
+      "text": "[15:22:59.783] [info/editor] \"P2BASE65V2|N|05 沙滩岛|3|05 沙滩岛/设施/Z5_Lottery/Link|PresetLink|spatial=0\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2460,
+      "byteOffset": 262577,
+      "text": "[15:22:59.785] [info/editor] \"P2BASE65V2|N|05 沙滩岛|3|05 沙滩岛/设施/Z5_Shop/FishFood|WorldUnit|spatial=1|pos=740.000,8.000,320.250|rot=Quaternion(0,0,0,1)|scale=1.000,1.000,1.000|size=2.000,1.500,2.000|cc=true|cq=true|pa=true|bt=1|asset=map://preset/u46466002b9a47c588001c2e65ef4c3a\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2461,
+      "byteOffset": 262871,
+      "text": "[15:22:59.786] [info/editor] \"P2BASE65V2|N|05 沙滩岛|3|05 沙滩岛/设施/Z5_Shop/Link|PresetLink|spatial=0\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2462,
+      "byteOffset": 262984,
+      "text": "[15:22:59.788] [info/editor] \"P2BASE65V2|N|05 沙滩岛|4|05 沙滩岛/设施/Z5_Shop/FishFood/中式杆|WorldUnit|spatial=1|pos=739.000,8.000,319.219|rot=Quaternion(0.2164396197,0,0,0.9762960077)|scale=0.200,1.000,0.200|size=0.200,8.000,0.200|cc=false|cq=false|pa=true|bt=1|asset=map://preset/u46466002b9a47c588001c2e65ef4c3a\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2463,
+      "byteOffset": 263312,
+      "text": "[15:22:59.789] [info/editor] \"P2BASE65V2|N|05 沙滩岛|5|05 沙滩岛/设施/Z5_Shop/FishFood/中式杆/直线绳索|WorldUnit|spatial=1|pos=739.000,12.500,322.438|rot=Quaternion(0.7071067095,0,0,0.707106769)|scale=0.100,0.100,1.000|size=0.050,0.050,5.000|cc=false|cq=false|pa=true|bt=1|asset=map://preset/u46466002b9a47c588001c2e65ef4c3a\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2464,
+      "byteOffset": 263653,
+      "text": "[15:22:59.790] [info/editor] \"P2BASE65V2|N|05 沙滩岛|5|05 沙滩岛/设施/Z5_Shop/FishFood/中式杆/铁艺弯钩|WorldUnit|spatial=1|pos=739.000,10.100,322.538|rot=Quaternion(0,0,-1,0.0000000597)|scale=0.100,0.400,0.100|size=0.015,0.600,0.150|cc=false|cq=false|pa=true|bt=1|asset=map://preset/u46466002b9a47c588001c2e65ef4c3a\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2465,
+      "byteOffset": 263985,
+      "text": "[15:22:59.815] [info/editor] \"P2BASE65V2|ZONE|06 礁石岛|nodes=38\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2466,
+      "byteOffset": 264054,
+      "text": "[15:22:59.819] [info/editor] \"P2BASE65V2|N|06 礁石岛|1|06 礁石岛/地块|Folder|spatial=0\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2467,
+      "byteOffset": 264150,
+      "text": "[15:22:59.819] [info/editor] \"P2BASE65V2|N|06 礁石岛|1|06 礁石岛/摆渡|Folder|spatial=0\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2468,
+      "byteOffset": 264246,
+      "text": "[15:22:59.822] [info/editor] \"P2BASE65V2|N|06 礁石岛|1|06 礁石岛/水域|Folder|spatial=0\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2469,
+      "byteOffset": 264342,
+      "text": "[15:22:59.822] [info/editor] \"P2BASE65V2|N|06 礁石岛|1|06 礁石岛/空气墙|Folder|spatial=0\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2470,
+      "byteOffset": 264441,
+      "text": "[15:22:59.825] [info/editor] \"P2BASE65V2|N|06 礁石岛|1|06 礁石岛/设施|Folder|spatial=0\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2471,
+      "byteOffset": 264537,
+      "text": "[15:22:59.825] [info/editor] \"P2BASE65V2|N|06 礁石岛|2|06 礁石岛/地块/Z6_Land|WorldUnit|spatial=1|pos=480.000,0.000,320.000|rot=Quaternion(0,0,0,1)|scale=12.000,2.000,14.000|size=120.000,2.000,140.000|cc=true|cq=true|pa=true|bt=2|asset=official://preset/1101661\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2472,
+      "byteOffset": 264808,
+      "text": "[15:22:59.826] [info/editor] \"P2BASE65V2|N|06 礁石岛|2|06 礁石岛/摆渡/Z6_FerryOut|WorldUnit|spatial=1|pos=495.000,5.000,310.000|rot=Quaternion(0,0,0,1)|scale=0.500,0.500,0.500|size=1.500,1.500,1.500|cc=true|cq=true|pa=true|bt=2|asset=official://preset/1101635\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2473,
+      "byteOffset": 265077,
+      "text": "[15:22:59.828] [info/editor] \"P2BASE65V2|N|06 礁石岛|2|06 礁石岛/摆渡/Z6_FerryReturn|WorldUnit|spatial=1|pos=465.000,5.000,310.000|rot=Quaternion(0,0,0,1)|scale=0.500,0.500,0.500|size=1.500,1.500,1.500|cc=true|cq=true|pa=true|bt=2|asset=official://preset/1101635\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2474,
+      "byteOffset": 265349,
+      "text": "[15:22:59.828] [info/editor] \"P2BASE65V2|N|06 礁石岛|2|06 礁石岛/摆渡/Z6_Safe|WorldUnit|spatial=1|pos=480.000,6.000,320.000|rot=Quaternion(0,0,0,1)|scale=1.000,0.200,1.000|size=10.000,0.200,10.000|cc=true|cq=true|pa=true|bt=2|asset=official://preset/1101661\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2475,
+      "byteOffset": 265616,
+      "text": "[15:22:59.829] [info/editor] \"P2BASE65V2|N|06 礁石岛|2|06 礁石岛/水域/Z6_Water|WorldUnit|spatial=1|pos=480.000,2.000,364.000|rot=Quaternion(0,-0.0000000082,0,1)|scale=26.667,1.000,8.000|size=80.000,1.000,24.000|cc=false|cq=true|pa=true|bt=2|asset=map://preset/u54263b69f25482dae18f9dbcfe6dc5b\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2476,
+      "byteOffset": 265918,
+      "text": "[15:22:59.832] [info/editor] \"P2BASE65V2|N|06 礁石岛|2|06 礁石岛/空气墙/Z6_BoundaryEast|WorldUnit|spatial=1|pos=540.000,-30.000,330.000|rot=Quaternion(0,0,0,1)|scale=1.000,23.333,40.000|size=3.000,70.000,120.000|cc=true|cq=true|pa=true|bt=2|asset=official://preset/1101635\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2477,
+      "byteOffset": 266201,
+      "text": "[15:22:59.832] [info/editor] \"P2BASE65V2|N|06 礁石岛|2|06 礁石岛/空气墙/Z6_BoundaryNorth|WorldUnit|spatial=1|pos=480.000,-30.000,390.000|rot=Quaternion(0,0,0,1)|scale=40.000,23.333,1.000|size=120.000,70.000,3.000|cc=true|cq=true|pa=true|bt=2|asset=official://preset/1101635\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2478,
+      "byteOffset": 266485,
+      "text": "[15:22:59.835] [info/editor] \"P2BASE65V2|N|06 礁石岛|2|06 礁石岛/空气墙/Z6_BoundarySouth|WorldUnit|spatial=1|pos=480.000,-30.000,270.000|rot=Quaternion(0,0,0,1)|scale=40.000,23.333,1.000|size=120.000,70.000,3.000|cc=true|cq=true|pa=true|bt=2|asset=official://preset/1101635\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2479,
+      "byteOffset": 266769,
+      "text": "[15:22:59.836] [info/editor] \"P2BASE65V2|N|06 礁石岛|2|06 礁石岛/空气墙/Z6_BoundaryWest|WorldUnit|spatial=1|pos=420.000,-30.000,330.000|rot=Quaternion(0,0,0,1)|scale=1.000,23.333,40.000|size=3.000,70.000,120.000|cc=true|cq=true|pa=true|bt=2|asset=official://preset/1101635\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2480,
+      "byteOffset": 267052,
+      "text": "[15:22:59.838] [info/editor] \"P2BASE65V2|N|06 礁石岛|2|06 礁石岛/设施/Z6_Bait1|WorldUnit|spatial=1|pos=477.000,6.000,317.000|rot=Quaternion(0,0,0,1)|scale=0.500,0.500,0.500|size=1.500,1.500,1.500|cc=true|cq=true|pa=true|bt=2|asset=official://preset/1101635\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2481,
+      "byteOffset": 267318,
+      "text": "[15:22:59.838] [info/editor] \"P2BASE65V2|N|06 礁石岛|2|06 礁石岛/设施/Z6_Bait2|WorldUnit|spatial=1|pos=483.000,6.000,317.000|rot=Quaternion(0,0,0,1)|scale=0.500,0.500,0.500|size=1.500,1.500,1.500|cc=true|cq=true|pa=true|bt=2|asset=official://preset/1101635\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2482,
+      "byteOffset": 267584,
+      "text": "[15:22:59.841] [info/editor] \"P2BASE65V2|N|06 礁石岛|2|06 礁石岛/设施/Z6_Fisherman|TriggerUnit|spatial=1|pos=460.000,5.000,320.000|rot=Quaternion(0,-0.0000000082,0,1)|scale=3.000,3.000,3.000|size=9.000,9.000,9.000|cc=nil|cq=nil|pa=true|bt=nil|asset=map://preset/u0aabb64658e4dd19f5aace68d114778\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2483,
+      "byteOffset": 267888,
+      "text": "[15:22:59.842] [info/editor] \"P2BASE65V2|N|06 礁石岛|2|06 礁石岛/设施/Z6_Grill|WorldUnit|spatial=1|pos=470.000,5.000,310.000|rot=Quaternion(0,0,0,1)|scale=0.500,0.500,0.500|size=1.500,1.500,1.500|cc=true|cq=true|pa=true|bt=2|asset=official://preset/1101635\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2484,
+      "byteOffset": 268154,
+      "text": "[15:22:59.842] [info/editor] \"P2BASE65V2|N|06 礁石岛|2|06 礁石岛/设施/Z6_Lottery|WorldUnit|spatial=1|pos=485.000,5.000,325.000|rot=Quaternion(0,0,0,1)|scale=1.500,1.500,1.500|size=1.500,1.500,1.500|cc=true|cq=true|pa=true|bt=2|asset=official://preset/1101635\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2485,
+      "byteOffset": 268422,
+      "text": "[15:22:59.845] [info/editor] \"P2BASE65V2|N|06 礁石岛|2|06 礁石岛/设施/Z6_Shop|TriggerUnit|spatial=1|pos=500.000,5.000,320.000|rot=Quaternion(0,-0.0000000082,0,1)|scale=2.000,2.000,2.000|size=6.000,6.000,6.000|cc=nil|cq=nil|pa=true|bt=nil|asset=map://preset/u46466002b9a47c588001c2e65ef4c3a\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2486,
+      "byteOffset": 268721,
+      "text": "[15:22:59.845] [info/editor] \"P2BASE65V2|N|06 礁石岛|3|06 礁石岛/地块/Z6_Land/Link|PresetLink|spatial=0\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2487,
+      "byteOffset": 268834,
+      "text": "[15:22:59.846] [info/editor] \"P2BASE65V2|N|06 礁石岛|3|06 礁石岛/摆渡/Z6_FerryOut/Link|PresetLink|spatial=0\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2488,
+      "byteOffset": 268951,
+      "text": "[15:22:59.848] [info/editor] \"P2BASE65V2|N|06 礁石岛|3|06 礁石岛/摆渡/Z6_FerryReturn/Link|PresetLink|spatial=0\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2489,
+      "byteOffset": 269071,
+      "text": "[15:22:59.848] [info/editor] \"P2BASE65V2|N|06 礁石岛|3|06 礁石岛/摆渡/Z6_Safe/Link|PresetLink|spatial=0\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2490,
+      "byteOffset": 269184,
+      "text": "[15:22:59.849] [info/editor] \"P2BASE65V2|N|06 礁石岛|3|06 礁石岛/空气墙/Z6_BoundaryEast/Link|PresetLink|spatial=0\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2491,
+      "byteOffset": 269308,
+      "text": "[15:22:59.851] [info/editor] \"P2BASE65V2|N|06 礁石岛|3|06 礁石岛/空气墙/Z6_BoundaryNorth/Link|PresetLink|spatial=0\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2492,
+      "byteOffset": 269433,
+      "text": "[15:22:59.852] [info/editor] \"P2BASE65V2|N|06 礁石岛|3|06 礁石岛/空气墙/Z6_BoundarySouth/Link|PresetLink|spatial=0\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2493,
+      "byteOffset": 269558,
+      "text": "[15:22:59.854] [info/editor] \"P2BASE65V2|N|06 礁石岛|3|06 礁石岛/空气墙/Z6_BoundaryWest/Link|PresetLink|spatial=0\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2494,
+      "byteOffset": 269682,
+      "text": "[15:22:59.855] [info/editor] \"P2BASE65V2|N|06 礁石岛|3|06 礁石岛/设施/Z6_Bait1/Link|PresetLink|spatial=0\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2495,
+      "byteOffset": 269796,
+      "text": "[15:22:59.855] [info/editor] \"P2BASE65V2|N|06 礁石岛|3|06 礁石岛/设施/Z6_Bait2/Link|PresetLink|spatial=0\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2496,
+      "byteOffset": 269910,
+      "text": "[15:22:59.858] [info/editor] \"P2BASE65V2|N|06 礁石岛|3|06 礁石岛/设施/Z6_Fisherman/Link|PresetLink|spatial=0\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2497,
+      "byteOffset": 270028,
+      "text": "[15:22:59.858] [info/editor] \"P2BASE65V2|N|06 礁石岛|3|06 礁石岛/设施/Z6_Grill/Link|PresetLink|spatial=0\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2498,
+      "byteOffset": 270142,
+      "text": "[15:22:59.859] [info/editor] \"P2BASE65V2|N|06 礁石岛|3|06 礁石岛/设施/Z6_Lottery/Link|PresetLink|spatial=0\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2499,
+      "byteOffset": 270258,
+      "text": "[15:22:59.861] [info/editor] \"P2BASE65V2|N|06 礁石岛|3|06 礁石岛/设施/Z6_Shop/FishFood|WorldUnit|spatial=1|pos=500.000,8.000,320.250|rot=Quaternion(0,0,0,1)|scale=1.000,1.000,1.000|size=2.000,1.500,2.000|cc=true|cq=true|pa=true|bt=1|asset=map://preset/u46466002b9a47c588001c2e65ef4c3a\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2500,
+      "byteOffset": 270552,
+      "text": "[15:22:59.861] [info/editor] \"P2BASE65V2|N|06 礁石岛|3|06 礁石岛/设施/Z6_Shop/Link|PresetLink|spatial=0\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2501,
+      "byteOffset": 270665,
+      "text": "[15:22:59.862] [info/editor] \"P2BASE65V2|N|06 礁石岛|4|06 礁石岛/设施/Z6_Shop/FishFood/中式杆|WorldUnit|spatial=1|pos=499.000,8.000,319.219|rot=Quaternion(0.2164396197,0,0,0.9762960077)|scale=0.200,1.000,0.200|size=0.200,8.000,0.200|cc=false|cq=false|pa=true|bt=1|asset=map://preset/u46466002b9a47c588001c2e65ef4c3a\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2502,
+      "byteOffset": 270993,
+      "text": "[15:22:59.864] [info/editor] \"P2BASE65V2|N|06 礁石岛|5|06 礁石岛/设施/Z6_Shop/FishFood/中式杆/直线绳索|WorldUnit|spatial=1|pos=499.000,12.500,322.438|rot=Quaternion(0.7071067095,0,0,0.707106769)|scale=0.100,0.100,1.000|size=0.050,0.050,5.000|cc=false|cq=false|pa=true|bt=1|asset=map://preset/u46466002b9a47c588001c2e65ef4c3a\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2503,
+      "byteOffset": 271334,
+      "text": "[15:22:59.865] [info/editor] \"P2BASE65V2|N|06 礁石岛|5|06 礁石岛/设施/Z6_Shop/FishFood/中式杆/铁艺弯钩|WorldUnit|spatial=1|pos=499.000,10.100,322.538|rot=Quaternion(0,0,-1,0.0000000597)|scale=0.100,0.400,0.100|size=0.015,0.600,0.150|cc=false|cq=false|pa=true|bt=1|asset=map://preset/u46466002b9a47c588001c2e65ef4c3a\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2504,
+      "byteOffset": 271666,
+      "text": "[15:22:59.884] [info/editor] \"P2BASE65V2|ZONE|07 火山岛|nodes=36\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2505,
+      "byteOffset": 271735,
+      "text": "[15:22:59.885] [info/editor] \"P2BASE65V2|N|07 火山岛|1|07 火山岛/地块|Folder|spatial=0\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2506,
+      "byteOffset": 271831,
+      "text": "[15:22:59.888] [info/editor] \"P2BASE65V2|N|07 火山岛|1|07 火山岛/摆渡|Folder|spatial=0\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2507,
+      "byteOffset": 271927,
+      "text": "[15:22:59.888] [info/editor] \"P2BASE65V2|N|07 火山岛|1|07 火山岛/水域|Folder|spatial=0\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2508,
+      "byteOffset": 272023,
+      "text": "[15:22:59.891] [info/editor] \"P2BASE65V2|N|07 火山岛|1|07 火山岛/空气墙|Folder|spatial=0\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2509,
+      "byteOffset": 272122,
+      "text": "[15:22:59.892] [info/editor] \"P2BASE65V2|N|07 火山岛|1|07 火山岛/设施|Folder|spatial=0\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2510,
+      "byteOffset": 272218,
+      "text": "[15:22:59.894] [info/editor] \"P2BASE65V2|N|07 火山岛|2|07 火山岛/地块/Z7_Land|WorldUnit|spatial=1|pos=240.000,0.000,320.000|rot=Quaternion(0,0,0,1)|scale=12.000,2.000,14.000|size=120.000,2.000,140.000|cc=true|cq=true|pa=true|bt=2|asset=official://preset/1101661\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2511,
+      "byteOffset": 272489,
+      "text": "[15:22:59.897] [info/editor] \"P2BASE65V2|N|07 火山岛|2|07 火山岛/摆渡/Z7_FerryReturn|WorldUnit|spatial=1|pos=225.000,5.000,310.000|rot=Quaternion(0,0,0,1)|scale=0.500,0.500,0.500|size=1.500,1.500,1.500|cc=true|cq=true|pa=true|bt=2|asset=official://preset/1101635\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2512,
+      "byteOffset": 272761,
+      "text": "[15:22:59.898] [info/editor] \"P2BASE65V2|N|07 火山岛|2|07 火山岛/摆渡/Z7_Safe|WorldUnit|spatial=1|pos=240.000,6.000,320.000|rot=Quaternion(0,0,0,1)|scale=1.000,0.200,1.000|size=10.000,0.200,10.000|cc=true|cq=true|pa=true|bt=2|asset=official://preset/1101661\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2513,
+      "byteOffset": 273028,
+      "text": "[15:22:59.900] [info/editor] \"P2BASE65V2|N|07 火山岛|2|07 火山岛/水域/Z7_Water|WorldUnit|spatial=1|pos=240.000,2.000,364.000|rot=Quaternion(0,-0.0000000082,0,1)|scale=26.667,1.000,8.000|size=80.000,1.000,24.000|cc=false|cq=true|pa=true|bt=2|asset=map://preset/u54263b69f25482dae18f9dbcfe6dc5b\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2514,
+      "byteOffset": 273330,
+      "text": "[15:22:59.901] [info/editor] \"P2BASE65V2|N|07 火山岛|2|07 火山岛/空气墙/Z7_BoundaryEast|WorldUnit|spatial=1|pos=300.000,-30.000,330.000|rot=Quaternion(0,0,0,1)|scale=1.000,23.333,40.000|size=3.000,70.000,120.000|cc=true|cq=true|pa=true|bt=2|asset=official://preset/1101635\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2515,
+      "byteOffset": 273613,
+      "text": "[15:22:59.903] [info/editor] \"P2BASE65V2|N|07 火山岛|2|07 火山岛/空气墙/Z7_BoundaryNorth|WorldUnit|spatial=1|pos=240.000,-30.000,390.000|rot=Quaternion(0,0,0,1)|scale=40.000,23.333,1.000|size=120.000,70.000,3.000|cc=true|cq=true|pa=true|bt=2|asset=official://preset/1101635\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2516,
+      "byteOffset": 273897,
+      "text": "[15:22:59.904] [info/editor] \"P2BASE65V2|N|07 火山岛|2|07 火山岛/空气墙/Z7_BoundarySouth|WorldUnit|spatial=1|pos=240.000,-30.000,270.000|rot=Quaternion(0,0,0,1)|scale=40.000,23.333,1.000|size=120.000,70.000,3.000|cc=true|cq=true|pa=true|bt=2|asset=official://preset/1101635\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2517,
+      "byteOffset": 274181,
+      "text": "[15:22:59.905] [info/editor] \"P2BASE65V2|N|07 火山岛|2|07 火山岛/空气墙/Z7_BoundaryWest|WorldUnit|spatial=1|pos=180.000,-30.000,330.000|rot=Quaternion(0,0,0,1)|scale=1.000,23.333,40.000|size=3.000,70.000,120.000|cc=true|cq=true|pa=true|bt=2|asset=official://preset/1101635\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2518,
+      "byteOffset": 274464,
+      "text": "[15:22:59.907] [info/editor] \"P2BASE65V2|N|07 火山岛|2|07 火山岛/设施/Z7_Bait1|WorldUnit|spatial=1|pos=237.000,6.000,317.000|rot=Quaternion(0,0,0,1)|scale=0.500,0.500,0.500|size=1.500,1.500,1.500|cc=true|cq=true|pa=true|bt=2|asset=official://preset/1101635\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2519,
+      "byteOffset": 274730,
+      "text": "[15:22:59.908] [info/editor] \"P2BASE65V2|N|07 火山岛|2|07 火山岛/设施/Z7_Bait2|WorldUnit|spatial=1|pos=243.000,6.000,317.000|rot=Quaternion(0,0,0,1)|scale=0.500,0.500,0.500|size=1.500,1.500,1.500|cc=true|cq=true|pa=true|bt=2|asset=official://preset/1101635\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2520,
+      "byteOffset": 274996,
+      "text": "[15:22:59.910] [info/editor] \"P2BASE65V2|N|07 火山岛|2|07 火山岛/设施/Z7_Fisherman|TriggerUnit|spatial=1|pos=220.000,5.000,320.000|rot=Quaternion(0,-0.0000000082,0,1)|scale=3.000,3.000,3.000|size=9.000,9.000,9.000|cc=nil|cq=nil|pa=true|bt=nil|asset=map://preset/u0aabb64658e4dd19f5aace68d114778\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2521,
+      "byteOffset": 275300,
+      "text": "[15:22:59.911] [info/editor] \"P2BASE65V2|N|07 火山岛|2|07 火山岛/设施/Z7_Grill|WorldUnit|spatial=1|pos=230.000,5.000,310.000|rot=Quaternion(0,0,0,1)|scale=0.500,0.500,0.500|size=1.500,1.500,1.500|cc=true|cq=true|pa=true|bt=2|asset=official://preset/1101635\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2522,
+      "byteOffset": 275566,
+      "text": "[15:22:59.913] [info/editor] \"P2BASE65V2|N|07 火山岛|2|07 火山岛/设施/Z7_Lottery|WorldUnit|spatial=1|pos=245.000,5.000,325.000|rot=Quaternion(0,0,0,1)|scale=1.500,1.500,1.500|size=1.500,1.500,1.500|cc=true|cq=true|pa=true|bt=2|asset=official://preset/1101635\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2523,
+      "byteOffset": 275834,
+      "text": "[15:22:59.914] [info/editor] \"P2BASE65V2|N|07 火山岛|2|07 火山岛/设施/Z7_Shop|TriggerUnit|spatial=1|pos=260.000,5.000,320.000|rot=Quaternion(0,-0.0000000082,0,1)|scale=2.000,2.000,2.000|size=6.000,6.000,6.000|cc=nil|cq=nil|pa=true|bt=nil|asset=map://preset/u46466002b9a47c588001c2e65ef4c3a\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2524,
+      "byteOffset": 276133,
+      "text": "[15:22:59.914] [info/editor] \"P2BASE65V2|N|07 火山岛|3|07 火山岛/地块/Z7_Land/Link|PresetLink|spatial=0\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2525,
+      "byteOffset": 276246,
+      "text": "[15:22:59.917] [info/editor] \"P2BASE65V2|N|07 火山岛|3|07 火山岛/摆渡/Z7_FerryReturn/Link|PresetLink|spatial=0\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2526,
+      "byteOffset": 276366,
+      "text": "[15:22:59.917] [info/editor] \"P2BASE65V2|N|07 火山岛|3|07 火山岛/摆渡/Z7_Safe/Link|PresetLink|spatial=0\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2527,
+      "byteOffset": 276479,
+      "text": "[15:22:59.920] [info/editor] \"P2BASE65V2|N|07 火山岛|3|07 火山岛/空气墙/Z7_BoundaryEast/Link|PresetLink|spatial=0\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2528,
+      "byteOffset": 276603,
+      "text": "[15:22:59.921] [info/editor] \"P2BASE65V2|N|07 火山岛|3|07 火山岛/空气墙/Z7_BoundaryNorth/Link|PresetLink|spatial=0\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2529,
+      "byteOffset": 276728,
+      "text": "[15:22:59.921] [info/editor] \"P2BASE65V2|N|07 火山岛|3|07 火山岛/空气墙/Z7_BoundarySouth/Link|PresetLink|spatial=0\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2530,
+      "byteOffset": 276853,
+      "text": "[15:22:59.924] [info/editor] \"P2BASE65V2|N|07 火山岛|3|07 火山岛/空气墙/Z7_BoundaryWest/Link|PresetLink|spatial=0\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2531,
+      "byteOffset": 276977,
+      "text": "[15:22:59.924] [info/editor] \"P2BASE65V2|N|07 火山岛|3|07 火山岛/设施/Z7_Bait1/Link|PresetLink|spatial=0\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2532,
+      "byteOffset": 277091,
+      "text": "[15:22:59.926] [info/editor] \"P2BASE65V2|N|07 火山岛|3|07 火山岛/设施/Z7_Bait2/Link|PresetLink|spatial=0\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2533,
+      "byteOffset": 277205,
+      "text": "[15:22:59.927] [info/editor] \"P2BASE65V2|N|07 火山岛|3|07 火山岛/设施/Z7_Fisherman/Link|PresetLink|spatial=0\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2534,
+      "byteOffset": 277323,
+      "text": "[15:22:59.927] [info/editor] \"P2BASE65V2|N|07 火山岛|3|07 火山岛/设施/Z7_Grill/Link|PresetLink|spatial=0\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2535,
+      "byteOffset": 277437,
+      "text": "[15:22:59.928] [info/editor] \"P2BASE65V2|N|07 火山岛|3|07 火山岛/设施/Z7_Lottery/Link|PresetLink|spatial=0\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2536,
+      "byteOffset": 277553,
+      "text": "[15:22:59.930] [info/editor] \"P2BASE65V2|N|07 火山岛|3|07 火山岛/设施/Z7_Shop/FishFood|WorldUnit|spatial=1|pos=260.000,8.000,320.250|rot=Quaternion(0,0,0,1)|scale=1.000,1.000,1.000|size=2.000,1.500,2.000|cc=true|cq=true|pa=true|bt=1|asset=map://preset/u46466002b9a47c588001c2e65ef4c3a\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2537,
+      "byteOffset": 277847,
+      "text": "[15:22:59.930] [info/editor] \"P2BASE65V2|N|07 火山岛|3|07 火山岛/设施/Z7_Shop/Link|PresetLink|spatial=0\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2538,
+      "byteOffset": 277960,
+      "text": "[15:22:59.931] [info/editor] \"P2BASE65V2|N|07 火山岛|4|07 火山岛/设施/Z7_Shop/FishFood/中式杆|WorldUnit|spatial=1|pos=259.000,8.000,319.219|rot=Quaternion(0.2164396197,0,0,0.9762960077)|scale=0.200,1.000,0.200|size=0.200,8.000,0.200|cc=false|cq=false|pa=true|bt=1|asset=map://preset/u46466002b9a47c588001c2e65ef4c3a\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2539,
+      "byteOffset": 278288,
+      "text": "[15:22:59.933] [info/editor] \"P2BASE65V2|N|07 火山岛|5|07 火山岛/设施/Z7_Shop/FishFood/中式杆/直线绳索|WorldUnit|spatial=1|pos=259.000,12.500,322.438|rot=Quaternion(0.7071067095,0,0,0.707106769)|scale=0.100,0.100,1.000|size=0.050,0.050,5.000|cc=false|cq=false|pa=true|bt=1|asset=map://preset/u46466002b9a47c588001c2e65ef4c3a\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2540,
+      "byteOffset": 278629,
+      "text": "[15:22:59.934] [info/editor] \"P2BASE65V2|N|07 火山岛|5|07 火山岛/设施/Z7_Shop/FishFood/中式杆/铁艺弯钩|WorldUnit|spatial=1|pos=259.000,10.100,322.538|rot=Quaternion(0,0,-1,0.0000000597)|scale=0.100,0.400,0.100|size=0.015,0.600,0.150|cc=false|cq=false|pa=true|bt=1|asset=map://preset/u46466002b9a47c588001c2e65ef4c3a\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2541,
+      "byteOffset": 278961,
+      "text": "[15:22:59.956] [info/editor] \"P2BASE65V2|ROOTS|count=11\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2542,
+      "byteOffset": 279018,
+      "text": "[15:22:59.957] [info/editor] \"P2BASE65V2|ROOT|01 鱼塘|Folder|spatial=0\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2543,
+      "byteOffset": 279092,
+      "text": "[15:22:59.957] [info/editor] \"P2BASE65V2|ROOT|02 虾池|Folder|spatial=0\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2544,
+      "byteOffset": 279166,
+      "text": "[15:22:59.960] [info/editor] \"P2BASE65V2|ROOT|03 蟹湖|Folder|spatial=0\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2545,
+      "byteOffset": 279240,
+      "text": "[15:22:59.961] [info/editor] \"P2BASE65V2|ROOT|04 树林岛|Folder|spatial=0\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2546,
+      "byteOffset": 279317,
+      "text": "[15:22:59.963] [info/editor] \"P2BASE65V2|ROOT|05 沙滩岛|Folder|spatial=0\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2547,
+      "byteOffset": 279394,
+      "text": "[15:22:59.963] [info/editor] \"P2BASE65V2|ROOT|06 礁石岛|Folder|spatial=0\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2548,
+      "byteOffset": 279471,
+      "text": "[15:22:59.966] [info/editor] \"P2BASE65V2|ROOT|07 火山岛|Folder|spatial=0\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2549,
+      "byteOffset": 279548,
+      "text": "[15:22:59.967] [info/editor] \"P2BASE65V2|ROOT|FX|Folder|spatial=0\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2550,
+      "byteOffset": 279615,
+      "text": "[15:22:59.967] [info/editor] \"P2BASE65V2|ROOT|名称1|Folder|spatial=0\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2551,
+      "byteOffset": 279687,
+      "text": "[15:22:59.970] [info/editor] \"P2BASE65V2|ROOT|名称1|Folder|spatial=0\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2552,
+      "byteOffset": 279759,
+      "text": "[15:22:59.970] [info/editor] \"P2BASE65V2|ROOT|渐变光-箭头|EffectUnit|spatial=1|pos=-|rot=-|scale=-|size=-|cc=nil|cq=nil|pa=nil|bt=nil|asset=map://preset/u0aabb64658e4dd19f5aace68d114778\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2553,
+      "byteOffset": 279951,
+      "text": "[15:22:59.973] [info/editor] \"P2BASE65V2|ROOTNAME|预设链接|nil\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2554,
+      "byteOffset": 280019,
+      "text": "[15:22:59.973] [info/editor] \"P2BASE65V2|ROOTNAME|加速锚点|nil\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2555,
+      "byteOffset": 280087,
+      "text": "[15:22:59.976] [info/editor] \"P2BASE65V2|ROOTNAME|名称1|Folder\"",
+      "before": [],
+      "after": []
+    },
+    {
+      "ruleId": "custom_pattern",
+      "type": "CUSTOM_PATTERN",
+      "lineNumber": 2556,
+      "byteOffset": 280153,
+      "text": "[15:22:59.976] [info/editor] \"P2BASE65V2|SUMMARY|zoneNodes=264|rootObjects=11\"",
+      "before": [],
+      "after": []
+    }
+  ],
+  "contextLines": [],
+  "warnings": [],
+  "noiseSummary": []
+}

@@ -1,0 +1,10 @@
+{
+  "success": true,
+  "execution_mode": "sync_eval",
+  "result": "P2BASE65V2 emitted zoneNodes=264",
+  "result_serialization": "legacy_json_text",
+  "runtime": "editor",
+  "input_mode": "file",
+  "script_sha256": "2c8ca9dd5e87bc41f1daac59827c4dc0397e38f4d263b122e7f5dad1f9e57de1",
+  "script_bytes": 8336
+}
