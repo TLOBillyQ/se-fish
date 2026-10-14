@@ -25,7 +25,7 @@ M.CSV = 'evidence/issue65/zone-baseline-rows.csv'
 M.EVIDENCE_JSON = 'evidence/issue65/zone-space-contract.json'
 M.CORRIDOR_MIN = 8 -- #62 岸边连续通道净宽下限（米）
 M.HEADROOM = 3     -- 判定高度带：地面 → 地面 + 3（三倍体型线性净空）
-M.SAMPLES = 32     -- 水岸线采样数
+M.SAMPLE_STEP = 0.5 -- 水岸线采样步长（米）：设施最小 1.5 宽，步长必须小于它才不会漏掉挡路件
 -- #62 决议的连续战斗净空间 X×Z（按区序 1..7）
 M.COMBAT = { { 24, 20 }, { 24, 20 }, { 32, 28 }, { 40, 36 }, { 40, 36 }, { 48, 40 }, { 48, 40 } }
 
@@ -251,11 +251,13 @@ function M.segmentEnterT(fromX, fromZ, dirX, dirZ, box, maxT)
     return nil
 end
 
---- 水上岸线采样点：{ x, z, dirX, dirZ }。
-function M.shoreSamples(shore, count)
-    count = count or M.SAMPLES
+--- 水上岸线采样点：{ x, z, dirX, dirZ }。步长固定（米），不按采样数——固定条数会随水岸长度
+--- 变粗/变细，1.5 米宽的设施可能正好落在两个采样点之间被漏掉（本工具有过这个假阴性）。
+function M.shoreSamples(shore, step)
+    step = step or M.SAMPLE_STEP
     local samples = {}
     if shore.kind == 'circle' then
+        local count = math.max(8, math.ceil(2 * math.pi * shore.radius / step))
         for index = 0, count - 1 do
             local angle = 2 * math.pi * index / count
             local dx, dz = math.cos(angle), math.sin(angle)
@@ -266,9 +268,11 @@ function M.shoreSamples(shore, count)
             }
         end
     else
+        local span = shore.spanMax - shore.spanMin
+        local count = math.max(2, math.ceil(span / step))
         for index = 0, count - 1 do
             local ratio = index / count
-            local x = shore.spanMin + (shore.spanMax - shore.spanMin) * ratio
+            local x = shore.spanMin + span * ratio
             samples[#samples + 1] = { x = x, z = shore.edgeZ,
                 dirX = 0, dirZ = shore.inland }
         end

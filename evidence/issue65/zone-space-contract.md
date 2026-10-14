@@ -5,6 +5,11 @@
 > `evidence/issue65/zone-baseline-rows.csv`（P2 现场基线）+ `common/GameCfg.lua`（#125 场景合同，已含折返双排变换）。
 > 原始输出：[文本报告](zone-space-contract.txt)、[机器可读 JSON](zone-space-contract.json)。
 > **本文件只报事实与差值，不判定合格**：施工未做时这些数字是现状快照，不是验收结论。
+>
+> **后续**：P3 施工（03–07 区）之后的同一把尺子读数在
+> [zone-layout-p3.md](zone-layout-p3.md) §3（基线 `zone-baseline-rows-post-p3.csv`、
+> 审计 `zone-space-contract-post-p3.{json,txt}`）。本文件保留**施工前**的 P2 基线口径，
+> 它同时是回滚参照。
 
 ## 0. 先读口径
 
@@ -14,9 +19,11 @@
    后六区各内收 1.50）——说明对这批空气墙，假设与实测一致，但其它 preset 仍未实测。
 2. **边界**：「数学允许范围」= `zone.Scene.Boundary`（变换后）；「实体碰撞边界」= 该区空气墙的
    内面。差值只作声明，不代表谁对。
-3. **岸边通道**：沿水岸线采样，量到第一个挡住通行的实体的水平距离，给两套口径 ——
-   **实体碰撞体**（`CanCollide=true`）与**含交互范围**（另加 `TriggerUnit`）。
+3. **岸边通道**：沿水岸线采样（**固定 0.5 米步长**），量到第一个挡住通行的实体的水平距离，给两套
+   口径 —— **实体碰撞体**（`CanCollide=true`）与**含交互范围**（另加 `TriggerUnit`）。
    挡住还要满足「Y 跨度与 `[地面, 地面+3]` 相交」；顶面落在地面高度的薄面算地板，不算障碍。
+   步长固定而不按采样条数：设施最小边 1.5 米，固定条数会随水岸长度变粗，1.5 米宽的挡路件可能
+   正好落在两个采样点之间被漏掉（P3 规划时在 04 区抽奖机上撞到过这个假阴性，故改成固定步长）。
 4. **战斗净空间**：矩形水岸给两种锚法（A 紧贴水岸 / B 先让出 8 米通道）；圆岸（鱼塘）没有唯一
    「贴岸」锚法，改为以水域包围盒四条边为近边给 4 个候选。另有一行**锚法无关**的 `WINDOW`：
    在区内全扫 `W×H` 轴对齐矩形（步长 2 米），报「完全无侵占」的位置数与最优位置。
@@ -53,7 +60,7 @@
 
 | 区 | 水岸线 | 实体碰撞体口径 min | 含交互范围口径 min | 连续 ≥8 岸线长（碰撞体 / 含交互） |
 |---|---|---|---|---|
-| 01 鱼塘 | 圆岸，半径 6，中心 (−11.75,−12.25) | 17.33 | **0.00** | 37.7 / 27.1 |
+| 01 鱼塘 | 圆岸，半径 6，中心 (−11.75,−12.25) | 17.62 | **0.00** | 37.7 / 27.3 |
 | 02 虾池 | 只有配置数学水域（6×6，现场**无**水面实体） | 59.50 | 59.50 | 6.0 / 6.0 |
 | 03–07 | 矩形，80×24，贴外侧墙 | 26.25 | 26.25 | 80.0 / 80.0 |
 
@@ -161,8 +168,8 @@ busted --run=fast
 本轮哈希（SHA256）：
 
 - 基线 `evidence/issue65/zone-baseline-rows.csv` = `266C676AB39CB7992E6A470BE112CE3439C45570E691E64C5DC93B7932A0B4FC`
-- 证据 `evidence/issue65/zone-space-contract.json` = `D4A169098BD74EE9A6BAA49B0EB229BF68FF8AC79B9345CB2E8A42FA4727D848`
-- 文本 `evidence/issue65/zone-space-contract.txt` = `DA909BAE67FB81560BBB2E10E6AA497AB5D8497265AEB18F25FD04DEFD626D9C`
-- 工具 `tools/zone_space_contract.lua` = `ACABBF7A8FC7A8899A1D3A3D11C0EA3DF4FE5FE46A01F36A049679FCBC168A64`
+- 证据 `evidence/issue65/zone-space-contract.json` = `FECD3C0CEF3293A6F106302A8CA9A2D2C738B55D02BA833816A68462A2C58E98`
+- 文本 `evidence/issue65/zone-space-contract.txt` = `3832BBB4DA2F11E6931FDBD0E1953C508EB6F2D5CBDC08C7EA6D88302171CF5A`
+- 工具 `tools/zone_space_contract.lua` = `F1D1C77D01CA735C9D4DE2EE743D8A4E598373D846E1A02E05EF3ADFC9CA8A50`
   （同会话重复运行，JSON **逐字节一致**）
 - 用例 `tests/native/zone_space_contract_test.lua` = `83545C58D010E165CCC53D35CADF72494011F03E39805FDB0E87FE40576F3FB2`
