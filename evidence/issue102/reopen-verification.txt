@@ -1,0 +1,26 @@
+#102 重开核验（只读，2026-10-14 17:20:14)
+快照基线：evidence/issue65/zone-baseline-rows-post-p3.csv
+基线 SHA256：A11B9D85CBD75BFB47ACD60FBC7C0C056AC1AAFD106C148CD76EC9474E8EDAEF
+
+exec 退出码：0
+{
+  "success": true,
+  "execution_mode": "sync_eval",
+  "result": "P2BASE65V2 emitted zoneNodes=364",
+  "result_serialization": "legacy_json_text",
+  "runtime": "editor",
+  "input_mode": "file",
+  "script_sha256": "2c8ca9dd5e87bc41f1daac59827c4dc0397e38f4d263b122e7f5dad1f9e57de1",
+  "script_bytes": 8336
+}
+探针自报 zoneNodes：364
+命中 P2BASE65V2：1161 处
+已写出 1092 行基线 → C:\Users\Lzx_8\AppData\Local\Temp\issue102-reopen-da774525\zone-baseline-rows-reopen.csv
+重开快照：1093 行，SHA256 051FA5390601C571D2A8EED4194BDB03F925F1910F4AE430085B48D6D0A9B01A
+存档快照：365 行，SHA256 A11B9D85CBD75BFB47ACD60FBC7C0C056AC1AAFD106C148CD76EC9474E8EDAEF
+哈希直接比对：不同
+去重后：存档 358 行 / 重开 358 行
+仅存档有：0 行；仅重开有：0 行
+结论：**行内容一致，但重开快照里有整份重复载荷** —— 判 PASS；
+      重复来自本次日志窗口收录了多份载荷（同一探针连跑两次就会这样），不是场景变化。
+      下次核验请先清日志窗口或按单份载荷转 CSV。
