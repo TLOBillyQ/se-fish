@@ -1,0 +1,3282 @@
+{
+  "combat": [
+    [
+      24,
+      20
+    ],
+    [
+      24,
+      20
+    ],
+    [
+      32,
+      28
+    ],
+    [
+      40,
+      36
+    ],
+    [
+      40,
+      36
+    ],
+    [
+      48,
+      40
+    ],
+    [
+      48,
+      40
+    ]
+  ],
+  "corridorMin": 8,
+  "headroom": 3,
+  "source": "evidence/issue65/zone-baseline-rows.csv",
+  "zones": [
+    {
+      "anchors": {
+        "deltas": [],
+        "entries": 16,
+        "maxDx": 0,
+        "maxDy": 0,
+        "maxDz": 0,
+        "missing": [
+          {
+            "name": "Z1_Bait1",
+            "role": "Bait1",
+            "state": "planned"
+          },
+          {
+            "name": "Z1_Bait2",
+            "role": "Bait2",
+            "state": "planned"
+          },
+          {
+            "name": "Z1_Bait3",
+            "role": "Bait3",
+            "state": "planned"
+          },
+          {
+            "name": "Z1_Bait4",
+            "role": "Bait4",
+            "state": "planned"
+          },
+          {
+            "name": "Z1_Bait5",
+            "role": "Bait5",
+            "state": "planned"
+          },
+          {
+            "name": "Z1_BoundaryEast",
+            "role": "BoundaryEast",
+            "state": "planned"
+          },
+          {
+            "name": "Z1_BoundaryNorth",
+            "role": "BoundaryNorth",
+            "state": "planned"
+          },
+          {
+            "name": "Z1_BoundarySouth",
+            "role": "BoundarySouth",
+            "state": "planned"
+          },
+          {
+            "name": "Z1_BoundaryWest",
+            "role": "BoundaryWest",
+            "state": "planned"
+          },
+          {
+            "name": "Z1_Safe",
+            "role": "Safe",
+            "state": "planned"
+          }
+        ],
+        "nonzero": 0,
+        "resolved": 6
+      },
+      "ceilingY": 25.01,
+      "combat": [
+        {
+          "collisionHits": [],
+          "hits": [
+            {
+              "maxY": 8,
+              "minY": -1,
+              "name": "TGUnitFish",
+              "overlapX": 4,
+              "overlapZ": 9,
+              "path": "01 鱼塘/设施/TGUnitFish"
+            }
+          ],
+          "interactionHits": [
+            {
+              "maxY": 8,
+              "minY": -1,
+              "name": "TGUnitFish",
+              "overlapX": 4,
+              "overlapZ": 9,
+              "path": "01 鱼塘/设施/TGUnitFish"
+            }
+          ],
+          "label": "圆岸 +X 侧",
+          "maxX": 18.25,
+          "maxZ": -2.25,
+          "minX": -5.75,
+          "minZ": -22.25,
+          "scale": 1
+        },
+        {
+          "collisionHits": [],
+          "hits": [],
+          "interactionHits": [],
+          "label": "圆岸 −X 侧",
+          "maxX": -17.75,
+          "maxZ": -2.25,
+          "minX": -41.75,
+          "minZ": -22.25,
+          "scale": 1
+        },
+        {
+          "collisionHits": [],
+          "hits": [
+            {
+              "maxY": 8,
+              "minY": -1,
+              "name": "TGUnitFish",
+              "overlapX": 9,
+              "overlapZ": 1.5,
+              "path": "01 鱼塘/设施/TGUnitFish"
+            },
+            {
+              "maxY": 8.5,
+              "minY": 2.5,
+              "name": "TGUnitShop",
+              "overlapX": 6,
+              "overlapZ": 1.5,
+              "path": "01 鱼塘/设施/TGUnitShop"
+            }
+          ],
+          "interactionHits": [
+            {
+              "maxY": 8,
+              "minY": -1,
+              "name": "TGUnitFish",
+              "overlapX": 9,
+              "overlapZ": 1.5,
+              "path": "01 鱼塘/设施/TGUnitFish"
+            },
+            {
+              "maxY": 8.5,
+              "minY": 2.5,
+              "name": "TGUnitShop",
+              "overlapX": 6,
+              "overlapZ": 1.5,
+              "path": "01 鱼塘/设施/TGUnitShop"
+            }
+          ],
+          "label": "圆岸 +Z 侧",
+          "maxX": 0.25,
+          "maxZ": 13.75,
+          "minX": -23.75,
+          "minZ": -6.25,
+          "scale": 1
+        },
+        {
+          "collisionHits": [],
+          "hits": [],
+          "interactionHits": [],
+          "label": "圆岸 −Z 侧",
+          "maxX": 0.25,
+          "maxZ": -18.25,
+          "minX": -23.75,
+          "minZ": -38.25,
+          "scale": 1
+        }
+      ],
+      "corridor": {
+        "all": {
+          "blockers": [
+            "TGUnitFish",
+            "TGUnitFish",
+            "TGUnitFish",
+            "TGUnitFish",
+            "TGUnitFish",
+            "TGUnitFish",
+            "TGUnitFish",
+            "TGUnitFish",
+            "TGUnitShop",
+            "无形方块",
+            "无形方块",
+            "无形方块",
+            "无形方块",
+            "无形方块",
+            "无形方块",
+            "无形方块",
+            "无形方块",
+            "无形方块",
+            "TGUnitFish"
+          ],
+          "longestRun": 23,
+          "longestRunLength": 27.0962,
+          "minAt": 1,
+          "minWidth": 0,
+          "sampleStep": 1.1781,
+          "widths": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            18.5,
+            83.9789,
+            85.7067,
+            86.2612,
+            70.7211,
+            59.2459,
+            52.7198,
+            49.3128,
+            48.25,
+            45.5795,
+            44.4539,
+            43.4166,
+            42.5074,
+            41.7612,
+            41.2067,
+            38.6071,
+            37.75,
+            38.6071,
+            41.2067,
+            41.7612,
+            42.5074,
+            43.4166,
+            44.4539,
+            0
+          ]
+        },
+        "collision": {
+          "blockers": [
+            "无形方块",
+            "无形方块",
+            "无形方块",
+            "无形方块",
+            "Z1_Lottery",
+            "无形方块",
+            "无形方块",
+            "无形方块",
+            "无形方块",
+            "无形方块",
+            "无形方块",
+            "无形方块",
+            "无形方块",
+            "无形方块",
+            "无形方块",
+            "无形方块"
+          ],
+          "longestRun": 32,
+          "longestRunLength": 37.6991,
+          "minAt": 5,
+          "minWidth": 17.3345,
+          "sampleStep": 1.1781,
+          "widths": [
+            71.75,
+            73.2732,
+            78.156,
+            87.5091,
+            17.3345,
+            86.2612,
+            85.7067,
+            83.9789,
+            82.25,
+            83.9789,
+            85.7067,
+            86.2612,
+            70.7211,
+            59.2459,
+            52.7198,
+            49.3128,
+            48.25,
+            45.5795,
+            44.4539,
+            43.4166,
+            42.5074,
+            41.7612,
+            41.2067,
+            38.6071,
+            37.75,
+            38.6071,
+            41.2067,
+            41.7612,
+            42.5074,
+            43.4166,
+            44.4539,
+            45.5795
+          ]
+        },
+        "minAt": 5,
+        "minWidth": 17.3345,
+        "sampleStep": 1.1781
+      },
+      "groundY": 5.01,
+      "index": 1,
+      "inset": {
+        "maxX": 3,
+        "maxZ": 3,
+        "minX": 3,
+        "minZ": 3
+      },
+      "label": "01 鱼塘",
+      "math": {
+        "bottomY": -30,
+        "maxFlightHeight": 20,
+        "maxX": 69,
+        "maxZ": 79,
+        "minX": -69,
+        "minZ": -59,
+        "topY": 40
+      },
+      "nodes": 22,
+      "sceneState": "planned",
+      "shore": {
+        "centerX": -11.75,
+        "centerZ": -12.25,
+        "kind": "circle",
+        "maxX": -5.75,
+        "maxZ": -6.25,
+        "minX": -17.75,
+        "minZ": -18.25,
+        "name": "WaterCircle2",
+        "radius": 6,
+        "source": "scene",
+        "surfaceY": 2.183,
+        "topY": 2.05
+      },
+      "support": {
+        "coverage": {
+          "圆岸 +X 侧": 93.75,
+          "圆岸 +Z 侧": 93.75,
+          "圆岸 −X 侧": 17.5781,
+          "圆岸 −Z 侧": 11.7188
+        },
+        "highestSurface": 9.725,
+        "landTop": 2,
+        "surfaces": [
+          {
+            "maxX": 18.25,
+            "maxZ": 18.75,
+            "minX": -21.75,
+            "minZ": -21.25,
+            "name": "海岛山体3",
+            "path": "01 鱼塘/地块/大地板/海岛山体3",
+            "topY": 5
+          }
+        ]
+      },
+      "walls": {
+        "innerMaxX": 66,
+        "innerMaxZ": 76,
+        "innerMinX": -66,
+        "innerMinZ": -56,
+        "wallCount": 6,
+        "xWalls": [
+          {
+            "inner": -66,
+            "name": "无形方块",
+            "x": -67.5
+          },
+          {
+            "inner": 66,
+            "name": "无形方块",
+            "x": 67.5
+          }
+        ],
+        "zWalls": [
+          {
+            "inner": -56,
+            "name": "无形方块",
+            "z": -57.5
+          },
+          {
+            "inner": 76,
+            "name": "无形方块",
+            "z": 77.5
+          }
+        ]
+      },
+      "waterDrop": 2.96,
+      "window": {
+        "best": {
+          "centerX": -53,
+          "centerZ": -45,
+          "intrudedAll": 0,
+          "intrudedCollision": 0
+        },
+        "candidates": 4900,
+        "freeAll": 2563,
+        "freeCollision": 2774,
+        "height": 20,
+        "step": 2,
+        "width": 24
+      },
+      "zoneId": "fishPond"
+    },
+    {
+      "anchors": {
+        "deltas": [],
+        "entries": 14,
+        "maxDx": 0,
+        "maxDy": 0,
+        "maxDz": 0,
+        "missing": [
+          {
+            "name": "Z2_Bait1",
+            "role": "Bait1",
+            "state": "planned"
+          },
+          {
+            "name": "Z2_Bait2",
+            "role": "Bait2",
+            "state": "planned"
+          },
+          {
+            "name": "Z2_Safe",
+            "role": "Safe",
+            "state": "planned"
+          },
+          {
+            "name": "Z2_Water",
+            "role": "Water",
+            "state": "planned"
+          }
+        ],
+        "nonzero": 0,
+        "resolved": 10
+      },
+      "ceilingY": 26,
+      "combat": [
+        {
+          "collisionHits": [],
+          "hits": [],
+          "interactionHits": [],
+          "label": "A|紧贴水岸",
+          "maxX": 243,
+          "maxZ": -9,
+          "minX": 237,
+          "minZ": -29,
+          "scale": 0.25
+        },
+        {
+          "collisionHits": [],
+          "hits": [],
+          "interactionHits": [],
+          "label": "B|退让通道后",
+          "maxX": 243,
+          "maxZ": -17,
+          "minX": 237,
+          "minZ": -37,
+          "scale": 0.25
+        }
+      ],
+      "corridor": {
+        "all": {
+          "blockers": [
+            "Z2_BoundaryNorth",
+            "Z2_BoundaryNorth",
+            "Z2_BoundaryNorth",
+            "Z2_BoundaryNorth",
+            "Z2_BoundaryNorth",
+            "Z2_BoundaryNorth",
+            "Z2_BoundaryNorth",
+            "Z2_BoundaryNorth",
+            "Z2_BoundaryNorth",
+            "Z2_BoundaryNorth",
+            "Z2_BoundaryNorth",
+            "Z2_BoundaryNorth",
+            "Z2_BoundaryNorth",
+            "Z2_BoundaryNorth",
+            "Z2_BoundaryNorth",
+            "Z2_BoundaryNorth",
+            "Z2_BoundaryNorth",
+            "Z2_BoundaryNorth",
+            "Z2_BoundaryNorth",
+            "Z2_BoundaryNorth",
+            "Z2_BoundaryNorth",
+            "Z2_BoundaryNorth",
+            "Z2_BoundaryNorth",
+            "Z2_BoundaryNorth",
+            "Z2_BoundaryNorth",
+            "Z2_BoundaryNorth",
+            "Z2_BoundaryNorth",
+            "Z2_BoundaryNorth",
+            "Z2_BoundaryNorth",
+            "Z2_BoundaryNorth",
+            "Z2_BoundaryNorth",
+            "Z2_BoundaryNorth"
+          ],
+          "longestRun": 32,
+          "longestRunLength": 6,
+          "minAt": 1,
+          "minWidth": 59.5,
+          "sampleStep": 0.1875,
+          "widths": [
+            59.5,
+            59.5,
+            59.5,
+            59.5,
+            59.5,
+            59.5,
+            59.5,
+            59.5,
+            59.5,
+            59.5,
+            59.5,
+            59.5,
+            59.5,
+            59.5,
+            59.5,
+            59.5,
+            59.5,
+            59.5,
+            59.5,
+            59.5,
+            59.5,
+            59.5,
+            59.5,
+            59.5,
+            59.5,
+            59.5,
+            59.5,
+            59.5,
+            59.5,
+            59.5,
+            59.5,
+            59.5
+          ]
+        },
+        "collision": {
+          "blockers": [
+            "Z2_BoundaryNorth",
+            "Z2_BoundaryNorth",
+            "Z2_BoundaryNorth",
+            "Z2_BoundaryNorth",
+            "Z2_BoundaryNorth",
+            "Z2_BoundaryNorth",
+            "Z2_BoundaryNorth",
+            "Z2_BoundaryNorth",
+            "Z2_BoundaryNorth",
+            "Z2_BoundaryNorth",
+            "Z2_BoundaryNorth",
+            "Z2_BoundaryNorth",
+            "Z2_BoundaryNorth",
+            "Z2_BoundaryNorth",
+            "Z2_BoundaryNorth",
+            "Z2_BoundaryNorth",
+            "Z2_BoundaryNorth",
+            "Z2_BoundaryNorth",
+            "Z2_BoundaryNorth",
+            "Z2_BoundaryNorth",
+            "Z2_BoundaryNorth",
+            "Z2_BoundaryNorth",
+            "Z2_BoundaryNorth",
+            "Z2_BoundaryNorth",
+            "Z2_BoundaryNorth",
+            "Z2_BoundaryNorth",
+            "Z2_BoundaryNorth",
+            "Z2_BoundaryNorth",
+            "Z2_BoundaryNorth",
+            "Z2_BoundaryNorth",
+            "Z2_BoundaryNorth",
+            "Z2_BoundaryNorth"
+          ],
+          "longestRun": 32,
+          "longestRunLength": 6,
+          "minAt": 1,
+          "minWidth": 59.5,
+          "sampleStep": 0.1875,
+          "widths": [
+            59.5,
+            59.5,
+            59.5,
+            59.5,
+            59.5,
+            59.5,
+            59.5,
+            59.5,
+            59.5,
+            59.5,
+            59.5,
+            59.5,
+            59.5,
+            59.5,
+            59.5,
+            59.5,
+            59.5,
+            59.5,
+            59.5,
+            59.5,
+            59.5,
+            59.5,
+            59.5,
+            59.5,
+            59.5,
+            59.5,
+            59.5,
+            59.5,
+            59.5,
+            59.5,
+            59.5,
+            59.5
+          ]
+        },
+        "minAt": 1,
+        "minWidth": 59.5,
+        "sampleStep": 0.1875
+      },
+      "groundY": 6,
+      "index": 2,
+      "inset": {
+        "maxX": 1.5,
+        "maxZ": 1.5,
+        "minX": 1.5,
+        "minZ": 1.5
+      },
+      "label": "02 虾池",
+      "math": {
+        "bottomY": -30,
+        "maxFlightHeight": 20,
+        "maxX": 265,
+        "maxZ": 50,
+        "minX": 215,
+        "minZ": -70,
+        "topY": 40
+      },
+      "nodes": 17,
+      "sceneState": "planned",
+      "shore": {
+        "centerX": 235,
+        "centerZ": -6,
+        "edgeZ": -9,
+        "inland": -1,
+        "kind": "rect",
+        "maxX": 238,
+        "maxZ": -3,
+        "minX": 232,
+        "minZ": -9,
+        "name": "ShrimpPool",
+        "side": "+Z",
+        "source": "config",
+        "spanMax": 238,
+        "spanMin": 232,
+        "surfaceY": 5.6
+      },
+      "support": {
+        "coverage": {
+          "A|紧贴水岸": 0,
+          "B|退让通道后": 0
+        },
+        "highestSurface": 6.8,
+        "landTop": -2.8,
+        "surfaces": []
+      },
+      "walls": {
+        "innerMaxX": 263.5,
+        "innerMaxZ": 48.5,
+        "innerMinX": 216.5,
+        "innerMinZ": -68.5,
+        "wallCount": 4,
+        "xWalls": [
+          {
+            "inner": 216.5,
+            "name": "Z2_BoundaryEast",
+            "x": 215
+          },
+          {
+            "inner": 263.5,
+            "name": "Z2_BoundaryWest",
+            "x": 265
+          }
+        ],
+        "zWalls": [
+          {
+            "inner": -68.5,
+            "name": "Z2_BoundaryNorth",
+            "z": -70
+          },
+          {
+            "inner": 48.5,
+            "name": "Z2_BoundarySouth",
+            "z": 50
+          }
+        ]
+      },
+      "window": {
+        "best": {
+          "centerX": 229,
+          "centerZ": -58,
+          "intrudedAll": 0,
+          "intrudedCollision": 0
+        },
+        "candidates": 1586,
+        "freeAll": 414,
+        "freeCollision": 414,
+        "height": 20,
+        "step": 2,
+        "width": 24
+      },
+      "zoneId": "shrimpPond"
+    },
+    {
+      "anchors": {
+        "deltas": [],
+        "entries": 15,
+        "maxDx": 0,
+        "maxDy": 0,
+        "maxDz": 0,
+        "missing": [],
+        "nonzero": 0,
+        "resolved": 15
+      },
+      "ceilingY": 26,
+      "combat": [
+        {
+          "collisionHits": [
+            {
+              "maxY": 6.5,
+              "minY": 5,
+              "name": "Z3_Lottery",
+              "overlapX": 1.5,
+              "overlapZ": 1.5,
+              "path": "03 蟹湖/设施/Z3_Lottery"
+            }
+          ],
+          "hits": [
+            {
+              "maxY": 6.5,
+              "minY": 5,
+              "name": "Z3_Lottery",
+              "overlapX": 1.5,
+              "overlapZ": 1.5,
+              "path": "03 蟹湖/设施/Z3_Lottery"
+            },
+            {
+              "maxY": 14,
+              "minY": 5,
+              "name": "Z3_Fisherman",
+              "overlapX": 0.5,
+              "overlapZ": 0.5,
+              "path": "03 蟹湖/设施/Z3_Fisherman"
+            }
+          ],
+          "interactionHits": [
+            {
+              "maxY": 14,
+              "minY": 5,
+              "name": "Z3_Fisherman",
+              "overlapX": 0.5,
+              "overlapZ": 0.5,
+              "path": "03 蟹湖/设施/Z3_Fisherman"
+            }
+          ],
+          "label": "A|紧贴水岸",
+          "maxX": 496,
+          "maxZ": -4,
+          "minX": 464,
+          "minZ": -32,
+          "scale": 1
+        },
+        {
+          "collisionHits": [
+            {
+              "maxY": 7.5,
+              "minY": 6,
+              "name": "Z3_Bait1",
+              "overlapX": 1.5,
+              "overlapZ": 1.5,
+              "path": "03 蟹湖/设施/Z3_Bait1"
+            },
+            {
+              "maxY": 7.5,
+              "minY": 6,
+              "name": "Z3_Bait2",
+              "overlapX": 1.5,
+              "overlapZ": 1.5,
+              "path": "03 蟹湖/设施/Z3_Bait2"
+            },
+            {
+              "maxY": 6.5,
+              "minY": 5,
+              "name": "Z3_Lottery",
+              "overlapX": 1.5,
+              "overlapZ": 1.5,
+              "path": "03 蟹湖/设施/Z3_Lottery"
+            }
+          ],
+          "hits": [
+            {
+              "maxY": 14,
+              "minY": 5,
+              "name": "Z3_Fisherman",
+              "overlapX": 0.5,
+              "overlapZ": 8.5,
+              "path": "03 蟹湖/设施/Z3_Fisherman"
+            },
+            {
+              "maxY": 7.5,
+              "minY": 6,
+              "name": "Z3_Bait1",
+              "overlapX": 1.5,
+              "overlapZ": 1.5,
+              "path": "03 蟹湖/设施/Z3_Bait1"
+            },
+            {
+              "maxY": 7.5,
+              "minY": 6,
+              "name": "Z3_Bait2",
+              "overlapX": 1.5,
+              "overlapZ": 1.5,
+              "path": "03 蟹湖/设施/Z3_Bait2"
+            },
+            {
+              "maxY": 6.5,
+              "minY": 5,
+              "name": "Z3_Lottery",
+              "overlapX": 1.5,
+              "overlapZ": 1.5,
+              "path": "03 蟹湖/设施/Z3_Lottery"
+            }
+          ],
+          "interactionHits": [
+            {
+              "maxY": 14,
+              "minY": 5,
+              "name": "Z3_Fisherman",
+              "overlapX": 0.5,
+              "overlapZ": 8.5,
+              "path": "03 蟹湖/设施/Z3_Fisherman"
+            }
+          ],
+          "label": "B|退让通道后",
+          "maxX": 496,
+          "maxZ": 4,
+          "minX": 464,
+          "minZ": -24,
+          "scale": 1
+        }
+      ],
+      "corridor": {
+        "all": {
+          "blockers": [
+            "Z3_BoundarySouth",
+            "Z3_BoundarySouth",
+            "Z3_BoundarySouth",
+            "Z3_BoundarySouth",
+            "Z3_BoundarySouth",
+            "Z3_BoundarySouth",
+            "Z3_BoundarySouth",
+            "Z3_Shop",
+            "Z3_Shop",
+            "Z3_Shop",
+            "Z3_FerryOut",
+            "Z3_BoundarySouth",
+            "Z3_BoundarySouth",
+            "Z3_BoundarySouth",
+            "Z3_Lottery",
+            "Z3_Bait2",
+            "Z3_BoundarySouth",
+            "Z3_Bait1",
+            "Z3_BoundarySouth",
+            "Z3_BoundarySouth",
+            "Z3_Grill",
+            "Z3_BoundarySouth",
+            "Z3_FerryReturn",
+            "Z3_Fisherman",
+            "Z3_Fisherman",
+            "Z3_Fisherman",
+            "Z3_BoundarySouth",
+            "Z3_BoundarySouth",
+            "Z3_BoundarySouth",
+            "Z3_BoundarySouth",
+            "Z3_BoundarySouth",
+            "Z3_BoundarySouth"
+          ],
+          "longestRun": 32,
+          "longestRunLength": 80,
+          "minAt": 15,
+          "minWidth": 26.25,
+          "sampleStep": 2.5,
+          "widths": [
+            80.5,
+            80.5,
+            80.5,
+            80.5,
+            80.5,
+            80.5,
+            80.5,
+            29,
+            29,
+            29,
+            41.25,
+            80.5,
+            80.5,
+            80.5,
+            26.25,
+            34.25,
+            80.5,
+            34.25,
+            80.5,
+            80.5,
+            41.25,
+            80.5,
+            41.25,
+            27.5,
+            27.5,
+            27.5,
+            80.5,
+            80.5,
+            80.5,
+            80.5,
+            80.5,
+            80.5
+          ]
+        },
+        "collision": {
+          "blockers": [
+            "Z3_BoundarySouth",
+            "Z3_BoundarySouth",
+            "Z3_BoundarySouth",
+            "Z3_BoundarySouth",
+            "Z3_BoundarySouth",
+            "Z3_BoundarySouth",
+            "Z3_BoundarySouth",
+            "Z3_BoundarySouth",
+            "FishFood",
+            "Z3_BoundarySouth",
+            "Z3_FerryOut",
+            "Z3_BoundarySouth",
+            "Z3_BoundarySouth",
+            "Z3_BoundarySouth",
+            "Z3_Lottery",
+            "Z3_Bait2",
+            "Z3_BoundarySouth",
+            "Z3_Bait1",
+            "Z3_BoundarySouth",
+            "Z3_BoundarySouth",
+            "Z3_Grill",
+            "Z3_BoundarySouth",
+            "Z3_FerryReturn",
+            "Z3_BoundarySouth",
+            "Z3_BoundarySouth",
+            "Z3_BoundarySouth",
+            "Z3_BoundarySouth",
+            "Z3_BoundarySouth",
+            "Z3_BoundarySouth",
+            "Z3_BoundarySouth",
+            "Z3_BoundarySouth",
+            "Z3_BoundarySouth"
+          ],
+          "longestRun": 32,
+          "longestRunLength": 80,
+          "minAt": 15,
+          "minWidth": 26.25,
+          "sampleStep": 2.5,
+          "widths": [
+            80.5,
+            80.5,
+            80.5,
+            80.5,
+            80.5,
+            80.5,
+            80.5,
+            80.5,
+            30.75,
+            80.5,
+            41.25,
+            80.5,
+            80.5,
+            80.5,
+            26.25,
+            34.25,
+            80.5,
+            34.25,
+            80.5,
+            80.5,
+            41.25,
+            80.5,
+            41.25,
+            80.5,
+            80.5,
+            80.5,
+            80.5,
+            80.5,
+            80.5,
+            80.5,
+            80.5,
+            80.5
+          ]
+        },
+        "minAt": 15,
+        "minWidth": 26.25,
+        "sampleStep": 2.5
+      },
+      "groundY": 6,
+      "index": 3,
+      "inset": {
+        "maxX": 1.5,
+        "maxZ": 1.5,
+        "minX": 1.5,
+        "minZ": 1.5
+      },
+      "label": "03 蟹湖",
+      "math": {
+        "bottomY": -30,
+        "maxFlightHeight": 20,
+        "maxX": 540,
+        "maxZ": 50,
+        "minX": 420,
+        "minZ": -70,
+        "topY": 40
+      },
+      "nodes": 19,
+      "sceneState": "planned",
+      "shore": {
+        "centerX": 480,
+        "centerZ": -44,
+        "edgeZ": -32,
+        "inland": 1,
+        "kind": "rect",
+        "maxX": 520,
+        "maxZ": -32,
+        "minX": 440,
+        "minZ": -56,
+        "name": "Z3_Water",
+        "side": "-Z",
+        "source": "scene",
+        "spanMax": 520,
+        "spanMin": 440,
+        "surfaceY": 3,
+        "topY": 3
+      },
+      "support": {
+        "coverage": {
+          "A|紧贴水岸": 2.34375,
+          "B|退让通道后": 11.7188
+        },
+        "highestSurface": 9.5,
+        "landTop": 2,
+        "surfaces": [
+          {
+            "maxX": 485,
+            "maxZ": 5,
+            "minX": 475,
+            "minZ": -5,
+            "name": "Z3_Safe",
+            "path": "03 蟹湖/摆渡/Z3_Safe",
+            "topY": 6.2
+          }
+        ]
+      },
+      "walls": {
+        "innerMaxX": 538.5,
+        "innerMaxZ": 48.5,
+        "innerMinX": 421.5,
+        "innerMinZ": -68.5,
+        "wallCount": 4,
+        "xWalls": [
+          {
+            "inner": 421.5,
+            "name": "Z3_BoundaryEast",
+            "x": 420
+          },
+          {
+            "inner": 538.5,
+            "name": "Z3_BoundaryWest",
+            "x": 540
+          }
+        ],
+        "zWalls": [
+          {
+            "inner": -68.5,
+            "name": "Z3_BoundaryNorth",
+            "z": -70
+          },
+          {
+            "inner": 48.5,
+            "name": "Z3_BoundarySouth",
+            "z": 50
+          }
+        ]
+      },
+      "waterDrop": 3,
+      "window": {
+        "best": {
+          "centerX": 438,
+          "centerZ": -54,
+          "intrudedAll": 0,
+          "intrudedCollision": 0
+        },
+        "candidates": 3721,
+        "freeAll": 1095,
+        "freeCollision": 1276,
+        "height": 28,
+        "step": 2,
+        "width": 32
+      },
+      "zoneId": "crabLake"
+    },
+    {
+      "anchors": {
+        "deltas": [],
+        "entries": 15,
+        "maxDx": 0,
+        "maxDy": 0,
+        "maxDz": 0,
+        "missing": [],
+        "nonzero": 0,
+        "resolved": 15
+      },
+      "ceilingY": 26,
+      "combat": [
+        {
+          "collisionHits": [
+            {
+              "maxY": 7.5,
+              "minY": 6,
+              "name": "Z4_Bait1",
+              "overlapX": 1.5,
+              "overlapZ": 1.5,
+              "path": "04 树林岛/设施/Z4_Bait1"
+            },
+            {
+              "maxY": 7.5,
+              "minY": 6,
+              "name": "Z4_Bait2",
+              "overlapX": 1.5,
+              "overlapZ": 1.5,
+              "path": "04 树林岛/设施/Z4_Bait2"
+            },
+            {
+              "maxY": 6.5,
+              "minY": 5,
+              "name": "Z4_Lottery",
+              "overlapX": 1.5,
+              "overlapZ": 1.5,
+              "path": "04 树林岛/设施/Z4_Lottery"
+            },
+            {
+              "maxY": 9.5,
+              "minY": 8,
+              "name": "FishFood",
+              "overlapX": 1,
+              "overlapZ": 2,
+              "path": "04 树林岛/设施/Z4_Shop/FishFood"
+            }
+          ],
+          "hits": [
+            {
+              "maxY": 14,
+              "minY": 5,
+              "name": "Z4_Fisherman",
+              "overlapX": 4.5,
+              "overlapZ": 8.5,
+              "path": "04 树林岛/设施/Z4_Fisherman"
+            },
+            {
+              "maxY": 11,
+              "minY": 5,
+              "name": "Z4_Shop",
+              "overlapX": 3,
+              "overlapZ": 6,
+              "path": "04 树林岛/设施/Z4_Shop"
+            },
+            {
+              "maxY": 7.5,
+              "minY": 6,
+              "name": "Z4_Bait1",
+              "overlapX": 1.5,
+              "overlapZ": 1.5,
+              "path": "04 树林岛/设施/Z4_Bait1"
+            },
+            {
+              "maxY": 7.5,
+              "minY": 6,
+              "name": "Z4_Bait2",
+              "overlapX": 1.5,
+              "overlapZ": 1.5,
+              "path": "04 树林岛/设施/Z4_Bait2"
+            },
+            {
+              "maxY": 6.5,
+              "minY": 5,
+              "name": "Z4_Lottery",
+              "overlapX": 1.5,
+              "overlapZ": 1.5,
+              "path": "04 树林岛/设施/Z4_Lottery"
+            },
+            {
+              "maxY": 9.5,
+              "minY": 8,
+              "name": "FishFood",
+              "overlapX": 1,
+              "overlapZ": 2,
+              "path": "04 树林岛/设施/Z4_Shop/FishFood"
+            }
+          ],
+          "interactionHits": [
+            {
+              "maxY": 14,
+              "minY": 5,
+              "name": "Z4_Fisherman",
+              "overlapX": 4.5,
+              "overlapZ": 8.5,
+              "path": "04 树林岛/设施/Z4_Fisherman"
+            },
+            {
+              "maxY": 11,
+              "minY": 5,
+              "name": "Z4_Shop",
+              "overlapX": 3,
+              "overlapZ": 6,
+              "path": "04 树林岛/设施/Z4_Shop"
+            }
+          ],
+          "label": "A|紧贴水岸",
+          "maxX": 740,
+          "maxZ": 4,
+          "minX": 700,
+          "minZ": -32,
+          "scale": 1
+        },
+        {
+          "collisionHits": [
+            {
+              "maxY": 6.5,
+              "minY": 5,
+              "name": "Z4_FerryOut",
+              "overlapX": 1.5,
+              "overlapZ": 1.5,
+              "path": "04 树林岛/摆渡/Z4_FerryOut"
+            },
+            {
+              "maxY": 6.5,
+              "minY": 5,
+              "name": "Z4_FerryReturn",
+              "overlapX": 1.5,
+              "overlapZ": 1.5,
+              "path": "04 树林岛/摆渡/Z4_FerryReturn"
+            },
+            {
+              "maxY": 7.5,
+              "minY": 6,
+              "name": "Z4_Bait1",
+              "overlapX": 1.5,
+              "overlapZ": 1.5,
+              "path": "04 树林岛/设施/Z4_Bait1"
+            },
+            {
+              "maxY": 7.5,
+              "minY": 6,
+              "name": "Z4_Bait2",
+              "overlapX": 1.5,
+              "overlapZ": 1.5,
+              "path": "04 树林岛/设施/Z4_Bait2"
+            },
+            {
+              "maxY": 6.5,
+              "minY": 5,
+              "name": "Z4_Grill",
+              "overlapX": 1.5,
+              "overlapZ": 1.5,
+              "path": "04 树林岛/设施/Z4_Grill"
+            },
+            {
+              "maxY": 6.5,
+              "minY": 5,
+              "name": "Z4_Lottery",
+              "overlapX": 1.5,
+              "overlapZ": 1.5,
+              "path": "04 树林岛/设施/Z4_Lottery"
+            },
+            {
+              "maxY": 9.5,
+              "minY": 8,
+              "name": "FishFood",
+              "overlapX": 1,
+              "overlapZ": 2,
+              "path": "04 树林岛/设施/Z4_Shop/FishFood"
+            }
+          ],
+          "hits": [
+            {
+              "maxY": 14,
+              "minY": 5,
+              "name": "Z4_Fisherman",
+              "overlapX": 4.5,
+              "overlapZ": 9,
+              "path": "04 树林岛/设施/Z4_Fisherman"
+            },
+            {
+              "maxY": 11,
+              "minY": 5,
+              "name": "Z4_Shop",
+              "overlapX": 3,
+              "overlapZ": 6,
+              "path": "04 树林岛/设施/Z4_Shop"
+            },
+            {
+              "maxY": 6.5,
+              "minY": 5,
+              "name": "Z4_FerryOut",
+              "overlapX": 1.5,
+              "overlapZ": 1.5,
+              "path": "04 树林岛/摆渡/Z4_FerryOut"
+            },
+            {
+              "maxY": 6.5,
+              "minY": 5,
+              "name": "Z4_FerryReturn",
+              "overlapX": 1.5,
+              "overlapZ": 1.5,
+              "path": "04 树林岛/摆渡/Z4_FerryReturn"
+            },
+            {
+              "maxY": 7.5,
+              "minY": 6,
+              "name": "Z4_Bait1",
+              "overlapX": 1.5,
+              "overlapZ": 1.5,
+              "path": "04 树林岛/设施/Z4_Bait1"
+            },
+            {
+              "maxY": 7.5,
+              "minY": 6,
+              "name": "Z4_Bait2",
+              "overlapX": 1.5,
+              "overlapZ": 1.5,
+              "path": "04 树林岛/设施/Z4_Bait2"
+            },
+            {
+              "maxY": 6.5,
+              "minY": 5,
+              "name": "Z4_Grill",
+              "overlapX": 1.5,
+              "overlapZ": 1.5,
+              "path": "04 树林岛/设施/Z4_Grill"
+            },
+            {
+              "maxY": 6.5,
+              "minY": 5,
+              "name": "Z4_Lottery",
+              "overlapX": 1.5,
+              "overlapZ": 1.5,
+              "path": "04 树林岛/设施/Z4_Lottery"
+            },
+            {
+              "maxY": 9.5,
+              "minY": 8,
+              "name": "FishFood",
+              "overlapX": 1,
+              "overlapZ": 2,
+              "path": "04 树林岛/设施/Z4_Shop/FishFood"
+            }
+          ],
+          "interactionHits": [
+            {
+              "maxY": 14,
+              "minY": 5,
+              "name": "Z4_Fisherman",
+              "overlapX": 4.5,
+              "overlapZ": 9,
+              "path": "04 树林岛/设施/Z4_Fisherman"
+            },
+            {
+              "maxY": 11,
+              "minY": 5,
+              "name": "Z4_Shop",
+              "overlapX": 3,
+              "overlapZ": 6,
+              "path": "04 树林岛/设施/Z4_Shop"
+            }
+          ],
+          "label": "B|退让通道后",
+          "maxX": 740,
+          "maxZ": 12,
+          "minX": 700,
+          "minZ": -24,
+          "scale": 1
+        }
+      ],
+      "corridor": {
+        "all": {
+          "blockers": [
+            "Z4_BoundarySouth",
+            "Z4_BoundarySouth",
+            "Z4_BoundarySouth",
+            "Z4_BoundarySouth",
+            "Z4_BoundarySouth",
+            "Z4_BoundarySouth",
+            "Z4_BoundarySouth",
+            "Z4_Shop",
+            "Z4_Shop",
+            "Z4_Shop",
+            "Z4_FerryOut",
+            "Z4_BoundarySouth",
+            "Z4_BoundarySouth",
+            "Z4_BoundarySouth",
+            "Z4_Lottery",
+            "Z4_Bait2",
+            "Z4_BoundarySouth",
+            "Z4_Bait1",
+            "Z4_BoundarySouth",
+            "Z4_BoundarySouth",
+            "Z4_Grill",
+            "Z4_BoundarySouth",
+            "Z4_FerryReturn",
+            "Z4_Fisherman",
+            "Z4_Fisherman",
+            "Z4_Fisherman",
+            "Z4_BoundarySouth",
+            "Z4_BoundarySouth",
+            "Z4_BoundarySouth",
+            "Z4_BoundarySouth",
+            "Z4_BoundarySouth",
+            "Z4_BoundarySouth"
+          ],
+          "longestRun": 32,
+          "longestRunLength": 80,
+          "minAt": 15,
+          "minWidth": 26.25,
+          "sampleStep": 2.5,
+          "widths": [
+            80.5,
+            80.5,
+            80.5,
+            80.5,
+            80.5,
+            80.5,
+            80.5,
+            29,
+            29,
+            29,
+            41.25,
+            80.5,
+            80.5,
+            80.5,
+            26.25,
+            34.25,
+            80.5,
+            34.25,
+            80.5,
+            80.5,
+            41.25,
+            80.5,
+            41.25,
+            27.5,
+            27.5,
+            27.5,
+            80.5,
+            80.5,
+            80.5,
+            80.5,
+            80.5,
+            80.5
+          ]
+        },
+        "collision": {
+          "blockers": [
+            "Z4_BoundarySouth",
+            "Z4_BoundarySouth",
+            "Z4_BoundarySouth",
+            "Z4_BoundarySouth",
+            "Z4_BoundarySouth",
+            "Z4_BoundarySouth",
+            "Z4_BoundarySouth",
+            "Z4_BoundarySouth",
+            "FishFood",
+            "Z4_BoundarySouth",
+            "Z4_FerryOut",
+            "Z4_BoundarySouth",
+            "Z4_BoundarySouth",
+            "Z4_BoundarySouth",
+            "Z4_Lottery",
+            "Z4_Bait2",
+            "Z4_BoundarySouth",
+            "Z4_Bait1",
+            "Z4_BoundarySouth",
+            "Z4_BoundarySouth",
+            "Z4_Grill",
+            "Z4_BoundarySouth",
+            "Z4_FerryReturn",
+            "Z4_BoundarySouth",
+            "Z4_BoundarySouth",
+            "Z4_BoundarySouth",
+            "Z4_BoundarySouth",
+            "Z4_BoundarySouth",
+            "Z4_BoundarySouth",
+            "Z4_BoundarySouth",
+            "Z4_BoundarySouth",
+            "Z4_BoundarySouth"
+          ],
+          "longestRun": 32,
+          "longestRunLength": 80,
+          "minAt": 15,
+          "minWidth": 26.25,
+          "sampleStep": 2.5,
+          "widths": [
+            80.5,
+            80.5,
+            80.5,
+            80.5,
+            80.5,
+            80.5,
+            80.5,
+            80.5,
+            30.75,
+            80.5,
+            41.25,
+            80.5,
+            80.5,
+            80.5,
+            26.25,
+            34.25,
+            80.5,
+            34.25,
+            80.5,
+            80.5,
+            41.25,
+            80.5,
+            41.25,
+            80.5,
+            80.5,
+            80.5,
+            80.5,
+            80.5,
+            80.5,
+            80.5,
+            80.5,
+            80.5
+          ]
+        },
+        "minAt": 15,
+        "minWidth": 26.25,
+        "sampleStep": 2.5
+      },
+      "groundY": 6,
+      "index": 4,
+      "inset": {
+        "maxX": 1.5,
+        "maxZ": 1.5,
+        "minX": 1.5,
+        "minZ": 1.5
+      },
+      "label": "04 树林岛",
+      "math": {
+        "bottomY": -30,
+        "maxFlightHeight": 20,
+        "maxX": 780,
+        "maxZ": 50,
+        "minX": 660,
+        "minZ": -70,
+        "topY": 40
+      },
+      "nodes": 19,
+      "sceneState": "planned",
+      "shore": {
+        "centerX": 720,
+        "centerZ": -44,
+        "edgeZ": -32,
+        "inland": 1,
+        "kind": "rect",
+        "maxX": 760,
+        "maxZ": -32,
+        "minX": 680,
+        "minZ": -56,
+        "name": "Z4_Water",
+        "side": "-Z",
+        "source": "scene",
+        "spanMax": 760,
+        "spanMin": 680,
+        "surfaceY": 3,
+        "topY": 3
+      },
+      "support": {
+        "coverage": {
+          "A|紧贴水岸": 6.25,
+          "B|退让通道后": 7.8125
+        },
+        "highestSurface": 9.5,
+        "landTop": 2,
+        "surfaces": [
+          {
+            "maxX": 725,
+            "maxZ": 5,
+            "minX": 715,
+            "minZ": -5,
+            "name": "Z4_Safe",
+            "path": "04 树林岛/摆渡/Z4_Safe",
+            "topY": 6.2
+          }
+        ]
+      },
+      "walls": {
+        "innerMaxX": 778.5,
+        "innerMaxZ": 48.5,
+        "innerMinX": 661.5,
+        "innerMinZ": -68.5,
+        "wallCount": 4,
+        "xWalls": [
+          {
+            "inner": 661.5,
+            "name": "Z4_BoundaryEast",
+            "x": 660
+          },
+          {
+            "inner": 778.5,
+            "name": "Z4_BoundaryWest",
+            "x": 780
+          }
+        ],
+        "zWalls": [
+          {
+            "inner": -68.5,
+            "name": "Z4_BoundaryNorth",
+            "z": -70
+          },
+          {
+            "inner": 48.5,
+            "name": "Z4_BoundarySouth",
+            "z": 50
+          }
+        ]
+      },
+      "waterDrop": 3,
+      "window": {
+        "best": {
+          "centerX": 682,
+          "centerZ": -50,
+          "intrudedAll": 0,
+          "intrudedCollision": 0
+        },
+        "candidates": 3721,
+        "freeAll": 606,
+        "freeCollision": 719,
+        "height": 36,
+        "step": 2,
+        "width": 40
+      },
+      "zoneId": "forestIsland"
+    },
+    {
+      "anchors": {
+        "deltas": [],
+        "entries": 15,
+        "maxDx": 0,
+        "maxDy": 0,
+        "maxDz": 0,
+        "missing": [],
+        "nonzero": 0,
+        "resolved": 15
+      },
+      "ceilingY": 26,
+      "combat": [
+        {
+          "collisionHits": [
+            {
+              "maxY": 7.5,
+              "minY": 6,
+              "name": "Z5_Bait1",
+              "overlapX": 1.5,
+              "overlapZ": 1.5,
+              "path": "05 沙滩岛/设施/Z5_Bait1"
+            },
+            {
+              "maxY": 7.5,
+              "minY": 6,
+              "name": "Z5_Bait2",
+              "overlapX": 1.5,
+              "overlapZ": 1.5,
+              "path": "05 沙滩岛/设施/Z5_Bait2"
+            },
+            {
+              "maxY": 6.5,
+              "minY": 5,
+              "name": "Z5_Lottery",
+              "overlapX": 1.5,
+              "overlapZ": 1.5,
+              "path": "05 沙滩岛/设施/Z5_Lottery"
+            },
+            {
+              "maxY": 9.5,
+              "minY": 8,
+              "name": "FishFood",
+              "overlapX": 1,
+              "overlapZ": 2,
+              "path": "05 沙滩岛/设施/Z5_Shop/FishFood"
+            }
+          ],
+          "hits": [
+            {
+              "maxY": 14,
+              "minY": 5,
+              "name": "Z5_Fisherman",
+              "overlapX": 4.5,
+              "overlapZ": 8.5,
+              "path": "05 沙滩岛/设施/Z5_Fisherman"
+            },
+            {
+              "maxY": 11,
+              "minY": 5,
+              "name": "Z5_Shop",
+              "overlapX": 3,
+              "overlapZ": 6,
+              "path": "05 沙滩岛/设施/Z5_Shop"
+            },
+            {
+              "maxY": 7.5,
+              "minY": 6,
+              "name": "Z5_Bait1",
+              "overlapX": 1.5,
+              "overlapZ": 1.5,
+              "path": "05 沙滩岛/设施/Z5_Bait1"
+            },
+            {
+              "maxY": 7.5,
+              "minY": 6,
+              "name": "Z5_Bait2",
+              "overlapX": 1.5,
+              "overlapZ": 1.5,
+              "path": "05 沙滩岛/设施/Z5_Bait2"
+            },
+            {
+              "maxY": 6.5,
+              "minY": 5,
+              "name": "Z5_Lottery",
+              "overlapX": 1.5,
+              "overlapZ": 1.5,
+              "path": "05 沙滩岛/设施/Z5_Lottery"
+            },
+            {
+              "maxY": 9.5,
+              "minY": 8,
+              "name": "FishFood",
+              "overlapX": 1,
+              "overlapZ": 2,
+              "path": "05 沙滩岛/设施/Z5_Shop/FishFood"
+            }
+          ],
+          "interactionHits": [
+            {
+              "maxY": 14,
+              "minY": 5,
+              "name": "Z5_Fisherman",
+              "overlapX": 4.5,
+              "overlapZ": 8.5,
+              "path": "05 沙滩岛/设施/Z5_Fisherman"
+            },
+            {
+              "maxY": 11,
+              "minY": 5,
+              "name": "Z5_Shop",
+              "overlapX": 3,
+              "overlapZ": 6,
+              "path": "05 沙滩岛/设施/Z5_Shop"
+            }
+          ],
+          "label": "A|紧贴水岸",
+          "maxX": 740,
+          "maxZ": 352,
+          "minX": 700,
+          "minZ": 316,
+          "scale": 1
+        },
+        {
+          "collisionHits": [
+            {
+              "maxY": 6.5,
+              "minY": 5,
+              "name": "Z5_FerryOut",
+              "overlapX": 1.5,
+              "overlapZ": 1.5,
+              "path": "05 沙滩岛/摆渡/Z5_FerryOut"
+            },
+            {
+              "maxY": 6.5,
+              "minY": 5,
+              "name": "Z5_FerryReturn",
+              "overlapX": 1.5,
+              "overlapZ": 1.5,
+              "path": "05 沙滩岛/摆渡/Z5_FerryReturn"
+            },
+            {
+              "maxY": 7.5,
+              "minY": 6,
+              "name": "Z5_Bait1",
+              "overlapX": 1.5,
+              "overlapZ": 1.5,
+              "path": "05 沙滩岛/设施/Z5_Bait1"
+            },
+            {
+              "maxY": 7.5,
+              "minY": 6,
+              "name": "Z5_Bait2",
+              "overlapX": 1.5,
+              "overlapZ": 1.5,
+              "path": "05 沙滩岛/设施/Z5_Bait2"
+            },
+            {
+              "maxY": 6.5,
+              "minY": 5,
+              "name": "Z5_Grill",
+              "overlapX": 1.5,
+              "overlapZ": 1.5,
+              "path": "05 沙滩岛/设施/Z5_Grill"
+            },
+            {
+              "maxY": 6.5,
+              "minY": 5,
+              "name": "Z5_Lottery",
+              "overlapX": 1.5,
+              "overlapZ": 1.5,
+              "path": "05 沙滩岛/设施/Z5_Lottery"
+            },
+            {
+              "maxY": 9.5,
+              "minY": 8,
+              "name": "FishFood",
+              "overlapX": 1,
+              "overlapZ": 2,
+              "path": "05 沙滩岛/设施/Z5_Shop/FishFood"
+            }
+          ],
+          "hits": [
+            {
+              "maxY": 14,
+              "minY": 5,
+              "name": "Z5_Fisherman",
+              "overlapX": 4.5,
+              "overlapZ": 9,
+              "path": "05 沙滩岛/设施/Z5_Fisherman"
+            },
+            {
+              "maxY": 11,
+              "minY": 5,
+              "name": "Z5_Shop",
+              "overlapX": 3,
+              "overlapZ": 6,
+              "path": "05 沙滩岛/设施/Z5_Shop"
+            },
+            {
+              "maxY": 6.5,
+              "minY": 5,
+              "name": "Z5_FerryOut",
+              "overlapX": 1.5,
+              "overlapZ": 1.5,
+              "path": "05 沙滩岛/摆渡/Z5_FerryOut"
+            },
+            {
+              "maxY": 6.5,
+              "minY": 5,
+              "name": "Z5_FerryReturn",
+              "overlapX": 1.5,
+              "overlapZ": 1.5,
+              "path": "05 沙滩岛/摆渡/Z5_FerryReturn"
+            },
+            {
+              "maxY": 7.5,
+              "minY": 6,
+              "name": "Z5_Bait1",
+              "overlapX": 1.5,
+              "overlapZ": 1.5,
+              "path": "05 沙滩岛/设施/Z5_Bait1"
+            },
+            {
+              "maxY": 7.5,
+              "minY": 6,
+              "name": "Z5_Bait2",
+              "overlapX": 1.5,
+              "overlapZ": 1.5,
+              "path": "05 沙滩岛/设施/Z5_Bait2"
+            },
+            {
+              "maxY": 6.5,
+              "minY": 5,
+              "name": "Z5_Grill",
+              "overlapX": 1.5,
+              "overlapZ": 1.5,
+              "path": "05 沙滩岛/设施/Z5_Grill"
+            },
+            {
+              "maxY": 6.5,
+              "minY": 5,
+              "name": "Z5_Lottery",
+              "overlapX": 1.5,
+              "overlapZ": 1.5,
+              "path": "05 沙滩岛/设施/Z5_Lottery"
+            },
+            {
+              "maxY": 9.5,
+              "minY": 8,
+              "name": "FishFood",
+              "overlapX": 1,
+              "overlapZ": 2,
+              "path": "05 沙滩岛/设施/Z5_Shop/FishFood"
+            }
+          ],
+          "interactionHits": [
+            {
+              "maxY": 14,
+              "minY": 5,
+              "name": "Z5_Fisherman",
+              "overlapX": 4.5,
+              "overlapZ": 9,
+              "path": "05 沙滩岛/设施/Z5_Fisherman"
+            },
+            {
+              "maxY": 11,
+              "minY": 5,
+              "name": "Z5_Shop",
+              "overlapX": 3,
+              "overlapZ": 6,
+              "path": "05 沙滩岛/设施/Z5_Shop"
+            }
+          ],
+          "label": "B|退让通道后",
+          "maxX": 740,
+          "maxZ": 344,
+          "minX": 700,
+          "minZ": 308,
+          "scale": 1
+        }
+      ],
+      "corridor": {
+        "all": {
+          "blockers": [
+            "Z5_BoundarySouth",
+            "Z5_BoundarySouth",
+            "Z5_BoundarySouth",
+            "Z5_BoundarySouth",
+            "Z5_BoundarySouth",
+            "Z5_BoundarySouth",
+            "Z5_BoundarySouth",
+            "Z5_Fisherman",
+            "Z5_Fisherman",
+            "Z5_Fisherman",
+            "Z5_FerryReturn",
+            "Z5_BoundarySouth",
+            "Z5_Grill",
+            "Z5_BoundarySouth",
+            "Z5_BoundarySouth",
+            "Z5_Bait1",
+            "Z5_BoundarySouth",
+            "Z5_Bait2",
+            "Z5_Lottery",
+            "Z5_BoundarySouth",
+            "Z5_BoundarySouth",
+            "Z5_BoundarySouth",
+            "Z5_FerryOut",
+            "Z5_Shop",
+            "Z5_Shop",
+            "Z5_Shop",
+            "Z5_BoundarySouth",
+            "Z5_BoundarySouth",
+            "Z5_BoundarySouth",
+            "Z5_BoundarySouth",
+            "Z5_BoundarySouth",
+            "Z5_BoundarySouth"
+          ],
+          "longestRun": 32,
+          "longestRunLength": 80,
+          "minAt": 19,
+          "minWidth": 26.25,
+          "sampleStep": 2.5,
+          "widths": [
+            80.5,
+            80.5,
+            80.5,
+            80.5,
+            80.5,
+            80.5,
+            80.5,
+            27.5,
+            27.5,
+            27.5,
+            41.25,
+            80.5,
+            41.25,
+            80.5,
+            80.5,
+            34.25,
+            80.5,
+            34.25,
+            26.25,
+            80.5,
+            80.5,
+            80.5,
+            41.25,
+            29,
+            29,
+            29,
+            80.5,
+            80.5,
+            80.5,
+            80.5,
+            80.5,
+            80.5
+          ]
+        },
+        "collision": {
+          "blockers": [
+            "Z5_BoundarySouth",
+            "Z5_BoundarySouth",
+            "Z5_BoundarySouth",
+            "Z5_BoundarySouth",
+            "Z5_BoundarySouth",
+            "Z5_BoundarySouth",
+            "Z5_BoundarySouth",
+            "Z5_BoundarySouth",
+            "Z5_BoundarySouth",
+            "Z5_BoundarySouth",
+            "Z5_FerryReturn",
+            "Z5_BoundarySouth",
+            "Z5_Grill",
+            "Z5_BoundarySouth",
+            "Z5_BoundarySouth",
+            "Z5_Bait1",
+            "Z5_BoundarySouth",
+            "Z5_Bait2",
+            "Z5_Lottery",
+            "Z5_BoundarySouth",
+            "Z5_BoundarySouth",
+            "Z5_BoundarySouth",
+            "Z5_FerryOut",
+            "Z5_BoundarySouth",
+            "FishFood",
+            "Z5_BoundarySouth",
+            "Z5_BoundarySouth",
+            "Z5_BoundarySouth",
+            "Z5_BoundarySouth",
+            "Z5_BoundarySouth",
+            "Z5_BoundarySouth",
+            "Z5_BoundarySouth"
+          ],
+          "longestRun": 32,
+          "longestRunLength": 80,
+          "minAt": 19,
+          "minWidth": 26.25,
+          "sampleStep": 2.5,
+          "widths": [
+            80.5,
+            80.5,
+            80.5,
+            80.5,
+            80.5,
+            80.5,
+            80.5,
+            80.5,
+            80.5,
+            80.5,
+            41.25,
+            80.5,
+            41.25,
+            80.5,
+            80.5,
+            34.25,
+            80.5,
+            34.25,
+            26.25,
+            80.5,
+            80.5,
+            80.5,
+            41.25,
+            80.5,
+            30.75,
+            80.5,
+            80.5,
+            80.5,
+            80.5,
+            80.5,
+            80.5,
+            80.5
+          ]
+        },
+        "minAt": 19,
+        "minWidth": 26.25,
+        "sampleStep": 2.5
+      },
+      "groundY": 6,
+      "index": 5,
+      "inset": {
+        "maxX": 1.5,
+        "maxZ": 1.5,
+        "minX": 1.5,
+        "minZ": 1.5
+      },
+      "label": "05 沙滩岛",
+      "math": {
+        "bottomY": -30,
+        "maxFlightHeight": 20,
+        "maxX": 780,
+        "maxZ": 390,
+        "minX": 660,
+        "minZ": 270,
+        "topY": 40
+      },
+      "nodes": 19,
+      "sceneState": "planned",
+      "shore": {
+        "centerX": 720,
+        "centerZ": 364,
+        "edgeZ": 352,
+        "inland": -1,
+        "kind": "rect",
+        "maxX": 760,
+        "maxZ": 376,
+        "minX": 680,
+        "minZ": 352,
+        "name": "Z5_Water",
+        "side": "+Z",
+        "source": "scene",
+        "spanMax": 760,
+        "spanMin": 680,
+        "surfaceY": 3,
+        "topY": 3
+      },
+      "support": {
+        "coverage": {
+          "A|紧贴水岸": 6.25,
+          "B|退让通道后": 7.8125
+        },
+        "highestSurface": 9.5,
+        "landTop": 2,
+        "surfaces": [
+          {
+            "maxX": 725,
+            "maxZ": 325,
+            "minX": 715,
+            "minZ": 315,
+            "name": "Z5_Safe",
+            "path": "05 沙滩岛/摆渡/Z5_Safe",
+            "topY": 6.2
+          }
+        ]
+      },
+      "walls": {
+        "innerMaxX": 778.5,
+        "innerMaxZ": 388.5,
+        "innerMinX": 661.5,
+        "innerMinZ": 271.5,
+        "wallCount": 4,
+        "xWalls": [
+          {
+            "inner": 661.5,
+            "name": "Z5_BoundaryWest",
+            "x": 660
+          },
+          {
+            "inner": 778.5,
+            "name": "Z5_BoundaryEast",
+            "x": 780
+          }
+        ],
+        "zWalls": [
+          {
+            "inner": 271.5,
+            "name": "Z5_BoundarySouth",
+            "z": 270
+          },
+          {
+            "inner": 388.5,
+            "name": "Z5_BoundaryNorth",
+            "z": 390
+          }
+        ]
+      },
+      "waterDrop": 3,
+      "window": {
+        "best": {
+          "centerX": 682,
+          "centerZ": 290,
+          "intrudedAll": 0,
+          "intrudedCollision": 0
+        },
+        "candidates": 3721,
+        "freeAll": 606,
+        "freeCollision": 719,
+        "height": 36,
+        "step": 2,
+        "width": 40
+      },
+      "zoneId": "beachIsland"
+    },
+    {
+      "anchors": {
+        "deltas": [],
+        "entries": 15,
+        "maxDx": 0,
+        "maxDy": 0,
+        "maxDz": 0,
+        "missing": [],
+        "nonzero": 0,
+        "resolved": 15
+      },
+      "ceilingY": 26,
+      "combat": [
+        {
+          "collisionHits": [
+            {
+              "maxY": 9.5,
+              "minY": 8,
+              "name": "FishFood",
+              "overlapX": 2,
+              "overlapZ": 2,
+              "path": "06 礁石岛/设施/Z6_Shop/FishFood"
+            },
+            {
+              "maxY": 7.5,
+              "minY": 6,
+              "name": "Z6_Bait1",
+              "overlapX": 1.5,
+              "overlapZ": 1.5,
+              "path": "06 礁石岛/设施/Z6_Bait1"
+            },
+            {
+              "maxY": 7.5,
+              "minY": 6,
+              "name": "Z6_Bait2",
+              "overlapX": 1.5,
+              "overlapZ": 1.5,
+              "path": "06 礁石岛/设施/Z6_Bait2"
+            },
+            {
+              "maxY": 6.5,
+              "minY": 5,
+              "name": "Z6_Lottery",
+              "overlapX": 1.5,
+              "overlapZ": 1.5,
+              "path": "06 礁石岛/设施/Z6_Lottery"
+            }
+          ],
+          "hits": [
+            {
+              "maxY": 14,
+              "minY": 5,
+              "name": "Z6_Fisherman",
+              "overlapX": 8.5,
+              "overlapZ": 9,
+              "path": "06 礁石岛/设施/Z6_Fisherman"
+            },
+            {
+              "maxY": 11,
+              "minY": 5,
+              "name": "Z6_Shop",
+              "overlapX": 6,
+              "overlapZ": 6,
+              "path": "06 礁石岛/设施/Z6_Shop"
+            },
+            {
+              "maxY": 9.5,
+              "minY": 8,
+              "name": "FishFood",
+              "overlapX": 2,
+              "overlapZ": 2,
+              "path": "06 礁石岛/设施/Z6_Shop/FishFood"
+            },
+            {
+              "maxY": 7.5,
+              "minY": 6,
+              "name": "Z6_Bait1",
+              "overlapX": 1.5,
+              "overlapZ": 1.5,
+              "path": "06 礁石岛/设施/Z6_Bait1"
+            },
+            {
+              "maxY": 7.5,
+              "minY": 6,
+              "name": "Z6_Bait2",
+              "overlapX": 1.5,
+              "overlapZ": 1.5,
+              "path": "06 礁石岛/设施/Z6_Bait2"
+            },
+            {
+              "maxY": 6.5,
+              "minY": 5,
+              "name": "Z6_Lottery",
+              "overlapX": 1.5,
+              "overlapZ": 1.5,
+              "path": "06 礁石岛/设施/Z6_Lottery"
+            }
+          ],
+          "interactionHits": [
+            {
+              "maxY": 14,
+              "minY": 5,
+              "name": "Z6_Fisherman",
+              "overlapX": 8.5,
+              "overlapZ": 9,
+              "path": "06 礁石岛/设施/Z6_Fisherman"
+            },
+            {
+              "maxY": 11,
+              "minY": 5,
+              "name": "Z6_Shop",
+              "overlapX": 6,
+              "overlapZ": 6,
+              "path": "06 礁石岛/设施/Z6_Shop"
+            }
+          ],
+          "label": "A|紧贴水岸",
+          "maxX": 504,
+          "maxZ": 352,
+          "minX": 456,
+          "minZ": 312,
+          "scale": 1
+        },
+        {
+          "collisionHits": [
+            {
+              "maxY": 9.5,
+              "minY": 8,
+              "name": "FishFood",
+              "overlapX": 2,
+              "overlapZ": 2,
+              "path": "06 礁石岛/设施/Z6_Shop/FishFood"
+            },
+            {
+              "maxY": 6.5,
+              "minY": 5,
+              "name": "Z6_FerryOut",
+              "overlapX": 1.5,
+              "overlapZ": 1.5,
+              "path": "06 礁石岛/摆渡/Z6_FerryOut"
+            },
+            {
+              "maxY": 6.5,
+              "minY": 5,
+              "name": "Z6_FerryReturn",
+              "overlapX": 1.5,
+              "overlapZ": 1.5,
+              "path": "06 礁石岛/摆渡/Z6_FerryReturn"
+            },
+            {
+              "maxY": 7.5,
+              "minY": 6,
+              "name": "Z6_Bait1",
+              "overlapX": 1.5,
+              "overlapZ": 1.5,
+              "path": "06 礁石岛/设施/Z6_Bait1"
+            },
+            {
+              "maxY": 7.5,
+              "minY": 6,
+              "name": "Z6_Bait2",
+              "overlapX": 1.5,
+              "overlapZ": 1.5,
+              "path": "06 礁石岛/设施/Z6_Bait2"
+            },
+            {
+              "maxY": 6.5,
+              "minY": 5,
+              "name": "Z6_Grill",
+              "overlapX": 1.5,
+              "overlapZ": 1.5,
+              "path": "06 礁石岛/设施/Z6_Grill"
+            },
+            {
+              "maxY": 6.5,
+              "minY": 5,
+              "name": "Z6_Lottery",
+              "overlapX": 1.5,
+              "overlapZ": 1.5,
+              "path": "06 礁石岛/设施/Z6_Lottery"
+            }
+          ],
+          "hits": [
+            {
+              "maxY": 14,
+              "minY": 5,
+              "name": "Z6_Fisherman",
+              "overlapX": 8.5,
+              "overlapZ": 9,
+              "path": "06 礁石岛/设施/Z6_Fisherman"
+            },
+            {
+              "maxY": 11,
+              "minY": 5,
+              "name": "Z6_Shop",
+              "overlapX": 6,
+              "overlapZ": 6,
+              "path": "06 礁石岛/设施/Z6_Shop"
+            },
+            {
+              "maxY": 9.5,
+              "minY": 8,
+              "name": "FishFood",
+              "overlapX": 2,
+              "overlapZ": 2,
+              "path": "06 礁石岛/设施/Z6_Shop/FishFood"
+            },
+            {
+              "maxY": 6.5,
+              "minY": 5,
+              "name": "Z6_FerryOut",
+              "overlapX": 1.5,
+              "overlapZ": 1.5,
+              "path": "06 礁石岛/摆渡/Z6_FerryOut"
+            },
+            {
+              "maxY": 6.5,
+              "minY": 5,
+              "name": "Z6_FerryReturn",
+              "overlapX": 1.5,
+              "overlapZ": 1.5,
+              "path": "06 礁石岛/摆渡/Z6_FerryReturn"
+            },
+            {
+              "maxY": 7.5,
+              "minY": 6,
+              "name": "Z6_Bait1",
+              "overlapX": 1.5,
+              "overlapZ": 1.5,
+              "path": "06 礁石岛/设施/Z6_Bait1"
+            },
+            {
+              "maxY": 7.5,
+              "minY": 6,
+              "name": "Z6_Bait2",
+              "overlapX": 1.5,
+              "overlapZ": 1.5,
+              "path": "06 礁石岛/设施/Z6_Bait2"
+            },
+            {
+              "maxY": 6.5,
+              "minY": 5,
+              "name": "Z6_Grill",
+              "overlapX": 1.5,
+              "overlapZ": 1.5,
+              "path": "06 礁石岛/设施/Z6_Grill"
+            },
+            {
+              "maxY": 6.5,
+              "minY": 5,
+              "name": "Z6_Lottery",
+              "overlapX": 1.5,
+              "overlapZ": 1.5,
+              "path": "06 礁石岛/设施/Z6_Lottery"
+            }
+          ],
+          "interactionHits": [
+            {
+              "maxY": 14,
+              "minY": 5,
+              "name": "Z6_Fisherman",
+              "overlapX": 8.5,
+              "overlapZ": 9,
+              "path": "06 礁石岛/设施/Z6_Fisherman"
+            },
+            {
+              "maxY": 11,
+              "minY": 5,
+              "name": "Z6_Shop",
+              "overlapX": 6,
+              "overlapZ": 6,
+              "path": "06 礁石岛/设施/Z6_Shop"
+            }
+          ],
+          "label": "B|退让通道后",
+          "maxX": 504,
+          "maxZ": 344,
+          "minX": 456,
+          "minZ": 304,
+          "scale": 1
+        }
+      ],
+      "corridor": {
+        "all": {
+          "blockers": [
+            "Z6_BoundarySouth",
+            "Z6_BoundarySouth",
+            "Z6_BoundarySouth",
+            "Z6_BoundarySouth",
+            "Z6_BoundarySouth",
+            "Z6_BoundarySouth",
+            "Z6_BoundarySouth",
+            "Z6_Fisherman",
+            "Z6_Fisherman",
+            "Z6_Fisherman",
+            "Z6_FerryReturn",
+            "Z6_BoundarySouth",
+            "Z6_Grill",
+            "Z6_BoundarySouth",
+            "Z6_BoundarySouth",
+            "Z6_Bait1",
+            "Z6_BoundarySouth",
+            "Z6_Bait2",
+            "Z6_Lottery",
+            "Z6_BoundarySouth",
+            "Z6_BoundarySouth",
+            "Z6_BoundarySouth",
+            "Z6_FerryOut",
+            "Z6_Shop",
+            "Z6_Shop",
+            "Z6_Shop",
+            "Z6_BoundarySouth",
+            "Z6_BoundarySouth",
+            "Z6_BoundarySouth",
+            "Z6_BoundarySouth",
+            "Z6_BoundarySouth",
+            "Z6_BoundarySouth"
+          ],
+          "longestRun": 32,
+          "longestRunLength": 80,
+          "minAt": 19,
+          "minWidth": 26.25,
+          "sampleStep": 2.5,
+          "widths": [
+            80.5,
+            80.5,
+            80.5,
+            80.5,
+            80.5,
+            80.5,
+            80.5,
+            27.5,
+            27.5,
+            27.5,
+            41.25,
+            80.5,
+            41.25,
+            80.5,
+            80.5,
+            34.25,
+            80.5,
+            34.25,
+            26.25,
+            80.5,
+            80.5,
+            80.5,
+            41.25,
+            29,
+            29,
+            29,
+            80.5,
+            80.5,
+            80.5,
+            80.5,
+            80.5,
+            80.5
+          ]
+        },
+        "collision": {
+          "blockers": [
+            "Z6_BoundarySouth",
+            "Z6_BoundarySouth",
+            "Z6_BoundarySouth",
+            "Z6_BoundarySouth",
+            "Z6_BoundarySouth",
+            "Z6_BoundarySouth",
+            "Z6_BoundarySouth",
+            "Z6_BoundarySouth",
+            "Z6_BoundarySouth",
+            "Z6_BoundarySouth",
+            "Z6_FerryReturn",
+            "Z6_BoundarySouth",
+            "Z6_Grill",
+            "Z6_BoundarySouth",
+            "Z6_BoundarySouth",
+            "Z6_Bait1",
+            "Z6_BoundarySouth",
+            "Z6_Bait2",
+            "Z6_Lottery",
+            "Z6_BoundarySouth",
+            "Z6_BoundarySouth",
+            "Z6_BoundarySouth",
+            "Z6_FerryOut",
+            "Z6_BoundarySouth",
+            "FishFood",
+            "Z6_BoundarySouth",
+            "Z6_BoundarySouth",
+            "Z6_BoundarySouth",
+            "Z6_BoundarySouth",
+            "Z6_BoundarySouth",
+            "Z6_BoundarySouth",
+            "Z6_BoundarySouth"
+          ],
+          "longestRun": 32,
+          "longestRunLength": 80,
+          "minAt": 19,
+          "minWidth": 26.25,
+          "sampleStep": 2.5,
+          "widths": [
+            80.5,
+            80.5,
+            80.5,
+            80.5,
+            80.5,
+            80.5,
+            80.5,
+            80.5,
+            80.5,
+            80.5,
+            41.25,
+            80.5,
+            41.25,
+            80.5,
+            80.5,
+            34.25,
+            80.5,
+            34.25,
+            26.25,
+            80.5,
+            80.5,
+            80.5,
+            41.25,
+            80.5,
+            30.75,
+            80.5,
+            80.5,
+            80.5,
+            80.5,
+            80.5,
+            80.5,
+            80.5
+          ]
+        },
+        "minAt": 19,
+        "minWidth": 26.25,
+        "sampleStep": 2.5
+      },
+      "groundY": 6,
+      "index": 6,
+      "inset": {
+        "maxX": 1.5,
+        "maxZ": 1.5,
+        "minX": 1.5,
+        "minZ": 1.5
+      },
+      "label": "06 礁石岛",
+      "math": {
+        "bottomY": -30,
+        "maxFlightHeight": 20,
+        "maxX": 540,
+        "maxZ": 390,
+        "minX": 420,
+        "minZ": 270,
+        "topY": 40
+      },
+      "nodes": 19,
+      "sceneState": "planned",
+      "shore": {
+        "centerX": 480,
+        "centerZ": 364,
+        "edgeZ": 352,
+        "inland": -1,
+        "kind": "rect",
+        "maxX": 520,
+        "maxZ": 376,
+        "minX": 440,
+        "minZ": 352,
+        "name": "Z6_Water",
+        "side": "+Z",
+        "source": "scene",
+        "spanMax": 520,
+        "spanMin": 440,
+        "surfaceY": 3,
+        "topY": 3
+      },
+      "support": {
+        "coverage": {
+          "A|紧贴水岸": 6.25,
+          "B|退让通道后": 6.25
+        },
+        "highestSurface": 9.5,
+        "landTop": 2,
+        "surfaces": [
+          {
+            "maxX": 485,
+            "maxZ": 325,
+            "minX": 475,
+            "minZ": 315,
+            "name": "Z6_Safe",
+            "path": "06 礁石岛/摆渡/Z6_Safe",
+            "topY": 6.2
+          }
+        ]
+      },
+      "walls": {
+        "innerMaxX": 538.5,
+        "innerMaxZ": 388.5,
+        "innerMinX": 421.5,
+        "innerMinZ": 271.5,
+        "wallCount": 4,
+        "xWalls": [
+          {
+            "inner": 421.5,
+            "name": "Z6_BoundaryWest",
+            "x": 420
+          },
+          {
+            "inner": 538.5,
+            "name": "Z6_BoundaryEast",
+            "x": 540
+          }
+        ],
+        "zWalls": [
+          {
+            "inner": 271.5,
+            "name": "Z6_BoundarySouth",
+            "z": 270
+          },
+          {
+            "inner": 388.5,
+            "name": "Z6_BoundaryNorth",
+            "z": 390
+          }
+        ]
+      },
+      "waterDrop": 3,
+      "window": {
+        "best": {
+          "centerX": 446,
+          "centerZ": 346,
+          "intrudedAll": 0,
+          "intrudedCollision": 0
+        },
+        "candidates": 3721,
+        "freeAll": 423,
+        "freeCollision": 470,
+        "height": 40,
+        "step": 2,
+        "width": 48
+      },
+      "zoneId": "reefIsland"
+    },
+    {
+      "anchors": {
+        "deltas": [],
+        "entries": 14,
+        "maxDx": 0,
+        "maxDy": 0,
+        "maxDz": 0,
+        "missing": [],
+        "nonzero": 0,
+        "resolved": 14
+      },
+      "ceilingY": 26,
+      "combat": [
+        {
+          "collisionHits": [
+            {
+              "maxY": 9.5,
+              "minY": 8,
+              "name": "FishFood",
+              "overlapX": 2,
+              "overlapZ": 2,
+              "path": "07 火山岛/设施/Z7_Shop/FishFood"
+            },
+            {
+              "maxY": 7.5,
+              "minY": 6,
+              "name": "Z7_Bait1",
+              "overlapX": 1.5,
+              "overlapZ": 1.5,
+              "path": "07 火山岛/设施/Z7_Bait1"
+            },
+            {
+              "maxY": 7.5,
+              "minY": 6,
+              "name": "Z7_Bait2",
+              "overlapX": 1.5,
+              "overlapZ": 1.5,
+              "path": "07 火山岛/设施/Z7_Bait2"
+            },
+            {
+              "maxY": 6.5,
+              "minY": 5,
+              "name": "Z7_Lottery",
+              "overlapX": 1.5,
+              "overlapZ": 1.5,
+              "path": "07 火山岛/设施/Z7_Lottery"
+            }
+          ],
+          "hits": [
+            {
+              "maxY": 14,
+              "minY": 5,
+              "name": "Z7_Fisherman",
+              "overlapX": 8.5,
+              "overlapZ": 9,
+              "path": "07 火山岛/设施/Z7_Fisherman"
+            },
+            {
+              "maxY": 11,
+              "minY": 5,
+              "name": "Z7_Shop",
+              "overlapX": 6,
+              "overlapZ": 6,
+              "path": "07 火山岛/设施/Z7_Shop"
+            },
+            {
+              "maxY": 9.5,
+              "minY": 8,
+              "name": "FishFood",
+              "overlapX": 2,
+              "overlapZ": 2,
+              "path": "07 火山岛/设施/Z7_Shop/FishFood"
+            },
+            {
+              "maxY": 7.5,
+              "minY": 6,
+              "name": "Z7_Bait1",
+              "overlapX": 1.5,
+              "overlapZ": 1.5,
+              "path": "07 火山岛/设施/Z7_Bait1"
+            },
+            {
+              "maxY": 7.5,
+              "minY": 6,
+              "name": "Z7_Bait2",
+              "overlapX": 1.5,
+              "overlapZ": 1.5,
+              "path": "07 火山岛/设施/Z7_Bait2"
+            },
+            {
+              "maxY": 6.5,
+              "minY": 5,
+              "name": "Z7_Lottery",
+              "overlapX": 1.5,
+              "overlapZ": 1.5,
+              "path": "07 火山岛/设施/Z7_Lottery"
+            }
+          ],
+          "interactionHits": [
+            {
+              "maxY": 14,
+              "minY": 5,
+              "name": "Z7_Fisherman",
+              "overlapX": 8.5,
+              "overlapZ": 9,
+              "path": "07 火山岛/设施/Z7_Fisherman"
+            },
+            {
+              "maxY": 11,
+              "minY": 5,
+              "name": "Z7_Shop",
+              "overlapX": 6,
+              "overlapZ": 6,
+              "path": "07 火山岛/设施/Z7_Shop"
+            }
+          ],
+          "label": "A|紧贴水岸",
+          "maxX": 264,
+          "maxZ": 352,
+          "minX": 216,
+          "minZ": 312,
+          "scale": 1
+        },
+        {
+          "collisionHits": [
+            {
+              "maxY": 9.5,
+              "minY": 8,
+              "name": "FishFood",
+              "overlapX": 2,
+              "overlapZ": 2,
+              "path": "07 火山岛/设施/Z7_Shop/FishFood"
+            },
+            {
+              "maxY": 6.5,
+              "minY": 5,
+              "name": "Z7_FerryReturn",
+              "overlapX": 1.5,
+              "overlapZ": 1.5,
+              "path": "07 火山岛/摆渡/Z7_FerryReturn"
+            },
+            {
+              "maxY": 7.5,
+              "minY": 6,
+              "name": "Z7_Bait1",
+              "overlapX": 1.5,
+              "overlapZ": 1.5,
+              "path": "07 火山岛/设施/Z7_Bait1"
+            },
+            {
+              "maxY": 7.5,
+              "minY": 6,
+              "name": "Z7_Bait2",
+              "overlapX": 1.5,
+              "overlapZ": 1.5,
+              "path": "07 火山岛/设施/Z7_Bait2"
+            },
+            {
+              "maxY": 6.5,
+              "minY": 5,
+              "name": "Z7_Grill",
+              "overlapX": 1.5,
+              "overlapZ": 1.5,
+              "path": "07 火山岛/设施/Z7_Grill"
+            },
+            {
+              "maxY": 6.5,
+              "minY": 5,
+              "name": "Z7_Lottery",
+              "overlapX": 1.5,
+              "overlapZ": 1.5,
+              "path": "07 火山岛/设施/Z7_Lottery"
+            }
+          ],
+          "hits": [
+            {
+              "maxY": 14,
+              "minY": 5,
+              "name": "Z7_Fisherman",
+              "overlapX": 8.5,
+              "overlapZ": 9,
+              "path": "07 火山岛/设施/Z7_Fisherman"
+            },
+            {
+              "maxY": 11,
+              "minY": 5,
+              "name": "Z7_Shop",
+              "overlapX": 6,
+              "overlapZ": 6,
+              "path": "07 火山岛/设施/Z7_Shop"
+            },
+            {
+              "maxY": 9.5,
+              "minY": 8,
+              "name": "FishFood",
+              "overlapX": 2,
+              "overlapZ": 2,
+              "path": "07 火山岛/设施/Z7_Shop/FishFood"
+            },
+            {
+              "maxY": 6.5,
+              "minY": 5,
+              "name": "Z7_FerryReturn",
+              "overlapX": 1.5,
+              "overlapZ": 1.5,
+              "path": "07 火山岛/摆渡/Z7_FerryReturn"
+            },
+            {
+              "maxY": 7.5,
+              "minY": 6,
+              "name": "Z7_Bait1",
+              "overlapX": 1.5,
+              "overlapZ": 1.5,
+              "path": "07 火山岛/设施/Z7_Bait1"
+            },
+            {
+              "maxY": 7.5,
+              "minY": 6,
+              "name": "Z7_Bait2",
+              "overlapX": 1.5,
+              "overlapZ": 1.5,
+              "path": "07 火山岛/设施/Z7_Bait2"
+            },
+            {
+              "maxY": 6.5,
+              "minY": 5,
+              "name": "Z7_Grill",
+              "overlapX": 1.5,
+              "overlapZ": 1.5,
+              "path": "07 火山岛/设施/Z7_Grill"
+            },
+            {
+              "maxY": 6.5,
+              "minY": 5,
+              "name": "Z7_Lottery",
+              "overlapX": 1.5,
+              "overlapZ": 1.5,
+              "path": "07 火山岛/设施/Z7_Lottery"
+            }
+          ],
+          "interactionHits": [
+            {
+              "maxY": 14,
+              "minY": 5,
+              "name": "Z7_Fisherman",
+              "overlapX": 8.5,
+              "overlapZ": 9,
+              "path": "07 火山岛/设施/Z7_Fisherman"
+            },
+            {
+              "maxY": 11,
+              "minY": 5,
+              "name": "Z7_Shop",
+              "overlapX": 6,
+              "overlapZ": 6,
+              "path": "07 火山岛/设施/Z7_Shop"
+            }
+          ],
+          "label": "B|退让通道后",
+          "maxX": 264,
+          "maxZ": 344,
+          "minX": 216,
+          "minZ": 304,
+          "scale": 1
+        }
+      ],
+      "corridor": {
+        "all": {
+          "blockers": [
+            "Z7_BoundarySouth",
+            "Z7_BoundarySouth",
+            "Z7_BoundarySouth",
+            "Z7_BoundarySouth",
+            "Z7_BoundarySouth",
+            "Z7_BoundarySouth",
+            "Z7_BoundarySouth",
+            "Z7_Fisherman",
+            "Z7_Fisherman",
+            "Z7_Fisherman",
+            "Z7_FerryReturn",
+            "Z7_BoundarySouth",
+            "Z7_Grill",
+            "Z7_BoundarySouth",
+            "Z7_BoundarySouth",
+            "Z7_Bait1",
+            "Z7_BoundarySouth",
+            "Z7_Bait2",
+            "Z7_Lottery",
+            "Z7_BoundarySouth",
+            "Z7_BoundarySouth",
+            "Z7_BoundarySouth",
+            "Z7_BoundarySouth",
+            "Z7_Shop",
+            "Z7_Shop",
+            "Z7_Shop",
+            "Z7_BoundarySouth",
+            "Z7_BoundarySouth",
+            "Z7_BoundarySouth",
+            "Z7_BoundarySouth",
+            "Z7_BoundarySouth",
+            "Z7_BoundarySouth"
+          ],
+          "longestRun": 32,
+          "longestRunLength": 80,
+          "minAt": 19,
+          "minWidth": 26.25,
+          "sampleStep": 2.5,
+          "widths": [
+            80.5,
+            80.5,
+            80.5,
+            80.5,
+            80.5,
+            80.5,
+            80.5,
+            27.5,
+            27.5,
+            27.5,
+            41.25,
+            80.5,
+            41.25,
+            80.5,
+            80.5,
+            34.25,
+            80.5,
+            34.25,
+            26.25,
+            80.5,
+            80.5,
+            80.5,
+            80.5,
+            29,
+            29,
+            29,
+            80.5,
+            80.5,
+            80.5,
+            80.5,
+            80.5,
+            80.5
+          ]
+        },
+        "collision": {
+          "blockers": [
+            "Z7_BoundarySouth",
+            "Z7_BoundarySouth",
+            "Z7_BoundarySouth",
+            "Z7_BoundarySouth",
+            "Z7_BoundarySouth",
+            "Z7_BoundarySouth",
+            "Z7_BoundarySouth",
+            "Z7_BoundarySouth",
+            "Z7_BoundarySouth",
+            "Z7_BoundarySouth",
+            "Z7_FerryReturn",
+            "Z7_BoundarySouth",
+            "Z7_Grill",
+            "Z7_BoundarySouth",
+            "Z7_BoundarySouth",
+            "Z7_Bait1",
+            "Z7_BoundarySouth",
+            "Z7_Bait2",
+            "Z7_Lottery",
+            "Z7_BoundarySouth",
+            "Z7_BoundarySouth",
+            "Z7_BoundarySouth",
+            "Z7_BoundarySouth",
+            "Z7_BoundarySouth",
+            "FishFood",
+            "Z7_BoundarySouth",
+            "Z7_BoundarySouth",
+            "Z7_BoundarySouth",
+            "Z7_BoundarySouth",
+            "Z7_BoundarySouth",
+            "Z7_BoundarySouth",
+            "Z7_BoundarySouth"
+          ],
+          "longestRun": 32,
+          "longestRunLength": 80,
+          "minAt": 19,
+          "minWidth": 26.25,
+          "sampleStep": 2.5,
+          "widths": [
+            80.5,
+            80.5,
+            80.5,
+            80.5,
+            80.5,
+            80.5,
+            80.5,
+            80.5,
+            80.5,
+            80.5,
+            41.25,
+            80.5,
+            41.25,
+            80.5,
+            80.5,
+            34.25,
+            80.5,
+            34.25,
+            26.25,
+            80.5,
+            80.5,
+            80.5,
+            80.5,
+            80.5,
+            30.75,
+            80.5,
+            80.5,
+            80.5,
+            80.5,
+            80.5,
+            80.5,
+            80.5
+          ]
+        },
+        "minAt": 19,
+        "minWidth": 26.25,
+        "sampleStep": 2.5
+      },
+      "groundY": 6,
+      "index": 7,
+      "inset": {
+        "maxX": 1.5,
+        "maxZ": 1.5,
+        "minX": 1.5,
+        "minZ": 1.5
+      },
+      "label": "07 火山岛",
+      "math": {
+        "bottomY": -30,
+        "maxFlightHeight": 20,
+        "maxX": 300,
+        "maxZ": 390,
+        "minX": 180,
+        "minZ": 270,
+        "topY": 40
+      },
+      "nodes": 18,
+      "sceneState": "planned",
+      "shore": {
+        "centerX": 240,
+        "centerZ": 364,
+        "edgeZ": 352,
+        "inland": -1,
+        "kind": "rect",
+        "maxX": 280,
+        "maxZ": 376,
+        "minX": 200,
+        "minZ": 352,
+        "name": "Z7_Water",
+        "side": "+Z",
+        "source": "scene",
+        "spanMax": 280,
+        "spanMin": 200,
+        "surfaceY": 3,
+        "topY": 3
+      },
+      "support": {
+        "coverage": {
+          "A|紧贴水岸": 6.25,
+          "B|退让通道后": 6.25
+        },
+        "highestSurface": 9.5,
+        "landTop": 2,
+        "surfaces": [
+          {
+            "maxX": 245,
+            "maxZ": 325,
+            "minX": 235,
+            "minZ": 315,
+            "name": "Z7_Safe",
+            "path": "07 火山岛/摆渡/Z7_Safe",
+            "topY": 6.2
+          }
+        ]
+      },
+      "walls": {
+        "innerMaxX": 298.5,
+        "innerMaxZ": 388.5,
+        "innerMinX": 181.5,
+        "innerMinZ": 271.5,
+        "wallCount": 4,
+        "xWalls": [
+          {
+            "inner": 181.5,
+            "name": "Z7_BoundaryWest",
+            "x": 180
+          },
+          {
+            "inner": 298.5,
+            "name": "Z7_BoundaryEast",
+            "x": 300
+          }
+        ],
+        "zWalls": [
+          {
+            "inner": 271.5,
+            "name": "Z7_BoundarySouth",
+            "z": 270
+          },
+          {
+            "inner": 388.5,
+            "name": "Z7_BoundaryNorth",
+            "z": 390
+          }
+        ]
+      },
+      "waterDrop": 3,
+      "window": {
+        "best": {
+          "centerX": 206,
+          "centerZ": 346,
+          "intrudedAll": 0,
+          "intrudedCollision": 0
+        },
+        "candidates": 3721,
+        "freeAll": 453,
+        "freeCollision": 504,
+        "height": 40,
+        "step": 2,
+        "width": 48
+      },
+      "zoneId": "volcanoIsland"
+    }
+  ]
+}
