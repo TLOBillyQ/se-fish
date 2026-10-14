@@ -132,6 +132,7 @@ try {
 } finally {
     $outPath = Join-Path $repo $Evidence
     New-Item -ItemType Directory -Force (Split-Path -Parent $outPath) | Out-Null
+    # 证据统一 LF：仓库证据要能逐字节复现，不能随 shell 的换行约定漂移。
     [System.IO.File]::WriteAllText($outPath, ($lines -join "`n") + "`n", $utf8)
     Write-Host ''
     Write-Host "证据已写入：$Evidence"
