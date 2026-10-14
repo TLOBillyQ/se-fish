@@ -1,0 +1,60 @@
+锚点坐标同步 dry-run（基线 evidence/issue65/zone-baseline-rows-post-p3.csv）
+口径：现场实测取 (x=centerX, y=minY, z=centerZ)，与 zone_space_contract 的 pivot 声明一致；只报差值，不判定合格。
+本工具不修改 GameCfg；下列 SYNC 行是重开核验通过后要套用的位移。
+  ZONE|01 鱼塘|entries=6|needsSync=0|missing=10|Z1_Bait1(planned), Z1_Bait2(planned), Z1_Bait3(planned), Z1_Bait4(planned), Z1_Bait5(planned), Z1_BoundaryEast(planned), Z1_BoundaryNorth(planned), Z1_BoundarySouth(planned), Z1_BoundaryWest(planned), Z1_Safe(planned)
+  ZONE|02 虾池|entries=10|needsSync=0|missing=4|Z2_Bait1(planned), Z2_Bait2(planned), Z2_Safe(planned), Z2_Water(planned)
+  SYNC|03 蟹湖|Z3_Land|Land|配置 (480.00, 0.00, 0.00) → 现场 (480.00, 0.00, 8.25)|Δ (0.00, 0.00, 8.25)|centerY≠minY
+  SYNC|03 蟹湖|Z3_Safe|Safe|配置 (480.00, 6.00, 0.00) → 现场 (480.00, 5.80, 30.50)|Δ (0.00, -0.20, 30.50)|centerY≠minY; 运行时真源
+  SYNC|03 蟹湖|Z3_Fisherman|Fisherman|配置 (500.00, 5.00, 0.00) → 现场 (449.00, 6.00, -17.00)|Δ (-51.00, 1.00, -17.00)|centerY≠minY
+  SYNC|03 蟹湖|Z3_Shop|Shop|配置 (460.00, 5.00, 0.00) → 现场 (452.00, 6.00, 21.00)|Δ (-8.00, 1.00, 21.00)|centerY≠minY
+  SYNC|03 蟹湖|Z3_Lottery|Lottery|配置 (475.00, 5.00, -5.00) → 现场 (502.00, 6.00, -18.00)|Δ (27.00, 1.00, -13.00)|centerY≠minY
+  SYNC|03 蟹湖|Z3_Grill|Grill|配置 (490.00, 5.00, 10.00) → 现场 (502.00, 6.00, 11.00)|Δ (12.00, 1.00, 1.00)|centerY≠minY
+  SYNC|03 蟹湖|Z3_Bait1|Bait1|配置 (483.00, 6.00, 3.00) → 现场 (428.00, 6.00, -24.00)|Δ (-55.00, 0.00, -27.00)|centerY≠minY
+  SYNC|03 蟹湖|Z3_Bait2|Bait2|配置 (477.00, 6.00, 3.00) → 现场 (532.00, 6.00, -24.00)|Δ (55.00, 0.00, -27.00)|centerY≠minY
+  SYNC|03 蟹湖|Z3_FerryReturn|Ferry|配置 (495.00, 5.00, 10.00) → 现场 (505.00, 6.00, 40.50)|Δ (10.00, 1.00, 30.50)|centerY≠minY; 运行时真源
+  SYNC|03 蟹湖|Z3_FerryOut|Ferry|配置 (465.00, 5.00, 10.00) → 现场 (455.00, 6.00, 40.50)|Δ (-10.00, 1.00, 30.50)|centerY≠minY; 运行时真源
+  ZONE|03 蟹湖|entries=15|needsSync=10|missing=0|
+  SYNC|04 树林岛|Z4_Land|Land|配置 (720.00, 0.00, 0.00) → 现场 (720.00, 0.00, 8.25)|Δ (0.00, 0.00, 8.25)|centerY≠minY
+  SYNC|04 树林岛|Z4_Safe|Safe|配置 (720.00, 6.00, 0.00) → 现场 (720.00, 5.80, 30.50)|Δ (0.00, -0.20, 30.50)|centerY≠minY; 运行时真源
+  SYNC|04 树林岛|Z4_Fisherman|Fisherman|配置 (740.00, 5.00, 0.00) → 现场 (685.00, 6.00, -17.00)|Δ (-55.00, 1.00, -17.00)|centerY≠minY
+  SYNC|04 树林岛|Z4_Shop|Shop|配置 (700.00, 5.00, 0.00) → 现场 (688.00, 6.00, 29.00)|Δ (-12.00, 1.00, 29.00)|centerY≠minY
+  SYNC|04 树林岛|Z4_Lottery|Lottery|配置 (715.00, 5.00, -5.00) → 现场 (746.00, 6.00, -18.00)|Δ (31.00, 1.00, -13.00)|centerY≠minY
+  SYNC|04 树林岛|Z4_Grill|Grill|配置 (730.00, 5.00, 10.00) → 现场 (746.00, 6.00, 19.00)|Δ (16.00, 1.00, 9.00)|centerY≠minY
+  SYNC|04 树林岛|Z4_Bait1|Bait1|配置 (723.00, 6.00, 3.00) → 现场 (668.00, 6.00, -24.00)|Δ (-55.00, 0.00, -27.00)|centerY≠minY
+  SYNC|04 树林岛|Z4_Bait2|Bait2|配置 (717.00, 6.00, 3.00) → 现场 (772.00, 6.00, -24.00)|Δ (55.00, 0.00, -27.00)|centerY≠minY
+  SYNC|04 树林岛|Z4_FerryReturn|Ferry|配置 (735.00, 5.00, 10.00) → 现场 (745.00, 6.00, 40.50)|Δ (10.00, 1.00, 30.50)|centerY≠minY; 运行时真源
+  SYNC|04 树林岛|Z4_FerryOut|Ferry|配置 (705.00, 5.00, 10.00) → 现场 (695.00, 6.00, 40.50)|Δ (-10.00, 1.00, 30.50)|centerY≠minY; 运行时真源
+  ZONE|04 树林岛|entries=15|needsSync=10|missing=0|
+  SYNC|05 沙滩岛|Z5_Land|Land|配置 (720.00, 0.00, 320.00) → 现场 (720.00, 0.00, 311.75)|Δ (0.00, 0.00, -8.25)|centerY≠minY
+  SYNC|05 沙滩岛|Z5_Safe|Safe|配置 (720.00, 6.00, 320.00) → 现场 (720.00, 5.80, 289.50)|Δ (0.00, -0.20, -30.50)|centerY≠minY; 运行时真源
+  SYNC|05 沙滩岛|Z5_Fisherman|Fisherman|配置 (700.00, 5.00, 320.00) → 现场 (755.00, 6.00, 337.00)|Δ (55.00, 1.00, 17.00)|centerY≠minY
+  SYNC|05 沙滩岛|Z5_Shop|Shop|配置 (740.00, 5.00, 320.00) → 现场 (752.00, 6.00, 291.00)|Δ (12.00, 1.00, -29.00)|centerY≠minY
+  SYNC|05 沙滩岛|Z5_Lottery|Lottery|配置 (725.00, 5.00, 325.00) → 现场 (694.00, 6.00, 338.00)|Δ (-31.00, 1.00, 13.00)|centerY≠minY
+  SYNC|05 沙滩岛|Z5_Grill|Grill|配置 (710.00, 5.00, 310.00) → 现场 (694.00, 6.00, 301.00)|Δ (-16.00, 1.00, -9.00)|centerY≠minY
+  SYNC|05 沙滩岛|Z5_Bait1|Bait1|配置 (717.00, 6.00, 317.00) → 现场 (668.00, 6.00, 344.00)|Δ (-49.00, 0.00, 27.00)|centerY≠minY
+  SYNC|05 沙滩岛|Z5_Bait2|Bait2|配置 (723.00, 6.00, 317.00) → 现场 (772.00, 6.00, 344.00)|Δ (49.00, 0.00, 27.00)|centerY≠minY
+  SYNC|05 沙滩岛|Z5_FerryReturn|Ferry|配置 (705.00, 5.00, 310.00) → 现场 (695.00, 6.00, 279.50)|Δ (-10.00, 1.00, -30.50)|centerY≠minY; 运行时真源
+  SYNC|05 沙滩岛|Z5_FerryOut|Ferry|配置 (735.00, 5.00, 310.00) → 现场 (745.00, 6.00, 279.50)|Δ (10.00, 1.00, -30.50)|centerY≠minY; 运行时真源
+  ZONE|05 沙滩岛|entries=15|needsSync=10|missing=0|
+  SYNC|06 礁石岛|Z6_Land|Land|配置 (480.00, 0.00, 320.00) → 现场 (480.00, 0.00, 311.75)|Δ (0.00, 0.00, -8.25)|centerY≠minY
+  SYNC|06 礁石岛|Z6_Safe|Safe|配置 (480.00, 6.00, 320.00) → 现场 (480.00, 5.80, 289.50)|Δ (0.00, -0.20, -30.50)|centerY≠minY; 运行时真源
+  SYNC|06 礁石岛|Z6_Fisherman|Fisherman|配置 (460.00, 5.00, 320.00) → 现场 (519.00, 6.00, 337.00)|Δ (59.00, 1.00, 17.00)|centerY≠minY
+  SYNC|06 礁石岛|Z6_Shop|Shop|配置 (500.00, 5.00, 320.00) → 现场 (516.00, 6.00, 287.00)|Δ (16.00, 1.00, -33.00)|centerY≠minY
+  SYNC|06 礁石岛|Z6_Lottery|Lottery|配置 (485.00, 5.00, 325.00) → 现场 (450.00, 6.00, 338.00)|Δ (-35.00, 1.00, 13.00)|centerY≠minY
+  SYNC|06 礁石岛|Z6_Grill|Grill|配置 (470.00, 5.00, 310.00) → 现场 (450.00, 6.00, 297.00)|Δ (-20.00, 1.00, -13.00)|centerY≠minY
+  SYNC|06 礁石岛|Z6_Bait1|Bait1|配置 (477.00, 6.00, 317.00) → 现场 (428.00, 6.00, 344.00)|Δ (-49.00, 0.00, 27.00)|centerY≠minY
+  SYNC|06 礁石岛|Z6_Bait2|Bait2|配置 (483.00, 6.00, 317.00) → 现场 (532.00, 6.00, 344.00)|Δ (49.00, 0.00, 27.00)|centerY≠minY
+  SYNC|06 礁石岛|Z6_FerryReturn|Ferry|配置 (465.00, 5.00, 310.00) → 现场 (455.00, 6.00, 279.50)|Δ (-10.00, 1.00, -30.50)|centerY≠minY; 运行时真源
+  SYNC|06 礁石岛|Z6_FerryOut|Ferry|配置 (495.00, 5.00, 310.00) → 现场 (505.00, 6.00, 279.50)|Δ (10.00, 1.00, -30.50)|centerY≠minY; 运行时真源
+  ZONE|06 礁石岛|entries=15|needsSync=10|missing=0|
+  SYNC|07 火山岛|Z7_Land|Land|配置 (240.00, 0.00, 320.00) → 现场 (240.00, 0.00, 311.75)|Δ (0.00, 0.00, -8.25)|centerY≠minY
+  SYNC|07 火山岛|Z7_Safe|Safe|配置 (240.00, 6.00, 320.00) → 现场 (240.00, 5.80, 289.50)|Δ (0.00, -0.20, -30.50)|centerY≠minY; 运行时真源
+  SYNC|07 火山岛|Z7_Fisherman|Fisherman|配置 (220.00, 5.00, 320.00) → 现场 (279.00, 6.00, 337.00)|Δ (59.00, 1.00, 17.00)|centerY≠minY
+  SYNC|07 火山岛|Z7_Shop|Shop|配置 (260.00, 5.00, 320.00) → 现场 (276.00, 6.00, 287.00)|Δ (16.00, 1.00, -33.00)|centerY≠minY
+  SYNC|07 火山岛|Z7_Lottery|Lottery|配置 (245.00, 5.00, 325.00) → 现场 (210.00, 6.00, 338.00)|Δ (-35.00, 1.00, 13.00)|centerY≠minY
+  SYNC|07 火山岛|Z7_Grill|Grill|配置 (230.00, 5.00, 310.00) → 现场 (210.00, 6.00, 297.00)|Δ (-20.00, 1.00, -13.00)|centerY≠minY
+  SYNC|07 火山岛|Z7_Bait1|Bait1|配置 (237.00, 6.00, 317.00) → 现场 (188.00, 6.00, 344.00)|Δ (-49.00, 0.00, 27.00)|centerY≠minY
+  SYNC|07 火山岛|Z7_Bait2|Bait2|配置 (243.00, 6.00, 317.00) → 现场 (292.00, 6.00, 344.00)|Δ (49.00, 0.00, 27.00)|centerY≠minY
+  SYNC|07 火山岛|Z7_FerryReturn|Ferry|配置 (225.00, 5.00, 310.00) → 现场 (215.00, 6.00, 279.50)|Δ (-10.00, 1.00, -30.50)|centerY≠minY; 运行时真源
+  ZONE|07 火山岛|entries=14|needsSync=9|missing=0|
+  TOTAL|entries=90|needsSync=49
