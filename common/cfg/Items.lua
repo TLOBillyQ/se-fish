@@ -161,8 +161,8 @@ return {
         item144 = { Id = 'item144', SourceId = 144, Name = '手雷', Type = '爆炸物', BasePrice = 25, source = '物品表!R145', implemented = false },
         item145 = { Id = 'item145', SourceId = 145, Name = '炸药', Type = '爆炸物', BasePrice = 50, source = '物品表!R146', implemented = false },
         -- 船票
-        shrimpTicket = { Id = 'shrimpTicket', SourceId = 146, Name = '虾池船票', Type = '过关道具', BasePrice = 1, source = '物品表!R147', implemented = true, SourceName = '虾池车票', DecisionSource = 'CONTEXT.md#船票', Icon = 'official://image/14105' },
-        item147 = { Id = 'item147', SourceId = 147, Name = '蟹湖船票', Type = '过关道具', BasePrice = 1, source = '物品表!R148', implemented = false, SourceName = '蟹湖车票', DecisionSource = 'CONTEXT.md#船票' },
+        shrimpTicket = { Id = 'shrimpTicket', SourceId = 146, Name = '虾池船票', Type = '过关道具', BasePrice = 1, source = '物品表!R147', implemented = true, SourceName = '虾池车票', DecisionSource = 'GLOSSARY.md#船票', Icon = 'official://image/14105' },
+        item147 = { Id = 'item147', SourceId = 147, Name = '蟹湖船票', Type = '过关道具', BasePrice = 1, source = '物品表!R148', implemented = false, SourceName = '蟹湖车票', DecisionSource = 'GLOSSARY.md#船票' },
         item148 = { Id = 'item148', SourceId = 148, Name = '树林岛船票', Type = '过关道具', BasePrice = 1, source = '物品表!R149', implemented = false },
         item149 = { Id = 'item149', SourceId = 149, Name = '沙滩岛船票', Type = '过关道具', BasePrice = 1, source = '物品表!R150', implemented = false },
         item150 = { Id = 'item150', SourceId = 150, Name = '礁石岛船票', Type = '过关道具', BasePrice = 1, source = '物品表!R151', implemented = false },

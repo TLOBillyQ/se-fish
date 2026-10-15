@@ -4,10 +4,11 @@
 
 ## 探索前先读
 
-- **`CONTEXT.md`**（仓库根）：领域术语表，给出每个玩法概念该说的词与该避开的说法。
-- **`docs/adr/`**：读与你要动的区域相关的 ADR（本仓库目前还没有 ADR）。
+- **`GLOSSARY.md`**（仓库根）：领域术语表，给出每个玩法概念该说的词与该避开的说法。
+- **`docs/adr/`**：读与你要动的区域相关的 ADR。
+- **工程约定**：修改代码、运行测试或操作编辑器前读 [开发工作流](workflow.md)；质量规则见 [质量工具](../../tools/quality/README.md)。
 
-不存在的文件**静默跳过**：不要报缺，也不要一上来就建议新建。`/domain-modeling`（经 `/grill-with-docs`、`/improve-codebase-architecture` 到达）会在术语或决策真正定下来时按需创建。
+不存在的文件**静默跳过**。`/domain-modeling` 在术语或决策真正定下来时按需创建。
 
 ## 文件布局
 
@@ -15,17 +16,17 @@
 
 ```
 /
-├── CONTEXT.md
+├── GLOSSARY.md
 ├── docs/adr/
 │   └── 0001-....md
 └── client/  common/  server/     ← 三端代码（官方强制的 SE 工作区根）
 ```
 
-出现 `CONTEXT-MAP.md` 时才是多 context：根放系统级决策，`<context>/CONTEXT.md` 与 `<context>/docs/adr/` 放各自的。
+出现 `GLOSSARY-MAP.md` 时才是多 context：根放系统级决策，`<context>/GLOSSARY.md` 与 `<context>/docs/adr/` 放各自的。
 
 ## 用术语表的词
 
-输出里提到领域概念时（issue 标题、重构提案、假设、测试名），用 `CONTEXT.md` 定义的说法，不要漂到术语表明确避开的同义词。
+输出里提到领域概念时（issue 标题、重构提案、假设、测试名），用 `GLOSSARY.md` 定义的说法，不要漂到术语表明确避开的同义词。
 
 需要用的概念术语表里没有，是个信号：要么你在发明项目不用的说法（回头想想），要么是真空缺（记下来交给 `/domain-modeling`）。
 

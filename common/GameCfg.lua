@@ -277,7 +277,7 @@ GameCfg.BaitSpots = {
     },
 }
 
--- 新手任务（#51 前三步，#52 续写第 4–9 步；#40 规格）：文案对应策划案「新手任务」的 9 句（钓场老板按 CONTEXT.md 用词），
+-- 新手任务（#51 前三步，#52 续写第 4–9 步；#40 规格）：文案对应策划案「新手任务」的 9 句（钓场老板按 GLOSSARY.md 用词），
 -- Kind 是玩法事实种类（MgrQuest:Notify 的 kind），ItemId 是要求的物品，Category 是要求的物品类别（fish = 鱼获），
 -- Need 是次数。任务不发奖励，进度与事实去重落在 Extra.quest。
 -- 事实来源：PickBait 拾饵（MgrLoot）、Feed 喂食（MgrInteract）、Buy 购买（MgrShop）、EquipBait 鱼饵栏挂饵成功
@@ -886,7 +886,7 @@ GameCfg.Ability = {
             Anchor = "map://preset/uaf2781161d6460990a4941b12ad30c2",
             AnchorBehavior = "speed_add",
         },
-        -- 挥砍：玩家的攻击（手持武器发起，见 CONTEXT.md「战斗」），道具按钮触发
+        -- 挥砍：玩家的攻击（手持武器发起，见 GLOSSARY.md「战斗」），道具按钮触发
         {
             AssetId = "map://preset/ucc31d1999a543a7ab329eff1fd3c00d",
             Index = 1,
@@ -1444,7 +1444,7 @@ GameCfg.Grill = {
     BubbleText = '烧烤',
     NoFishText = '你没有可烤的鱼',
     BurntText = '你的鱼烤糊了！',
-    CookedPrefix = '烤',         -- 烤好的鱼名字加此前缀（CONTEXT.md 烤鱼条 Avoid「烤过的鱼」，用「烤」构成菜名式称呼）
+    CookedPrefix = '烤',         -- 烤好的鱼名字加此前缀（GLOSSARY.md 烤鱼条 Avoid「烤过的鱼」，用「烤」构成菜名式称呼）
     TokenWarnText = '信物烤制后将失去兑换和抽奖资格，再次点击确认烤制',
     FullText = '背包已满，烤好的鱼先留在烤炉上',
     TakeoutText = '取出',

@@ -2,6 +2,16 @@
 
 修改代码、运行测试、同步宿主或操作编辑器前，以及整理过程产物时，读取本文。
 
+## 工程用语
+
+- **se-fish**：本图的 Lua 源码与质量工具仓库。
+- **业务树**：`client/`、`common/`、`server/` 中的业务源码，排除各端 `packages/` 与 `server/_trigger/` 等非业务目录；具体质量扫描范围以质量工具配置为准。
+- **宿主目录**：编辑器 `code init` 绑定的本地 Lua 工程目录，根有 `eggy.json`，是部署目的地；与仓库检出分别管理。路径和绑定方式见下方「工具链」。
+- **部署树**：镜像进宿主目录的仓库根 `client/`、`common/`、`server/`；仓库根其余内容不部署。宿主内不归本仓库管理的内容由 `sync` 回灌，镜像粒度与操作细节见下方「工具链」。
+  _Avoid_: 源码树（指仓库全部时）
+- **quality gate**：质量流程的失败处理与快照发布规则，见 [质量工具](../../tools/quality/README.md#日常命令)及其中的「墙钟预算、启动前记录与退出码」；指标只出报告，不设门槛。
+- **Busted migration**：全部 Lua 测试改写为原生 Busted、移除 LuaUnit 依赖及桥接层的迁移，决策见 [ADR-0002](../adr/0002-native-busted-migration.md)，当前车道与运行约定见下方「工具链」。
+
 ## 工具链
 
 Lua 命令使用 **Lua 5.4**，执行前用 `lua -v` 核对；验收脚本可用 `ACCEPTANCE_LUA_BIN` 指定解释器。Lua 5.5 对循环变量重新赋值会报 `attempt to assign to const variable`，遇到此错误先检查版本。

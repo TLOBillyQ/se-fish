@@ -68,7 +68,7 @@ describe("烧烤配置对齐策划案", function()
         assert.same(3, cfg.BurnRadius)      -- docx：周围 3 米
         assert.same('你没有可烤的鱼', cfg.NoFishText)
         assert.same('你的鱼烤糊了！', cfg.BurntText)
-        assert.same('烤', cfg.CookedPrefix)  -- CONTEXT.md 烤鱼条 Avoid「烤过的鱼」，前缀用「烤」
+        assert.same('烤', cfg.CookedPrefix)  -- GLOSSARY.md 烤鱼条 Avoid「烤过的鱼」，前缀用「烤」
         assert.is_not_nil(cfg.TokenWarnText)
     end)
 end)
