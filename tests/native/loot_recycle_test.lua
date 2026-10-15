@@ -35,9 +35,9 @@ local function spawnPond(env)
     return spawnAt(env, -11, -13)
 end
 
--- 虾池（ShrimpPool 中心 235,-6）边上的一个点
+-- 虾池统一模板水面中心 (240,-44)。
 local function spawnPool(env)
-    return spawnAt(env, 235, -6)
+    return spawnAt(env, 240, -44)
 end
 
 -- #126：池壁水条（addWaterStrip 生成）与鱼塘水圈同属一个钓鱼区，落点取第一块水条的中心

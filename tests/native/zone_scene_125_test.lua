@@ -20,13 +20,11 @@ describe("TestZoneScene125", function()
       assert.are.equal(b.MaxZ, center[2] + (index == 1 and 79 or index >= 2 and index <= 4 and 50 or 70))
       assert.is_true(b.MinX < b.MaxX and b.MinZ < b.MaxZ)
       assert.is_true(scene.Land.MinX < scene.Land.MaxX and scene.Land.MinZ < scene.Land.MaxZ)
-      if index > 2 then
-        -- #102 现场同步：03–07 区的安全点取 #65 P3 施工后的现场值「内侧墙内面内 18 米」，
-        -- 折返后落在区中心靠内侧（远离水岸）那一边，不再等于区中心。
+      if index >= 2 then
+        -- #102：02–07 区共用「内侧墙内面内 18 米」安全点模板。
+        -- 折返后落在区中心靠内侧（远离水岸）那一边。
         assert.same({ x = center[1], y = 6,
           z = center[2] + (index <= 4 and 30.5 or -30.5) }, scene.SafePoint)
-      elseif index == 2 then
-        assert.same({ x = center[1], y = 6, z = center[2] }, scene.SafePoint)
       else
         assert.near(-0.71, scene.SafePoint.z, 1e-9)
       end
@@ -44,7 +42,7 @@ describe("TestZoneScene125", function()
       end
       for _, entity in ipairs(scene.Entities) do
         if entity.Role == 'Safe' then assert.are.equal(scene.SafePoint, entity.Position) end
-        if index >= 3 and entity.Role == 'Water' then
+        if index >= 2 and entity.Role == 'Water' then
           assert.are.equal(scene.Waters[1].Center, entity.Position)
         end
       end
@@ -142,14 +140,9 @@ describe("TestZoneScene125", function()
         fallback = fallback or (row.Bait == 0 and row.RodLevel == 1)
       end
       assert.is_true(fallback, zone.Name .. '缺无饵保底')
-      if index >= 3 then
-        -- #136 蟹湖（第三区）、#141 树林岛（第四区）、#142 沙滩岛（第五区）水域已实测接入：
-        -- 其余未建区仍不得接入活跃抽鱼池
-        if index >= 3 and index <= 7 then
-          assert.is_not_nil(Cfg.Casting.Zones[zone.WaterId])
-        else
-          assert.is_nil(Cfg.Casting.Zones[zone.WaterId])
-        end
+      if index >= 2 then
+        -- 02–07 区水域已接入运行时；每区岸上前推一竿必须命中本区矩形水面。
+        assert.is_not_nil(Cfg.Casting.Zones[zone.WaterId])
         local bankZ = index <= 4 and scene.Land.MinZ + 1 - Cfg.Casting.Distance
           or scene.Land.MaxZ - 1 + Cfg.Casting.Distance
         assert.is_not_nil(water({ x = scene.SafePoint.x, y = scene.Waters[1].SurfaceY,

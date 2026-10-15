@@ -18,6 +18,27 @@ local function layouts()
 end
 
 describe('#65 P3 灰盒布局规划器', function()
+    it('虾池从旧原型生成完整模板，水面与四面墙符合 ADR 0003', function()
+        local layout, why = plan.layoutFor(2, GameCfg, rows)
+        assert.is_truthy(layout, why)
+        local ops = {}
+        for _, op in ipairs(layout.ops) do ops[op.name] = op end
+        assert.same({ 240, 2, -44 }, ops.Z2_Water.position)
+        assert.same({ 80, 1, 24 }, ops.Z2_Water.size)
+        assert.same({ 180, -30, -10 }, ops.Z2_BoundaryEast.position)
+        assert.same({ 300, -30, -10 }, ops.Z2_BoundaryWest.position)
+        assert.same({ 120, 70, 3 }, ops.Z2_BoundaryNorth.size)
+        assert.same({ 120, 70, 3 }, ops.Z2_BoundarySouth.size)
+        assert.same({ 213, 6, -17 }, ops.TGUnitFishShrimp.position)
+        assert.same({ 216, 6, 13 }, ops.TGUnitShopShrimp.position)
+        assert.same({ 265, 6, 40.5 }, ops.FerryReturn.position)
+        assert.same({ 240, 5.8, 30.5 }, ops.Z2_Safe.position)
+        assert.is_truthy(ops.Z2_Bait1.asset)
+        assert.is_truthy(ops.Z2_Bait2.asset)
+        assert.is_nil(ops['星光地板'])
+        assert.is_true(plan.pass(layout))
+    end)
+
     it('基线可读，且五个目标区都能规划', function()
         assert.is_truthy(rows, '读不到 ' .. plan.CSV)
         layouts()
@@ -121,13 +142,18 @@ describe('#65 P3 灰盒布局规划器', function()
             for _, op in ipairs(zone.ops) do
                 if op.op == 'delete' then deleted[op.name] = true else restored[op.name] = true end
             end
-            assert.is_nil(deleted['Z' .. zone.label:sub(1, 2):gsub('^0', '') .. '_Land'],
-                '回滚不能删掉活动岛 ' .. zone.label)
+            if zone.label:sub(1, 2) == '02' then
+                assert.is_true(deleted.Z2_Land, '虾池的新地块回滚时应删除，旧星光地板不动')
+                assert.is_nil(deleted['星光地板'])
+                assert.are.equal(15, #zone.deleted, '虾池 5 板 + 6 山体 + 水面 + 安全垫片 + 2 鱼饵')
+            else
+                assert.is_nil(deleted['Z' .. zone.label:sub(1, 2):gsub('^0', '') .. '_Land'],
+                    '回滚不能删掉活动岛 ' .. zone.label)
+                assert.are.equal(10, #zone.deleted, zone.label .. ' 删除名单数量')
+            end
             for name in pairs(deleted) do
                 assert.is_nil(restored[name], '同名既恢复又删除：' .. name)
             end
-            -- 本批新建的 10 件（4 板 + 6 山体）应当全部在删除名单里。
-            assert.are.equal(10, #zone.deleted, zone.label .. ' 删除名单数量')
         end
     end)
 

@@ -436,7 +436,7 @@ describe('TestMgrWeaponThrow', function()
         for _, c in ipairs(ctx.mgr:BlastCandidates(pondRows)) do
             assert.same('normal', GameCfg.Fish[c.id].Grade)
         end
-        local shrimpRows = GameCfg.Casting.Zones.ShrimpPool
+        local shrimpRows = GameCfg.Casting.Zones['shrimpPond.water']
         local picked = ctx.mgr:BlastCandidates(shrimpRows)
         for _, c in ipairs(picked) do
             assert.same('normal', GameCfg.Fish[c.id].Grade)

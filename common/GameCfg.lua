@@ -7,7 +7,7 @@ local ContentBlindbox = require('common.cfg.Blindbox')
 local FishCatch = require('common.FishCatch')
 
 -- 钓鱼区 ID 用于内容与后续场景锚点；存档旧值在 LegacyZoneIdMap 中解析。
--- WaterId 是内容层稳定 ID，现场 Water.Zones[*].Id 保留已有编辑器单位名称。
+-- WaterId 是内容层稳定 ID；鱼塘保留既有水圈 ID，其余水域统一使用 WaterId。
 GameCfg.Zones = {
     { Id = 'fishPond', Name = '鱼塘', WaterId = 'fishPond.water', BaitItemId = 'worm', source = '钓鱼表!R2' },
     { Id = 'shrimpPond', Name = '虾池', WaterId = 'shrimpPond.water', BaitItemId = 'sausage', source = '钓鱼表!R16' },
@@ -650,7 +650,7 @@ GameCfg.Casting = {
         },
         -- 虾池（#90，钓鱼表第二区）：虾米任意饵保底；沼虾/小龙虾起用香肠；波龙及以上竿级 2。
         -- 极品权重另列（普通 8/8/8/32/24/16，极品 2/2/2/8/6/4）
-        ShrimpPool = {
+        ['shrimpPond.water'] = {
             { Id = 'shrimp', Bait = 0, RodLevel = 1, DrawWeight = 8 },
             { Id = 'riverShrimp', Bait = 'sausage', RodLevel = 1, DrawWeight = 8 },
             { Id = 'crayfish', Bait = 'sausage', RodLevel = 1, DrawWeight = 8 },
@@ -1154,10 +1154,8 @@ GameCfg.Water = {
     Zones = {
         { Id = "WaterCircle2", Center = { x = -11.75, y = 1.05, z = 27.75 }, HalfXZ = 6.0, SurfaceY = 2.183 },
         { Id = "WaterCircle1", Center = { x = -11.75, y = 1.05, z = 27.75 }, HalfXZ = 3.0, SurfaceY = 2.183 },
-        -- 虾池水面（#90）：第二钓鱼区占位平台（星光地板，已扩到 x 90..110 / z 91..109，顶面 y=5.0）
-        -- 东北角水区，抛竿落点命中后按 Casting.Zones.ShrimpPool 选鱼。SurfaceY 取水面单位
-        -- （深水预设，pos.y=4.2，顶面约 5.2~5.35 批次漂移；取高点再加鱼获落地余量，与既有水区同口径）
-        { Id = "ShrimpPool", Center = { x = 105, y = 4.2, z = 106 }, HalfXZ = 3.0, SurfaceY = 5.6 },
+        -- 虾池（#102，ADR 0003）：与 03–07 区共用 80×24 米矩形水面；中心在文件末尾统一折返。
+        { Id = 'shrimpPond.water', Center = { x = 100, y = 2, z = 144 }, HalfX = 40, HalfZ = 12, SurfaceY = 3 },
         -- 蟹湖水面（#136）：第三区北侧水区，场景合同 Z3_Water 实测中心 (260,2,144)、
         -- 80×24 米矩形（HalfX=40/HalfZ=12，MathWaterJudge 长方形口径）。SurfaceY 沿用场景合同
         -- 值 3（水面单位 pos.y=2、顶面约 3）；与其他水区相距数百米，无重叠。
@@ -1208,9 +1206,9 @@ addWaterStrip('PondSouth', -24.25, 21.75, 10.75, 16.25)
 addWaterStrip('PondNorth', -24.25, 21.75, 61.25, 70.75)
 addWaterStrip('PondNotch', -24.25, -4.982, 16.25, 35.268)
 
--- 仅列已在编辑器配置过并可实际抛竿的水域；新五区水域留给 #125 场景实施。
+-- 运行时水域到钓鱼区的映射；鱼塘水条在下方补齐同区归属。
 GameCfg.Water.ZoneIdByWater = {
-    WaterCircle1 = 'fishPond', WaterCircle2 = 'fishPond', ShrimpPool = 'shrimpPond',
+    WaterCircle1 = 'fishPond', WaterCircle2 = 'fishPond', ['shrimpPond.water'] = 'shrimpPond',
     ['crabLake.water'] = 'crabLake',
     ['forestIsland.water'] = 'forestIsland',
     ['beachIsland.water'] = 'beachIsland',
@@ -1228,16 +1226,15 @@ for _, zone in ipairs(GameCfg.Zones) do
     GameCfg.Water.ContentWaterIds[zone.WaterId] = zone.Id
 end
 
--- #125 七区场景合同。所有新增坐标/名字是待建计划，绝非现场存在性证据。
--- 2026-09-29 只读盘点：已有鱼塘/虾池，后五区未建；编辑器有归属未明的未存改动，禁止自动启用。
--- Scene 与 PlannedRoutes 不接入 Water.Zones、Shop.Stands、BaitSpots.Spots 或当前摆渡消费者。
--- 创建、碰撞/落点实测、保存、sync 全通过后才可单独接入；State 不能由名称匹配自动提升。
+-- #125 七区场景合同；#102 将 02–07 区统一到模板几何。
+-- 运行时各消费者分别接入水域、设施与航线；Scene.State 保留 planned，碰撞与落点试玩由 #107 验收。
+-- State 不能由名称匹配自动提升。
 local sceneCenters = {
     { x = 0, z = 40 }, { x = 100, z = 100 }, { x = 260, z = 100 },
     { x = 460, z = 100 }, { x = 660, z = 100 }, { x = 880, z = 100 },
     { x = 1160, z = 100 },
 }
--- #102：03–07 区动线锚点的退让量按 #62 决议的「连续战斗净空间 X×Z」（按区序 1..7）算。
+-- #102：02–07 区动线锚点的退让量按 #62 决议的「连续战斗净空间 X×Z」（按区序 1..7）算。
 -- 这张表与 tools/zone_space_contract.lua、tools/plan_zone_layout.lua 的 M.COMBAT 同源：
 -- 现场那批设施就是规划器按它摆的（见 evidence/issue65/zone-layout-p3.md §1/§3），改一处要三处一起改。
 local zoneCombat = {
@@ -1250,24 +1247,18 @@ local existingScene = {
       LandPosition = { x = -13.75, y = 0, z = 40.75 },
       FishermanPosition = { x = -6.25, y = -1, z = 30.75 },
       ShopPosition = { x = -8.75, y = 2.5, z = 55.25 } },
-    { LandName = '星光地板', FishermanName = 'TGUnitFishShrimp', ShopName = 'TGUnitShopShrimp',
-      Land = { MinX = 90, MaxX = 110, MinZ = 91, MaxZ = 109 },
-      SafePoint = { x = 100, y = 6, z = 100 },
-      LandPosition = { x = 100, y = -3, z = 100 },
-      FishermanPosition = { x = 94, y = -4, z = 100 },
-      ShopPosition = { x = 106, y = -0.5, z = 97 } },
 }
 for index, zone in ipairs(GameCfg.Zones) do
     local center, old = sceneCenters[index], existingScene[index]
     local prefix = 'Z' .. index .. '_'
-    -- #102 现场同步：03–07 区的 Scene 坐标改成 #65 P3 施工后的现场值（01/02 区走 existingScene，不用下面几式）。
+    -- #102：02–07 区共用规划器模板；01 区保留 existingScene 的实测几何。
     -- 现场值出自规划器 tools/plan_zone_layout.lua 的同一套式子 —— 区中心 / 水岸线 / 内侧墙内面 + 退让量，
     -- 所以在「折返前」的坐标系里照抄即可（本坐标系里水面在 +Z 侧、朝区内是 −Z）；文件末尾的折返变换再把它
     -- 翻成现场坐标，两排区因此仍是同一套模板的 180° 副本。退让量（15 / 12 / 25 / 14 / 8 / 18 / 6 米）
     -- 与规划器 §3 逐条一致，改配方时两边要一起改。
     local combat = zoneCombat[index]
     local halfX, depth = combat[1] / 2, combat[2]   -- #62 战斗净空间 X×Z（半宽 / 进深）
-    local boundaryHalfX = index == 2 and 25 or index == 1 and 69 or 60
+    local boundaryHalfX = index == 1 and 69 or 60
     local boundaryMinZ = center.z - (index == 1 and 59 or 50)
     local waterCenterZ, waterHalfX, waterHalfZ = center.z + 44, 40, 12 -- 数学水域（与下面 Waters[1] 同源）
     local shoreZ = waterCenterZ - waterHalfZ        -- 水岸线：水域朝区内那一侧
@@ -1299,25 +1290,22 @@ for index, zone in ipairs(GameCfg.Zones) do
     scene.LandName = entity('Land', old and old.LandPosition
         or { x = center.x, y = 0, z = (shoreZ + innerWallZ) / 2 }, old and old.LandName, old ~= nil)
     scene.SafePointName = entity('Safe', scene.SafePoint)
+    local fishermanName = index == 2 and 'TGUnitFishShrimp' or old and old.FishermanName
+    local shopName = index == 2 and 'TGUnitShopShrimp' or old and old.ShopName
     scene.FishermanName = entity('Fisherman', old and old.FishermanPosition
-        or { x = center.x + halfX + 15, y = 6, z = shoreZ - 15 }, old and old.FishermanName, old ~= nil)
+        or { x = center.x + halfX + 15, y = 6, z = shoreZ - 15 }, fishermanName, old ~= nil)
     scene.ShopName = entity('Shop', old and old.ShopPosition
-        or { x = center.x + halfX + 12, y = 6, z = shoreZ - (depth + 25) }, old and old.ShopName, old ~= nil)
-    scene.LotteryName = entity('Lottery', index <= 2 and { x = center.x + 5, y = 5, z = center.z + 5 }
+        or { x = center.x + halfX + 12, y = 6, z = shoreZ - (depth + 25) }, shopName, old ~= nil)
+    scene.LotteryName = entity('Lottery', index == 1 and { x = center.x + 5, y = 5, z = center.z + 5 }
         or { x = center.x - halfX - 6, y = 6, z = shoreZ - 14 })
     if index >= 3 then
         scene.GrillName = entity('Grill', { x = center.x - halfX - 6, y = 6, z = shoreZ - (depth + 15) })
     end
-    if index <= 2 then
+    if index == 1 then
         for _, water in ipairs(GameCfg.Water.Zones) do
             if water.ZoneId == zone.Id then scene.Waters[#scene.Waters + 1] = water end
         end
-        if index == 1 then
-            entity('Water', { x = -11.75, y = 1.05, z = 27.75 }, 'WaterCircle2', true)
-        else
-            -- ShrimpPool 是既有数学水域 ID，尚未核实它的现场水面实体名。
-            entity('Water', { x = 105, y = 4.2, z = 106 })
-        end
+        entity('Water', { x = -11.75, y = 1.05, z = 27.75 }, 'WaterCircle2', true)
     else
         local water = { Id = zone.WaterId, ZoneId = zone.Id,
             Center = { x = center.x, y = 2, z = waterCenterZ },
@@ -1337,11 +1325,8 @@ for index, zone in ipairs(GameCfg.Zones) do
             scene.BaitSpots.Positions[#scene.BaitSpots.Positions + 1] = spot.Position
         end
     else
-        -- #102 现场同步：03–07 区的鱼饵贴水面两侧外沿（现场值）；02 区沿用既有计划值。
-        scene.BaitSpots.Positions = index == 2 and {
-            { x = center.x - 3, y = 6, z = center.z - 3 },
-            { x = center.x + 3, y = 6, z = center.z - 3 },
-        } or {
+        -- 02–07 区鱼饵贴水面两侧外沿。
+        scene.BaitSpots.Positions = {
             { x = center.x + baitSide * (waterHalfX + 12), y = 6, z = shoreZ - 8 },
             { x = center.x - baitSide * (waterHalfX + 12), y = 6, z = shoreZ - 8 },
         }
@@ -1356,18 +1341,15 @@ for index, zone in ipairs(GameCfg.Zones) do
 end
 GameCfg.Ferry.PlannedRoutes = {}
 local plannedReturnPrices = { 10, 30, 90, 270, 810, 2430 }
--- #102 现场同步：03 区起的摆渡锚点改成 #65 P3 施工后的现场值（内侧墙内面内 8 米、左右 ±25，
--- 与上面设施动线同一套退让量）。数组下标是**锚点所在区**：去程锚点在出发区、返程锚点在到达区。
--- 01 区的两个锚点与 02 区去程沿用既有值；02 区返程是它自己的落点字面量（既有现场）。
+-- #102：02–07 区摆渡锚点共用模板（内侧墙内面内 8 米、左右 ±25）。
+-- 数组下标是锚点所在区：去程锚点在出发区、返程锚点在到达区；01 区去程保留既有值。
 local function ferryOutPosition(zoneIndex)
     local center = sceneCenters[zoneIndex]
     if zoneIndex == 1 then return { x = -8, y = 1.5, z = 25 } end
-    if zoneIndex == 2 then return { x = center.x + 15, y = 5, z = center.z - 10 } end
     return { x = center.x + 25, y = 6, z = center.z - 40.5 }
 end
 local function ferryReturnPosition(zoneIndex)
     local center = sceneCenters[zoneIndex]
-    if zoneIndex == 2 then return { x = 100, y = 5, z = 103 } end
     return { x = center.x - 25, y = 6, z = center.z - 40.5 }
 end
 for index = 1, 6 do
@@ -1381,7 +1363,7 @@ for index = 1, 6 do
         }
     end
     ferryEntity(from, outName, ferryOutPosition(index), index == 1)
-    ferryEntity(to, returnName, ferryReturnPosition(index + 1), index == 1)
+    ferryEntity(to, returnName, ferryReturnPosition(index + 1), false)
     GameCfg.Ferry.PlannedRoutes[index] = {
         State = 'planned', FromZoneId = from.Id, ToZoneId = to.Id,
         Outbound = { AnchorName = outName, Ticket = GameCfg.Content.Exchanges[index].Result,
@@ -1416,7 +1398,7 @@ for index = 1, 6 do
     }
 end
 
--- 第一段（鱼塘 ⇄ 虾池）是既有现场（#89 已实装）：这两个别名让老消费者与老用例不必认识 Routes。
+-- 第一段（鱼塘 ⇄ 虾池）的兼容别名，供只使用首段航线的消费者读取。
 GameCfg.Ferry.HomeZone = GameCfg.Zones[1].Id
 GameCfg.Ferry.Outbound = GameCfg.Ferry.Routes[1].Outbound
 GameCfg.Ferry.Return = GameCfg.Ferry.Routes[1].Return

@@ -9,16 +9,17 @@
 --   5. 虾池水区没进 Water.Zones（抛竿选不到虾池鱼表），或与一区水区重叠（在虾池抛竿出一区鱼）；
 --   6. 钓鱼佬多锚点回归：一区钓鱼佬失效，或虾池钓鱼佬（TGUnitFishShrimp）旁喂食不结算；
 --   7. 抛竿竿种门：选中的不是竿（无 Level）也能抛，或钓虾竿抛出去竿级按 1 算（抽不出波龙）。
+--   8. 虾池迁移统一模板后残留小池几何、窄边界或旧设施落点，运行时水域与场景合同不一致。
 -- it 名字沿用旧方法名，注册顺序 = LuaUnit sortedPairs 的实际执行顺序。
 
 local function vec(x, y, z) return { x = x, y = y, z = z } end
 
--- 两个商店摊与两个钓鱼佬锚点的假位置（虾池侧坐标与场景摆位一致：店 (106,-0.5,97)、钓鱼佬 (94,-4,100)）
+-- 两个商店摊与两个钓鱼佬锚点的假位置；虾池侧与统一模板的场景合同一致。
 local ANCHORS = {
   TGUnitShop = vec(0, 2, 0),
-  TGUnitShopShrimp = vec(106, -0.5, 97),
+  TGUnitShopShrimp = vec(216, 6, 13),
   TGUnitFish = vec(0, 6, 10),
-  TGUnitFishShrimp = vec(94, -4, 100),
+  TGUnitFishShrimp = vec(213, 6, -17),
 }
 
 local function newInteract()
@@ -132,11 +133,48 @@ describe('虾池最小内容（水区 / 鱼表 / 商店 / 钓鱼佬 / 抛竿）'
     env.me.Character.Position = vec(anchor.x + 1, anchor.y, anchor.z)
   end
 
-  -- 站在虾池北岸朝 -z 抛 5 米，落点 (235,?,-5) 进虾池。
+  -- 站在虾池岸上 z=-29 朝 -Z 抛 5 米，落点 (240,3,-34) 进入新水面。
   local function standAtPool()
-    env.me.Character.Position = vec(235, 5, 0)
+    env.me.Character.Position = vec(240, 6, -29)
     env.me.Character.Rotation = { GetForward = function() return vec(0, 0, -1) end }
   end
+
+  it('虾池套用统一模板并迁移运行时水域', function()
+    local scene = env.cfg.Zones[2].Scene
+    assert.same('planned', scene.State)
+    assert.same({ MinX = 180, MaxX = 300, MinZ = -70, MaxZ = 50,
+      BottomY = -30, TopY = 40, MaxFlightHeight = 20, CanClimb = false,
+      EntityNames = scene.Boundary.EntityNames }, scene.Boundary)
+    assert.same({ x = 240, y = 6, z = 30.5 }, scene.SafePoint)
+    local positions = {}
+    for _, entity in ipairs(scene.Entities) do positions[entity.Name] = entity.Position end
+    assert.same({ x = 213, y = 6, z = -17 }, positions.TGUnitFishShrimp)
+    assert.same({ x = 216, y = 6, z = 13 }, positions.TGUnitShopShrimp)
+    assert.same({ x = 258, y = 6, z = -18 }, positions.Z2_Lottery)
+    assert.same({ x = 188, y = 6, z = -24 }, positions.Z2_Bait1)
+    assert.same({ x = 292, y = 6, z = -24 }, positions.Z2_Bait2)
+    assert.same({ x = 215, y = 6, z = 40.5 }, positions.Z2_FerryOut)
+    assert.same({ x = 265, y = 6, z = 40.5 }, positions.FerryReturn)
+    assert.same('Z2_Land', scene.LandName)
+    assert.same('Z2_Water', scene.Waters[1].EntityName)
+    assert.same({ x = 240, y = 2, z = -44 }, scene.Waters[1].Center)
+    assert.same(40, scene.Waters[1].HalfX)
+    assert.same(12, scene.Waters[1].HalfZ)
+    assert.same(3, scene.Waters[1].SurfaceY)
+    assert.same('shrimpPond.water', scene.Waters[1].Id)
+    assert.same('shrimpPond', env.cfg.Water.ZoneIdByWater['shrimpPond.water'])
+    assert.is_not_nil(env.cfg.Casting.Zones['shrimpPond.water'])
+    assert.is_nil(env.cfg.Casting.Zones.ShrimpPool)
+    assert.is_nil(env.cfg.Water.ZoneIdByWater.ShrimpPool)
+    local runtimeWater
+    for _, water in ipairs(env.cfg.Water.Zones) do
+      assert.is_not.equal('ShrimpPool', water.Id)
+      if water.Id == 'shrimpPond.water' then runtimeWater = water end
+    end
+    assert.is_not_nil(runtimeWater)
+    assert.same(scene.Waters[1].Center, runtimeWater.Center)
+    assert.same(scene.SafePoint, env.cfg.Ferry.Routes[1].Outbound.Destination)
+  end)
 
   it('test_buy_away_from_all_stands_rejected', function()
     -- 不在任何摊位旁：'range'，不扣钱
@@ -169,7 +207,7 @@ describe('虾池最小内容（水区 / 鱼表 / 商店 / 钓鱼佬 / 抛竿）'
   end)
 
   it('test_cast_with_shrimp_rod_records_pool_zone_and_rod_level', function()
-    -- 钓虾竿挂香肠抛虾池：会话记 zoneId=ShrimpPool、竿级 2、饵 sausage（#90 起不限新手竿）
+    -- 钓虾竿挂香肠抛虾池：会话记 zoneId=shrimpPond.water、竿级 2、饵 sausage。
     standAtPool()
     assert.is_true(env.data:AddItem('shrimpRod'))
     assert.is_true(env.data:SelectSlot(2))
@@ -178,7 +216,8 @@ describe('虾池最小内容（水区 / 鱼表 / 商店 / 钓鱼佬 / 抛竿）'
     env.cast:Cast(env.me, { slot = 2, itemId = 'shrimpRod' })
     local session = env.cast.Sessions[1] and env.cast.Sessions[1].session
     assert.is_not_nil(session)
-    assert.same('ShrimpPool', session.zoneId)
+    assert.same('shrimpPond.water', session.zoneId)
+    assert.same({ x = 240, y = 3, z = -34 }, session.landing)
     assert.same(2, session.rodLevel)
     assert.same('sausage', session.baitId)
   end)
@@ -263,7 +302,7 @@ describe('虾池最小内容（水区 / 鱼表 / 商店 / 钓鱼佬 / 抛竿）'
   it('test_shrimp_pool_cast_table_gating', function()
     -- 虾池鱼表：竿 1 不挂饵只有虾米保底（含极品）；竿 1 挂香肠不出竿 2 的虾；
     -- 竿 2 挂香肠六种全可出；每行 Id 都在 GameCfg.Fish
-    local rows = env.cfg.Casting.Zones.ShrimpPool
+    local rows = env.cfg.Casting.Zones['shrimpPond.water']
     assert.is_not_nil(rows)
     assert.same(13, #rows)
     for _, row in ipairs(rows) do
@@ -294,21 +333,21 @@ describe('虾池最小内容（水区 / 鱼表 / 商店 / 钓鱼佬 / 抛竿）'
     -- 虾池水区进 Water.Zones 且与一区水区不相交（否则抛竿先命中一区鱼表）
     local pool
     for _, zone in ipairs(env.cfg.Water.Zones) do
-      if zone.Id == 'ShrimpPool' then pool = zone end
+      if zone.Id == 'shrimpPond.water' then pool = zone end
     end
     assert.is_not_nil(pool)
-    assert.same(235, pool.Center.x)
-    assert.same(-6, pool.Center.z)
-    assert.same(3, pool.HalfXZ)
+    assert.same({ x = 240, y = 2, z = -44 }, pool.Center)
+    assert.same(40, pool.HalfX)
+    assert.same(12, pool.HalfZ)
     for _, zone in ipairs(env.cfg.Water.Zones) do
-      if zone.Id ~= 'ShrimpPool' then
+      if zone.Id ~= 'shrimpPond.water' then
         local dx = math.abs(zone.Center.x - pool.Center.x)
         local dz = math.abs(zone.Center.z - pool.Center.z)
         -- #136 起蟹湖水区是长方形（HalfX/HalfZ），与正方形 HalfXZ 同口径比较
         local zx = zone.HalfXZ or zone.HalfX
         local zz = zone.HalfXZ or zone.HalfZ
-        assert.message('ShrimpPool 与 ' .. zone.Id .. ' 水平重叠')
-          .is_true(dx > zx + pool.HalfXZ or dz > zz + pool.HalfXZ)
+        assert.message('shrimpPond.water 与 ' .. zone.Id .. ' 水平重叠')
+          .is_true(dx > zx + pool.HalfX or dz > zz + pool.HalfZ)
       end
     end
   end)
@@ -332,7 +371,7 @@ describe('虾池最小内容（水区 / 鱼表 / 商店 / 钓鱼佬 / 抛竿）'
     env.cast:Cast(env.me, { slot = 1, itemId = 'starterRod' })
     local current = env.cast.Sessions[1]
     assert.is_not_nil(current)
-    assert.same('ShrimpPool', current.session.zoneId)
+    assert.same('shrimpPond.water', current.session.zoneId)
     assert.same(1, current.session.rodLevel)
     env.now = 10
     env.cast:Update()

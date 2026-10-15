@@ -92,6 +92,7 @@
   {:name "Mgr:RefreshHeldRod", :namespace "server.Mgr.MgrPlayerData", :complexity 32, :coverage 95.7447, :crap 32.0789}
   {:name "Mgr:UseAdrenaline", :namespace "server.Mgr.MgrSurvival", :complexity 31, :coverage 92.5, :crap 31.4054}
   {:name "Util:DesignNumber", :namespace "common.Util", :complexity 6, :coverage 11.1111, :crap 31.284}
+  {:name "Mgr:UpdateAirAttacks", :namespace "server.Mgr.MgrFishUnit", :complexity 18, :coverage 65.625, :crap 31.1605}
   {:name "Mgr:UpdateOrcaCombat", :namespace "server.Mgr.MgrFishUnit", :complexity 30, :coverage 94.6429, :crap 30.1384}
   {:name "AbilityRegistry.findGroupByChild", :namespace "common.packages.ability_system.registry", :complexity 6, :coverage 12.5, :crap 30.1172}
   {:name "updateLeap", :namespace "common.FlightPath", :complexity 5, :coverage 0.0, :crap 30.0}
@@ -174,7 +175,6 @@
   {:name "Mgr:Draw", :namespace "server.Mgr.MgrLottery", :complexity 14, :coverage 71.4286, :crap 18.5714}
   {:name "Mgr:OnPlayerRemoving", :namespace "server.Mgr.MgrFishUnit", :complexity 18, :coverage 88.8889, :crap 18.4444}
   {:name "ScreenHandler:Node", :namespace "client.ScreenHandlers.ScreenLottery", :complexity 6, :coverage 30.0, :crap 18.348}
-  {:name "Mgr:UpdateAirAttacks", :namespace "server.Mgr.MgrFishUnit", :complexity 18, :coverage 90.9091, :crap 18.2434}
   {:name "Mgr:Handle", :namespace "server.Mgr.MgrInteract", :complexity 18, :coverage 90.9091, :crap 18.2434}
   {:name "ScreenHandler:SlotAtPosition", :namespace "client.ScreenHandlers.ScreenMain", :complexity 18, :coverage 92.3077, :crap 18.1475}
   {:name "Mgr:WriteJob", :namespace "server.Mgr.MgrSave", :complexity 18, :coverage 92.8571, :crap 18.1181}
@@ -1189,6 +1189,7 @@
   {:name "M.Speed", :namespace "common.FlightPath", :complexity 2, :coverage 100.0, :crap 2.0}
   {:name "cfg", :namespace "common.FlightPath", :complexity 1, :coverage 0.0, :crap 2.0}
   {:name "GameCfg.ResolveZoneId", :namespace "common.GameCfg", :complexity 2, :coverage 100.0, :crap 2.0}
+  {:name "ferryOutPosition", :namespace "common.GameCfg", :complexity 2, :coverage 100.0, :crap 2.0}
   {:name "GrillCurve.IsBurnt", :namespace "common.GrillCurve", :complexity 2, :coverage 100.0, :crap 2.0}
   {:name "REUtil:GetRE", :namespace "common.REUtil", :complexity 2, :coverage 100.0, :crap 2.0}
   {:name "Aggregator:Click", :namespace "common.RateLimit", :complexity 2, :coverage 100.0, :crap 2.0}
@@ -1390,6 +1391,7 @@
   {:name "percent", :namespace "common.FishCatch", :complexity 1, :coverage 100.0, :crap 1.0}
   {:name "copy", :namespace "common.FlightPath", :complexity 1, :coverage 100.0, :crap 1.0}
   {:name "driftLimit", :namespace "common.FlightPath", :complexity 1, :coverage 100.0, :crap 1.0}
+  {:name "ferryReturnPosition", :namespace "common.GameCfg", :complexity 1, :coverage 100.0, :crap 1.0}
   {:name "GarBiteNotice.Clear", :namespace "common.GarBiteNotice", :complexity 1, :coverage 100.0, :crap 1.0}
   {:name "GarBiteNotice.Lock", :namespace "common.GarBiteNotice", :complexity 1, :coverage 100.0, :crap 1.0}
   {:name "GarBiteNotice.Publish", :namespace "common.GarBiteNotice", :complexity 1, :coverage 100.0, :crap 1.0}

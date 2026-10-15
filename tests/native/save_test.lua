@@ -321,7 +321,7 @@ describe('TestSave', function()
         local d = env.data
         d.Data.FishCoin = 45
         d.Data.UpgradeLevel = 1
-        d.Data.Zone = 'ShrimpPool'
+        d.Data.Zone = 'shrimpPond'
         assert.is_true(d:AddItem('duck'))
         assert.is_true(d:AddItem('shrimpTicket'))
         assert.is_true(d:AddBait('sausage', 3))
@@ -334,7 +334,7 @@ describe('TestSave', function()
         assert.is_true(d2:ApplySave(snapshot))
         assert.same(45, d2.Data.FishCoin)
         assert.same(1, d2.Data.UpgradeLevel)
-        assert.same('ShrimpPool', d2.Data.Zone)
+        assert.same('shrimpPond', d2.Data.Zone)
         assert.same(3, d2.Data.Bait.sausage)
         assert.same(d.Data.Bait.worm, d2.Data.Bait.worm) -- 白送蚯蚓也在
         -- 格子位置逐项一致（含 mult）

@@ -1,25 +1,25 @@
-#102 重开核验（只读，2026-10-15 14:36:45)
+#102 重开核验（只读，2026-10-15 14:50:53)
 快照基线：evidence/issue65/zone-baseline-rows-post-p3.csv
-基线 SHA256：A11B9D85CBD75BFB47ACD60FBC7C0C056AC1AAFD106C148CD76EC9474E8EDAEF
+基线 SHA256：7373C088F6A90A2A49B09766E57603C5FA9FF64F6A5EC3951A9FDF7C304CB5E0
 
 exec 退出码：0
 {
   "success": true,
   "execution_mode": "sync_eval",
-  "result": "P2BASE65V2 emitted zoneNodes=364",
+  "result": "P2BASE65V2 emitted zoneNodes=393",
   "result_serialization": "legacy_json_text",
   "runtime": "editor",
   "input_mode": "file",
   "script_sha256": "2c8ca9dd5e87bc41f1daac59827c4dc0397e38f4d263b122e7f5dad1f9e57de1",
   "script_bytes": 8336
 }
-探针自报 zoneNodes：364
-命中 P2BASE65V2：774 处
-已写出 728 行基线 → C:\Users\Lzx_8\AppData\Local\Temp\issue102-reopen-0e3bfbef\zone-baseline-rows-reopen.csv
-重开快照：729 行，SHA256 5CCA8D4FA77A1B70CC9E44ACB5E9A97E1CEDF6E17235896B1BAC7A7230029952
-存档快照：365 行，SHA256 A11B9D85CBD75BFB47ACD60FBC7C0C056AC1AAFD106C148CD76EC9474E8EDAEF
+探针自报 zoneNodes：393
+命中 P2BASE65V2：834 处
+已写出 786 行基线 → C:\Users\Lzx_8\AppData\Local\Temp\issue102-reopen-5261730b\zone-baseline-rows-reopen.csv
+重开快照：787 行，SHA256 23FECC07D6D30A1539C48250303E1BD0BB530E8C4FBB7842890B7B774CFCC9A9
+存档快照：394 行，SHA256 7373C088F6A90A2A49B09766E57603C5FA9FF64F6A5EC3951A9FDF7C304CB5E0
 哈希直接比对：不同
-去重后：存档 358 行 / 重开 358 行
+去重后：存档 387 行 / 重开 387 行
 仅存档有：0 行；仅重开有：0 行
 结论：**行内容一致，但重开快照里有整份重复载荷** —— 判 PASS；
       重复来自本次日志窗口收录了多份载荷（同一探针连跑两次就会这样），不是场景变化。

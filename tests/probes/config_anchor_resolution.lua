@@ -104,7 +104,7 @@ Scene.BoundaryWest|05 沙滩岛|Z5_BoundaryWest|planned
 Scene.BoundaryWest|06 礁石岛|Z6_BoundaryWest|planned
 Scene.BoundaryWest|07 火山岛|Z7_BoundaryWest|planned
 Scene.Ferry|01 鱼塘|FerryBoat|observed
-Scene.Ferry|02 虾池|FerryReturn|observed
+Scene.Ferry|02 虾池|FerryReturn|planned
 Scene.Ferry|02 虾池|Z2_FerryOut|planned
 Scene.Ferry|03 蟹湖|Z3_FerryOut|planned
 Scene.Ferry|03 蟹湖|Z3_FerryReturn|planned
@@ -116,7 +116,7 @@ Scene.Ferry|06 礁石岛|Z6_FerryOut|planned
 Scene.Ferry|06 礁石岛|Z6_FerryReturn|planned
 Scene.Ferry|07 火山岛|Z7_FerryReturn|planned
 Scene.Fisherman|01 鱼塘|TGUnitFish|observed
-Scene.Fisherman|02 虾池|TGUnitFishShrimp|observed
+Scene.Fisherman|02 虾池|TGUnitFishShrimp|planned
 Scene.Fisherman|03 蟹湖|Z3_Fisherman|planned
 Scene.Fisherman|04 树林岛|Z4_Fisherman|planned
 Scene.Fisherman|05 沙滩岛|Z5_Fisherman|planned
@@ -128,7 +128,7 @@ Scene.Grill|05 沙滩岛|Z5_Grill|planned
 Scene.Grill|06 礁石岛|Z6_Grill|planned
 Scene.Grill|07 火山岛|Z7_Grill|planned
 Scene.Land|01 鱼塘|大地板|observed
-Scene.Land|02 虾池|星光地板|observed
+Scene.Land|02 虾池|Z2_Land|planned
 Scene.Land|03 蟹湖|Z3_Land|planned
 Scene.Land|04 树林岛|Z4_Land|planned
 Scene.Land|05 沙滩岛|Z5_Land|planned
@@ -149,7 +149,7 @@ Scene.Safe|05 沙滩岛|Z5_Safe|planned
 Scene.Safe|06 礁石岛|Z6_Safe|planned
 Scene.Safe|07 火山岛|Z7_Safe|planned
 Scene.Shop|01 鱼塘|TGUnitShop|observed
-Scene.Shop|02 虾池|TGUnitShopShrimp|observed
+Scene.Shop|02 虾池|TGUnitShopShrimp|planned
 Scene.Shop|03 蟹湖|Z3_Shop|planned
 Scene.Shop|04 树林岛|Z4_Shop|planned
 Scene.Shop|05 沙滩岛|Z5_Shop|planned

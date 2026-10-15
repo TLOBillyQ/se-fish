@@ -33,7 +33,7 @@ describe('TestShrimpCombat', function()
         env.now = 30; env.mgr:Update()
         env.now = 36; env.mgr:Update()
         local ground = fish.Move.Center.y
-        fish.Carrier.Body.Position = { x = 235, y = ground + 3, z = -6 }
+        fish.Carrier.Body.Position = { x = 240, y = ground + 3, z = -44 }
         env.now = 37; env.mgr:Update()
         assert.is_not.equal('escaping', fish.State)
         env.now = fish.FleeAt; env.mgr:Update()

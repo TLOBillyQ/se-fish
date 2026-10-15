@@ -2,9 +2,8 @@
 -- 覆盖两件事：
 --   1. 解析语义：现场实测位置取 (x=centerX, y=minY, z=centerZ)、位移方向、pivot 疑点标记、
 --      运行时真源标记 —— 这些决定了「配置要改成什么」，错了会把同步带到错坐标；
---   2. 提交的施工后基线 + 当前 GameCfg 重算出的分布：同步完成后 **x/z 全为 0**，只剩 Safe 的
---      Δy=−0.20（配置 6.00 是地面基准 GroundY、现场 5.80 是安全垫片的底面）—— 场景快照或
---      GameCfg 变了就会在这里红，重算再更新期望。
+--   2. 提交的冷加载施工基线 + 当前 GameCfg：94 条已建锚点的 x/y/z 差值全为 0。
+--      Safe 取可站立顶面，设施取底面 pivot；鱼塘 10 条尚未落地的计划锚点单独列为 missing。
 local sync = require('tools.anchor_coord_sync_dry_run')
 local contract = require('tools.zone_space_contract')
 
@@ -79,7 +78,7 @@ describe('#102 锚点坐标同步 dry-run', function()
         assert.is_truthy(text:find('3', 1, true))
     end)
 
-    it('施工后基线 + 当前 GameCfg：90 条锚点全部与现场一致', function()
+    it('施工后基线 + 当前 GameCfg：94 条锚点全部与现场一致', function()
         local text = assert(contract.readFile(sync.CSV), '读不到施工后基线 ' .. sync.CSV)
         local zones = sync.audit(require('common.GameCfg'), contract.parseCsv(text))
         local counts, total = {}, 0
@@ -97,7 +96,7 @@ describe('#102 锚点坐标同步 dry-run', function()
         assert.are.equal('0/15', counts['06 礁石岛'])
         assert.are.equal('0/14', counts['07 火山岛'])
         assert.are.equal('0/6', counts['01 鱼塘'])
-        assert.are.equal('0/10', counts['02 虾池'])
+        assert.are.equal('0/14', counts['02 虾池'])
         assert.are.equal(0, total, '配置与施工后现场不一致：跑 lua tools/anchor_coord_sync_dry_run.lua 看具体是哪几条')
     end)
 

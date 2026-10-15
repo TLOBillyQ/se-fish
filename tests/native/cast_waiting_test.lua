@@ -369,26 +369,26 @@ describe('抛竿与等待上钩（MgrCast）', function()
   end)
 
   it('test_water_edge_repeated_failures_then_success_keep_bait_and_quest_fact', function()
-    -- 虾池旋转后的西侧边界 x=232，线内含边界，线外拒绝。
+    -- 虾池统一模板水面的西侧边界 x=200，线内含边界，线外拒绝。
     local position = env.player.Character.Position
     env.player.Character.Rotation = { GetForward = function() return { x = 0, y = 0, z = -1 } end }
-    position.y, position.z = 5, -1
-    for _, x in ipairs({ 231.999, 231.998 }) do
+    position.y, position.z = 6, -29
+    for _, x in ipairs({ 199.999, 199.998 }) do
       position.x = x
       castRod()
       assert.same('idle', lastState().phase)
       assert.same('invalidLanding', lastState().result.reason)
-      assert.same({ x = x, y = 5, z = -6 }, lastState().result.landing)
+      assert.same({ x = x, y = 6, z = -34 }, lastState().result.landing)
       assert.same(10, env.data:GetItemBarSnapshot().bait.worm)
       assert.same(0, #env.facts)
       env.events.RequestCastState.OnServerEvent:Fire(env.player)
       assert.is_nil(lastState().result)
     end
-    position.x = 232
+    position.x = 200
     castRod()
     assert.same('cast', lastState().phase)
-    assert.same('ShrimpPool', lastState().zoneId)
-    assert.same({ x = 232, y = 5.6, z = -6 }, lastState().landing)
+    assert.same('shrimpPond.water', lastState().zoneId)
+    assert.same({ x = 200, y = 3, z = -34 }, lastState().landing)
     assert.same(9, env.data:GetItemBarSnapshot().bait.worm)
     assert.same(1, #env.facts)
     assert.same('CastWater', env.facts[1].kind)

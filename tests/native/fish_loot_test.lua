@@ -153,7 +153,7 @@ describe('TestFishLoot', function()
         assert.is_nil(defs.duck.Container) -- #85：首领饵占道具栏或背包格
         assert.are.equal('虾池船票', defs.shrimpTicket.Name)
         assert.is_nil(defs.shrimpTicket.EatPercent) -- 过关道具不能吃
-        -- #86：电鳗加入蚯蚓抽签表；#88 首领饵必出鳄雀鳝；#90 虾池鱼表 ShrimpPool 接入（行数与权重见 shrimp_pond_test）。
+        -- #86：电鳗加入蚯蚓抽签表；#88 首领饵必出鳄雀鳝；虾池鱼表 shrimpPond.water（行数与权重见 shrimp_pond_test）。
         for zoneId, rows in pairs(cfg.Casting.Zones) do
             for _, row in ipairs(rows) do assert.is_not.is_nil(cfg.Fish[row.Id], row.Id) end
             if zoneId == 'WaterCircle2' then

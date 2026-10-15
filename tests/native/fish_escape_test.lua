@@ -161,14 +161,14 @@ describe('TestFishEscape', function()
         local fish = env:heldFish()
         env.mgr:Drop(env.player)
         local body = fish.Carrier.Body
-        -- 虾池水面中心 (235,-6)，半宽 3：两个落点都在水区之外、离虾池最近。
-        body.Position = vec(235, 1, 0)
+        -- 虾池水面中心 (240,-44)，南北边缘 -56/-32：两个落点均在水区之外、离虾池最近。
+        body.Position = vec(240, 1, -28)
         env.now = env.now + 3.05
         env.mgr:Update()
         assert.near(0, body.LinearVelocity.x, 1e-6)
         assert.near(-3, body.LinearVelocity.z, 1e-6)
         -- 挪到虾池另一侧：同一个 3 秒整点重算，方位从正南翻成正北
-        body.Position = vec(235, 1, -12)
+        body.Position = vec(240, 1, -60)
         env.now = env.now + 2.9
         env.mgr:Update()
         assert.near(-3, body.LinearVelocity.z, 1e-6)

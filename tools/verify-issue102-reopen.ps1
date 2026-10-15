@@ -3,7 +3,7 @@
     #102 第一项：重开核验（只读）。
 
 .DESCRIPTION
-    核验 03–07 区灰盒施工（提交 06c7538）是否随保存落盘：重开编辑器后重跑只读基线探针，
+    核验 02–07 区灰盒施工是否随保存落盘：重开编辑器后重跑只读基线探针，
     把现场回读与施工后存档快照逐行对齐比对。
 
     本脚本**只读编辑器**：只跑 tests/probes/zone_baseline_inventory.lua（不改场景、不保存、不 deploy），
@@ -114,7 +114,7 @@ try {
 
     if ($result.OnlyBaseline.Count -eq 0 -and $result.OnlyReopen.Count -eq 0) {
         if ($reopenHash -eq $baselineHash) {
-            Record '结论：逐字节一致 —— 03–07 区施工重开持久化 PASS'
+            Record '结论：逐字节一致 —— 02–07 区施工重开持久化 PASS'
         } elseif ($result.Duplicated.Count -eq 0) {
             Record '结论：行内容一致但文件不同（行序或换行差异）—— 判 PASS，但需记录行序差异'
         } else {

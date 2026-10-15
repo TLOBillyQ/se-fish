@@ -213,7 +213,7 @@ describe('TestSaveFoundation', function()
     it('test_v1_migrates_every_instance_and_bad_save_is_atomic', function()
         local data = PlayerData.New({ UserId = 124, SetAttribute = function() end })
         data:Init(true)
-        local old = { v = 1, coin = 730, up = 1, zone = 'ShrimpPool', bait = { worm = 9 },
+        local old = { v = 1, coin = 730, up = 1, zone = 'shrimpPond', bait = { worm = 9 },
             bar = { { i = 2, id = 'eelHead', n = 1, m = 1.75 } },
             bp = { { i = 8, id = 'riverShrimp', n = 1, m = 1.14 } } }
         assert.is_true(data:CompleteLoad(old))
@@ -223,7 +223,7 @@ describe('TestSaveFoundation', function()
         assert.same(1.75, saved.bar[1].m)
         assert.same(8, saved.bp[1].i)
         assert.same(1.14, saved.bp[1].m)
-        assert.same('ShrimpPool', saved.zone)
+        assert.same('shrimpPond', saved.zone)
         assert.same(300, saved.extra.survival.health)
         assert.same({}, saved.extra.inventory.weapons)
         assert.same(1, old.v)

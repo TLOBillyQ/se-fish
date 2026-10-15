@@ -1,8 +1,9 @@
-# 03–07 区灰盒施工落盘核验（#102 第一项）
+# 02–07 区灰盒施工落盘核验（#102）
 
-- 基线存档：`evidence/issue65/zone-baseline-rows-post-p3.csv`（365 行 = 表头 + 364 节点）
-- 基线 SHA256：`a11b9d85cbd75bfb47acd60fbc7c0c056ac1aafd106c148cd76ec9474e8edaef`（自 `06c7538` 起未变）
-- 核验方式：`tools/verify-issue102-reopen.ps1`（只读：跑 `tests/probes/zone_baseline_inventory.lua` → `log grep P2BASE65V2` → `tools/baseline_csv.lua` → 逐行对齐）
+- 最新基线：`evidence/issue65/zone-baseline-rows-post-p3.csv`（394 行 = 表头 + 393 节点）。
+- 最新基线 SHA256：`7373c088f6a90a2a49b09766e57603c5fa9ff64f6a5ec3951a9fdf7c304cb5e0`。
+- 核验方式：`tools/verify-issue102-reopen.ps1`（只读：跑 `tests/probes/zone_baseline_inventory.lua` → `log grep P2BASE65V2` → `tools/baseline_csv.lua` → 逐行对齐）。
+- 03–07 区此前基线为 364 节点，SHA256 `a11b9d85cbd75bfb47acd60fbc7c0c056ac1aafd106c148cd76ec9474e8edaef`；本轮新增虾池施工后更新快照。
 
 ## 结论：冷加载 **PASS**（2026-10-15，重做施工后）
 
@@ -12,7 +13,14 @@
 | 10-15 14:29 | 编辑器重启（pid 13444）后首次冷加载 | **施工丢失**：`zoneNodes=264`，03–07 区逐行等于 P2 施工前基线 `zone-baseline-rows.csv`（0/0 差异）；与存档相比仅存档有 169 行、仅现场有 69 行 |
 | 10-15 14:34 | 重放 `tests/probes/zone_layout_apply.lua`（数据块与规划器同步） | `created=50 moved=49 miss=0 failed=0`；回读 `zoneNodes=364`，与存档 0/0 |
 | 10-15 14:35 | `map save` → `map reopen --force`（新进程 pid 37268） | `save_result.status=success`；冷加载回读 `zoneNodes=364`，单份载荷转出的 CSV 与存档 **SHA256 逐字节相同** |
-| 10-15 14:36 | `verify-issue102-reopen.ps1 -EditorInstance 37268` | 去重后 358/358，仅存档有 0、仅重开有 0，退出码 0（原始输出见 `reopen-verification.txt`） |
+| 10-15 14:36 | `verify-issue102-reopen.ps1 -EditorInstance 37268` | 去重后 358/358，仅存档有 0、仅重开有 0，退出码 0 |
+| 10-15 14:45–14:48 | 虾池按 ADR 0003 施工并修正水面预设 | 新建 15 个根单位；末次幂等执行 `ops=123 created=0 moved=123 miss=0 failed=0`；水面网格 `59269`、80×1×24、无碰撞、无附带子件 |
+| 10-15 14:48–14:50 | `map save` → `map reopen --force`（新进程 pid 35760） | 冷加载回读 393 节点；单份载荷生成最新基线，03–07 区无额外变化 |
+| 10-15 14:50:53 | `verify-issue102-reopen.ps1 -EditorInstance 35760` | 去重后 387/387，仅存档有 0、仅重开有 0，退出码 0；原始回执见 `reopen-verification.txt` |
+| 10-15 14:51 | 配置引用与水面属性只读核查 | `P2CFG65`：142 条引用，132 命中，10 条鱼塘计划锚点缺失，其余异常全 0；`SHRIMPWATER102`：虾池与蟹湖水面均为 mesh `59269`、`CanCollide=false`、`children=0` |
+| 10-15 15:03–15:07 | 运行时试探（playtest 27150b6） | 新档 `ticket=0`，正常扣票登船需先跑完鱼塘兑换链；改为步行跨区时角色在 (65,−55) 附近坠入区间空隙（y=−36），印证区间尚不可步行直达；`log trace` 全程 0 错误 0 警告。摆渡落点与逐区试玩仍归 #107 |
+
+七区空间指标与同步差值分别见 `zone-space-contract-post-sync.txt`、`anchor-sync-after-post-p3.txt`：94 条已建锚点差值全 0；02–07 区通道最窄 10.50、战斗净空间零侵占、支撑 100%。01 鱼塘保持原样，含交互范围通道最窄为 0，四个贴岸战斗候选均未同时满足零侵占与完整支撑，不能标为七区全部达标。`Scene.State` 保留 `planned`，碰撞与逐区试玩仍归 #107。
 
 ## 口径声明
 

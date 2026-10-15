@@ -35,7 +35,7 @@ M.CORRIDOR_MIN = 8
 M.SAMPLE_STEP = 0.5 -- 与 zone_space_contract 同一采样步长（设施最小 1.5 宽，步长必须更小）
 -- #62 连续战斗净空间 X×Z（第一排/第二排同尺）
 M.COMBAT = { { 24, 20 }, { 24, 20 }, { 32, 28 }, { 40, 36 }, { 40, 36 }, { 48, 40 }, { 48, 40 } }
-M.TARGET_ZONES = { 3, 4, 5, 6, 7 }
+M.TARGET_ZONES = { 2, 3, 4, 5, 6, 7 }
 
 local function round(value) return math.floor(value * 1000 + 0.5) / 1000 end
 
@@ -55,7 +55,7 @@ local function nodeNamed(nodes, name)
     return nil
 end
 
---- 该区的水面实体（`Zx_Water`；鱼塘是水圈、虾池没有，本轮只处理后五区）。
+--- 该区的水面实体（`Zx_Water`；虾池由合同补建，鱼塘保留水圈特例）。
 local function waterUnit(nodes)
     for _, node in ipairs(nodes) do
         if node.name:match('_Water$') then return node end
@@ -68,11 +68,21 @@ function M.layoutFor(index, GameCfg, rows)
     local label = M.zoneLabel(GameCfg, index)
     local nodes = audit.nodesOf(rows, label)
     if #nodes == 0 then return nil, '基线里没有这个区：' .. label end
-    local boundary = GameCfg.Zones[index].Scene.Boundary
-    local groundY = GameCfg.Zones[index].Scene.SafePoint.y
+    local scene = GameCfg.Zones[index].Scene
+    local boundary = scene.Boundary
+    local groundY = scene.SafePoint.y
     local walls = audit.boundaryFacts(boundary, nodes)
     local water = waterUnit(nodes)
-    if not water then return nil, label .. ' 现场没有水面实体，口径待单独定（属 P3 后续批次）' end
+    local createWater = index == 2 and not water
+    if createWater then
+        -- ADR 0003：虾池没有旧水面实体，由场景合同生成 80×24 新水面。
+        local cfg = scene.Waters[1]
+        water = { minX = cfg.Center.x - cfg.HalfX, maxX = cfg.Center.x + cfg.HalfX,
+            minZ = cfg.Center.z - cfg.HalfZ, maxZ = cfg.Center.z + cfg.HalfZ, maxY = cfg.SurfaceY }
+        -- 规划针对移墙后的有效边界，不能沿用旧 50 米窄墙的内面。
+        walls.innerMinX, walls.innerMaxX = boundary.MinX + 1.5, boundary.MaxX - 1.5
+    end
+    if not water then return nil, label .. ' 现场没有水面实体' end
     if groundY ~= M.GROUND then
         return nil, ('%s 合同地面 %s 与口径 %s 不一致'):format(label, tostring(groundY), tostring(M.GROUND))
     end
@@ -94,7 +104,7 @@ function M.layoutFor(index, GameCfg, rows)
         local scale
         if size then
             base = base or M.SLAB_SIZE
-            scale = { round(size[1] / base[1]), round(size[2] / base[2]), round(size[3] / base[3]) }
+            scale = { size[1] / base[1], size[2] / base[2], size[3] / base[3] }
         end
         ops[#ops + 1] = { name = name, asset = asset, parent = parent, role = role,
             position = { round(position[1]), round(position[2]), round(position[3]) },
@@ -140,20 +150,46 @@ function M.layoutFor(index, GameCfg, rows)
         return node
     end
     local edge = combatX / 2
-    move('Z' .. index .. '_Fisherman', centerX - right * (edge + 15), shoreZ + inland * 15, 'interaction')
-    move('Z' .. index .. '_Shop', centerX - right * (edge + 12), shoreZ + inland * (combatZ + 25), 'interaction')
+    move(scene.FishermanName, centerX - right * (edge + 15), shoreZ + inland * 15, 'interaction')
+    move(scene.ShopName, centerX - right * (edge + 12), shoreZ + inland * (combatZ + 25), 'interaction')
     move('Z' .. index .. '_Lottery', centerX + right * (edge + 6), shoreZ + inland * 14, 'collision')
     move('Z' .. index .. '_Grill', centerX + right * (edge + 6), shoreZ + inland * (combatZ + 15), 'collision')
-    move('Z' .. index .. '_Bait1', water.minX - 12, shoreZ + inland * 8, 'collision')
-    move('Z' .. index .. '_Bait2', water.maxX + 12, shoreZ + inland * 8, 'collision')
+    for n, x in ipairs({ water.minX - 12, water.maxX + 12 }) do
+        local name = 'Z' .. index .. '_Bait' .. n
+        if not move(name, x, shoreZ + inland * 8, 'collision') and index == 2 then
+            place(name, 'official://preset/1101635', '设施',
+                { x, M.GROUND, shoreZ + inland * 8 }, { 1.5, 1.5, 1.5 }, 'collision', { 3, 3, 3 })
+        end
+    end
     move('Z' .. index .. '_FerryOut', centerX - right * 25, innerWallZ - inland * 8, 'collision')
-    move('Z' .. index .. '_FerryReturn', centerX + right * 25, innerWallZ - inland * 8, 'collision')
+    move(index == 2 and 'FerryReturn' or 'Z' .. index .. '_FerryReturn',
+        centerX + right * 25, innerWallZ - inland * 8, 'collision')
 
     -- 4) 安全落点（抵达处）：垫片压平到地面高度，顶面与地面齐平。
     local safe = nodeNamed(nodes, 'Z' .. index .. '_Safe')
     if safe then
         place('Z' .. index .. '_Safe', nil, nil,
             { centerX, M.GROUND - (safe.maxY - safe.minY), innerWallZ - inland * 18 }, nil, 'safe')
+    elseif index == 2 then
+        place('Z2_Safe', M.SLAB, '摆渡', { centerX, M.GROUND - 0.2, innerWallZ - inland * 18 },
+            { 10, 0.2, 10 }, 'safe')
+    end
+    if createWater then
+        -- 资产是整套旧鱼塘；显式换成 Z3_Water 实测的纯水面网格，并清掉新资产附带子件。
+        place('Z2_Water', 'map://preset/u54263b69f25482dae18f9dbcfe6dc5b', '地块',
+            { centerX, water.maxY - 1, waterCenterZ }, { 80, 1, 24 }, 'water', { 3, 1, 3 })
+        ops[#ops].waterMesh = 'official://mesh/59269'
+        -- 旧墙名字的东/西与世界坐标相反，按基线空间分类保持实体身份。
+        for _, wall in ipairs(walls.xWalls) do
+            place(wall.name, nil, nil,
+                { wall.x < centerX and boundary.MinX or boundary.MaxX, boundary.BottomY, boundaryCenterZ },
+                { 3, boundary.TopY - boundary.BottomY, boundary.MaxZ - boundary.MinZ }, 'boundary', { 3, 3, 3 })
+        end
+        for _, wall in ipairs(walls.zWalls) do
+            place(wall.name, nil, nil,
+                { centerX, boundary.BottomY, wall.z < boundaryCenterZ and boundary.MinZ or boundary.MaxZ },
+                { width, boundary.TopY - boundary.BottomY, 3 }, 'boundary', { 3, 3, 3 })
+        end
     end
 
     local layout = {
@@ -266,7 +302,7 @@ function M.metrics(layout)
         combatRect = rect, intrusions = intrusions, supportPercent = covered / 256 * 100,
         floorCount = #floors, blockerCount = #blockers,
         landTop = landBox and landBox.maxY or nil,
-        landWasTop = land and land.maxY or nil,
+        landWasTop = (nodeNamed(layout.nodes, 'Z' .. layout.index .. '_Land') or {}).maxY,
     }
 end
 
@@ -336,10 +372,11 @@ function M.revertPlan(layouts, rows)
         local baselineNames = {}
         for _, row in ipairs(baselineRows) do baselineNames[row.name] = true end
         local ops = {}
-        local restored = {}
+        local restored, touched = {}, {}
+        for _, op in ipairs(layout.ops) do touched[op.name] = true end
         for _, row in ipairs(baselineRows) do
             local position, scale = triple(row.pos), triple(row.scale)
-            if position and scale then
+            if touched[row.name] and position and scale then
                 ops[#ops + 1] = { op = 'restore', name = row.name, position = position, scale = scale }
                 restored[#restored + 1] = row.name
             end
@@ -364,13 +401,14 @@ function M.renderOps(layouts, rows)
         out[#out + 1] = string.format("  { label = '%s', groundY = %s, ops = {",
             layout.label, audit.fmt(layout.groundY))
         for _, op in ipairs(layout.ops) do
-            local scale = op.scale and string.format('{ %s, %s, %s }', audit.fmt(op.scale[1]),
-                audit.fmt(op.scale[2]), audit.fmt(op.scale[3])) or 'nil'
+            local scale = op.scale and string.format('{ %.9f, %.9f, %.9f }',
+                op.scale[1], op.scale[2], op.scale[3]) or 'nil'
             out[#out + 1] = string.format(
-                "    { name = '%s', asset = %s, parent = %s, position = { %s, %s, %s }, scale = %s },",
+                "    { name = '%s', asset = %s, parent = %s, position = { %s, %s, %s }, scale = %s%s },",
                 op.name, op.asset and ("'" .. op.asset .. "'") or 'nil',
                 op.parent and ("'" .. op.parent .. "'") or 'nil',
-                audit.fmt(op.position[1]), audit.fmt(op.position[2]), audit.fmt(op.position[3]), scale)
+                audit.fmt(op.position[1]), audit.fmt(op.position[2]), audit.fmt(op.position[3]), scale,
+                op.waterMesh and (", waterMesh = '" .. op.waterMesh .. "'") or '')
         end
         out[#out + 1] = '  } },'
     end
