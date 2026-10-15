@@ -2,7 +2,8 @@
 local world = editor:GetService('World')
 for _, name in ipairs({ 'Z2_Water', 'Z3_Water' }) do
     local root = assert(world:FindFirstChild(name))
-    for _, key in ipairs({ 'RenderMeshId', 'PhysicsMeshId', 'CanCollide', 'Size', 'AssetId' }) do
+    for _, key in ipairs({ 'RenderMeshId', 'PhysicsMeshId', 'CanCollide', 'Size', 'AssetId',
+        'UseCustomAppearance', 'CustomAppearanceId', 'ModelAlpha', 'BodyType' }) do
         print('SHRIMPWATER102|' .. name .. '|' .. key .. '=' .. tostring(root:GetProperty(key)))
     end
     local children = root:GetChildren()

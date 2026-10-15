@@ -18,7 +18,8 @@
 | 10-15 14:48–14:50 | `map save` → `map reopen --force`（新进程 pid 35760） | 冷加载回读 393 节点；单份载荷生成最新基线，03–07 区无额外变化 |
 | 10-15 14:50:53 | `verify-issue102-reopen.ps1 -EditorInstance 35760` | 去重后 387/387，仅存档有 0、仅重开有 0，退出码 0；原始回执见 `reopen-verification.txt` |
 | 10-15 14:51 | 配置引用与水面属性只读核查 | `P2CFG65`：142 条引用，132 命中，10 条鱼塘计划锚点缺失，其余异常全 0；`SHRIMPWATER102`：虾池与蟹湖水面均为 mesh `59269`、`CanCollide=false`、`children=0` |
-| 10-15 15:03–15:07 | 运行时试探（playtest 27150b6） | 新档 `ticket=0`，正常扣票登船需先跑完鱼塘兑换链；改为步行跨区时角色在 (65,−55) 附近坠入区间空隙（y=−36），印证区间尚不可步行直达；`log trace` 全程 0 错误 0 警告。摆渡落点与逐区试玩仍归 #107 |
+| 10-15 15:03–15:07 | 运行时试探（playtest 27150b6） | 当前试玩存档 `ticket=0`，未完成正常扣票登船；步行跨区尝试中角色停在 (65.33,−36.01,−55.33)。本会话 `log trace` 为 0 错误 0 警告，但未验证虾池落地与抛竿，不能算逐区试玩通过；该验收仍归 #107 |
+| 10-15 15:12 | 水面外观补查 | `SHRIMPWATER102`：Z2/Z3 均 `UseCustomAppearance=false`、`CustomAppearanceId` 为空、`ModelAlpha=1`；BodyType 分别为 Static/Kinematic，均非动态受力体。SkinSlots 内容未完成序列化对照，未作渲染一致性结论 |
 
 七区空间指标与同步差值分别见 `zone-space-contract-post-sync.txt`、`anchor-sync-after-post-p3.txt`：94 条已建锚点差值全 0；02–07 区通道最窄 10.50、战斗净空间零侵占、支撑 100%。01 鱼塘保持原样，含交互范围通道最窄为 0，四个贴岸战斗候选均未同时满足零侵占与完整支撑，不能标为七区全部达标。`Scene.State` 保留 `planned`，碰撞与逐区试玩仍归 #107。
 
