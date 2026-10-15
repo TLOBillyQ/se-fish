@@ -1,4 +1,4 @@
-#102 重开核验（只读，2026-10-14 17:20:39)
+#102 重开核验（只读，2026-10-15 14:36:45)
 快照基线：evidence/issue65/zone-baseline-rows-post-p3.csv
 基线 SHA256：A11B9D85CBD75BFB47ACD60FBC7C0C056AC1AAFD106C148CD76EC9474E8EDAEF
 
@@ -14,9 +14,9 @@ exec 退出码：0
   "script_bytes": 8336
 }
 探针自报 zoneNodes：364
-命中 P2BASE65V2：1500 处
-已写出 1424 行基线 → C:\Users\Lzx_8\AppData\Local\Temp\issue102-reopen-ff4642a8\zone-baseline-rows-reopen.csv
-重开快照：1425 行，SHA256 54B31182533A708B8F8208178F0A11D9FEF29027B914407E553C90DD4699E5C3
+命中 P2BASE65V2：774 处
+已写出 728 行基线 → C:\Users\Lzx_8\AppData\Local\Temp\issue102-reopen-0e3bfbef\zone-baseline-rows-reopen.csv
+重开快照：729 行，SHA256 5CCA8D4FA77A1B70CC9E44ACB5E9A97E1CEDF6E17235896B1BAC7A7230029952
 存档快照：365 行，SHA256 A11B9D85CBD75BFB47ACD60FBC7C0C056AC1AAFD106C148CD76EC9474E8EDAEF
 哈希直接比对：不同
 去重后：存档 358 行 / 重开 358 行

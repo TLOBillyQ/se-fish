@@ -19,11 +19,13 @@
 .EXAMPLE
     .\tools\verify-issue102-reopen.ps1
     .\tools\verify-issue102-reopen.ps1 -KeepArtifacts   # 保留中间产物，路径会打印出来
+    .\tools\verify-issue102-reopen.ps1 -EditorInstance 19861   # 同时开着多个编辑器时指定本图实例（pid / 端口 / 图名）
 #>
 [CmdletBinding()]
 param(
     [string]$Baseline = 'evidence/issue65/zone-baseline-rows-post-p3.csv',
     [string]$Evidence = 'evidence/issue102/reopen-verification.txt',
+    [string]$EditorInstance,
     [switch]$KeepArtifacts
 )
 
@@ -35,6 +37,9 @@ $utf8 = New-Object System.Text.UTF8Encoding($false)
 $editorCli = Join-Path $env:USERPROFILE '.eggitor\cli\editor-cli.exe'
 if (-not (Test-Path $editorCli)) { throw "找不到 editor-cli：$editorCli" }
 if (-not (Test-Path $Baseline)) { throw "找不到施工后快照：$Baseline" }
+
+# 多个编辑器并存时 editor-cli 不会自选实例（INSTANCE_AMBIGUOUS），必须显式指定。
+$instanceArgs = if ($EditorInstance) { @('--editor-instance', $EditorInstance) } else { @() }
 
 $work = Join-Path ([System.IO.Path]::GetTempPath()) ('issue102-reopen-' + [guid]::NewGuid().ToString('N').Substring(0, 8))
 New-Item -ItemType Directory -Force $work | Out-Null
@@ -72,7 +77,7 @@ Record ''
 
 try {
     Step '1/4 跑只读基线探针（不改场景）'
-    $execOut = & $editorCli exec --file 'tests\probes\zone_baseline_inventory.lua' --expect-edit-mode --timeout 180 --json 2>&1
+    $execOut = & $editorCli exec @instanceArgs --file 'tests\probes\zone_baseline_inventory.lua' --expect-edit-mode --timeout 180 --json 2>&1
     $execCode = $LASTEXITCODE
     Record "exec 退出码：$execCode"
     Record ($execOut | Out-String).Trim()
@@ -82,7 +87,7 @@ try {
 
     Step '2/4 取回读日志'
     $logPath = Join-Path $work 'reopen-log.json'
-    $logOut = & $editorCli log grep P2BASE65V2 --platform editor --context 0 --max-matches 1500 --json 2>&1
+    $logOut = & $editorCli log grep P2BASE65V2 @instanceArgs --platform editor --context 0 --max-matches 1500 --json 2>&1
     if ($LASTEXITCODE -ne 0) { throw "日志读取失败（退出码 $LASTEXITCODE）" }
     $logText = ($logOut | Out-String)
     $start = $logText.IndexOf('{')
