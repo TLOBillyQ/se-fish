@@ -94,7 +94,7 @@
   {:from :client.main, :to :client.LocalLoot, :kind :dependency}
   {:from :client.packages.ability_system.pointer.CirclePointer,
    :to :client.packages.ability_system.pointer.AbilityPointer,
-   :kind :dependency}
+   :kind :inheritance}
   {:from :server.packages.official_ai_feature.official_ai_feature,
    :to :common.packages.official_ai_feature.configs,
    :kind :dependency}
@@ -119,7 +119,7 @@
   {:from :server.main, :to :server.Mgr.MgrAchievements, :kind :dependency}
   {:from :client.packages.ability_system.strategy.ReleaseStrategy,
    :to :client.packages.ability_system.strategy.BaseStrategy,
-   :kind :dependency}
+   :kind :inheritance}
   {:from :server.packages.attr_rule.api,
    :to :common.packages.attr_rule.enums,
    :kind :dependency}
@@ -273,7 +273,7 @@
    :kind :dependency}
   {:from :client.packages.ability_system.pointer.RectanglePointer,
    :to :client.packages.ability_system.pointer.AbilityPointer,
-   :kind :dependency}
+   :kind :inheritance}
   {:from :server.AiAPI, :to :common.AiAPIBase, :kind :dependency}
   {:from :client.LocalInteract, :to :common.BodyScale, :kind :dependency}
   {:from :server.MgrUtil, :to :common.Util, :kind :dependency}
@@ -295,7 +295,7 @@
    :kind :dependency}
   {:from :client.packages.ability_system.pointer.ParabolaPointer,
    :to :client.packages.ability_system.pointer.AbilityPointer,
-   :kind :dependency}
+   :kind :inheritance}
   {:from :server.packages.ability_system.anchors.destroy_ability,
    :to :common.packages.ability_system.registry,
    :kind :dependency}
@@ -359,7 +359,7 @@
   {:from :client.DamageFloat, :to :common.GameCfg, :kind :dependency}
   {:from :client.packages.ability_system.strategy.PressStrategy,
    :to :client.packages.ability_system.strategy.BaseStrategy,
-   :kind :dependency}
+   :kind :inheritance}
   {:from :server.Mgr.MgrAchievements, :to :common.GameCfg, :kind :dependency}
   {:from :common.LotteryEligibility, :to :common.GameCfg, :kind :dependency}
   {:from :client.ScreenHandlers.ScreenMain, :to :client.WeaponAim, :kind :dependency}
@@ -367,7 +367,7 @@
   {:from :client.ScreenHandlers.ScreenGrill, :to :common.REUtil, :kind :dependency}
   {:from :client.packages.ability_system.strategy.TwoStageStrategy,
    :to :client.packages.ability_system.strategy.BaseStrategy,
-   :kind :dependency}
+   :kind :inheritance}
   {:from :client.packages.ability_system.ability_manager_local_script,
    :to :client.packages.ability_system.api,
    :kind :dependency}
@@ -429,7 +429,7 @@
   {:from :server.Mgr.MgrVitals, :to :common.GameCfg, :kind :dependency}
   {:from :client.packages.ability_system.strategy.HoldStrategy,
    :to :client.packages.ability_system.strategy.BaseStrategy,
-   :kind :dependency}
+   :kind :inheritance}
   {:from :client.packages.ability_system.ability_manager_local_script,
    :to :client.packages.ability_system.ui.UIManager,
    :kind :dependency}
@@ -575,7 +575,7 @@
    :kind :dependency}
   {:from :client.packages.ability_system.pointer.SectorPointer,
    :to :client.packages.ability_system.pointer.AbilityPointer,
-   :kind :dependency}
+   :kind :inheritance}
   {:from :client.ScreenHandlers.ScreenGrill,
    :to :client.InteractionBubble,
    :kind :dependency}

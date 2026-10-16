@@ -32,7 +32,7 @@
     "acceptance4lua": {"url": "http://lzxsvn:3000/eggy/acceptance4lua", "commit": "8dd107144a7635596d75e4fccfce35121dc67570", "modules": ["acceptance4lua.json"]}
   },
   "tools": {
-    "viewer": {"directory": "uml-viewer", "source": "../uml-viewer", "commit": "79c8d563c42f9c8912e2810fcf71b7c24a72a88d"},
+    "viewer": {"directory": "uml-viewer", "source": "../uml-viewer", "commit": "54040575390d68746da241a1e0477726f48ec7cc"},
     "crapper": {"directory": "crapper", "source": "../crapper", "commit": "9b85a1120f5ca4b8293db222b6ac621e5f830488", "patches": ["tools/quality/patches/crapper-lua-has-error.patch"]},
     "mutator": {"directory": "mutator", "source": "../mutator", "commit": "341a4a6d420857d04a2ff0b582d563ea4e6ff089", "patches": ["tools/quality/patches/mutator-seam.patch"]}
   }
