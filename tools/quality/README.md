@@ -1,6 +1,6 @@
 # 质量工具
 
-项目使用原生 Windows、PowerShell 7、Lua 5.4 与原生 Busted。终端与 viewer 刷新共用 `project.json`：分析 `client/`、`common/`、`server/` 的 Lua，排除 `server/_trigger/`；CRAP 与 DRY 都使用这一范围。
+项目使用原生 Windows、PowerShell 7、Lua 5.4 与原生 Busted。终端与 viewer 刷新共用 `project.json`：分析 `client/`、`common/`、`server/` 的 Lua，排除 `server/_trigger/`；CRAP 与 DRY 都使用这一范围。这是**指标采集范围**，含各端 `packages/`（官方包）；架构图是另一回事——`policy.edn` 的图上只画业务树，各端 `packages/` 收成外部椭圆，因此包内指标记录没有对应类，叠加时被忽略（[ADR-0005](../../docs/adr/0005-packages-as-external.md)）。
 
 ## 解释器与测试命令契约
 
@@ -123,7 +123,7 @@ mutation 发布先校验完整暂存树，准备新文件，再将受影响旧�
 
 真实 viewer 验收步骤：
 
-1. 使用 `.\uml.ps1` 首次启动，等待 companion 的 `:display` 被消费。确认顶层为 `client`、`common`、`server`，并查看真实窗口。
+1. 使用 `.\uml.ps1` 首次启动，等待 companion 的 `:display` 被消费。确认顶层为 `client`、`common`、`server`，三棵树里只有业务源码，各端 `packages/` 以外部椭圆出现（顶层共 2 个：client、server 各 1 个，各带一条来自所属端盒子的箭头；common 没有业务代码引用包，不出椭圆）。钻进单端后只留该端可见模块引用的椭圆（server 有；client 与 common 没有，引用包的聚合入口在 `:omit` 里），并查看真实窗口。
 2. 打开代表模块卡片，对照 EDN 检查 CRAP、覆盖率、函数名与 mutation 数量。缺少任一指标仍显示红色；红色本身不作为工具失败。
 3. 右键刷新 CRAP，核对 companion 实际执行项目入口，完整 CRAP 快照仍含其他模块，IR 与窗口自动更新。
 4. 右键差分 mutation，再对同一明确选定文件执行右键全量 mutation。核对邮件队列按顺序消费、命令使用相同配置、结果与窗口更新。

@@ -19,61 +19,24 @@
   :server.AttrAPI
   :server.ModifierAPI],
  :edges
- [{:from :client.packages.ability_system.ability_manager_local_script,
-   :to :client.packages.ability_system.ability_local_script,
-   :kind :dependency}
-  {:from :server.main, :to :server.Mgr.MgrGM, :kind :dependency}
+ [{:from :server.main, :to :server.Mgr.MgrGM, :kind :dependency}
   {:from :server.Mgr.MgrAttr, :to :common.GameCfg, :kind :dependency}
   {:from :server.Mgr.MgrCast, :to :common.GameCfg, :kind :dependency}
-  {:from :client.AbilityAPI, :to :client.packages.ability_system.api, :kind :dependency}
   {:from :client.ScreenHandlers.ScreenGrill, :to :common.Util, :kind :dependency}
   {:from :client.LocalShop, :to :common.BodyScale, :kind :dependency}
-  {:from :common.packages.attr_rule.AttrUnit,
-   :to :common.packages.attr_rule.enums,
-   :kind :dependency}
-  {:from :client.packages.ability_system.ui.Controller,
-   :to :client.packages.ability_system.strategy.HoldStrategy,
-   :kind :dependency}
-  {:from :client.packages.ability_system.strategy.ReleaseStrategy,
-   :to :client.packages.ability_system.ui.nodes.AbilitySlot,
-   :kind :dependency}
-  {:from :server.packages.attr_rule.attr_rule,
-   :to :common.packages.attr_rule.enums,
-   :kind :dependency}
   {:from :client.LocalLottery, :to :common.GameCfg, :kind :dependency}
   {:from :server.Mgr.MgrAi, :to :server.AbilityAPI, :kind :dependency}
-  {:from :common.packages.attr_rule.utils,
-   :to :common.packages.attr_rule.enums,
-   :kind :dependency}
   {:from :common.DamageNotice, :to :common.REUtil, :kind :dependency}
-  {:from :common.packages.attr_rule.AttrUnit,
-   :to :common.packages.attr_rule.utils,
-   :kind :dependency}
   {:from :common.GameCfg, :to :common.cfg.Blindbox, :kind :dependency}
   {:from :client.LocalAttackButton, :to :client.WeaponAim, :kind :dependency}
   {:from :server.Mgr.MgrPlatform, :to :common.GameCfg, :kind :dependency}
   {:from :server.Mgr.MgrRecords, :to :server.Data.RecordsAdapter, :kind :dependency}
   {:from :server.main, :to :server.Mgr.MgrAi, :kind :dependency}
-  {:from :common.packages.ability_system.util,
-   :to :common.packages.ability_system.constants,
-   :kind :dependency}
   {:from :server.Mgr.MgrLoot, :to :common.MathWaterJudge, :kind :dependency}
   {:from :client.MgrGameUI, :to :common.GameCfg, :kind :dependency}
   {:from :server.main, :to :server.Mgr.MgrPlayer, :kind :dependency}
-  {:from :server.packages.ability_system.api,
-   :to :common.packages.ability_system.event_defs,
-   :kind :dependency}
   {:from :client.ScreenHandlers.ScreenGM, :to :client.GameUI, :kind :dependency}
-  {:from :client.packages.ability_system.ability_manager_local_script,
-   :to :common.packages.ability_system.event_defs,
-   :kind :dependency}
-  {:from :server.packages.ability_system.ability_logic,
-   :to :common.packages.ability_system.event_defs,
-   :kind :dependency}
   {:from :client.main, :to :client.AbilityAPI, :kind :dependency}
-  {:from :client.packages.modifier_system.ClientModifierHandler,
-   :to :common.packages.modifier_system.config,
-   :kind :dependency}
   {:from :client.ScreenHandlers.ScreenLottery, :to :common.GameCfg, :kind :dependency}
   {:from :server.Mgr.MgrFishUnit, :to :server.Mgr.MgrFishCarrier, :kind :dependency}
   {:from :common.GameCfg, :to :common.cfg.Shop, :kind :dependency}
@@ -81,102 +44,41 @@
   {:from :server.ModifierAPI, :to :common.ModifierAPIBase, :kind :dependency}
   {:from :server.Mgr.MgrSpecialItem, :to :common.GameCfg, :kind :dependency}
   {:from :client.main, :to :client.ScreenHandlers.ScreenGrill, :kind :dependency}
-  {:from :client.packages.ability_system.ui.UIManager,
-   :to :client.packages.ability_system.ui.nodes.AbilitySlot,
-   :kind :dependency}
-  {:from :server.packages.modifier_system.event_bridge,
-   :to :common.packages.modifier_system.config,
-   :kind :dependency}
   {:from :server.Mgr.MgrFishUnit, :to :common.GarBiteNotice, :kind :dependency}
-  {:from :server.packages.ability_system.item_box.item_box_shell,
-   :to :server.packages.ability_system.ability_logic,
-   :kind :dependency}
   {:from :client.main, :to :client.LocalLoot, :kind :dependency}
-  {:from :client.packages.ability_system.pointer.CirclePointer,
-   :to :client.packages.ability_system.pointer.AbilityPointer,
-   :kind :inheritance}
-  {:from :server.packages.official_ai_feature.official_ai_feature,
-   :to :common.packages.official_ai_feature.configs,
-   :kind :dependency}
   {:from :client.ScreenHandlers.ScreenBlindbox, :to :client.GameUI, :kind :dependency}
-  {:from :server.packages.modifier_system.ModifierHandler,
-   :to :common.packages.modifier_system.util,
-   :kind :dependency}
   {:from :server.AbilityBehaviors.melee_hit, :to :server.Mgr.MgrGM, :kind :dependency}
   {:from :client.ScreenHandlers.ScreenCompendium, :to :client.GameUI, :kind :dependency}
   {:from :client.ScreenHandlers.ScreenMain,
    :to :client.FishCombatLabel,
    :kind :dependency}
   {:from :server.main, :to :server.MgrUtil, :kind :dependency}
-  {:from :client.packages.ability_system.ui.Controller,
-   :to :client.packages.ability_system.pointer.RectanglePointer,
-   :kind :dependency}
   {:from :server.main, :to :server.Mgr.MgrAbility, :kind :dependency}
   {:from :client.main, :to :client.LocalCastSource, :kind :dependency}
   {:from :server.AbilityBehaviors.eel_discharge,
    :to :server.Mgr.MgrVitals,
    :kind :dependency}
   {:from :server.main, :to :server.Mgr.MgrAchievements, :kind :dependency}
-  {:from :client.packages.ability_system.strategy.ReleaseStrategy,
-   :to :client.packages.ability_system.strategy.BaseStrategy,
-   :kind :inheritance}
-  {:from :server.packages.attr_rule.api,
-   :to :common.packages.attr_rule.enums,
-   :kind :dependency}
-  {:from :client.packages.ability_system.ui.Controller,
-   :to :client.packages.ability_system.ui.nodes.AbilitySlot,
-   :kind :dependency}
-  {:from :client.packages.modifier_system.api,
-   :to :client.packages.modifier_system.modifier_system,
-   :kind :dependency}
+  {:from :client.AbilityAPI, :to :client.packages, :kind :dependency}
   {:from :server.Mgr.MgrFishUnit, :to :common.MathWaterJudge, :kind :dependency}
   {:from :client.LocalInteract, :to :common.GameCfg, :kind :dependency}
   {:from :client.ScreenHandlers.ScreenFerry, :to :common.Util, :kind :dependency}
   {:from :server.Mgr.MgrSpecialItem, :to :common.FlightPath, :kind :dependency}
-  {:from :client.packages.attr_rule.api,
-   :to :common.packages.attr_rule.enums,
-   :kind :dependency}
   {:from :server.Mgr.MgrStory, :to :common.GameCfg, :kind :dependency}
-  {:from :server.packages.modifier_system.ModifierHandler,
-   :to :common.packages.modifier_system.config,
-   :kind :dependency}
   {:from :client.AbilityAPI, :to :common.AbilityAPIBase, :kind :dependency}
   {:from :client.LocalLoot, :to :common.REUtil, :kind :dependency}
   {:from :server.AbilityBehaviors.melee_hit,
    :to :server.Mgr.MgrVitals,
    :kind :dependency}
   {:from :common.AttrModel, :to :common.BodyScale, :kind :dependency}
-  {:from :server.packages.modifier_system.ModifierHandler,
-   :to :server.packages.modifier_system.ModifierStack,
-   :kind :dependency}
   {:from :server.main, :to :server.Mgr.MgrGrill, :kind :dependency}
-  {:from :server.packages.ability_system.item_box.item_box_shell,
-   :to :server.packages.ability_system.item_box.item_box_logic,
-   :kind :dependency}
-  {:from :client.packages.ability_system.ability_local_script,
-   :to :common.packages.ability_system.constants,
-   :kind :dependency}
   {:from :client.ScreenHandlers.ScreenShop, :to :common.GameCfg, :kind :dependency}
   {:from :server.main, :to :server.Mgr.MgrQuest, :kind :dependency}
-  {:from :server.packages.attr_rule.api,
-   :to :server.packages.attr_rule.attr_rule,
-   :kind :dependency}
   {:from :server.Mgr.MgrCompendium, :to :common.GameCfg, :kind :dependency}
-  {:from :server.packages.modifier_system.modifier_system,
-   :to :common.packages.modifier_system.event_defs,
-   :kind :dependency}
-  {:from :client.packages.ability_system.strategy.TwoStageStrategy,
-   :to :common.packages.ability_system.constants,
-   :kind :dependency}
   {:from :server.main, :to :server.Mgr.MgrSurvival, :kind :dependency}
   {:from :server.Mgr.MgrShop, :to :common.GameCfg, :kind :dependency}
   {:from :common.GameCfg, :to :common.cfg.Fish, :kind :dependency}
-  {:from :common.packages.attr_rule.utils,
-   :to :common.packages.attr_rule.configs,
-   :kind :dependency}
-  {:from :client.packages.modifier_system.modifier_system,
-   :to :client.packages.modifier_system.ClientModifierHandler,
-   :kind :dependency}
+  {:from :server.ModifierAPI, :to :server.packages, :kind :dependency}
   {:from :client.MgrGameUI, :to :client.ScreenHandlers.ScreenGM, :kind :dependency}
   {:from :common.BodyScale, :to :common.GameCfg, :kind :dependency}
   {:from :server.Mgr.MgrCast, :to :server.Mgr.MgrPlayerData, :kind :dependency}
@@ -184,121 +86,43 @@
   {:from :server.main, :to :server.Mgr.MgrCompendium, :kind :dependency}
   {:from :server.Mgr.MgrLoot, :to :common.BodyScale, :kind :dependency}
   {:from :server.Mgr.MgrFerry, :to :common.GameCfg, :kind :dependency}
-  {:from :client.packages.ability_system.ui.Controller,
-   :to :common.packages.ability_system.registry,
-   :kind :dependency}
   {:from :server.Mgr.MgrGrill, :to :common.GrillCurve, :kind :dependency}
   {:from :server.main, :to :server.Mgr.MgrBlindbox, :kind :dependency}
   {:from :client.ScreenHandlers.ScreenBlindbox, :to :common.GameCfg, :kind :dependency}
   {:from :client.LocalAttr, :to :common.GameCfg, :kind :dependency}
   {:from :client.LocalCastSource, :to :common.GameCfg, :kind :dependency}
-  {:from :common.packages.attr_rule.AttrBuffUnit,
-   :to :common.packages.attr_rule.configs,
-   :kind :dependency}
   {:from :server.main, :to :server.Mgr.MgrModifier, :kind :dependency}
-  {:from :server.AttrAPI, :to :server.packages.attr_rule.api, :kind :dependency}
-  {:from :common.packages.attr_rule.AttrRuleManager,
-   :to :common.packages.attr_rule.AttrUnit,
-   :kind :dependency}
-  {:from :server.packages.official_ai_feature.ability_bridge,
-   :to :server.packages.ability_system.api,
-   :kind :dependency}
-  {:from :server.packages.ability_system.api,
-   :to :common.packages.ability_system.constants,
-   :kind :dependency}
-  {:from :client.packages.ability_system.api,
-   :to :common.packages.ability_system.event_defs,
-   :kind :dependency}
-  {:from :client.packages.ability_system.ui.nodes.AccumulateNode,
-   :to :client.packages.ability_system.ui.eui_adapter,
-   :kind :dependency}
   {:from :client.ScreenHandlers.ScreenCompendium, :to :common.GameCfg, :kind :dependency}
-  {:from :common.packages.attr_rule.AttrRuleManager,
-   :to :common.packages.attr_rule.enums,
-   :kind :dependency}
   {:from :server.Mgr.MgrCompendium, :to :common.FishCatch, :kind :dependency}
   {:from :server.main, :to :server.Mgr.MgrLoot, :kind :dependency}
   {:from :client.ScreenHandlers.ScreenPlatform, :to :common.REUtil, :kind :dependency}
-  {:from :server.packages.attr_rule.api,
-   :to :common.packages.attr_rule.AttrUnit,
-   :kind :dependency}
   {:from :server.Mgr.MgrBlindbox, :to :common.GameCfg, :kind :dependency}
+  {:from :server.AiAPI, :to :server.packages, :kind :dependency}
   {:from :server.Mgr.MgrRecords, :to :common.GameCfg, :kind :dependency}
   {:from :server.Mgr.MgrAbility, :to :server.AbilityAPI, :kind :dependency}
   {:from :client.LocalInteract, :to :common.REUtil, :kind :dependency}
   {:from :client.LocalShop, :to :common.GameCfg, :kind :dependency}
-  {:from :server.packages.ability_system.component_scripts.box_component_create,
-   :to :common.packages.ability_system.registry,
-   :kind :dependency}
   {:from :client.LocalShop, :to :common.Util, :kind :dependency}
   {:from :client.LocalAttackButton, :to :client.PressGesture, :kind :dependency}
-  {:from :client.packages.ability_system.ui.UIManager,
-   :to :client.packages.ability_system.ui.nodes.AccumulateNode,
-   :kind :dependency}
   {:from :server.Mgr.MgrCast, :to :server.Mgr.MgrFishUnit, :kind :dependency}
   {:from :client.ScreenHandlers.ScreenLottery, :to :client.GameUI, :kind :dependency}
   {:from :server.Mgr.MgrFishUnit, :to :server.FishBehaviors, :kind :dependency}
   {:from :server.main, :to :server.Mgr.MgrVitals, :kind :dependency}
-  {:from :server.packages.attr_rule.attr_rule,
-   :to :common.packages.attr_rule.configs,
-   :kind :dependency}
   {:from :client.ScreenHandlers.ScreenFerry,
    :to :client.InteractionBubble,
    :kind :dependency}
   {:from :client.MgrGameUI, :to :client.GameUI, :kind :dependency}
   {:from :client.LocalInteract, :to :common.Util, :kind :dependency}
-  {:from :server.packages.ability_system.api,
-   :to :server.packages.ability_system.sub_ability_plugin,
-   :kind :dependency}
   {:from :client.ScreenHandlers.ScreenFerry, :to :common.GameCfg, :kind :dependency}
   {:from :client.InteractionBubble, :to :common.GameCfg, :kind :dependency}
-  {:from :server.packages.modifier_system.ModifierItem_Script,
-   :to :server.packages.modifier_system.modifier_system,
-   :kind :dependency}
-  {:from :server.packages.modifier_system.modifier_system,
-   :to :server.packages.modifier_system.event_bridge,
-   :kind :dependency}
-  {:from :server.packages.official_ai_feature.official_ai_feature,
-   :to :server.packages.official_ai_feature.behavior_runtime,
-   :kind :dependency}
   {:from :client.ScreenHandlers.ScreenSurvival, :to :common.GameCfg, :kind :dependency}
   {:from :client.LocalReelIn, :to :common.ReelDisplay, :kind :dependency}
   {:from :server.Mgr.MgrAi, :to :server.AiAPI, :kind :dependency}
   {:from :server.AbilityAPI, :to :common.BodyScale, :kind :dependency}
-  {:from :server.packages.ability_system.ability_logic,
-   :to :common.packages.ability_system.util,
-   :kind :dependency}
-  {:from :common.packages.attr_rule.configs,
-   :to :common.packages.attr_rule.editor,
-   :kind :dependency}
-  {:from :client.packages.ability_system.pointer.RectanglePointer,
-   :to :client.packages.ability_system.pointer.AbilityPointer,
-   :kind :inheritance}
   {:from :server.AiAPI, :to :common.AiAPIBase, :kind :dependency}
   {:from :client.LocalInteract, :to :common.BodyScale, :kind :dependency}
   {:from :server.MgrUtil, :to :common.Util, :kind :dependency}
-  {:from :common.packages.ability_system.registry,
-   :to :common.packages.ability_system.constants,
-   :kind :dependency}
   {:from :client.ScreenHandlers.ScreenShop, :to :client.LocalShop, :kind :dependency}
-  {:from :server.packages.attr_rule.api,
-   :to :common.packages.attr_rule.AttrBuffUnit,
-   :kind :dependency}
-  {:from :server.AbilityAPI,
-   :to :server.packages.ability_system.anchor_logic,
-   :kind :dependency}
-  {:from :common.packages.modifier_system.event_defs,
-   :to :common.packages.modifier_system.config,
-   :kind :dependency}
-  {:from :server.packages.official_ai_feature.official_ai_feature,
-   :to :common.packages.official_ai_feature.utils,
-   :kind :dependency}
-  {:from :client.packages.ability_system.pointer.ParabolaPointer,
-   :to :client.packages.ability_system.pointer.AbilityPointer,
-   :kind :inheritance}
-  {:from :server.packages.ability_system.anchors.destroy_ability,
-   :to :common.packages.ability_system.registry,
-   :kind :dependency}
   {:from :client.LocalGarBite, :to :common.REUtil, :kind :dependency}
   {:from :client.ScreenHandlers.ScreenCompendium, :to :common.Records, :kind :dependency}
   {:from :server.AbilityBehaviors.melee_hit,
@@ -307,275 +131,98 @@
   {:from :client.main, :to :client.LocalShop, :kind :dependency}
   {:from :client.LocalMgrUtil, :to :client.MgrGameUI, :kind :dependency}
   {:from :client.LocalInteract, :to :common.NpcDialogue, :kind :dependency}
-  {:from :client.packages.ability_system.ui.Controller,
-   :to :client.packages.ability_system.ui.eui_adapter,
-   :kind :dependency}
-  {:from :client.packages.modifier_system.ClientModifierHandler,
-   :to :client.packages.modifier_system.performance,
-   :kind :dependency}
   {:from :server.Mgr.MgrVitals, :to :common.Vitals, :kind :dependency}
-  {:from :common.packages.attr_rule.AttrBuffUnit,
-   :to :common.packages.attr_rule.AttrUnit,
-   :kind :dependency}
   {:from :server.Mgr.MgrFishCarrier, :to :common.DamageNotice, :kind :dependency}
   {:from :server.main, :to :server.Mgr.MgrLottery, :kind :dependency}
   {:from :server.main, :to :server.Mgr.MgrSave, :kind :dependency}
-  {:from :client.packages.attr_rule.api,
-   :to :common.packages.attr_rule.AttrUnit,
-   :kind :dependency}
+  {:from :server.AbilityAPI, :to :server.packages, :kind :dependency}
   {:from :server.Mgr.MgrVitals, :to :common.DamageNotice, :kind :dependency}
-  {:from :server.packages.ability_system.ability_manager_script,
-   :to :server.packages.ability_system.ability_manager_logic,
-   :kind :dependency}
   {:from :server.Mgr.MgrLottery, :to :common.LotteryEligibility, :kind :dependency}
   {:from :client.main, :to :client.LocalMgrUtil, :kind :dependency}
-  {:from :common.packages.attr_rule.AttrUnit,
-   :to :common.packages.attr_rule.configs,
-   :kind :dependency}
-  {:from :server.packages.modifier_system.modifier_system,
-   :to :server.packages.modifier_system.ModifierHandler,
-   :kind :dependency}
   {:from :common.BossPhase, :to :common.GameCfg, :kind :dependency}
-  {:from :server.packages.modifier_system.ModifierHandler,
-   :to :server.packages.attr_rule.api,
-   :kind :dependency}
-  {:from :client.packages.ability_system.ability_manager_local_script,
-   :to :common.packages.ability_system.ui_hooks,
-   :kind :dependency}
   {:from :common.Util, :to :common.REUtil, :kind :dependency}
-  {:from :server.packages.modifier_system.api,
-   :to :common.packages.modifier_system.config,
-   :kind :dependency}
   {:from :client.LocalLoot, :to :client.InteractionBubble, :kind :dependency}
-  {:from :server.packages.ability_system.ability_logic,
-   :to :common.packages.ability_system.registry,
-   :kind :dependency}
   {:from :client.ScreenHandlers.ScreenMain, :to :client.DamageFloat, :kind :dependency}
   {:from :client.MgrGameUI, :to :common.REUtil, :kind :dependency}
-  {:from :client.packages.modifier_system.modifier_system,
-   :to :common.packages.modifier_system.util,
-   :kind :dependency}
   {:from :common.CarryMount, :to :common.GameCfg, :kind :dependency}
   {:from :client.DamageFloat, :to :common.GameCfg, :kind :dependency}
-  {:from :client.packages.ability_system.strategy.PressStrategy,
-   :to :client.packages.ability_system.strategy.BaseStrategy,
-   :kind :inheritance}
   {:from :server.Mgr.MgrAchievements, :to :common.GameCfg, :kind :dependency}
   {:from :common.LotteryEligibility, :to :common.GameCfg, :kind :dependency}
   {:from :client.ScreenHandlers.ScreenMain, :to :client.WeaponAim, :kind :dependency}
   {:from :server.main, :to :server.Mgr.MgrWeapon, :kind :dependency}
   {:from :client.ScreenHandlers.ScreenGrill, :to :common.REUtil, :kind :dependency}
-  {:from :client.packages.ability_system.strategy.TwoStageStrategy,
-   :to :client.packages.ability_system.strategy.BaseStrategy,
-   :kind :inheritance}
-  {:from :client.packages.ability_system.ability_manager_local_script,
-   :to :client.packages.ability_system.api,
-   :kind :dependency}
-  {:from :server.packages.ability_system.ability_manager_logic,
-   :to :server.packages.ability_system.api,
-   :kind :dependency}
   {:from :client.LocalMgrUtil, :to :common.REUtil, :kind :dependency}
   {:from :client.LocalGM, :to :common.REUtil, :kind :dependency}
   {:from :server.main, :to :server.Mgr.MgrCast, :kind :dependency}
   {:from :client.LocalGarBite, :to :common.GarBiteNotice, :kind :dependency}
   {:from :server.Mgr.MgrSurvival, :to :common.REUtil, :kind :dependency}
-  {:from :common.packages.attr_rule.AttrRuleManager,
-   :to :common.packages.attr_rule.AttrBuffUnit,
-   :kind :dependency}
-  {:from :server.packages.ability_system.ability_logic,
-   :to :common.packages.ability_system.constants,
-   :kind :dependency}
   {:from :client.ScreenHandlers.ScreenFerry, :to :common.REUtil, :kind :dependency}
-  {:from :server.packages.ability_system.api,
-   :to :common.packages.ability_system.registry,
-   :kind :dependency}
   {:from :client.main, :to :client.LocalGM, :kind :dependency}
   {:from :client.LocalShop, :to :common.REUtil, :kind :dependency}
   {:from :server.Mgr.MgrAttr, :to :common.AttrModel, :kind :dependency}
   {:from :client.ScreenHandlers.ScreenGrill, :to :common.GameCfg, :kind :dependency}
-  {:from :client.packages.ability_system.api,
-   :to :common.packages.ability_system.constants,
-   :kind :dependency}
   {:from :server.MgrUtil, :to :common.REUtil, :kind :dependency}
-  {:from :server.packages.modifier_system.ModifierHandler,
-   :to :server.packages.modifier_system.event_bridge,
-   :kind :dependency}
-  {:from :server.packages.ability_system.sub_ability,
-   :to :common.packages.ability_system.registry,
-   :kind :dependency}
-  {:from :client.packages.ability_system.strategy.ReleaseStrategy,
-   :to :common.packages.ability_system.constants,
-   :kind :dependency}
   {:from :server.AttrAPI, :to :common.AttrAPIBase, :kind :dependency}
   {:from :common.FlightPath, :to :common.GameCfg, :kind :dependency}
-  {:from :client.packages.ability_system.ui.UIManager,
-   :to :client.packages.ability_system.ui.eui_adapter,
-   :kind :dependency}
-  {:from :server.ModifierAPI,
-   :to :server.packages.modifier_system.api,
-   :kind :dependency}
+  {:from :client.ModifierAPI, :to :client.packages, :kind :dependency}
   {:from :server.Mgr.MgrSpecialItem, :to :common.SpecialItem, :kind :dependency}
   {:from :client.LocalInteract, :to :client.InteractionBubble, :kind :dependency}
   {:from :client.LocalMgrUtil, :to :common.Util, :kind :dependency}
   {:from :client.LocalLottery, :to :common.Util, :kind :dependency}
   {:from :server.main, :to :server.Mgr.MgrShop, :kind :dependency}
-  {:from :client.packages.ability_system.api,
-   :to :common.packages.ability_system.registry,
-   :kind :dependency}
   {:from :server.Mgr.MgrInteract, :to :common.GameCfg, :kind :dependency}
   {:from :server.Data.PlayerData, :to :common.Records, :kind :dependency}
   {:from :server.Mgr.MgrSave, :to :server.Data.PlayerData, :kind :dependency}
   {:from :server.Data.RecordsAdapter, :to :common.Records, :kind :dependency}
   {:from :server.Mgr.MgrVitals, :to :common.GameCfg, :kind :dependency}
-  {:from :client.packages.ability_system.strategy.HoldStrategy,
-   :to :client.packages.ability_system.strategy.BaseStrategy,
-   :kind :inheritance}
-  {:from :client.packages.ability_system.ability_manager_local_script,
-   :to :client.packages.ability_system.ui.UIManager,
-   :kind :dependency}
   {:from :common.GameCfg, :to :common.cfg.Items, :kind :dependency}
   {:from :client.ScreenHandlers.ScreenMain, :to :client.PressGesture, :kind :dependency}
   {:from :common.NpcDialogue, :to :common.GameCfg, :kind :dependency}
-  {:from :server.packages.modifier_system.ModifierStack,
-   :to :common.packages.modifier_system.config,
-   :kind :dependency}
   {:from :server.main, :to :server.Mgr.MgrReelIn, :kind :dependency}
   {:from :client.main, :to :client.LocalInteract, :kind :dependency}
   {:from :client.LocalMgrUtil, :to :common.FXUtil, :kind :dependency}
-  {:from :server.packages.ability_system.anchor_logic,
-   :to :common.packages.ability_system.Anchor,
-   :kind :dependency}
   {:from :client.main, :to :client.LocalGarBite, :kind :dependency}
-  {:from :common.packages.ability_system.event_defs,
-   :to :common.packages.ability_system.constants,
-   :kind :dependency}
   {:from :client.ScreenHandlers.ScreenFerry, :to :common.BodyScale, :kind :dependency}
-  {:from :server.packages.ability_system.ability_manager_logic,
-   :to :common.packages.ability_system.registry,
-   :kind :dependency}
-  {:from :server.packages.ability_system.anchors.create_teleportball,
-   :to :common.packages.ability_system.registry,
-   :kind :dependency}
   {:from :common.AttrModel, :to :common.GameCfg, :kind :dependency}
-  {:from :client.packages.ability_system.api,
-   :to :client.packages.ability_system.ui.UIManager,
-   :kind :dependency}
   {:from :server.Mgr.MgrAttr, :to :server.AttrAPI, :kind :dependency}
   {:from :server.Mgr.MgrWeapon, :to :common.GameCfg, :kind :dependency}
   {:from :server.main, :to :server.Mgr.MgrSpecialItem, :kind :dependency}
-  {:from :server.packages.ability_system.anchors.cast_face_target,
-   :to :common.packages.ability_system.registry,
-   :kind :dependency}
-  {:from :server.packages.ability_system.sub_ability_plugin,
-   :to :server.packages.ability_system.sub_ability,
-   :kind :dependency}
   {:from :common.AttrGrowth, :to :common.GameCfg, :kind :dependency}
-  {:from :client.packages.ability_system.api,
-   :to :client.packages.ability_system.ability_manager_local_script,
-   :kind :dependency}
   {:from :client.ScreenHandlers.ScreenMain,
    :to :client.LocalAttackButton,
    :kind :dependency}
   {:from :server.Mgr.MgrPlayerData, :to :common.GameCfg, :kind :dependency}
   {:from :server.AbilityAPI, :to :common.CarryMount, :kind :dependency}
   {:from :client.LocalReelIn, :to :common.REUtil, :kind :dependency}
-  {:from :client.packages.ability_system.ui.Controller,
-   :to :client.packages.ability_system.pointer.SectorPointer,
-   :kind :dependency}
   {:from :server.main, :to :server.Mgr.MgrFishUnit, :kind :dependency}
-  {:from :server.packages.official_ai_feature.api,
-   :to :server.packages.official_ai_feature.official_ai_feature,
-   :kind :dependency}
   {:from :server.Mgr.MgrGrill, :to :common.GameCfg, :kind :dependency}
-  {:from :client.packages.ability_system.ui.Controller,
-   :to :client.packages.ability_system.strategy.PressStrategy,
-   :kind :dependency}
-  {:from :server.packages.official_ai_feature.official_ai_feature,
-   :to :server.packages.official_ai_feature.ability_bridge,
-   :kind :dependency}
-  {:from :server.packages.ability_system.ability_manager_logic,
-   :to :common.packages.ability_system.util,
-   :kind :dependency}
   {:from :server.Mgr.MgrSurvival, :to :common.GameCfg, :kind :dependency}
-  {:from :server.packages.ability_system.sub_ability,
-   :to :common.packages.ability_system.event_defs,
-   :kind :dependency}
   {:from :client.LocalReelIn, :to :common.GameCfg, :kind :dependency}
   {:from :server.Mgr.MgrFishUnit, :to :common.REUtil, :kind :dependency}
-  {:from :server.packages.ability_system.ability_manager_logic,
-   :to :common.packages.ability_system.constants,
-   :kind :dependency}
-  {:from :server.packages.modifier_system.event_bridge,
-   :to :common.packages.modifier_system.event_defs,
-   :kind :dependency}
-  {:from :client.packages.modifier_system.ModifierItem_LocalScript,
-   :to :client.packages.modifier_system.modifier_system,
-   :kind :dependency}
   {:from :server.MgrUtil, :to :common.FXUtil, :kind :dependency}
   {:from :server.main, :to :server.Mgr.MgrInteract, :kind :dependency}
   {:from :client.main, :to :client.LocalLottery, :kind :dependency}
   {:from :client.main, :to :client.LocalAttr, :kind :dependency}
   {:from :common.AttrAPIBase, :to :common.AbilityAPIBase, :kind :dependency}
   {:from :client.main, :to :client.LocalReelIn, :kind :dependency}
-  {:from :server.packages.ability_system.sub_ability_plugin,
-   :to :common.packages.ability_system.constants,
-   :kind :dependency}
   {:from :client.LocalReelIn, :to :common.RateLimit, :kind :dependency}
   {:from :client.AttrAPI, :to :common.AttrAPIBase, :kind :dependency}
   {:from :client.ScreenHandlers.ScreenMain, :to :common.GameCfg, :kind :dependency}
-  {:from :client.packages.ability_system.ui.UIManager,
-   :to :common.packages.ability_system.constants,
-   :kind :dependency}
-  {:from :server.packages.ability_system.anchor_script,
-   :to :server.packages.ability_system.anchor_logic,
-   :kind :dependency}
   {:from :server.Mgr.MgrAttr, :to :common.BodyScale, :kind :dependency}
-  {:from :client.packages.ability_system.ui.Controller,
-   :to :client.packages.ability_system.pointer.CirclePointer,
-   :kind :dependency}
   {:from :server.Mgr.MgrBlindbox, :to :common.BlindboxDraw, :kind :dependency}
   {:from :server.Data.RecordsAdapter, :to :common.GameCfg, :kind :dependency}
-  {:from :client.packages.modifier_system.performance,
-   :to :common.packages.modifier_system.config,
-   :kind :dependency}
   {:from :server.Mgr.MgrLottery, :to :common.GameCfg, :kind :dependency}
-  {:from :server.packages.modifier_system.ModifierStack,
-   :to :common.packages.modifier_system.util,
-   :kind :dependency}
   {:from :server.main, :to :server.Mgr.MgrFerry, :kind :dependency}
-  {:from :client.AttrAPI, :to :client.packages.attr_rule.api, :kind :dependency}
   {:from :client.ScreenHandlers.ScreenCompendium, :to :common.REUtil, :kind :dependency}
   {:from :server.Mgr.MgrGrill, :to :common.BodyScale, :kind :dependency}
   {:from :server.Mgr.MgrCast, :to :common.MathWaterJudge, :kind :dependency}
   {:from :common.SpecialItem, :to :common.GameCfg, :kind :dependency}
-  {:from :client.packages.ability_system.ui.nodes.AbilitySlot,
-   :to :client.packages.ability_system.ui.eui_adapter,
-   :kind :dependency}
-  {:from :server.AiAPI, :to :server.packages.official_ai_feature.api, :kind :dependency}
-  {:from :client.packages.ability_system.strategy.TwoStageStrategy,
-   :to :client.packages.ability_system.ui.nodes.AbilitySlot,
-   :kind :dependency}
   {:from :client.LocalAttackButton, :to :common.GameCfg, :kind :dependency}
-  {:from :server.packages.ability_system.anchor_logic,
-   :to :common.packages.ability_system.event_defs,
-   :kind :dependency}
-  {:from :server.packages.attr_rule.attr_rule,
-   :to :common.packages.attr_rule.AttrRuleManager,
-   :kind :dependency}
   {:from :common.AttrGrowth, :to :common.AttrModel, :kind :dependency}
   {:from :common.GameCfg, :to :common.cfg.PlaceholderAssets, :kind :dependency}
-  {:from :client.packages.ability_system.ui.Controller,
-   :to :common.packages.ability_system.constants,
-   :kind :dependency}
   {:from :client.ModifierAPI, :to :common.ModifierAPIBase, :kind :dependency}
   {:from :client.ScreenHandlers.ScreenGrill, :to :common.BodyScale, :kind :dependency}
   {:from :client.LocalCastSource, :to :common.REUtil, :kind :dependency}
-  {:from :server.packages.ability_system.sub_ability,
-   :to :common.packages.ability_system.constants,
-   :kind :dependency}
-  {:from :client.packages.ability_system.pointer.SectorPointer,
-   :to :client.packages.ability_system.pointer.AbilityPointer,
-   :kind :inheritance}
   {:from :client.ScreenHandlers.ScreenGrill,
    :to :client.InteractionBubble,
    :kind :dependency}
@@ -590,130 +237,43 @@
   {:from :common.GameCfg, :to :common.FishCatch, :kind :dependency}
   {:from :server.Mgr.MgrCompendium, :to :common.Records, :kind :dependency}
   {:from :server.Mgr.MgrWeapon, :to :server.AbilityAPI, :kind :dependency}
-  {:from :client.packages.ability_system.ability_local_script,
-   :to :common.packages.ability_system.registry,
-   :kind :dependency}
-  {:from :client.packages.ability_system.ui.Controller,
-   :to :client.packages.ability_system.strategy.ReleaseStrategy,
-   :kind :dependency}
-  {:from :client.packages.ability_system.ui.UIManager,
-   :to :common.packages.ability_system.ui_hooks,
-   :kind :dependency}
   {:from :client.ScreenHandlers.ScreenPlatform, :to :client.GameUI, :kind :dependency}
   {:from :server.Mgr.MgrCast, :to :common.REUtil, :kind :dependency}
-  {:from :client.packages.attr_rule.attr_rule,
-   :to :common.packages.attr_rule.AttrRuleManager,
-   :kind :dependency}
-  {:from :client.packages.attr_rule.api,
-   :to :client.packages.attr_rule.attr_rule,
-   :kind :dependency}
   {:from :server.Mgr.MgrGM, :to :common.GameCfg, :kind :dependency}
   {:from :server.Mgr.MgrLoot, :to :common.GameCfg, :kind :dependency}
-  {:from :client.packages.modifier_system.modifier_system,
-   :to :common.packages.modifier_system.config,
-   :kind :dependency}
   {:from :client.ScreenHandlers.ScreenGM, :to :common.REUtil, :kind :dependency}
   {:from :server.Mgr.MgrFishUnit, :to :common.CarryMount, :kind :dependency}
   {:from :server.Mgr.MgrReelIn, :to :common.GameCfg, :kind :dependency}
   {:from :server.Mgr.MgrSave, :to :common.GameCfg, :kind :dependency}
-  {:from :client.packages.ability_system.ability_local_script,
-   :to :common.packages.ability_system.ui_hooks,
-   :kind :dependency}
-  {:from :client.packages.ability_system.ui.Controller,
-   :to :client.packages.ability_system.pointer.ParabolaPointer,
-   :kind :dependency}
-  {:from :server.packages.ability_system.ability_manager_logic,
-   :to :common.packages.ability_system.event_defs,
-   :kind :dependency}
-  {:from :server.packages.ability_system.ability_script,
-   :to :server.packages.ability_system.ability_logic,
-   :kind :dependency}
   {:from :server.Mgr.MgrReelIn, :to :common.REUtil, :kind :dependency}
-  {:from :server.packages.official_ai_feature.api,
-   :to :common.packages.official_ai_feature.configs,
-   :kind :dependency}
   {:from :server.Mgr.MgrReelIn, :to :common.ReelProgress, :kind :dependency}
-  {:from :server.packages.attr_rule.attr_rule,
-   :to :common.packages.attr_rule.AttrUnit,
-   :kind :dependency}
   {:from :server.Mgr.MgrFishUnit, :to :common.FlightPath, :kind :dependency}
   {:from :common.GarBiteNotice, :to :common.REUtil, :kind :dependency}
   {:from :server.MgrUtil, :to :common.TeleportUtil, :kind :dependency}
   {:from :client.ScreenHandlers.ScreenBlindbox, :to :common.REUtil, :kind :dependency}
   {:from :client.main, :to :client.ScreenHandlers.ScreenPlatform, :kind :dependency}
-  {:from :server.packages.ability_system.anchors.bungee_cord,
-   :to :common.packages.ability_system.registry,
-   :kind :dependency}
   {:from :server.Mgr.MgrLottery, :to :common.LotteryDraw, :kind :dependency}
   {:from :common.ModifierAPIBase, :to :common.AbilityAPIBase, :kind :dependency}
-  {:from :server.packages.ability_system.anchors.create_bullet_to_castangle,
-   :to :common.packages.ability_system.registry,
-   :kind :dependency}
   {:from :client.main, :to :client.ScreenHandlers.ScreenCompendium, :kind :dependency}
-  {:from :server.packages.modifier_system.api,
-   :to :server.packages.modifier_system.modifier_system,
-   :kind :dependency}
-  {:from :client.ModifierAPI,
-   :to :client.packages.modifier_system.api,
-   :kind :dependency}
-  {:from :server.packages.modifier_system.ModifierHandler,
-   :to :common.packages.modifier_system.event_defs,
-   :kind :dependency}
   {:from :client.main, :to :client.ScreenHandlers.ScreenSurvival, :kind :dependency}
   {:from :client.main, :to :client.ScreenHandlers.ScreenFerry, :kind :dependency}
-  {:from :server.packages.ability_system.sub_ability_plugin,
-   :to :common.packages.ability_system.registry,
-   :kind :dependency}
   {:from :client.main, :to :client.ScreenHandlers.ScreenLottery, :kind :dependency}
   {:from :client.LocalAttr, :to :common.BodyScale, :kind :dependency}
-  {:from :client.packages.ability_system.ui.Controller,
-   :to :client.packages.ability_system.api,
-   :kind :dependency}
   {:from :server.AbilityBehaviors.melee_hit,
    :to :server.Mgr.MgrAbility,
    :kind :dependency}
   {:from :client.ScreenHandlers.ScreenLottery, :to :common.REUtil, :kind :dependency}
-  {:from :client.packages.ability_system.ui.UIManager,
-   :to :client.packages.ability_system.ui.Controller,
-   :kind :dependency}
+  {:from :server.AttrAPI, :to :server.packages, :kind :dependency}
   {:from :server.Mgr.MgrPlayerData, :to :server.Data.PlayerData, :kind :dependency}
   {:from :client.ScreenHandlers.ScreenSurvival, :to :common.REUtil, :kind :dependency}
-  {:from :server.packages.modifier_system.modifier_system,
-   :to :common.packages.modifier_system.config,
-   :kind :dependency}
   {:from :server.Mgr.MgrWeapon, :to :common.MathWaterJudge, :kind :dependency}
-  {:from :client.packages.ability_system.ability_manager_local_script,
-   :to :client.packages.ability_system.ui.nodes.AbilitySlot,
-   :kind :dependency}
-  {:from :server.AbilityAPI, :to :server.packages.ability_system.api, :kind :dependency}
   {:from :server.Mgr.MgrFishUnit, :to :server.AbilityAPI, :kind :dependency}
   {:from :common.AiAPIBase, :to :common.AbilityAPIBase, :kind :dependency}
   {:from :server.Mgr.MgrModifier, :to :common.GameCfg, :kind :dependency}
-  {:from :client.packages.ability_system.pointer.CirclePointer,
-   :to :client.packages.ability_system.ui.nodes.AbilitySlot,
-   :kind :dependency}
-  {:from :client.packages.ability_system.ability_manager_local_script,
-   :to :common.packages.ability_system.constants,
-   :kind :dependency}
-  {:from :client.packages.modifier_system.ClientModifierHandler,
-   :to :common.packages.modifier_system.util,
-   :kind :dependency}
-  {:from :server.packages.ability_system.anchors.active_cd,
-   :to :common.packages.ability_system.registry,
-   :kind :dependency}
   {:from :server.Data.PlayerData, :to :common.GameCfg, :kind :dependency}
   {:from :server.AbilityBehaviors.melee_hit, :to :server.AbilityAPI, :kind :dependency}
   {:from :client.ScreenHandlers.ScreenLottery,
    :to :common.LotteryEligibility,
-   :kind :dependency}
-  {:from :server.packages.ability_system.item_box.item_box_logic,
-   :to :common.packages.ability_system.constants,
-   :kind :dependency}
-  {:from :client.packages.modifier_system.modifier_system,
-   :to :common.packages.modifier_system.event_defs,
-   :kind :dependency}
-  {:from :client.packages.ability_system.ui.Controller,
-   :to :client.packages.ability_system.pointer.AbilityPointer,
    :kind :dependency}
   {:from :common.GameCfg, :to :common.cfg.Lottery, :kind :dependency}
   {:from :server.Mgr.MgrFishUnit, :to :common.BossPhase, :kind :dependency}
@@ -726,58 +286,23 @@
   {:from :server.main, :to :server.Mgr.MgrPlatform, :kind :dependency}
   {:from :client.FishCombatLabel, :to :common.GameCfg, :kind :dependency}
   {:from :common.LotteryDraw, :to :common.GameCfg, :kind :dependency}
-  {:from :client.packages.ability_system.ui.Controller,
-   :to :client.packages.ability_system.strategy.TwoStageStrategy,
-   :kind :dependency}
-  {:from :server.packages.ability_system.sub_ability,
-   :to :common.packages.ability_system.util,
-   :kind :dependency}
   {:from :server.main, :to :server.Mgr.MgrAttr, :kind :dependency}
   {:from :server.main, :to :server.Mgr.MgrStory, :kind :dependency}
-  {:from :client.packages.ability_system.ui.UIManager,
-   :to :client.packages.ability_system.ui.nodes.CancelArea,
-   :kind :dependency}
   {:from :server.Mgr.MgrRecords, :to :common.Records, :kind :dependency}
   {:from :client.LocalGarBite, :to :common.GameCfg, :kind :dependency}
   {:from :server.AbilityAPI, :to :common.AbilityAPIBase, :kind :dependency}
-  {:from :client.packages.ability_system.ability_manager_local_script,
-   :to :common.packages.ability_system.registry,
-   :kind :dependency}
   {:from :server.Mgr.MgrInteract, :to :common.BodyScale, :kind :dependency}
-  {:from :client.packages.ability_system.ui.nodes.CancelArea,
-   :to :client.packages.ability_system.ui.eui_adapter,
-   :kind :dependency}
   {:from :server.main, :to :server.Mgr.MgrFishCarrier, :kind :dependency}
   {:from :client.main, :to :client.ScreenHandlers.ScreenBlindbox, :kind :dependency}
-  {:from :client.packages.ability_system.pointer.AbilityPointer,
-   :to :client.packages.ability_system.ui.nodes.AbilitySlot,
-   :kind :dependency}
   {:from :server.Mgr.MgrFishUnit, :to :common.FishCatch, :kind :dependency}
-  {:from :server.packages.official_ai_feature.ability_bridge,
-   :to :common.packages.official_ai_feature.utils,
-   :kind :dependency}
   {:from :server.Mgr.MgrQuest, :to :common.QuestSteps, :kind :dependency}
   {:from :client.ScreenHandlers.ScreenGM, :to :common.GameCfg, :kind :dependency}
   {:from :client.LocalMgrUtil, :to :common.TeleportUtil, :kind :dependency}
   {:from :server.Mgr.MgrFishUnit, :to :common.GameCfg, :kind :dependency}
-  {:from :client.packages.ability_system.strategy.TwoStageStrategy,
-   :to :client.packages.ability_system.ui.scene_input,
-   :kind :dependency}
-  {:from :common.packages.attr_rule.AttrRuleManager,
-   :to :common.packages.attr_rule.configs,
-   :kind :dependency}
   {:from :server.main, :to :server.Mgr.MgrRecords, :kind :dependency}
+  {:from :client.AttrAPI, :to :client.packages, :kind :dependency}
   {:from :client.LocalLoot, :to :common.BodyScale, :kind :dependency}
   {:from :client.main, :to :client.LocalMotorUnitCtrl, :kind :dependency}
-  {:from :common.packages.attr_rule.AttrBuffUnit,
-   :to :common.packages.attr_rule.utils,
-   :kind :dependency}
-  {:from :server.AiAPI,
-   :to :server.packages.official_ai_feature.behavior_runtime,
-   :kind :dependency}
-  {:from :server.packages.official_ai_feature.ability_bridge,
-   :to :common.packages.official_ai_feature.configs,
-   :kind :dependency}
   {:from :server.Mgr.MgrAbility, :to :common.GameCfg, :kind :dependency}],
  :classes
  [{:ns "client.AbilityAPI",
@@ -1245,451 +770,6 @@
    :ops [],
    :lang :lua,
    :id :client.main}
-  {:ns "client.packages.ability_system.ability_local_script",
-   :name "Ability_local_script",
-   :file "client/packages/ability_system/ability_local_script.lua",
-   :ops [{:name "M.attach", :text "M.attach"}],
-   :lang :lua,
-   :id :client.packages.ability_system.ability_local_script}
-  {:ns "client.packages.ability_system.ability_manager_local_script",
-   :name "Ability_manager_local_script",
-   :file "client/packages/ability_system/ability_manager_local_script.lua",
-   :ops [{:name "M.attach", :text "M.attach"}],
-   :lang :lua,
-   :id :client.packages.ability_system.ability_manager_local_script}
-  {:ns "client.packages.ability_system.api",
-   :name "Api",
-   :file "client/packages/ability_system/api.lua",
-   :ops
-   [{:name "AbilityClientAPI.GetManagerForUnit",
-     :text "AbilityClientAPI.GetManagerForUnit"}
-    {:name "AbilityClientAPI.GetAbility", :text "AbilityClientAPI.GetAbility"}
-    {:name "AbilityClientAPI.RequestCast", :text "AbilityClientAPI.RequestCast"}
-    {:name "AbilityClientAPI.RequestStop", :text "AbilityClientAPI.RequestStop"}
-    {:name "AbilityClientAPI.RequestSwitchNext",
-     :text "AbilityClientAPI.RequestSwitchNext"}
-    {:name "AbilityClientAPI.RequestAccumulate",
-     :text "AbilityClientAPI.RequestAccumulate"}
-    {:name "AbilityClientAPI.GetUIManager", :text "AbilityClientAPI.GetUIManager"}
-    {:name "AbilityClientAPI.Register", :text "AbilityClientAPI.Register"}
-    {:name "AbilityClientAPI.StartClientLifecycle",
-     :text "AbilityClientAPI.StartClientLifecycle"}],
-   :lang :lua,
-   :id :client.packages.ability_system.api}
-  {:ns "client.packages.ability_system.component_scripts.box_component_fix",
-   :name "Box_component_fix",
-   :file "client/packages/ability_system/component_scripts/box_component_fix.lua",
-   :ops [],
-   :lang :lua,
-   :id :client.packages.ability_system.component_scripts.box_component_fix}
-  {:ns "client.packages.ability_system.pointer.AbilityPointer",
-   :name "AbilityPointer",
-   :file "client/packages/ability_system/pointer/AbilityPointer.lua",
-   :ops
-   [{:name "AbilityPointer.new", :text "AbilityPointer.new"}
-    {:name "AbilityPointer:_GetOwner", :text "AbilityPointer:_GetOwner"}
-    {:name "AbilityPointer:GetAbilityProperty",
-     :text "AbilityPointer:GetAbilityProperty"}
-    {:name "AbilityPointer:Create", :text "AbilityPointer:Create"}
-    {:name "AbilityPointer:UpdateEffect", :text "AbilityPointer:UpdateEffect"}
-    {:name "AbilityPointer:UpdateTransforms", :text "AbilityPointer:UpdateTransforms"}
-    {:name "AbilityPointer:Refresh", :text "AbilityPointer:Refresh"}
-    {:name "AbilityPointer:Clear", :text "AbilityPointer:Clear"}
-    {:name "AbilityPointer:GetReleasePoint", :text "AbilityPointer:GetReleasePoint"}
-    {:name "AbilityPointer:GetCameraRotation", :text "AbilityPointer:GetCameraRotation"}
-    {:name "AbilityPointer:Destroy", :text "AbilityPointer:Destroy"}],
-   :lang :lua,
-   :id :client.packages.ability_system.pointer.AbilityPointer}
-  {:ns "client.packages.ability_system.pointer.CirclePointer",
-   :name "CirclePointer",
-   :file "client/packages/ability_system/pointer/CirclePointer.lua",
-   :ops
-   [{:name "CirclePointer.new", :text "CirclePointer.new"}
-    {:name "CirclePointer:Create", :text "CirclePointer:Create"}
-    {:name "CirclePointer:UpdateEffect", :text "CirclePointer:UpdateEffect"}
-    {:name "CirclePointer:Refresh", :text "CirclePointer:Refresh"}],
-   :lang :lua,
-   :id :client.packages.ability_system.pointer.CirclePointer}
-  {:ns "client.packages.ability_system.pointer.ParabolaPointer",
-   :name "ParabolaPointer",
-   :file "client/packages/ability_system/pointer/ParabolaPointer.lua",
-   :ops
-   [{:name "ParabolaPointer.new", :text "ParabolaPointer.new"}
-    {:name "ParabolaPointer:Create", :text "ParabolaPointer:Create"}
-    {:name "ParabolaPointer:UpdateEffect", :text "ParabolaPointer:UpdateEffect"}
-    {:name "ParabolaPointer:Refresh", :text "ParabolaPointer:Refresh"}
-    {:name "ParabolaPointer:GetReleasePoint", :text "ParabolaPointer:GetReleasePoint"}
-    {:name "ParabolaPointer:Clear", :text "ParabolaPointer:Clear"}
-    {:name "ParabolaPointer:Destroy", :text "ParabolaPointer:Destroy"}
-    {:name "ParabolaPointer:_calcVelocity", :text "ParabolaPointer:_calcVelocity"}],
-   :lang :lua,
-   :id :client.packages.ability_system.pointer.ParabolaPointer}
-  {:ns "client.packages.ability_system.pointer.RectanglePointer",
-   :name "RectanglePointer",
-   :file "client/packages/ability_system/pointer/RectanglePointer.lua",
-   :ops
-   [{:name "RectanglePointer.new", :text "RectanglePointer.new"}
-    {:name "RectanglePointer:Create", :text "RectanglePointer:Create"}],
-   :lang :lua,
-   :id :client.packages.ability_system.pointer.RectanglePointer}
-  {:ns "client.packages.ability_system.pointer.SectorPointer",
-   :name "SectorPointer",
-   :file "client/packages/ability_system/pointer/SectorPointer.lua",
-   :ops
-   [{:name "SectorPointer.new", :text "SectorPointer.new"}
-    {:name "SectorPointer:Create", :text "SectorPointer:Create"}],
-   :lang :lua,
-   :id :client.packages.ability_system.pointer.SectorPointer}
-  {:ns "client.packages.ability_system.strategy.BaseStrategy",
-   :name "BaseStrategy",
-   :file "client/packages/ability_system/strategy/BaseStrategy.lua",
-   :ops
-   [{:name "BaseStrategy.new", :text "BaseStrategy.new"}
-    {:name "BaseStrategy:OnTouchBegin", :text "BaseStrategy:OnTouchBegin"}
-    {:name "BaseStrategy:OnTouchMove", :text "BaseStrategy:OnTouchMove"}
-    {:name "BaseStrategy:OnTouchEnd", :text "BaseStrategy:OnTouchEnd"}
-    {:name "BaseStrategy:Destroy", :text "BaseStrategy:Destroy"}],
-   :lang :lua,
-   :id :client.packages.ability_system.strategy.BaseStrategy}
-  {:ns "client.packages.ability_system.strategy.HoldStrategy",
-   :name "HoldStrategy",
-   :file "client/packages/ability_system/strategy/HoldStrategy.lua",
-   :ops
-   [{:name "HoldStrategy:OnTouchBegin", :text "HoldStrategy:OnTouchBegin"}
-    {:name "HoldStrategy:TryCast", :text "HoldStrategy:TryCast"}
-    {:name "HoldStrategy:OnTouchEnd", :text "HoldStrategy:OnTouchEnd"}
-    {:name "HoldStrategy:Destroy", :text "HoldStrategy:Destroy"}],
-   :lang :lua,
-   :id :client.packages.ability_system.strategy.HoldStrategy}
-  {:ns "client.packages.ability_system.strategy.PressStrategy",
-   :name "PressStrategy",
-   :file "client/packages/ability_system/strategy/PressStrategy.lua",
-   :ops
-   [{:name "PressStrategy:OnTouchBegin", :text "PressStrategy:OnTouchBegin"}
-    {:name "PressStrategy:OnTouchMove", :text "PressStrategy:OnTouchMove"}
-    {:name "PressStrategy:OnTouchEnd", :text "PressStrategy:OnTouchEnd"}
-    {:name "PressStrategy:Destroy", :text "PressStrategy:Destroy"}],
-   :lang :lua,
-   :id :client.packages.ability_system.strategy.PressStrategy}
-  {:ns "client.packages.ability_system.strategy.ReleaseStrategy",
-   :name "ReleaseStrategy",
-   :file "client/packages/ability_system/strategy/ReleaseStrategy.lua",
-   :ops
-   [{:name "ReleaseStrategy:OnTouchBegin", :text "ReleaseStrategy:OnTouchBegin"}
-    {:name "ReleaseStrategy:OnTouchMove", :text "ReleaseStrategy:OnTouchMove"}
-    {:name "ReleaseStrategy:OnTouchEnd", :text "ReleaseStrategy:OnTouchEnd"}],
-   :lang :lua,
-   :id :client.packages.ability_system.strategy.ReleaseStrategy}
-  {:ns "client.packages.ability_system.strategy.TwoStageStrategy",
-   :name "TwoStageStrategy",
-   :file "client/packages/ability_system/strategy/TwoStageStrategy.lua",
-   :ops
-   [{:name "TwoStageStrategy:OnTouchBegin", :text "TwoStageStrategy:OnTouchBegin"}
-    {:name "TwoStageStrategy:OnTouchEnd", :text "TwoStageStrategy:OnTouchEnd"}
-    {:name "TwoStageStrategy:OnSceneClick", :text "TwoStageStrategy:OnSceneClick"}
-    {:name "TwoStageStrategy:CancelAiming", :text "TwoStageStrategy:CancelAiming"}
-    {:name "TwoStageStrategy:Destroy", :text "TwoStageStrategy:Destroy"}],
-   :lang :lua,
-   :id :client.packages.ability_system.strategy.TwoStageStrategy}
-  {:ns "client.packages.ability_system.ui.Controller",
-   :name "Controller",
-   :file "client/packages/ability_system/ui/Controller.lua",
-   :ops
-   [{:name "Controller.new", :text "Controller.new"}
-    {:name "Controller:Destroy", :text "Controller:Destroy"}
-    {:name "Controller:_onClicked", :text "Controller:_onClicked"}
-    {:name "Controller:_onTouchBegan", :text "Controller:_onTouchBegan"}
-    {:name "Controller:_onTouchMoved", :text "Controller:_onTouchMoved"}
-    {:name "Controller:_onTouchEnded", :text "Controller:_onTouchEnded"}
-    {:name "Controller:_ensureManager", :text "Controller:_ensureManager"}
-    {:name "Controller:_requestCast", :text "Controller:_requestCast"}
-    {:name "Controller:_requestStop", :text "Controller:_requestStop"}
-    {:name "Controller:_requestAccumulate", :text "Controller:_requestAccumulate"}
-    {:name "Controller:_requestStopAccumulate",
-     :text "Controller:_requestStopAccumulate"}
-    {:name "Controller:GetOwner", :text "Controller:GetOwner"}
-    {:name "Controller:SetReleaseParam", :text "Controller:SetReleaseParam"}
-    {:name "Controller:GetReleaseParam", :text "Controller:GetReleaseParam"}
-    {:name "Controller:OnInCDChange", :text "Controller:OnInCDChange"}
-    {:name "Controller:OnChargeCountChange", :text "Controller:OnChargeCountChange"}
-    {:name "Controller:OnPointerTypeChange", :text "Controller:OnPointerTypeChange"}
-    {:name "Controller:OnReleaseTypeChange", :text "Controller:OnReleaseTypeChange"}
-    {:name "Controller:_createStrategy", :text "Controller:_createStrategy"}
-    {:name "Controller:_rebuildStrategy", :text "Controller:_rebuildStrategy"}
-    {:name "Controller:_createPointer", :text "Controller:_createPointer"}
-    {:name "Controller:_rebuildPointer", :text "Controller:_rebuildPointer"}
-    {:name "_setUIManager", :text "_setUIManager"}
-    {:name "_getUIManager", :text "_getUIManager"}
-    {:name "Controller.SetUIManager", :text "Controller.SetUIManager"}
-    {:name "Controller.GetUIManager", :text "Controller.GetUIManager"}],
-   :lang :lua,
-   :id :client.packages.ability_system.ui.Controller}
-  {:ns "client.packages.ability_system.ui.UIManager",
-   :name "UIManager",
-   :file "client/packages/ability_system/ui/UIManager.lua",
-   :ops
-   [{:name "UIManager.new", :text "UIManager.new"}
-    {:name "UIManager.GetInstance", :text "UIManager.GetInstance"}
-    {:name "UIManager.InjectHooks", :text "UIManager.InjectHooks"}
-    {:name "UIManager:_FindSlotNode", :text "UIManager:_FindSlotNode"}
-    {:name "UIManager:_EnsureAccumulateNode", :text "UIManager:_EnsureAccumulateNode"}
-    {:name "UIManager:_EnsureCancelNodes", :text "UIManager:_EnsureCancelNodes"}
-    {:name "UIManager:SetManager", :text "UIManager:SetManager"}
-    {:name "UIManager:BindAbility", :text "UIManager:BindAbility"}
-    {:name "UIManager:UnBindAbility", :text "UIManager:UnBindAbility"}
-    {:name "UIManager:ResetBindings", :text "UIManager:ResetBindings"}
-    {:name "UIManager:ShowAccumulate", :text "UIManager:ShowAccumulate"}
-    {:name "UIManager:HideAccumulate", :text "UIManager:HideAccumulate"}
-    {:name "UIManager:_FindControllerByAbility",
-     :text "UIManager:_FindControllerByAbility"}
-    {:name "UIManager:_ScheduleRetry", :text "UIManager:_ScheduleRetry"}
-    {:name "UIManager:_CancelRetry", :text "UIManager:_CancelRetry"}
-    {:name "UIManager:_RunRetryLoop", :text "UIManager:_RunRetryLoop"}
-    {:name "UIManager:SetCancelAreaVisible", :text "UIManager:SetCancelAreaVisible"}
-    {:name "UIManager:IsInCancelArea", :text "UIManager:IsInCancelArea"}],
-   :lang :lua,
-   :id :client.packages.ability_system.ui.UIManager}
-  {:ns "client.packages.ability_system.ui.eui_adapter",
-   :name "Eui_adapter",
-   :file "client/packages/ability_system/ui/eui_adapter.lua",
-   :ops
-   [{:name "EuiAdapter.makeColor", :text "EuiAdapter.makeColor"}
-    {:name "EuiAdapter.SetVisible", :text "EuiAdapter.SetVisible"}
-    {:name "EuiAdapter.GetVisible", :text "EuiAdapter.GetVisible"}
-    {:name "EuiAdapter.SetImage", :text "EuiAdapter.SetImage"}
-    {:name "EuiAdapter.SetText", :text "EuiAdapter.SetText"}
-    {:name "EuiAdapter.SetPercent", :text "EuiAdapter.SetPercent"}
-    {:name "EuiAdapter.SetColor", :text "EuiAdapter.SetColor"}
-    {:name "EuiAdapter.SetPosition", :text "EuiAdapter.SetPosition"}
-    {:name "EuiAdapter.GetPosition", :text "EuiAdapter.GetPosition"}
-    {:name "EuiAdapter.SetTouchEnabled", :text "EuiAdapter.SetTouchEnabled"}
-    {:name "EuiAdapter.HitTest", :text "EuiAdapter.HitTest"}
-    {:name "EuiAdapter.ConvertToLocalPosition",
-     :text "EuiAdapter.ConvertToLocalPosition"}
-    {:name "EuiAdapter.FindFirstChild", :text "EuiAdapter.FindFirstChild"}
-    {:name "EuiAdapter.GetDescendants", :text "EuiAdapter.GetDescendants"}
-    {:name "EuiAdapter.GetEuiManager", :text "EuiAdapter.GetEuiManager"}
-    {:name "EuiAdapter.GetRootNode", :text "EuiAdapter.GetRootNode"}
-    {:name "EuiAdapter.GetCharacterUnitId", :text "EuiAdapter.GetCharacterUnitId"}
-    {:name "EuiAdapter.GetLocalCharacter", :text "EuiAdapter.GetLocalCharacter"}],
-   :lang :lua,
-   :id :client.packages.ability_system.ui.eui_adapter}
-  {:ns "client.packages.ability_system.ui.nodes.AbilitySlot",
-   :name "AbilitySlot",
-   :file "client/packages/ability_system/ui/nodes/AbilitySlot.lua",
-   :ops
-   [{:name "AbilitySlot.Attach", :text "AbilitySlot.Attach"}
-    {:name "AbilitySlot.BindChildren", :text "AbilitySlot.BindChildren"}
-    {:name "AbilitySlot.GetState", :text "AbilitySlot.GetState"}
-    {:name "AbilitySlot.InitCDUI", :text "AbilitySlot.InitCDUI"}
-    {:name "AbilitySlot.StartCD", :text "AbilitySlot.StartCD"}
-    {:name "AbilitySlot.StopCD", :text "AbilitySlot.StopCD"}
-    {:name "AbilitySlot._GetLeftCD", :text "AbilitySlot._GetLeftCD"}
-    {:name "AbilitySlot._UpdateCD", :text "AbilitySlot._UpdateCD"}
-    {:name "AbilitySlot._StartCDTimer", :text "AbilitySlot._StartCDTimer"}
-    {:name "AbilitySlot._StopCDTimer", :text "AbilitySlot._StopCDTimer"}
-    {:name "AbilitySlot.SetForbidden", :text "AbilitySlot.SetForbidden"}
-    {:name "AbilitySlot.ShowDragIndicator", :text "AbilitySlot.ShowDragIndicator"}
-    {:name "AbilitySlot.UpdateDragIndicator", :text "AbilitySlot.UpdateDragIndicator"}
-    {:name "AbilitySlot.HideDragIndicator", :text "AbilitySlot.HideDragIndicator"}
-    {:name "AbilitySlot.SetCancelState", :text "AbilitySlot.SetCancelState"}
-    {:name "AbilitySlot.InitChargeData", :text "AbilitySlot.InitChargeData"}
-    {:name "AbilitySlot.InitChargeUI", :text "AbilitySlot.InitChargeUI"}
-    {:name "AbilitySlot.UpdateChargeUI", :text "AbilitySlot.UpdateChargeUI"}
-    {:name "AbilitySlot.Refresh", :text "AbilitySlot.Refresh"}
-    {:name "AbilitySlot.Cleanup", :text "AbilitySlot.Cleanup"}],
-   :lang :lua,
-   :id :client.packages.ability_system.ui.nodes.AbilitySlot}
-  {:ns "client.packages.ability_system.ui.nodes.AccumulateNode",
-   :name "AccumulateNode",
-   :file "client/packages/ability_system/ui/nodes/AccumulateNode.lua",
-   :ops
-   [{:name "AccumulateNode.Attach", :text "AccumulateNode.Attach"}
-    {:name "AccumulateNode.BindChildren", :text "AccumulateNode.BindChildren"}
-    {:name "AccumulateNode.GetState", :text "AccumulateNode.GetState"}
-    {:name "AccumulateNode.StartAccumulate", :text "AccumulateNode.StartAccumulate"}
-    {:name "AccumulateNode._Update", :text "AccumulateNode._Update"}
-    {:name "AccumulateNode._StartTimer", :text "AccumulateNode._StartTimer"}
-    {:name "AccumulateNode._StopTimer", :text "AccumulateNode._StopTimer"}
-    {:name "AccumulateNode.StopAccumulate", :text "AccumulateNode.StopAccumulate"}
-    {:name "AccumulateNode.Cleanup", :text "AccumulateNode.Cleanup"}],
-   :lang :lua,
-   :id :client.packages.ability_system.ui.nodes.AccumulateNode}
-  {:ns "client.packages.ability_system.ui.nodes.CancelArea",
-   :name "CancelArea",
-   :file "client/packages/ability_system/ui/nodes/CancelArea.lua",
-   :ops
-   [{:name "CancelArea.Attach", :text "CancelArea.Attach"}
-    {:name "CancelArea.SetCancelState", :text "CancelArea.SetCancelState"}
-    {:name "CancelArea.GetState", :text "CancelArea.GetState"}],
-   :lang :lua,
-   :id :client.packages.ability_system.ui.nodes.CancelArea}
-  {:ns "client.packages.ability_system.ui.scene_input",
-   :name "Scene_input",
-   :file "client/packages/ability_system/ui/scene_input.lua",
-   :ops [{:name "SceneInput.Connect", :text "SceneInput.Connect"}],
-   :lang :lua,
-   :id :client.packages.ability_system.ui.scene_input}
-  {:ns "client.packages.attr_rule.api",
-   :name "Api",
-   :file "client/packages/attr_rule/api.lua",
-   :ops [],
-   :lang :lua,
-   :id :client.packages.attr_rule.api}
-  {:ns "client.packages.attr_rule.attr_rule",
-   :name "Attr_rule",
-   :file "client/packages/attr_rule/attr_rule.lua",
-   :ops [],
-   :lang :lua,
-   :id :client.packages.attr_rule.attr_rule}
-  {:ns "client.packages.modifier_system.ClientModifierHandler",
-   :name "ClientModifierHandler",
-   :file "client/packages/modifier_system/ClientModifierHandler.lua",
-   :ops
-   [{:name "ClientModifierHandler.new", :text "ClientModifierHandler.new"}
-    {:name "ClientModifierHandler:_onActiveChange",
-     :text "ClientModifierHandler:_onActiveChange"}
-    {:name "ClientModifierHandler:_destroyPlayingPerformance",
-     :text "ClientModifierHandler:_destroyPlayingPerformance"}
-    {:name "ClientModifierHandler:_getPerformanceFromAttr",
-     :text "ClientModifierHandler:_getPerformanceFromAttr"}
-    {:name "ClientModifierHandler:onRefreshClient",
-     :text "ClientModifierHandler:onRefreshClient"}
-    {:name "ClientModifierHandler:onStackChangeClient",
-     :text "ClientModifierHandler:onStackChangeClient"}
-    {:name "ClientModifierHandler:onReobtainClient",
-     :text "ClientModifierHandler:onReobtainClient"}
-    {:name "ClientModifierHandler:onPauseClient",
-     :text "ClientModifierHandler:onPauseClient"}
-    {:name "ClientModifierHandler:onResumeClient",
-     :text "ClientModifierHandler:onResumeClient"}
-    {:name "ClientModifierHandler:getModifierKey",
-     :text "ClientModifierHandler:getModifierKey"}
-    {:name "ClientModifierHandler:getUnit", :text "ClientModifierHandler:getUnit"}
-    {:name "ClientModifierHandler:isActive", :text "ClientModifierHandler:isActive"}
-    {:name "ClientModifierHandler:getStackCount",
-     :text "ClientModifierHandler:getStackCount"}
-    {:name "ClientModifierHandler:getCharMtg", :text "ClientModifierHandler:getCharMtg"}
-    {:name "ClientModifierHandler:isPaused", :text "ClientModifierHandler:isPaused"}
-    {:name "ClientModifierHandler:getRemainingTime",
-     :text "ClientModifierHandler:getRemainingTime"}
-    {:name "ClientModifierHandler:_getSlotMirror",
-     :text "ClientModifierHandler:_getSlotMirror"}
-    {:name "ClientModifierHandler:getDesc", :text "ClientModifierHandler:getDesc"}
-    {:name "ClientModifierHandler:getModifierType",
-     :text "ClientModifierHandler:getModifierType"}
-    {:name "ClientModifierHandler:getMaxStackCount",
-     :text "ClientModifierHandler:getMaxStackCount"}
-    {:name "ClientModifierHandler:_resolveOwner",
-     :text "ClientModifierHandler:_resolveOwner"}
-    {:name "ClientModifierHandler:_awaitOwner",
-     :text "ClientModifierHandler:_awaitOwner"}
-    {:name "ClientModifierHandler:_pushMaterial",
-     :text "ClientModifierHandler:_pushMaterial"}
-    {:name "ClientModifierHandler:_popMaterial",
-     :text "ClientModifierHandler:_popMaterial"}
-    {:name "ClientModifierHandler:_playPerformanceList",
-     :text "ClientModifierHandler:_playPerformanceList"}
-    {:name "ClientModifierHandler:_collectPlayingPerformance",
-     :text "ClientModifierHandler:_collectPlayingPerformance"}],
-   :lang :lua,
-   :id :client.packages.modifier_system.ClientModifierHandler}
-  {:ns "client.packages.modifier_system.ModifierItem_LocalScript",
-   :name "ModifierItem_LocalScript",
-   :file "client/packages/modifier_system/ModifierItem_LocalScript.lua",
-   :ops [],
-   :lang :lua,
-   :id :client.packages.modifier_system.ModifierItem_LocalScript}
-  {:ns "client.packages.modifier_system.api",
-   :name "Api",
-   :file "client/packages/modifier_system/api.lua",
-   :ops [],
-   :lang :lua,
-   :id :client.packages.modifier_system.api}
-  {:ns "client.packages.modifier_system.modifier_system",
-   :name "Modifier_system",
-   :file "client/packages/modifier_system/modifier_system.lua",
-   :ops
-   [{:name "CModifierSystemManager.new", :text "CModifierSystemManager.new"}
-    {:name "CModifierSystemManager:_bindRemoteEvent",
-     :text "CModifierSystemManager:_bindRemoteEvent"}
-    {:name "CModifierSystemManager:getContainer",
-     :text "CModifierSystemManager:getContainer"}
-    {:name "CModifierSystemManager:_bindOwnerChildren",
-     :text "CModifierSystemManager:_bindOwnerChildren"}
-    {:name "CModifierSystemManager:_isModifierChild",
-     :text "CModifierSystemManager:_isModifierChild"}
-    {:name "CModifierSystemManager:_bindSlot", :text "CModifierSystemManager:_bindSlot"}
-    {:name "CModifierSystemManager:_unbindSlot",
-     :text "CModifierSystemManager:_unbindSlot"}
-    {:name "CModifierSystemManager:_bindModifier",
-     :text "CModifierSystemManager:_bindModifier"}
-    {:name "CModifierSystemManager:registerModifier",
-     :text "CModifierSystemManager:registerModifier"}
-    {:name "CModifierSystemManager:_findClientHandler",
-     :text "CModifierSystemManager:_findClientHandler"}
-    {:name "CModifierSystemManager:_onServerPush",
-     :text "CModifierSystemManager:_onServerPush"}
-    {:name "CModifierSystemManager:_fireServer",
-     :text "CModifierSystemManager:_fireServer"}
-    {:name "CModifierSystemManager:pushMaterial",
-     :text "CModifierSystemManager:pushMaterial"}
-    {:name "CModifierSystemManager:popMaterial",
-     :text "CModifierSystemManager:popMaterial"}
-    {:name "CModifierSystemManager:removeMaterial",
-     :text "CModifierSystemManager:removeMaterial"}
-    {:name "CModifierSystemManager:applyTopMaterial",
-     :text "CModifierSystemManager:applyTopMaterial"}
-    {:name "CModifierSystemManager:removeModifierByKey",
-     :text "CModifierSystemManager:removeModifierByKey"}
-    {:name "CModifierSystemManager:clearAllModifiers",
-     :text "CModifierSystemManager:clearAllModifiers"}
-    {:name "CModifierSystemManager:removeModifier",
-     :text "CModifierSystemManager:removeModifier"}
-    {:name "CModifierSystemManager:setStackCount",
-     :text "CModifierSystemManager:setStackCount"}
-    {:name "CModifierSystemManager:addStackCount",
-     :text "CModifierSystemManager:addStackCount"}
-    {:name "CModifierSystemManager:addDuration",
-     :text "CModifierSystemManager:addDuration"}
-    {:name "CModifierSystemManager:setRemainTime",
-     :text "CModifierSystemManager:setRemainTime"}
-    {:name "CModifierSystemManager:pause", :text "CModifierSystemManager:pause"}
-    {:name "CModifierSystemManager:resume", :text "CModifierSystemManager:resume"}
-    {:name "CModifierSystemManager:hasModifier",
-     :text "CModifierSystemManager:hasModifier"}
-    {:name "CModifierSystemManager:getModifierUnits",
-     :text "CModifierSystemManager:getModifierUnits"}
-    {:name "CModifierSystemManager:_findSlotByKey",
-     :text "CModifierSystemManager:_findSlotByKey"}
-    {:name "CModifierSystemManager:getModifierUnitsByKey",
-     :text "CModifierSystemManager:getModifierUnitsByKey"}
-    {:name "CModifierSystemManager:getRemainingTimeByKey",
-     :text "CModifierSystemManager:getRemainingTimeByKey"}
-    {:name "CModifierSystemManager:getModifierHandler",
-     :text "CModifierSystemManager:getModifierHandler"}
-    {:name "CModifierSystemManager:registerModifierHandler",
-     :text "CModifierSystemManager:registerModifierHandler"}
-    {:name "CModifierSystemManager:unregisterModifierHandler",
-     :text "CModifierSystemManager:unregisterModifierHandler"}
-    {:name "CModifierSystemManager:addTag", :text "CModifierSystemManager:addTag"}
-    {:name "CModifierSystemManager:hasTag", :text "CModifierSystemManager:hasTag"}
-    {:name "CModifierSystemManager:clearTags",
-     :text "CModifierSystemManager:clearTags"}],
-   :lang :lua,
-   :id :client.packages.modifier_system.modifier_system}
-  {:ns "client.packages.modifier_system.performance",
-   :name "Performance",
-   :file "client/packages/modifier_system/performance.lua",
-   :ops [{:name "performance.play", :text "performance.play"}],
-   :lang :lua,
-   :id :client.packages.modifier_system.performance}
-  {:ns "client.packages.official_ai_feature.official_ai_feature",
-   :name "Official_ai_feature",
-   :file "client/packages/official_ai_feature/official_ai_feature.lua",
-   :ops [],
-   :lang :lua,
-   :id :client.packages.official_ai_feature.official_ai_feature}
   {:ns "common.AbilityAPIBase",
    :name "AbilityAPIBase",
    :file "common/AbilityAPIBase.lua",
@@ -1852,151 +932,6 @@
    :ops [{:name "LotteryEligibility.Check", :text "LotteryEligibility.Check"}],
    :lang :lua,
    :id :common.LotteryEligibility}
-  {:ns "common.packages.ability_system.constants",
-   :name "Constants",
-   :file "common/packages/ability_system/constants.lua",
-   :ops [],
-   :lang :lua,
-   :id :common.packages.ability_system.constants}
-  {:ns "common.packages.ability_system.registry",
-   :name "Registry",
-   :file "common/packages/ability_system/registry.lua",
-   :ops
-   [{:name "AbilityRegistry.unitKeyOf", :text "AbilityRegistry.unitKeyOf"}
-    {:name "AbilityRegistry.registerAbility", :text "AbilityRegistry.registerAbility"}
-    {:name "AbilityRegistry.unregisterAbility",
-     :text "AbilityRegistry.unregisterAbility"}
-    {:name "AbilityRegistry.getAbilityHandler",
-     :text "AbilityRegistry.getAbilityHandler"}
-    {:name "AbilityRegistry.registerManager", :text "AbilityRegistry.registerManager"}
-    {:name "AbilityRegistry.unregisterManager",
-     :text "AbilityRegistry.unregisterManager"}
-    {:name "AbilityRegistry.getManagerHandler",
-     :text "AbilityRegistry.getManagerHandler"}
-    {:name "AbilityRegistry.findManagerForPlayer",
-     :text "AbilityRegistry.findManagerForPlayer"}
-    {:name "AbilityRegistry.registerGroup", :text "AbilityRegistry.registerGroup"}
-    {:name "AbilityRegistry.unregisterGroup", :text "AbilityRegistry.unregisterGroup"}
-    {:name "AbilityRegistry.findGroup", :text "AbilityRegistry.findGroup"}
-    {:name "AbilityRegistry.findGroupByChild", :text "AbilityRegistry.findGroupByChild"}
-    {:name "AbilityRegistry.register", :text "AbilityRegistry.register"}
-    {:name "AbilityRegistry.get", :text "AbilityRegistry.get"}
-    {:name "AbilityRegistry.list", :text "AbilityRegistry.list"}
-    {:name "AbilityRegistry.registerDefinition",
-     :text "AbilityRegistry.registerDefinition"}
-    {:name "AbilityRegistry.getDefinition", :text "AbilityRegistry.getDefinition"}
-    {:name "AbilityRegistry.addTag", :text "AbilityRegistry.addTag"}
-    {:name "AbilityRegistry.hasTag", :text "AbilityRegistry.hasTag"}
-    {:name "AbilityRegistry.removeTag", :text "AbilityRegistry.removeTag"}
-    {:name "AbilityRegistry.clearTags", :text "AbilityRegistry.clearTags"}],
-   :lang :lua,
-   :id :common.packages.ability_system.registry}
-  {:ns "common.packages.ability_system.ui_hooks",
-   :name "Ui_hooks",
-   :file "common/packages/ability_system/ui_hooks.lua",
-   :ops
-   [{:name "AbilityUIHooks.onInCDChange", :text "AbilityUIHooks.onInCDChange"}
-    {:name "AbilityUIHooks.onInCastChange", :text "AbilityUIHooks.onInCastChange"}
-    {:name "AbilityUIHooks.onChargeCountChange",
-     :text "AbilityUIHooks.onChargeCountChange"}
-    {:name "AbilityUIHooks.onAccumulateChange",
-     :text "AbilityUIHooks.onAccumulateChange"}
-    {:name "AbilityUIHooks.onPointerTypeChange",
-     :text "AbilityUIHooks.onPointerTypeChange"}
-    {:name "AbilityUIHooks.onReleaseTypeChange",
-     :text "AbilityUIHooks.onReleaseTypeChange"}
-    {:name "AbilityUIHooks.onIndexChange", :text "AbilityUIHooks.onIndexChange"}
-    {:name "AbilityUIHooks.onOwnerIdChange", :text "AbilityUIHooks.onOwnerIdChange"}
-    {:name "AbilityUIHooks.onAbilityAdded", :text "AbilityUIHooks.onAbilityAdded"}
-    {:name "AbilityUIHooks.onAbilityRemoved", :text "AbilityUIHooks.onAbilityRemoved"}
-    {:name "AbilityUIHooks.onSwitchNext", :text "AbilityUIHooks.onSwitchNext"}
-    {:name "AbilityUIHooks.setUIHooks", :text "AbilityUIHooks.setUIHooks"}],
-   :lang :lua,
-   :id :common.packages.ability_system.ui_hooks}
-  {:ns "common.packages.ability_system.event_defs",
-   :name "Event_defs",
-   :file "common/packages/ability_system/event_defs.lua",
-   :ops
-   [{:name "AbilityEventDefs.getRemote", :text "AbilityEventDefs.getRemote"}
-    {:name "AbilityEventDefs.packServerPayload",
-     :text "AbilityEventDefs.packServerPayload"}
-    {:name "AbilityEventDefs.createEventUnit", :text "AbilityEventDefs.createEventUnit"}
-    {:name "AbilityEventDefs.createAbilitySignals",
-     :text "AbilityEventDefs.createAbilitySignals"}
-    {:name "AbilityEventDefs.createAnchorSignals",
-     :text "AbilityEventDefs.createAnchorSignals"}
-    {:name "AbilityEventDefs.createManagerSignals",
-     :text "AbilityEventDefs.createManagerSignals"}
-    {:name "AbilityEventDefs.destroySignals", :text "AbilityEventDefs.destroySignals"}
-    {:name "AbilityEventDefs.fireEvent", :text "AbilityEventDefs.fireEvent"}
-    {:name "AbilityEventDefs.fireBefore", :text "AbilityEventDefs.fireBefore"}],
-   :lang :lua,
-   :id :common.packages.ability_system.event_defs}
-  {:ns "common.packages.attr_rule.enums",
-   :name "Enums",
-   :file "common/packages/attr_rule/enums.lua",
-   :ops [],
-   :lang :lua,
-   :id :common.packages.attr_rule.enums}
-  {:ns "common.packages.attr_rule.AttrUnit",
-   :name "AttrUnit",
-   :file "common/packages/attr_rule/AttrUnit.lua",
-   :ops
-   [{:name "AttrUnit.InitAttrUnit", :text "AttrUnit.InitAttrUnit"}
-    {:name "AttrUnit.InitAttributes", :text "AttrUnit.InitAttributes"}
-    {:name "AttrUnit.applyAttrConfig", :text "AttrUnit.applyAttrConfig"}
-    {:name "AttrUnit.applyControllerAttr", :text "AttrUnit.applyControllerAttr"}
-    {:name "AttrUnit.ApplyInitValues", :text "AttrUnit.ApplyInitValues"}
-    {:name "AttrUnit.FindAttrUnitOf", :text "AttrUnit.FindAttrUnitOf"}
-    {:name "AttrUnit.GetTargetUnit", :text "AttrUnit.GetTargetUnit"}
-    {:name "AttrUnit.GetAttr", :text "AttrUnit.GetAttr"}
-    {:name "AttrUnit.GetAttrComponent", :text "AttrUnit.GetAttrComponent"}
-    {:name "AttrUnit.SetAttrComponent", :text "AttrUnit.SetAttrComponent"}
-    {:name "AttrUnit.UpdateAttr", :text "AttrUnit.UpdateAttr"}
-    {:name "AttrUnit.AddAttrBuff", :text "AttrUnit.AddAttrBuff"}
-    {:name "AttrUnit.RemoveAttrBuff", :text "AttrUnit.RemoveAttrBuff"}],
-   :lang :lua,
-   :id :common.packages.attr_rule.AttrUnit}
-  {:ns "common.packages.attr_rule.AttrRuleManager",
-   :name "AttrRuleManager",
-   :file "common/packages/attr_rule/AttrRuleManager.lua",
-   :ops
-   [{:name "AttrRuleManager.getAttrConfig", :text "AttrRuleManager.getAttrConfig"}
-    {:name "AttrRuleManager.getAllAttrConfigs",
-     :text "AttrRuleManager.getAllAttrConfigs"}
-    {:name "AttrRuleManager.getAttrIcon", :text "AttrRuleManager.getAttrIcon"}
-    {:name "AttrRuleManager.getAttrUnit", :text "AttrRuleManager.getAttrUnit"}
-    {:name "AttrRuleManager.getAttrBuffUnit", :text "AttrRuleManager.getAttrBuffUnit"}
-    {:name "AttrRuleManager.getAttr", :text "AttrRuleManager.getAttr"}
-    {:name "AttrRuleManager.getAttrComponent",
-     :text "AttrRuleManager.getAttrComponent"}],
-   :lang :lua,
-   :id :common.packages.attr_rule.AttrRuleManager}
-  {:ns "common.packages.modifier_system.config",
-   :name "Config",
-   :file "common/packages/modifier_system/config.lua",
-   :ops [],
-   :lang :lua,
-   :id :common.packages.modifier_system.config}
-  {:ns "common.packages.modifier_system.util",
-   :name "Util",
-   :file "common/packages/modifier_system/util.lua",
-   :ops [{:name "util.getServerTime", :text "util.getServerTime"}],
-   :lang :lua,
-   :id :common.packages.modifier_system.util}
-  {:ns "common.packages.modifier_system.event_defs",
-   :name "Event_defs",
-   :file "common/packages/modifier_system/event_defs.lua",
-   :ops
-   [{:name "eventDefs.packServerPayload", :text "eventDefs.packServerPayload"}
-    {:name "eventDefs.packClientPayload", :text "eventDefs.packClientPayload"}
-    {:name "eventDefs.getOrCreateEventUnit", :text "eventDefs.getOrCreateEventUnit"}
-    {:name "eventDefs.createModifierSignals", :text "eventDefs.createModifierSignals"}
-    {:name "eventDefs.createManagerSignals", :text "eventDefs.createManagerSignals"}
-    {:name "eventDefs.destroySignals", :text "eventDefs.destroySignals"}
-    {:name "eventDefs.fireEvent", :text "eventDefs.fireEvent"}],
-   :lang :lua,
-   :id :common.packages.modifier_system.event_defs}
   {:ns "common.AiAPIBase",
    :name "AiAPIBase",
    :file "common/AiAPIBase.lua",
@@ -2189,137 +1124,6 @@
    :ops [],
    :lang :lua,
    :id :common.cfg.Shop}
-  {:ns "common.packages.ability_system.Anchor",
-   :name "Anchor",
-   :file "common/packages/ability_system/Anchor.lua",
-   :ops
-   [{:name "Anchor.new", :text "Anchor.new"}
-    {:name "Anchor:_registerEvents", :text "Anchor:_registerEvents"}
-    {:name "Anchor:_connect", :text "Anchor:_connect"}
-    {:name "Anchor:_fire", :text "Anchor:_fire"}
-    {:name "Anchor:_clearTimers", :text "Anchor:_clearTimers"}
-    {:name "Anchor:beginProcess", :text "Anchor:beginProcess"}
-    {:name "Anchor:start", :text "Anchor:start"}
-    {:name "Anchor:finishCast", :text "Anchor:finishCast"}
-    {:name "Anchor:onBreak", :text "Anchor:onBreak"}
-    {:name "Anchor:finish", :text "Anchor:finish"}
-    {:name "Anchor:stop", :text "Anchor:stop"}
-    {:name "Anchor:Destroy", :text "Anchor:Destroy"}],
-   :lang :lua,
-   :id :common.packages.ability_system.Anchor}
-  {:ns "common.packages.ability_system.data",
-   :name "Data",
-   :file "common/packages/ability_system/data.lua",
-   :ops [],
-   :lang :lua,
-   :id :common.packages.ability_system.data}
-  {:ns "common.packages.ability_system.editor",
-   :name "Editor",
-   :file "common/packages/ability_system/editor.lua",
-   :ops [],
-   :lang :lua,
-   :id :common.packages.ability_system.editor}
-  {:ns "common.packages.ability_system.target_filter",
-   :name "Target_filter",
-   :file "common/packages/ability_system/target_filter.lua",
-   :ops
-   [{:name "TargetFilter.isValidTarget", :text "TargetFilter.isValidTarget"}
-    {:name "TargetFilter.getValidTargetsInRange",
-     :text "TargetFilter.getValidTargetsInRange"}],
-   :lang :lua,
-   :id :common.packages.ability_system.target_filter}
-  {:ns "common.packages.ability_system.util",
-   :name "Util",
-   :file "common/packages/ability_system/util.lua",
-   :ops
-   [{:name "AbilityUtils.isSlotValid", :text "AbilityUtils.isSlotValid"}
-    {:name "AbilityUtils.isSlotEmpty", :text "AbilityUtils.isSlotEmpty"}
-    {:name "AbilityUtils.getOccupiedCount", :text "AbilityUtils.getOccupiedCount"}
-    {:name "AbilityUtils.getFirstAvailableSlot",
-     :text "AbilityUtils.getFirstAvailableSlot"}
-    {:name "AbilityUtils.sortByIndex", :text "AbilityUtils.sortByIndex"}
-    {:name "AbilityUtils.sortByLevel", :text "AbilityUtils.sortByLevel"}
-    {:name "AbilityUtils.nextSequential", :text "AbilityUtils.nextSequential"}
-    {:name "AbilityUtils.newRandom", :text "AbilityUtils.newRandom"}
-    {:name "AbilityUtils._getServerTimeFn", :text "AbilityUtils._getServerTimeFn"}
-    {:name "AbilityUtils.setServerTimeFn", :text "AbilityUtils.setServerTimeFn"}
-    {:name "AbilityUtils.getServerTime", :text "AbilityUtils.getServerTime"}
-    {:name "AbilityUtils.getRemainingCD", :text "AbilityUtils.getRemainingCD"}],
-   :lang :lua,
-   :id :common.packages.ability_system.util}
-  {:ns "common.packages.attr_rule.AttrBuffUnit",
-   :name "AttrBuffUnit",
-   :file "common/packages/attr_rule/AttrBuffUnit.lua",
-   :ops
-   [{:name "AttrBuffUnit.FindAttrBuffUnitOf", :text "AttrBuffUnit.FindAttrBuffUnitOf"}
-    {:name "AttrBuffUnit.InitAttrBuffUnit", :text "AttrBuffUnit.InitAttrBuffUnit"}
-    {:name "AttrBuffUnit.InitState", :text "AttrBuffUnit.InitState"}
-    {:name "AttrBuffUnit.GetState", :text "AttrBuffUnit.GetState"}
-    {:name "AttrBuffUnit.GetTargetUnit", :text "AttrBuffUnit.GetTargetUnit"}
-    {:name "AttrBuffUnit.SetTargetUnit", :text "AttrBuffUnit.SetTargetUnit"}],
-   :lang :lua,
-   :id :common.packages.attr_rule.AttrBuffUnit}
-  {:ns "common.packages.attr_rule.configs",
-   :name "Configs",
-   :file "common/packages/attr_rule/configs.lua",
-   :ops [],
-   :lang :lua,
-   :id :common.packages.attr_rule.configs}
-  {:ns "common.packages.attr_rule.data",
-   :name "Data",
-   :file "common/packages/attr_rule/data.lua",
-   :ops [],
-   :lang :lua,
-   :id :common.packages.attr_rule.data}
-  {:ns "common.packages.attr_rule.editor",
-   :name "Editor",
-   :file "common/packages/attr_rule/editor.lua",
-   :ops [],
-   :lang :lua,
-   :id :common.packages.attr_rule.editor}
-  {:ns "common.packages.attr_rule.utils",
-   :name "Utils",
-   :file "common/packages/attr_rule/utils.lua",
-   :ops
-   [{:name "utils.getAttrComponentKey", :text "utils.getAttrComponentKey"}
-    {:name "utils.computeFinalValue", :text "utils.computeFinalValue"}
-    {:name "utils.findChildScriptByPrefabType",
-     :text "utils.findChildScriptByPrefabType"}],
-   :lang :lua,
-   :id :common.packages.attr_rule.utils}
-  {:ns "common.packages.modifier_system.data",
-   :name "Data",
-   :file "common/packages/modifier_system/data.lua",
-   :ops [],
-   :lang :lua,
-   :id :common.packages.modifier_system.data}
-  {:ns "common.packages.modifier_system.editor",
-   :name "Editor",
-   :file "common/packages/modifier_system/editor.lua",
-   :ops [],
-   :lang :lua,
-   :id :common.packages.modifier_system.editor}
-  {:ns "common.packages.modifier_system.enums",
-   :name "Enums",
-   :file "common/packages/modifier_system/enums.lua",
-   :ops [],
-   :lang :lua,
-   :id :common.packages.modifier_system.enums}
-  {:ns "common.packages.official_ai_feature.configs",
-   :name "Configs",
-   :file "common/packages/official_ai_feature/configs.lua",
-   :ops [],
-   :lang :lua,
-   :id :common.packages.official_ai_feature.configs}
-  {:ns "common.packages.official_ai_feature.utils",
-   :name "Utils",
-   :file "common/packages/official_ai_feature/utils.lua",
-   :ops
-   [{:name "utils.isValidUnit", :text "utils.isValidUnit"}
-    {:name "utils.normalized", :text "utils.normalized"}
-    {:name "utils.horizontalDirection", :text "utils.horizontalDirection"}],
-   :lang :lua,
-   :id :common.packages.official_ai_feature.utils}
   {:ns "server.AbilityAPI",
    :name "AbilityAPI",
    :file "server/AbilityAPI.lua",
@@ -3185,528 +1989,5 @@
     {:name "MgrMap.MgrSave.OnReady", :text "MgrMap.MgrSave.OnReady"}],
    :lang :lua,
    :id :server.main}
-  {:ns "server.packages.ability_system.ability_logic",
-   :name "Ability_logic",
-   :file "server/packages/ability_system/ability_logic.lua",
-   :ops [{:name "AbilityItemLogic.Attach", :text "AbilityItemLogic.Attach"}],
-   :lang :lua,
-   :id :server.packages.ability_system.ability_logic}
-  {:ns "server.packages.ability_system.ability_manager_logic",
-   :name "Ability_manager_logic",
-   :file "server/packages/ability_system/ability_manager_logic.lua",
-   :ops [{:name "AbilityManagerLogic.Attach", :text "AbilityManagerLogic.Attach"}],
-   :lang :lua,
-   :id :server.packages.ability_system.ability_manager_logic}
-  {:ns "server.packages.ability_system.ability_manager_script",
-   :name "Ability_manager_script",
-   :file "server/packages/ability_system/ability_manager_script.lua",
-   :ops [],
-   :lang :lua,
-   :id :server.packages.ability_system.ability_manager_script}
-  {:ns "server.packages.ability_system.ability_script",
-   :name "Ability_script",
-   :file "server/packages/ability_system/ability_script.lua",
-   :ops [],
-   :lang :lua,
-   :id :server.packages.ability_system.ability_script}
-  {:ns "server.packages.ability_system.anchor_logic",
-   :name "Anchor_logic",
-   :file "server/packages/ability_system/anchor_logic.lua",
-   :ops [{:name "AnchorLogic.Attach", :text "AnchorLogic.Attach"}],
-   :lang :lua,
-   :id :server.packages.ability_system.anchor_logic}
-  {:ns "server.packages.ability_system.anchor_script",
-   :name "Anchor_script",
-   :file "server/packages/ability_system/anchor_script.lua",
-   :ops [],
-   :lang :lua,
-   :id :server.packages.ability_system.anchor_script}
-  {:ns "server.packages.ability_system.anchors.active_cd",
-   :name "Active_cd",
-   :file "server/packages/ability_system/anchors/active_cd.lua",
-   :ops [{:name "M.Attach", :text "M.Attach"}],
-   :lang :lua,
-   :id :server.packages.ability_system.anchors.active_cd}
-  {:ns "server.packages.ability_system.anchors.add_bind_diy_model",
-   :name "Add_bind_diy_model",
-   :file "server/packages/ability_system/anchors/add_bind_diy_model.lua",
-   :ops [{:name "M.Attach", :text "M.Attach"}],
-   :lang :lua,
-   :id :server.packages.ability_system.anchors.add_bind_diy_model}
-  {:ns "server.packages.ability_system.anchors.bungee_cord",
-   :name "Bungee_cord",
-   :file "server/packages/ability_system/anchors/bungee_cord.lua",
-   :ops [{:name "M.Attach", :text "M.Attach"}],
-   :lang :lua,
-   :id :server.packages.ability_system.anchors.bungee_cord}
-  {:ns "server.packages.ability_system.anchors.cast_face_target",
-   :name "Cast_face_target",
-   :file "server/packages/ability_system/anchors/cast_face_target.lua",
-   :ops [{:name "M.Attach", :text "M.Attach"}],
-   :lang :lua,
-   :id :server.packages.ability_system.anchors.cast_face_target}
-  {:ns "server.packages.ability_system.anchors.create_bullet_to_castangle",
-   :name "Create_bullet_to_castangle",
-   :file "server/packages/ability_system/anchors/create_bullet_to_castangle.lua",
-   :ops [{:name "M.Attach", :text "M.Attach"}],
-   :lang :lua,
-   :id :server.packages.ability_system.anchors.create_bullet_to_castangle}
-  {:ns "server.packages.ability_system.anchors.create_landmine",
-   :name "Create_landmine",
-   :file "server/packages/ability_system/anchors/create_landmine.lua",
-   :ops [{:name "M.Attach", :text "M.Attach"}],
-   :lang :lua,
-   :id :server.packages.ability_system.anchors.create_landmine}
-  {:ns "server.packages.ability_system.anchors.create_obstacle",
-   :name "Create_obstacle",
-   :file "server/packages/ability_system/anchors/create_obstacle.lua",
-   :ops [{:name "M.Attach", :text "M.Attach"}],
-   :lang :lua,
-   :id :server.packages.ability_system.anchors.create_obstacle}
-  {:ns "server.packages.ability_system.anchors.create_teleportball",
-   :name "Create_teleportball",
-   :file "server/packages/ability_system/anchors/create_teleportball.lua",
-   :ops [{:name "M.Attach", :text "M.Attach"}],
-   :lang :lua,
-   :id :server.packages.ability_system.anchors.create_teleportball}
-  {:ns "server.packages.ability_system.anchors.custom_event",
-   :name "Custom_event",
-   :file "server/packages/ability_system/anchors/custom_event.lua",
-   :ops [{:name "M.Attach", :text "M.Attach"}],
-   :lang :lua,
-   :id :server.packages.ability_system.anchors.custom_event}
-  {:ns "server.packages.ability_system.anchors.destroy_ability",
-   :name "Destroy_ability",
-   :file "server/packages/ability_system/anchors/destroy_ability.lua",
-   :ops [{:name "M.Attach", :text "M.Attach"}],
-   :lang :lua,
-   :id :server.packages.ability_system.anchors.destroy_ability}
-  {:ns "server.packages.ability_system.anchors.gravity_change",
-   :name "Gravity_change",
-   :file "server/packages/ability_system/anchors/gravity_change.lua",
-   :ops [{:name "M.Attach", :text "M.Attach"}],
-   :lang :lua,
-   :id :server.packages.ability_system.anchors.gravity_change}
-  {:ns "server.packages.ability_system.anchors.melee_hit",
-   :name "Melee_hit",
-   :file "server/packages/ability_system/anchors/melee_hit.lua",
-   :ops [{:name "M.Attach", :text "M.Attach"}],
-   :lang :lua,
-   :id :server.packages.ability_system.anchors.melee_hit}
-  {:ns "server.packages.ability_system.anchors.play_body_animation",
-   :name "Play_body_animation",
-   :file "server/packages/ability_system/anchors/play_body_animation.lua",
-   :ops [{:name "M.Attach", :text "M.Attach"}],
-   :lang :lua,
-   :id :server.packages.ability_system.anchors.play_body_animation}
-  {:ns "server.packages.ability_system.anchors.play_sfx",
-   :name "Play_sfx",
-   :file "server/packages/ability_system/anchors/play_sfx.lua",
-   :ops [{:name "M.Attach", :text "M.Attach"}],
-   :lang :lua,
-   :id :server.packages.ability_system.anchors.play_sfx}
-  {:ns "server.packages.ability_system.anchors.play_vfx",
-   :name "Play_vfx",
-   :file "server/packages/ability_system/anchors/play_vfx.lua",
-   :ops [{:name "M.Attach", :text "M.Attach"}],
-   :lang :lua,
-   :id :server.packages.ability_system.anchors.play_vfx}
-  {:ns "server.packages.ability_system.anchors.speed_add",
-   :name "Speed_add",
-   :file "server/packages/ability_system/anchors/speed_add.lua",
-   :ops [{:name "M.Attach", :text "M.Attach"}],
-   :lang :lua,
-   :id :server.packages.ability_system.anchors.speed_add}
-  {:ns "server.packages.ability_system.api",
-   :name "Api",
-   :file "server/packages/ability_system/api.lua",
-   :ops
-   [{:name "AbilityServerAPI.AddAbility", :text "AbilityServerAPI.AddAbility"}
-    {:name "AbilityServerAPI.GetAbility", :text "AbilityServerAPI.GetAbility"}
-    {:name "AbilityServerAPI.GetAbilityByScript",
-     :text "AbilityServerAPI.GetAbilityByScript"}
-    {:name "AbilityServerAPI.CastAbility", :text "AbilityServerAPI.CastAbility"}
-    {:name "AbilityServerAPI.StopAbility", :text "AbilityServerAPI.StopAbility"}
-    {:name "AbilityServerAPI.AccumulateAbility",
-     :text "AbilityServerAPI.AccumulateAbility"}
-    {:name "AbilityServerAPI.SwitchNextAbility",
-     :text "AbilityServerAPI.SwitchNextAbility"}
-    {:name "AbilityServerAPI.SetAbilityToSlot",
-     :text "AbilityServerAPI.SetAbilityToSlot"}
-    {:name "AbilityServerAPI.RemoveAbilityByKey",
-     :text "AbilityServerAPI.RemoveAbilityByKey"}
-    {:name "AbilityServerAPI.RemoveAbility", :text "AbilityServerAPI.RemoveAbility"}
-    {:name "AbilityServerAPI.GetAbilities", :text "AbilityServerAPI.GetAbilities"}
-    {:name "AbilityServerAPI.GetAbilitiesFromIndexRange",
-     :text "AbilityServerAPI.GetAbilitiesFromIndexRange"}
-    {:name "AbilityServerAPI.RegisterEvents", :text "AbilityServerAPI.RegisterEvents"}],
-   :lang :lua,
-   :id :server.packages.ability_system.api}
-  {:ns "server.packages.ability_system.component_scripts.box_component_create",
-   :name "Box_component_create",
-   :file "server/packages/ability_system/component_scripts/box_component_create.lua",
-   :ops [],
-   :lang :lua,
-   :id :server.packages.ability_system.component_scripts.box_component_create}
-  {:ns "server.packages.ability_system.item_box.item_box_logic",
-   :name "Item_box_logic",
-   :file "server/packages/ability_system/item_box/item_box_logic.lua",
-   :ops [{:name "ItemBoxLogic.Attach", :text "ItemBoxLogic.Attach"}],
-   :lang :lua,
-   :id :server.packages.ability_system.item_box.item_box_logic}
-  {:ns "server.packages.ability_system.item_box.item_box_shell",
-   :name "Item_box_shell",
-   :file "server/packages/ability_system/item_box/item_box_shell.lua",
-   :ops [],
-   :lang :lua,
-   :id :server.packages.ability_system.item_box.item_box_shell}
-  {:ns "server.packages.ability_system.sub_ability",
-   :name "Sub_ability",
-   :file "server/packages/ability_system/sub_ability.lua",
-   :ops
-   [{:name "SubAbilityHandler.create", :text "SubAbilityHandler.create"}
-    {:name "SubAbilityHandler.addChild", :text "SubAbilityHandler.addChild"}
-    {:name "SubAbilityHandler.removeChild", :text "SubAbilityHandler.removeChild"}],
-   :lang :lua,
-   :id :server.packages.ability_system.sub_ability}
-  {:ns "server.packages.ability_system.sub_ability_plugin",
-   :name "Sub_ability_plugin",
-   :file "server/packages/ability_system/sub_ability_plugin.lua",
-   :ops
-   [{:name "SubAbilityPlugin.OnAbilityReady", :text "SubAbilityPlugin.OnAbilityReady"}],
-   :lang :lua,
-   :id :server.packages.ability_system.sub_ability_plugin}
-  {:ns "server.packages.attr_rule.api",
-   :name "Api",
-   :file "server/packages/attr_rule/api.lua",
-   :ops [],
-   :lang :lua,
-   :id :server.packages.attr_rule.api}
-  {:ns "server.packages.attr_rule.attr_rule",
-   :name "Attr_rule",
-   :file "server/packages/attr_rule/attr_rule.lua",
-   :ops
-   [{:name "SAttrRuleManager.setAttrComponent",
-     :text "SAttrRuleManager.setAttrComponent"}
-    {:name "SAttrRuleManager.addAttrBuff", :text "SAttrRuleManager.addAttrBuff"}
-    {:name "SAttrRuleManager.removeAttrBuff", :text "SAttrRuleManager.removeAttrBuff"}
-    {:name "SAttrRuleManager.ensureAttrUnit", :text "SAttrRuleManager.ensureAttrUnit"}],
-   :lang :lua,
-   :id :server.packages.attr_rule.attr_rule}
-  {:ns "server.packages.modifier_system.ModifierHandler",
-   :name "ModifierHandler",
-   :file "server/packages/modifier_system/ModifierHandler.lua",
-   :ops
-   [{:name "ModifierHandler.new", :text "ModifierHandler.new"}
-    {:name "ModifierHandler:_getScalarConf", :text "ModifierHandler:_getScalarConf"}
-    {:name "ModifierHandler:_getListConf", :text "ModifierHandler:_getListConf"}
-    {:name "ModifierHandler:setSource", :text "ModifierHandler:setSource"}
-    {:name "ModifierHandler:isStackable", :text "ModifierHandler:isStackable"}
-    {:name "ModifierHandler:getOwner", :text "ModifierHandler:getOwner"}
-    {:name "ModifierHandler:getUnit", :text "ModifierHandler:getUnit"}
-    {:name "ModifierHandler:getModifierKey", :text "ModifierHandler:getModifierKey"}
-    {:name "ModifierHandler:isActive", :text "ModifierHandler:isActive"}
-    {:name "ModifierHandler:getStackCount", :text "ModifierHandler:getStackCount"}
-    {:name "ModifierHandler:getCharMtg", :text "ModifierHandler:getCharMtg"}
-    {:name "ModifierHandler:isPaused", :text "ModifierHandler:isPaused"}
-    {:name "ModifierHandler:getMaxStackCount", :text "ModifierHandler:getMaxStackCount"}
-    {:name "ModifierHandler:getSource", :text "ModifierHandler:getSource"}
-    {:name "ModifierHandler:getModifierType", :text "ModifierHandler:getModifierType"}
-    {:name "ModifierHandler:getDesc", :text "ModifierHandler:getDesc"}
-    {:name "ModifierHandler:getIcon", :text "ModifierHandler:getIcon"}
-    {:name "ModifierHandler:getName", :text "ModifierHandler:getName"}
-    {:name "ModifierHandler:_notify", :text "ModifierHandler:_notify"}
-    {:name "ModifierHandler:onObtain", :text "ModifierHandler:onObtain"}
-    {:name "ModifierHandler:onLoss", :text "ModifierHandler:onLoss"}
-    {:name "ModifierHandler:_computeCharMtg", :text "ModifierHandler:_computeCharMtg"}
-    {:name "ModifierHandler:_setupMaxDuration",
-     :text "ModifierHandler:_setupMaxDuration"}
-    {:name "ModifierHandler:_onDurationFinish",
-     :text "ModifierHandler:_onDurationFinish"}
-    {:name "ModifierHandler:_cancelRemoveTimer",
-     :text "ModifierHandler:_cancelRemoveTimer"}
-    {:name "ModifierHandler:_ensureEndTimeCovers",
-     :text "ModifierHandler:_ensureEndTimeCovers"}
-    {:name "ModifierHandler:_rebuildTimerFromEndTime",
-     :text "ModifierHandler:_rebuildTimerFromEndTime"}
-    {:name "ModifierHandler:getRemainingTime", :text "ModifierHandler:getRemainingTime"}
-    {:name "ModifierHandler:getEndTime", :text "ModifierHandler:getEndTime"}
-    {:name "ModifierHandler:_setEndTime", :text "ModifierHandler:_setEndTime"}
-    {:name "ModifierHandler:pause", :text "ModifierHandler:pause"}
-    {:name "ModifierHandler:resume", :text "ModifierHandler:resume"}
-    {:name "ModifierHandler:extendDuration", :text "ModifierHandler:extendDuration"}
-    {:name "ModifierHandler:setRemainingTime", :text "ModifierHandler:setRemainingTime"}
-    {:name "ModifierHandler:_notifyRefresh", :text "ModifierHandler:_notifyRefresh"}
-    {:name "ModifierHandler:_onStackCountChanged",
-     :text "ModifierHandler:_onStackCountChanged"}
-    {:name "ModifierHandler:_syncAttrChangesToCount",
-     :text "ModifierHandler:_syncAttrChangesToCount"}
-    {:name "ModifierHandler:_applyAttrChanges",
-     :text "ModifierHandler:_applyAttrChanges"}
-    {:name "ModifierHandler:_rollbackAttrChanges",
-     :text "ModifierHandler:_rollbackAttrChanges"}
-    {:name "ModifierHandler:_buildStackConfig",
-     :text "ModifierHandler:_buildStackConfig"}
-    {:name "ModifierHandler:enableReobtain", :text "ModifierHandler:enableReobtain"}
-    {:name "ModifierHandler:isSameSourceOnly", :text "ModifierHandler:isSameSourceOnly"}
-    {:name "ModifierHandler:canReobtain", :text "ModifierHandler:canReobtain"}
-    {:name "ModifierHandler:whenReobtain", :text "ModifierHandler:whenReobtain"}
-    {:name "ModifierHandler:setStackCount", :text "ModifierHandler:setStackCount"}
-    {:name "ModifierHandler:addStackCount", :text "ModifierHandler:addStackCount"}
-    {:name "ModifierHandler:_onDestroying", :text "ModifierHandler:_onDestroying"}],
-   :lang :lua,
-   :id :server.packages.modifier_system.ModifierHandler}
-  {:ns "server.packages.modifier_system.ModifierItem_Script",
-   :name "ModifierItem_Script",
-   :file "server/packages/modifier_system/ModifierItem_Script.lua",
-   :ops [],
-   :lang :lua,
-   :id :server.packages.modifier_system.ModifierItem_Script}
-  {:ns "server.packages.modifier_system.ModifierStack",
-   :name "ModifierStack",
-   :file "server/packages/modifier_system/ModifierStack.lua",
-   :ops
-   [{:name "ModifierStack.new", :text "ModifierStack.new"}
-    {:name "ModifierStack:whenReobtain", :text "ModifierStack:whenReobtain"}
-    {:name "ModifierStack:getStackCount", :text "ModifierStack:getStackCount"}
-    {:name "ModifierStack:setStackCount", :text "ModifierStack:setStackCount"}
-    {:name "ModifierStack:reduceStackCount", :text "ModifierStack:reduceStackCount"}
-    {:name "ModifierStack:pauseTimers", :text "ModifierStack:pauseTimers"}
-    {:name "ModifierStack:resumeTimers", :text "ModifierStack:resumeTimers"}
-    {:name "ModifierStack:destroy", :text "ModifierStack:destroy"}
-    {:name "ModifierStack:_applyCountStrategy",
-     :text "ModifierStack:_applyCountStrategy"}
-    {:name "ModifierStack:_applyTimeStrategy", :text "ModifierStack:_applyTimeStrategy"}
-    {:name "ModifierStack:_addLayer", :text "ModifierStack:_addLayer"}
-    {:name "ModifierStack:_onLayerExpire", :text "ModifierStack:_onLayerExpire"}],
-   :lang :lua,
-   :id :server.packages.modifier_system.ModifierStack}
-  {:ns "server.packages.modifier_system.api",
-   :name "Api",
-   :file "server/packages/modifier_system/api.lua",
-   :ops [],
-   :lang :lua,
-   :id :server.packages.modifier_system.api}
-  {:ns "server.packages.modifier_system.event_bridge",
-   :name "Event_bridge",
-   :file "server/packages/modifier_system/event_bridge.lua",
-   :ops
-   [{:name "eventBridge.fireObtainBefore", :text "eventBridge.fireObtainBefore"}
-    {:name "eventBridge.setIntercept", :text "eventBridge.setIntercept"}
-    {:name "eventBridge.consumeIntercept", :text "eventBridge.consumeIntercept"}],
-   :lang :lua,
-   :id :server.packages.modifier_system.event_bridge}
-  {:ns "server.packages.modifier_system.modifier_system",
-   :name "Modifier_system",
-   :file "server/packages/modifier_system/modifier_system.lua",
-   :ops
-   [{:name "SModifierSystemManager.new", :text "SModifierSystemManager.new"}
-    {:name "SModifierSystemManager:_bindClientRequests",
-     :text "SModifierSystemManager:_bindClientRequests"}
-    {:name "SModifierSystemManager:getContainer",
-     :text "SModifierSystemManager:getContainer"}
-    {:name "SModifierSystemManager:getOrCreateContainer",
-     :text "SModifierSystemManager:getOrCreateContainer"}
-    {:name "SModifierSystemManager:_addInstance",
-     :text "SModifierSystemManager:_addInstance"}
-    {:name "SModifierSystemManager:_removeInstance",
-     :text "SModifierSystemManager:_removeInstance"}
-    {:name "SModifierSystemManager:registerModifier",
-     :text "SModifierSystemManager:registerModifier"}
-    {:name "SModifierSystemManager:_createModifier",
-     :text "SModifierSystemManager:_createModifier"}
-    {:name "SModifierSystemManager:addModifierToUnit",
-     :text "SModifierSystemManager:addModifierToUnit"}
-    {:name "SModifierSystemManager:_registerModifierChild",
-     :text "SModifierSystemManager:_registerModifierChild"}
-    {:name "SModifierSystemManager:_ensureContainerEvents",
-     :text "SModifierSystemManager:_ensureContainerEvents"}
-    {:name "SModifierSystemManager:notifyClients",
-     :text "SModifierSystemManager:notifyClients"}
-    {:name "SModifierSystemManager:removeModifierByKey",
-     :text "SModifierSystemManager:removeModifierByKey"}
-    {:name "SModifierSystemManager:clearAllModifiers",
-     :text "SModifierSystemManager:clearAllModifiers"}
-    {:name "SModifierSystemManager:_clearAll", :text "SModifierSystemManager:_clearAll"}
-    {:name "SModifierSystemManager:removeModifierEntity",
-     :text "SModifierSystemManager:removeModifierEntity"}
-    {:name "SModifierSystemManager:removeModifierWithLoss",
-     :text "SModifierSystemManager:removeModifierWithLoss"}
-    {:name "SModifierSystemManager:removeModifierUnit",
-     :text "SModifierSystemManager:removeModifierUnit"}
-    {:name "SModifierSystemManager:setStackCount",
-     :text "SModifierSystemManager:setStackCount"}
-    {:name "SModifierSystemManager:addStackCount",
-     :text "SModifierSystemManager:addStackCount"}
-    {:name "SModifierSystemManager:addDuration",
-     :text "SModifierSystemManager:addDuration"}
-    {:name "SModifierSystemManager:setRemainTime",
-     :text "SModifierSystemManager:setRemainTime"}
-    {:name "SModifierSystemManager:pause", :text "SModifierSystemManager:pause"}
-    {:name "SModifierSystemManager:resume", :text "SModifierSystemManager:resume"}
-    {:name "SModifierSystemManager:getModifierHandlerByKey",
-     :text "SModifierSystemManager:getModifierHandlerByKey"}
-    {:name "SModifierSystemManager:getModifierHandlersByKey",
-     :text "SModifierSystemManager:getModifierHandlersByKey"}
-    {:name "SModifierSystemManager:getModifierHandlerByUnitId",
-     :text "SModifierSystemManager:getModifierHandlerByUnitId"}
-    {:name "SModifierSystemManager:getModifierHandlers",
-     :text "SModifierSystemManager:getModifierHandlers"}
-    {:name "SModifierSystemManager:_findHandler",
-     :text "SModifierSystemManager:_findHandler"}
-    {:name "SModifierSystemManager:getModifierUnits",
-     :text "SModifierSystemManager:getModifierUnits"}
-    {:name "SModifierSystemManager:getModifierByKey",
-     :text "SModifierSystemManager:getModifierByKey"}
-    {:name "SModifierSystemManager:getModifierUnitsByKey",
-     :text "SModifierSystemManager:getModifierUnitsByKey"}
-    {:name "SModifierSystemManager:getModifierUnitsByType",
-     :text "SModifierSystemManager:getModifierUnitsByType"}
-    {:name "SModifierSystemManager:hasModifier",
-     :text "SModifierSystemManager:hasModifier"}
-    {:name "SModifierSystemManager:getMaxModifierCount",
-     :text "SModifierSystemManager:getMaxModifierCount"}
-    {:name "SModifierSystemManager:isActiveByKey",
-     :text "SModifierSystemManager:isActiveByKey"}
-    {:name "SModifierSystemManager:getStackCountByKey",
-     :text "SModifierSystemManager:getStackCountByKey"}
-    {:name "SModifierSystemManager:getCharMtgByKey",
-     :text "SModifierSystemManager:getCharMtgByKey"}
-    {:name "SModifierSystemManager:isPausedByKey",
-     :text "SModifierSystemManager:isPausedByKey"}
-    {:name "SModifierSystemManager:getRemainingTimeByKey",
-     :text "SModifierSystemManager:getRemainingTimeByKey"}
-    {:name "SModifierSystemManager:getMaxStackCountByKey",
-     :text "SModifierSystemManager:getMaxStackCountByKey"}
-    {:name "SModifierSystemManager:getSourceByKey",
-     :text "SModifierSystemManager:getSourceByKey"}
-    {:name "SModifierSystemManager:getModifierIdByKey",
-     :text "SModifierSystemManager:getModifierIdByKey"}
-    {:name "SModifierSystemManager:getModifierTypeByKey",
-     :text "SModifierSystemManager:getModifierTypeByKey"}
-    {:name "SModifierSystemManager:getModifierNameByKey",
-     :text "SModifierSystemManager:getModifierNameByKey"}
-    {:name "SModifierSystemManager:getModifierDescByKey",
-     :text "SModifierSystemManager:getModifierDescByKey"}
-    {:name "SModifierSystemManager:getModifierIconByKey",
-     :text "SModifierSystemManager:getModifierIconByKey"}
-    {:name "SModifierSystemManager:setStackCountOfEntity",
-     :text "SModifierSystemManager:setStackCountOfEntity"}
-    {:name "SModifierSystemManager:addStackCountOfEntity",
-     :text "SModifierSystemManager:addStackCountOfEntity"}
-    {:name "SModifierSystemManager:addDurationOfEntity",
-     :text "SModifierSystemManager:addDurationOfEntity"}
-    {:name "SModifierSystemManager:setRemainTimeOfEntity",
-     :text "SModifierSystemManager:setRemainTimeOfEntity"}
-    {:name "SModifierSystemManager:getModifierOwnerOfEntity",
-     :text "SModifierSystemManager:getModifierOwnerOfEntity"}
-    {:name "SModifierSystemManager:getStackCountOfEntity",
-     :text "SModifierSystemManager:getStackCountOfEntity"}
-    {:name "SModifierSystemManager:getMaxStackCountOfEntity",
-     :text "SModifierSystemManager:getMaxStackCountOfEntity"}
-    {:name "SModifierSystemManager:getRemainTimeOfEntity",
-     :text "SModifierSystemManager:getRemainTimeOfEntity"}
-    {:name "SModifierSystemManager:getSourceOfEntity",
-     :text "SModifierSystemManager:getSourceOfEntity"}
-    {:name "SModifierSystemManager:getModifierTypeOfEntity",
-     :text "SModifierSystemManager:getModifierTypeOfEntity"}
-    {:name "SModifierSystemManager:getNameOfEntity",
-     :text "SModifierSystemManager:getNameOfEntity"}
-    {:name "SModifierSystemManager:getDescOfEntity",
-     :text "SModifierSystemManager:getDescOfEntity"}
-    {:name "SModifierSystemManager:getIconOfEntity",
-     :text "SModifierSystemManager:getIconOfEntity"}
-    {:name "SModifierSystemManager:getModifierKeyOfEntity",
-     :text "SModifierSystemManager:getModifierKeyOfEntity"}
-    {:name "SModifierSystemManager:getModifierIdOfEntity",
-     :text "SModifierSystemManager:getModifierIdOfEntity"}
-    {:name "SModifierSystemManager:getModifierHandler",
-     :text "SModifierSystemManager:getModifierHandler"}
-    {:name "SModifierSystemManager:registerModifierHandler",
-     :text "SModifierSystemManager:registerModifierHandler"}
-    {:name "SModifierSystemManager:unregisterModifierHandler",
-     :text "SModifierSystemManager:unregisterModifierHandler"}
-    {:name "SModifierSystemManager:clearPendingSourceOverride",
-     :text "SModifierSystemManager:clearPendingSourceOverride"}
-    {:name "SModifierSystemManager:addTag", :text "SModifierSystemManager:addTag"}
-    {:name "SModifierSystemManager:hasTag", :text "SModifierSystemManager:hasTag"}
-    {:name "SModifierSystemManager:clearTags", :text "SModifierSystemManager:clearTags"}
-    {:name "SModifierSystemManager:setInterruptModifierObtain",
-     :text "SModifierSystemManager:setInterruptModifierObtain"}],
-   :lang :lua,
-   :id :server.packages.modifier_system.modifier_system}
-  {:ns "server.packages.official_ai_feature.ability_bridge",
-   :name "Ability_bridge",
-   :file "server/packages/official_ai_feature/ability_bridge.lua",
-   :ops
-   [{:name "AbilityBridge.findSlotByPrefab", :text "AbilityBridge.findSlotByPrefab"}
-    {:name "AbilityBridge.castAtSlot", :text "AbilityBridge.castAtSlot"}
-    {:name "AbilityBridge.castByKey", :text "AbilityBridge.castByKey"}
-    {:name "AbilityBridge.addAbilityToSlot", :text "AbilityBridge.addAbilityToSlot"}
-    {:name "AbilityBridge.doReact", :text "AbilityBridge.doReact"}],
-   :lang :lua,
-   :id :server.packages.official_ai_feature.ability_bridge}
-  {:ns "server.packages.official_ai_feature.api",
-   :name "Api",
-   :file "server/packages/official_ai_feature/api.lua",
-   :ops [],
-   :lang :lua,
-   :id :server.packages.official_ai_feature.api}
-  {:ns "server.packages.official_ai_feature.behavior_runtime",
-   :name "Behavior_runtime",
-   :file "server/packages/official_ai_feature/behavior_runtime.lua",
-   :ops
-   [{:name "BehaviorRuntime.getState", :text "BehaviorRuntime.getState"}
-    {:name "BehaviorRuntime.ensureState", :text "BehaviorRuntime.ensureState"}
-    {:name "BehaviorRuntime.stopMode", :text "BehaviorRuntime.stopMode"}
-    {:name "BehaviorRuntime.startMode", :text "BehaviorRuntime.startMode"}
-    {:name "BehaviorRuntime.isMoveBlocked", :text "BehaviorRuntime.isMoveBlocked"}
-    {:name "BehaviorRuntime.moveTowards", :text "BehaviorRuntime.moveTowards"}],
-   :lang :lua,
-   :id :server.packages.official_ai_feature.behavior_runtime}
-  {:ns "server.packages.official_ai_feature.official_ai_feature",
-   :name "Official_ai_feature",
-   :file "server/packages/official_ai_feature/official_ai_feature.lua",
-   :ops
-   [{:name "SOfficialAiFeatureManager.startAI",
-     :text "SOfficialAiFeatureManager.startAI"}
-    {:name "SOfficialAiFeatureManager.stopAI", :text "SOfficialAiFeatureManager.stopAI"}
-    {:name "SOfficialAiFeatureManager.roll", :text "SOfficialAiFeatureManager.roll"}
-    {:name "SOfficialAiFeatureManager.rush", :text "SOfficialAiFeatureManager.rush"}
-    {:name "SOfficialAiFeatureManager.jump", :text "SOfficialAiFeatureManager.jump"}
-    {:name "SOfficialAiFeatureManager.lift", :text "SOfficialAiFeatureManager.lift"}
-    {:name "SOfficialAiFeatureManager.moveDirection",
-     :text "SOfficialAiFeatureManager.moveDirection"}
-    {:name "SOfficialAiFeatureManager.moveToPos",
-     :text "SOfficialAiFeatureManager.moveToPos"}
-    {:name "SOfficialAiFeatureManager.stopMove",
-     :text "SOfficialAiFeatureManager.stopMove"}
-    {:name "SOfficialAiFeatureManager.follow", :text "SOfficialAiFeatureManager.follow"}
-    {:name "SOfficialAiFeatureManager.alert", :text "SOfficialAiFeatureManager.alert"}
-    {:name "SOfficialAiFeatureManager.imitate",
-     :text "SOfficialAiFeatureManager.imitate"}
-    {:name "SOfficialAiFeatureManager.searchEnemy",
-     :text "SOfficialAiFeatureManager.searchEnemy"}
-    {:name "SOfficialAiFeatureManager.chaseTarget",
-     :text "SOfficialAiFeatureManager.chaseTarget"}
-    {:name "SOfficialAiFeatureManager.nav", :text "SOfficialAiFeatureManager.nav"}
-    {:name "SOfficialAiFeatureManager.basicCommand",
-     :text "SOfficialAiFeatureManager.basicCommand"}
-    {:name "SOfficialAiFeatureManager.castAbility",
-     :text "SOfficialAiFeatureManager.castAbility"}
-    {:name "SOfficialAiFeatureManager.castAbilityByKey",
-     :text "SOfficialAiFeatureManager.castAbilityByKey"}
-    {:name "SOfficialAiFeatureManager.executeCareerSkill",
-     :text "SOfficialAiFeatureManager.executeCareerSkill"}
-    {:name "SOfficialAiFeatureManager.addAbilityToSlot",
-     :text "SOfficialAiFeatureManager.addAbilityToSlot"}
-    {:name "SOfficialAiFeatureManager.setSearchEnemyPriorityMode",
-     :text "SOfficialAiFeatureManager.setSearchEnemyPriorityMode"}
-    {:name "SOfficialAiFeatureManager.setSearchEnemyPriorityValue",
-     :text "SOfficialAiFeatureManager.setSearchEnemyPriorityValue"}
-    {:name "SOfficialAiFeatureManager.setSearchEnemyFocusTarget",
-     :text "SOfficialAiFeatureManager.setSearchEnemyFocusTarget"}
-    {:name "SOfficialAiFeatureManager.setMoveThreshold",
-     :text "SOfficialAiFeatureManager.setMoveThreshold"}],
-   :lang :lua,
-   :id :server.packages.official_ai_feature.official_ai_feature}]}
+  {:id :client.packages, :name "client.packages", :foreign true}
+  {:id :server.packages, :name "server.packages", :foreign true}]}

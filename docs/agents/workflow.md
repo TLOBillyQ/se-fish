@@ -5,7 +5,8 @@
 ## 工程用语
 
 - **se-fish**：本图的 Lua 源码与质量工具仓库。
-- **业务树**：`client/`、`common/`、`server/` 中的业务源码，排除各端 `packages/` 与 `server/_trigger/` 等非业务目录；具体质量扫描范围以质量工具配置为准。
+- **业务树**：`client/`、`common/`、`server/` 中的业务源码，即架构图上的三棵树；排除各端 `packages/` 与 `server/_trigger/` 等非业务目录。
+- **指标采集范围**：CRAP、DRY 与差分 mutation 实际读的源码集合，三端全树（**含**各端 `packages/`），仅排除 `server/_trigger/`；以 `tools/quality/project.json` 的 `sources` 为准。与「业务树」不是一回事，理由见 [ADR-0005](../adr/0005-packages-as-external.md)。
 - **宿主目录**：编辑器 `code init` 绑定的本地 Lua 工程目录，根有 `eggy.json`，是部署目的地；与仓库检出分别管理。路径和绑定方式见下方「工具链」。
 - **部署树**：镜像进宿主目录的仓库根 `client/`、`common/`、`server/`；仓库根其余内容不部署。宿主内不归本仓库管理的内容由 `sync` 回灌，镜像粒度与操作细节见下方「工具链」。
   _Avoid_: 源码树（指仓库全部时）
@@ -28,13 +29,13 @@ Lua 命令使用 **Lua 5.4**，执行前用 `lua -v` 核对；验收脚本可用
     - 裁定原文见迁移台账 `issue-84-mapping.md:96` 与 `issue-85-mapping.md:63`（台账在仓库外，按文件名检索）。
   - `busted` 与 `busted.bat`：人手 shell 里敲、以及 `shutil.which`（会按 `PATHEXT` 找到 `.bat` 垫片）用裸 `busted` 即可；只有 Python `CreateProcess`/`shell=False` 起子进程时必须写 `busted.bat`（`CreateProcess` 只补 `.exe`，裸名会 `[WinError 2]`），`tools/quality/project.json` 的 `commands.*` 因此写 `busted.bat`，而 `busted.command` 仍写裸 `busted` 供 `shutil.which` 用。
 
-**架构图（uml-viewer）。** 根目录 `policy.edn` 描述三端模块树，`docs/uml/se-fish.edn` 是生成的依赖图（不要手编）。
+**架构图（uml-viewer）。** 根目录 `policy.edn` 描述三端模块树、排除目录与外部节点（`:exclude`、`:foreign`），`docs/uml/se-fish.edn` 是生成的依赖图（不要手编）。
 
 - `.\uml.ps1`：首次启动 viewer 与 companion 看图、向 agent 发起图上操作；`.\uml.ps1 ir` 在修改三端代码后重新生成图，viewer 检测文件变化自动重载。
 - **companion 后端是 Herdr（>= 0.9.3，socket protocol 22）**：旧 tmux/psmux 路径已退役，Linux/WSL 不提供 companion。PATH 上每个 `herdr` 都逐一预检，选出兼容者中版本最高者（同版本取 PATH 靠前者），本次启动的全部 Herdr 调用都走它的绝对路径；无兼容候选时列出各候选路径与拒绝原因，不自动下载、升级或回退。companion ownership 记录在 `.uml-viewer/companion.edn`，必须显式记为 Herdr；旧记录或缺 backend 的记录会保留并拒绝接管，不要猜着重连。能力契约与验收边界见 uml-viewer 的 `docs/herdr-backend-contract.md`，版本下限与可执行文件选择见其 `docs/adr/0003-herdr-version-floor.md`、`docs/adr/0004-herdr-executable-selection.md`。
 - **重启 viewer 必须走协议**：往 `.uml-viewer/to-viewer.edn` 写 `:quit-for-restart` → 等旧 JVM 自然退出 → `.\uml.ps1 --restart`；新 JVM 按持久化记录重新 bind 原 pane，不新建 companion。**绝不 SIGKILL**，也不要绕开公开 wrapper 直接传 `--restart`。
 - 图上 `crap` / `mutate`：companion 消费邮箱命令后执行项目公开入口（即 `uml-quality.json` 声明的 `project.ps1 refresh-crap` / `project.ps1 mutation`）。每次调用前删掉上一条 `.uml-viewer/quality-result.json`，运行后核对刚等到的记录里 `version`、`operation`、`projectRoot`、实际退出码与 `validResult`；只有 `validResult` 为真才继续 IR 与显示。
-- 图上 `client|common|server` 为三棵树，只排除 `server/_trigger/`。viewer 从 `.metrics/crap.edn` 与 `.metrics/mutate/*.edn` 加载指标；缺少任一指标的类卡片为红色。Lua 指标安装、原生 Windows 适配与命令见 [tools/quality/README.md](../../tools/quality/README.md)。
+- 图上 `client|common|server` 为三棵**业务树**：各端 `packages/` 不建类，业务代码对官方包的 `require` 收成外部椭圆（`policy.edn` 的 `:foreign` 取 `client|common|server.packages` 三个端级前缀，每端一个椭圆，新增包无需改 policy）。viewer 从 `.metrics/crap.edn` 与 `.metrics/mutate/*.edn` 加载指标；缺少任一指标的类卡片为红色，指标里没有对应类的记录被忽略（包内代码仍在「指标采集范围」内，只是图上无类可上色）。Lua 指标安装、原生 Windows 适配与命令见 [tools/quality/README.md](../../tools/quality/README.md)。
 - **标准 quality 分发**：根目录 `uml-quality.json`（版本管理）声明图上 `crap` / `mutate` 转交哪个项目公开命令，终端与右键走同一实现；参数、退出码、锁与失败报告一致。改项目质量入口时同步核对这份声明，`project.ps1 doctor` 会先校验它。
 - `target/` 放覆盖率与 mutation worker，属于忽略的临时产物；`.metrics/` 保留质量快照并纳入版本管理。无函数定义的配置或转发模块不生成 mutation 快照；当前工具不测试模块顶层语句。
 - 根目录 `uml`、`uml.ps1` 由安装器拷贝，不要编辑；固定工具组合的安装与校验使用 [tools/quality/README.md](../../tools/quality/README.md) 的项目入口。
@@ -52,6 +53,8 @@ foreach ($t in 'uml-viewer','crapper','mutator') {
 - `.toolcache` 也 junction 到主检出的同名目录，否则要自己备齐 `project.json` 的 `lua_tools` 全套：`luacov`、`dry4lua`、`luacheck`、`acceptance4lua`，以及它们的 Lua 依赖 `argparse`、`datafile`、`luafilesystem`。**后三个不在 `project.json` 里**（`lua_tools` 只有前四项），它们的 pin 在 `tools/quality/deps.sh:18-20`，而 [tools/quality/README.md](../../tools/quality/README.md) 声明 `deps.sh` 不在安装或 quality 调用链中——即它们没有声明式来源。实际能靠本机 LuaRocks 兜底的是 `datafile` 与 `luafilesystem`，**`argparse` 没有 rock 兜底**，只能来自 `.toolcache/argparse`，所以「必须备齐」的要害是它。缺 `luacheck` 时 `tests/native/slow/quality_report_test.lua` 会经 `dry4lua/ast.lua` 抛 `luacheck required`，断言先撞在 `broken.lua` 那一行——报错点离根因三层。
 - `.uml-viewer` 也 junction 到主检出的同名目录，才能复用已安装的 venv 与 viewer checkout；代价是会话、邮箱与 `quality-result.json` 一并共享，不要在两处同时起 viewer。共用 venv 还有一个必然后果：`doctor` 里针对 `crapper.__file__` 的断言会失败（editable 安装写下的 `.pth` 硬编码主检出路径，而断言按 `PROJECT_ROOT` 派生 worktree 拼写）。该断言只在主检出发言，**不要为迁就 worktree 放宽 `doctor`**。
 - **不要在 worktree 根内建这三个 junction**：`install.ps1` 只按 `../<tool>` 从**父目录**解析来源，根内的同名目录无人引用；它们又不在 `.gitignore`（只忽略 `.toolcache/` 与 `.uml-viewer/`），会以 `?? crapper/` 出现在 `git status`，一次 `git add -A` 就提交进去。worktree 根内只建 `.toolcache` 与 `.uml-viewer` 两个。
+
+**美术资产（Blender / Meshy MCP）。** 产出鱼类等模型与动画的接入方式、导出分件与验收步骤见 [美术资产流水线](art-pipeline.md)，尺寸口径见 [ADR-0004](../adr/0004-fish-asset-scale.md)。仓库不提交 MCP 配置，由所用前端（目前是 Codex）自行接入（key 走环境变量 `MESHY_API_KEY`，不入库）。资产本体不进本仓，正式资产走编辑器导入。
 
 **宿主目录专用于镜像。** 默认 `C:\Users\<用户名>\Desktop\dev\eggy\LuaSource_钓鱼怎么这么危险啊喂！`，可用 `EGGY_WORKSPACE` 覆盖。
 

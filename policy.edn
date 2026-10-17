@@ -2,7 +2,11 @@
  :prefix ""
  :lang :lua
  :hierarchical true
- :exclude ["_trigger"]
+ :exclude ["_trigger" "packages"]
+ ;; 各端 packages/ 是网易官方作者版包：整包替换、不由本仓库维护，故不建类，
+ ;; 业务代码对它们的 require 收成外部节点（椭圆）。三端 packages 整体都是 vendor，
+ ;; 按端级前缀匹配，每端收成一个椭圆；新增包无需改这里。
+ :foreign [client.packages common.packages server.packages]
  ;; 无函数定义的配置与转发模块：不产生 CRAP 与 mutation 快照，图上恒判 1.0 分红，
  ;; 不代表可测业务逻辑，故按项目约定（docs/agents/workflow.md）从视图隐藏。
  :omit [common.cfg.Blindbox

@@ -22,6 +22,10 @@
 
 `win_rule` 于 2026-10-09 从宿主删除并经回灌移除，删除前未接入业务聚合入口或正式结算。原包有结算枚举遮蔽（[GitHub #58](https://github.com/qinyuanj/se-fish/issues/58)）及未结算玩家离开后缺少全员结算重判（[GitHub #59](https://github.com/qinyuanj/se-fish/issues/59)）的问题。删除不代表缺陷已修复，重新引入须取得官方修正版并验证结算与玩家离开时序。
 
+## 架构图上的位置
+
+图上三棵树只画业务源码，三端 `packages/` 不建类；业务代码对这些包的 `require` 收成外部椭圆，由 `policy.edn` 的 `:foreign` 三个端级前缀（`client.packages`、`common.packages`、`server.packages`）匹配，每端一个椭圆；新增包无需改 policy。决策与后果见 [ADR-0005](adr/0005-packages-as-external.md)；指标仍全量采集包内代码，只是没有对应类可上色。
+
 ## 编辑器预设依赖
 
 包通过 `map://preset/...` AssetKey 引用地图内预设；预设随地图存档，不进 git。代码部署不能替代预设创建。
