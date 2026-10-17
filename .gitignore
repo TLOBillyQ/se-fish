@@ -47,3 +47,7 @@ target/
 .uml-viewer/
 uml-viewer-log.txt
 # END UML-VIEWER
+
+# >>> magpie: library skills placed here (magpie adds and removes these lines) >>>
+/.codex/config.toml
+# <<< magpie <<<
