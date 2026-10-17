@@ -36,6 +36,11 @@ local function decode(path, body)
   return json.decode(body)
 end
 
+-- 供其它读取美术工作区 JSON 的模块（如 tools.art_budget）复用同一套解析器
+function M.decode_json(path, body)
+  return decode(path, body)
+end
+
 -- 同一份报告一个场景里读一次就够，缓存在 world 上（world 由验收 harness 提供）
 function M.load(world, fish)
   world.art_reports = world.art_reports or {}

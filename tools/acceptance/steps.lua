@@ -4,7 +4,7 @@ local SOURCES = { 'tools.acceptance.fish_damage_steps', 'tools.acceptance.abilit
   'tools.acceptance.pond_loop_steps', 'tools.acceptance.lottery_steps', 'tools.acceptance.grill_steps',
   'tools.acceptance.prize_growth_steps', 'tools.acceptance.special_item_steps', 'tools.acceptance.platform_steps',
   'tools.acceptance.forest_island_steps', 'tools.acceptance.beach_island_steps',
-  'tools.acceptance.carp_asset_steps' }
+  'tools.acceptance.carp_asset_steps', 'tools.acceptance.mesh_topology_steps' }
 local M = {}
 
 local PATTERNS = {}
